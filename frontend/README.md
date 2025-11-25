@@ -1,6 +1,6 @@
-# MERN Authentication Frontend
+# ABC Dashboard Frontend
 
-A modern, scalable frontend application built with Next.js 16 and TypeScript, featuring Clean Architecture principles.
+A modern, scalable dashboard application built with Next.js 16, React 19, and TypeScript, featuring Clean Architecture principles, advanced theming, and comprehensive component library.
 
 ## 🏗️ Architecture
 
@@ -8,11 +8,12 @@ This project follows **Clean Architecture** principles with the following struct
 
 ```
 src/
-├── domain/          # Business Logic Layer
-├── application/     # Application Logic Layer
-├── infrastructure/  # External Concerns Layer
-├── presentation/    # UI Layer
-└── shared/         # Shared Utilities
+├── app/              # Next.js App Router
+├── domain/           # Business Logic Layer
+├── application/      # Application Logic Layer
+├── infrastructure/   # External Concerns Layer
+├── presentation/     # UI Components Layer
+└── shared/           # Shared Utilities
 ```
 
 ## 🚀 Getting Started
@@ -22,6 +23,34 @@ src/
 - Node.js 18+
 - npm, yarn, pnpm, or bun
 - Backend server running on port 5000
+
+## 🛠️ Technology Stack
+
+### Core Framework
+- **Next.js 16.0.1** - React framework with App Router
+- **React 19.2.0** - UI library with concurrent features
+- **TypeScript 5** - Type-safe JavaScript
+
+### State Management & Data
+- **Zustand** - Lightweight state management
+- **Axios** - HTTP client for API communication
+- **React Hook Form** - Form state management
+- **Zod** - Schema validation
+- **JWT** - Token handling
+
+### UI & Styling
+- **Tailwind CSS v4** - Utility-first CSS framework
+- **Shadcn-UI** - Modern component library built on Radix UI
+- **Radix UI** - Accessible component primitives
+- **Lucide React** - Icon library
+- **Sonner** - Toast notifications
+- **Recharts** - Data visualization
+
+### Development Tools
+- **ESLint 9** - Code linting with Next.js config
+- **TypeScript** - Type checking
+- **Shadcn-UI + CVA** - Component library with variant system
+- **clsx/tailwind-merge** - Conditional styling
 
 ### Installation
 
@@ -121,64 +150,74 @@ NEXT_PUBLIC_ENABLE_ERROR_REPORTING=true
 
 ```
 src/
-├── app/                      # Next.js App Router pages
+├── app/                      # Next.js App Router (Route Groups & Pages)
+│   ├── (auth)/               # Route group for authentication pages
+│   │   ├── login/            # Login page
+│   │   ├── register/         # Register page
+│   │   └── verify-email/     # Email verification page
 │   ├── dashboard/            # Protected dashboard routes
 │   │   └── [role]/           # Dynamic role-based routes
-│   ├── login/                # Login page
-│   ├── register/             # Register page
-│   ├── profile/              # Profile page
-│   ├── layout.tsx            # Root layout
-│   ├── page.tsx              # Home page
-│   └── globals.css           # Global styles
-├── domain/                   # Domain layer (business rules)
-│   ├── entities/             # Domain entities
-│   ├── repositories/         # Repository interfaces
-│   └── services/             # Domain services
-├── application/              # Application layer (use cases)
-│   └── use-cases/            # Application logic
-├── infrastructure/           # Infrastructure layer (external concerns)
+│   ├── profile/              # User profile page
+│   ├── layout.tsx            # Root layout with providers
+│   ├── page.tsx              # Home/landing page
+│   ├── globals.css           # Global styles & custom color system
+│   └── favicon.ico           # Application favicon
+├── domain/                   # Domain Layer (Business Rules)
+│   ├── entities/             # Domain entities (User, etc.)
+│   ├── repositories/         # Repository interfaces/contracts
+│   └── services/             # Domain services (Auth logic, etc.)
+├── application/              # Application Layer (Use Cases)
+│   ├── services/             # Application services
+│   └── use-cases/            # Use case implementations
+├── infrastructure/           # Infrastructure Layer (External Concerns)
 │   ├── api/                  # HTTP client & API services
+│   │   ├── auth.ts           # Authentication API
+│   │   ├── client.ts         # Axios client configuration
+│   │   ├── errors.ts         # Error handling utilities
+│   │   ├── index.ts          # API exports
+│   │   └── types.ts          # API type definitions
 │   ├── repositories/         # Repository implementations
-│   └── storage/              # Local storage utilities
-├── presentation/             # Presentation layer (UI)
-│   ├── components/           # React components
-│   │   ├── atoms/            # Atomic components
-│   │   ├── molecules/        # Molecular components
-│   │   ├── organisms/        # Organism components
-│   │   ├── pages/            # Page components
-│   │   ├── providers/        # Context providers
-│   │   └── templates/        # Layout templates
-│   ├── contexts/             # React contexts
-│   └── hooks/                # Custom hooks
-└── shared/                   # Shared utilities
+│   ├── storage/              # Storage utilities (localStorage, cookies)
+│   └── stores/               # State management (Zustand stores)
+├── presentation/             # Presentation Layer (UI)
+│   ├── components/           # React components (Atomic Design)
+│   │   ├── atoms/            # Basic UI components
+│   │   │   ├── display/      # Display components (Loading, Logo, etc.)
+│   │   │   ├── forms/        # Form elements (Input, Label, etc.)
+│   │   │   └── ui/           # Shadcn-UI components (Button, Card, etc.)
+│   │   ├── molecules/        # Composite components
+│   │   │   ├── common/       # Common molecules (Breadcrumb, Search, etc.)
+│   │   │   ├── dashboard/    # Dashboard-specific molecules
+│   │   │   ├── form/         # Form molecules (Password field, etc.)
+│   │   │   └── sidebar/      # Sidebar components
+│   │   ├── organisms/        # Complex components
+│   │   │   ├── common/       # Common organisms (Error boundary, etc.)
+│   │   │   └── form/         # Form organisms (Login, Register forms)
+│   │   ├── pages/            # Page-level components
+│   │   ├── routes/           # Route protection components
+│   │   └── templates/        # Layout templates (Auth, Dashboard)
+│   ├── contexts/             # React contexts (Auth, Theme)
+│   └── hooks/                # Custom React hooks
+└── shared/                   # Shared Utilities
     ├── constants/            # Application constants
-    ├── types/                # TypeScript types
-    └── utils/                # Utility functions
+    ├── types/                # TypeScript type definitions
+    └── utils/                # Utility functions (logger, etc.)
 ```
 
 ## 🔧 Available Scripts
 
 ### Development
 ```bash
-npm run dev        # Start development server
+npm run dev        # Start development server on http://localhost:3000
 npm run build      # Build for production
 npm run start      # Start production server
-npm run lint       # Run ESLint
-npm run type-check # Run TypeScript compiler check
+npm run lint       # Run ESLint code analysis
 ```
 
-### Testing
+### Production Build
 ```bash
-npm run test       # Run tests
-npm run test:watch # Run tests in watch mode
-npm run test:coverage # Run tests with coverage
-```
-
-### Code Quality
-```bash
-npm run lint       # Check code style
-npm run lint:fix   # Fix code style issues
-npm run format     # Format code with Prettier
+npm run build      # Create optimized production build
+npm run start      # Serve production build
 ```
 
 ## 🧪 Testing
@@ -220,6 +259,26 @@ Make sure to set these in your deployment platform:
 - `NEXT_PUBLIC_APP_ENV` - Environment (production)
 - `NEXT_PUBLIC_SENTRY_DSN` - Error reporting (optional)
 
+## 🔐 Authentication & Authorization
+
+### Authentication Flow
+- **JWT-based authentication** with access and refresh tokens
+- **Email verification** for account activation
+- **Secure token storage** using HTTP-only cookies and localStorage
+- **Automatic token refresh** for seamless user experience
+
+### Route Protection
+- **Protected Routes**: Dashboard and profile routes require authentication
+- **Role-based Access**: Dynamic routes based on user roles (`/dashboard/[role]`)
+- **Route Groups**: Authentication routes organized under `(auth)` group
+- **Middleware Protection**: Server-side route protection
+
+### User Management
+- **Registration**: New user signup with email verification
+- **Login/Logout**: Secure authentication with session management
+- **Profile Management**: User profile updates and password changes
+- **Session Persistence**: Maintain user sessions across browser refreshes
+
 ## 🔒 Security
 
 This application implements several security measures:
@@ -229,28 +288,24 @@ This application implements several security measures:
 - **Input Sanitization** - XSS prevention
 - **JWT Authentication** - Secure token-based auth
 - **HTTPS Only** - Secure connections in production
-
-## 📊 Monitoring & Analytics
-
-### Error Reporting
-Configure Sentry for error tracking:
-```bash
-NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn_here
-```
-
-### Analytics
-Configure Google Analytics:
-```bash
-NEXT_PUBLIC_GA_TRACKING_ID=your_ga_tracking_id_here
-```
+- **Input Validation** - Zod schema validation for all forms
 
 ## 🛠️ Development Guidelines
 
-### Code Style
-- Use TypeScript for all new code
-- Follow ESLint configuration
-- Use Prettier for code formatting
-- Follow Clean Architecture principles
+### Architecture Principles
+- **Clean Architecture**: Domain → Application → Infrastructure → Presentation layers
+- **Atomic Design**: Atoms → Molecules → Organisms → Pages → Templates
+- **Component Composition**: Favor composition over inheritance
+
+### Code Quality
+- **TypeScript**: Strict type checking enabled for all new code
+- **ESLint**: Modern flat config with Next.js rules
+- **Clean Architecture**: Separation of business logic from framework concerns
+
+### State Management
+- **Zustand**: For global application state (auth, theme)
+- **React Context**: For UI state (theme context, auth context)
+- **React Hook Form**: For form state management with Zod validation
 
 ### Commit Convention
 ```
@@ -289,4 +344,4 @@ For support, please contact the development team or create an issue in the repos
 
 ---
 
-Built with ❤️ using [Next.js](https://nextjs.org), [TypeScript](https://www.typescriptlang.org), and [Tailwind CSS](https://tailwindcss.com)
+Built with ❤️ using [Next.js 16](https://nextjs.org), [React 19](https://reactjs.org), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS v4](https://tailwindcss.com), [Shadcn-UI](https://ui.shadcn.com), and [Zustand](https://zustand-demo.pmnd.rs)

@@ -1,6 +1,9 @@
-# ABC Dashboard - Complete API Solution
+# ABC Dashboard Backend API
 
-A comprehensive Node.js/Express backend for the **ABC Dashboard** application with advanced features including authentication, caching, monitoring, and database migrations.
+**Backend API Documentation Only**
+
+A comprehensive **Node.js/Express backend API** for the ABC Dashboard application with advanced features including JWT authentication, email verification, profile management, Redis caching, API monitoring, and database migrations.
+
 
 ## Architecture
 
@@ -146,7 +149,7 @@ env/
 ```env
 NODE_ENV=development
 PORT=5000
-CLIENT_URL=http://localhost:3000
+CLIENT_URL=http://localhost:3000  # Frontend URL for CORS
 MONGODB_URI=mongodb://localhost:27017/abc_dashboard_dev
 EMAIL_SERVICE=mailhog
 EMAIL_HOST=localhost
@@ -158,7 +161,7 @@ REDIS_ENABLED=false
 ```env
 NODE_ENV=staging
 PORT=5000
-CLIENT_URL=https://staging.yourdomain.com
+CLIENT_URL=https://staging.yourdomain.com  # Frontend URL for CORS
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/abc_dashboard_staging
 EMAIL_SERVICE=gmail
 REDIS_ENABLED=true
@@ -168,7 +171,7 @@ REDIS_ENABLED=true
 ```env
 NODE_ENV=production
 PORT=5000
-CLIENT_URL=https://yourdomain.com
+CLIENT_URL=https://yourdomain.com  # Frontend URL for CORS
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/abc_dashboard_prod
 EMAIL_SERVICE=gmail
 REDIS_ENABLED=true
@@ -248,7 +251,6 @@ npm start
 
 ## API Documentation
 
-### Swagger UI
 Access interactive API documentation at: `http://localhost:5000/api-docs`
 
 **Features:**
@@ -264,59 +266,6 @@ Access interactive API documentation at: `http://localhost:5000/api-docs`
 - **Request/Response Examples**: Complete examples for all endpoints
 - **Schema Validation**: View request/response schemas
 - **Real-time Metrics**: See response times and status codes
-
-### Health Check
-```bash
-GET /api/v1/health
-```
-
-### Authentication Endpoints
-
-#### Register User
-```bash
-POST /api/v1/auth/register
-Content-Type: application/json
-
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "StrongPass123!"
-}
-```
-
-#### Login
-```bash
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "StrongPass123!"
-}
-```
-
-  "password": "NewStrongPass123!"
-}
-```
-
-### Admin Endpoints (Require Admin Role)
-
-#### User Management
-```bash
-GET /api/v1/users                    # List all users
-GET /api/v1/users/:id               # Get user details
-PUT /api/v1/users/:id               # Update user
-DELETE /api/v1/users/:id            # Delete user
-GET /api/v1/users/stats             # User statistics
-```
-
-#### System Management
-```bash
-GET /api/v1/metrics                 # API metrics
-POST /api/v1/metrics/reset          # Reset metrics
-GET /api/v1/cache/stats             # Cache statistics
-DELETE /api/v1/cache                # Clear cache
-```
 
 ## Email Testing with MailHog
 
@@ -411,3 +360,5 @@ For issues and questions:
 - Check the Swagger documentation
 - Review server logs with correlation IDs
 - Test with MailHog for email issues
+
+---
