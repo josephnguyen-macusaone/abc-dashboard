@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Production Docker Compose Configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file env/production.env up
+
+services:
+  mailhog:
+    # Disable MailHog in production (use real email service)
+    profiles: ["dev"]
+
+  mongodb:
+    # Use external MongoDB Atlas in production
+    profiles: ["dev"]
+
+  redis:
+    # Use external Redis in production (AWS ElastiCache, etc.)
+    profiles: ["dev"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: abc-dashboard-backend-prod
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - env/production.env
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+    networks:
+      - app_network
+
+volumes:
+
+networks:
+  app_network:
+    driver: bridge
