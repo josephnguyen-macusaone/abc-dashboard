@@ -111,7 +111,3 @@ This project is licensed under the ISC License - see the LICENSE file for detail
 ---
 
 **🎯 Ready to get started? Check out the deployment guides for production setup!**
-
-
-WebAdmin username:        admin
-WebAdmin password:        qHTbx0KXSMYikUzs
