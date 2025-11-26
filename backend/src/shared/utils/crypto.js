@@ -10,19 +10,7 @@ const generateTokenHash = (token) => {
   return crypto.createHash('sha256').update(token).digest('hex');
 };
 
-// Generate email verification token
-const generateEmailVerificationToken = () => {
-  const token = generateToken();
-  const hashedToken = generateTokenHash(token);
-
-  return {
-    token,
-    hashedToken
-  };
-};
-
 export {
   generateToken,
-  generateTokenHash,
-  generateEmailVerificationToken
+  generateTokenHash
 };

@@ -2,7 +2,7 @@
 
 **Backend API Documentation Only**
 
-A comprehensive **Node.js/Express backend API** for the ABC Dashboard application with advanced features including JWT authentication, email verification, profile management, Redis caching, API monitoring, and database migrations.
+A comprehensive **Node.js/Express backend API** for the ABC Dashboard application with advanced features including JWT authentication, email verification, profile management, in-memory caching, API monitoring, and database migrations.
 
 
 ## Architecture
@@ -14,10 +14,8 @@ This backend is built using **Clean Architecture** principles, providing excelle
 src/
 ├── domain/                    # Business Logic Layer
 │   ├── entities/              # Domain Entities (User, File)
-│   ├── repositories/          # Repository Interfaces (contracts)
-│   └── value-objects/         # Value Objects (Email, Password)
+│   └── repositories/          # Repository Interfaces (contracts)
 ├── application/               # Application Layer
-│   ├── dto/                   # Data Transfer Objects
 │   └── use-cases/             # Use Cases / Application Services
 ├── infrastructure/            # Infrastructure Layer
 │   ├── controllers/           # HTTP Controllers
@@ -42,7 +40,7 @@ src/
 - **RESTful API** with versioning (`/api/v1/`)
 - **JWT Authentication** with role-based authorization
 - **Email Verification** and password reset flows
-- **Redis Caching** for performance optimization
+- **In-Memory Caching** for performance optimization
 - **API Monitoring** and metrics collection
 - **Database Migrations** and seeding
 - **Swagger Documentation** for all endpoints
@@ -59,7 +57,7 @@ src/
 
 - Node.js 18+
 - MongoDB
-- Redis (optional, for caching)
+- In-memory caching (built-in, no external dependencies)
 
 ## Installation
 
@@ -80,10 +78,8 @@ backend/
 ├── src/                          # Clean Architecture source code
 │   ├── domain/                   # Business Logic Layer
 │   │   ├── entities/             # Domain Entities
-│   │   ├── repositories/         # Repository Interfaces
-│   │   └── value-objects/        # Value Objects
+│   │   └── repositories/         # Repository Interfaces
 │   ├── application/              # Application Layer
-│   │   ├── dto/                  # Data Transfer Objects
 │   │   └── use-cases/            # Use Cases / Application Services
 │   ├── infrastructure/           # Infrastructure Layer
 │   │   ├── config/               # Configuration files
@@ -154,28 +150,44 @@ MONGODB_URI=mongodb://localhost:27017/abc_dashboard_dev
 EMAIL_SERVICE=mailhog
 EMAIL_HOST=localhost
 EMAIL_PORT=1025
-REDIS_ENABLED=false
 ```
 
 #### **Staging** (`env/staging.env`)
 ```env
 NODE_ENV=staging
 PORT=5000
-CLIENT_URL=https://staging.yourdomain.com  # Frontend URL for CORS
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/abc_dashboard_staging
+CLIENT_URL=https://staging.yourdomain.com
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/abc_dashboard_staging
 EMAIL_SERVICE=gmail
-REDIS_ENABLED=true
+# ... (see env/staging.env for complete configuration)
 ```
 
 #### **Production** (`env/production.env`)
 ```env
 NODE_ENV=production
 PORT=5000
-CLIENT_URL=https://yourdomain.com  # Frontend URL for CORS
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/abc_dashboard_prod
+CLIENT_URL=https://yourdomain.com
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/abc_dashboard_prod
 EMAIL_SERVICE=gmail
-REDIS_ENABLED=true
+# ... (see env/production.env for complete configuration)
 ```
+
+### **Environment Setup**
+
+Before running the application, copy the appropriate environment file:
+
+```bash
+# For development
+cp env/development.env .env
+
+# For staging
+cp env/staging.env .env
+
+# For production
+cp env/production.env .env
+```
+
+**⚠️ IMPORTANT:** Always customize the environment variables in your `.env` file with your actual values before deployment.
 
 ### **Environment-Specific Commands**
 
@@ -219,8 +231,7 @@ docker-compose up mailhog
 # Start MongoDB
 docker-compose up mongodb
 
-# Start Redis (optional)
-docker-compose up redis
+# Note: Redis is not required - using in-memory caching only
 ```
 
 ### 2. Run Database Migrations
@@ -309,7 +320,7 @@ The API includes built-in monitoring:
 - **Response Times**: Average, median, P95, P99
 - **Error Rates**: Overall and per-endpoint
 - **Request Counts**: Total and per-endpoint
-- **Cache Performance**: Hit rates and Redis stats
+- **Cache Performance**: Hit rates and in-memory cache stats
 
 Access metrics at `/api/v1/metrics` (admin only).
 
@@ -335,9 +346,8 @@ npm run test:coverage
 ```env
 NODE_ENV=production
 MONGODB_URI=mongodb+srv://...
-REDIS_ENABLED=true
 EMAIL_SERVICE=gmail
-UPLOAD_STORAGE=s3
+# ... (see env/production.env for complete configuration)
 ```
 
 ### Docker Deployment

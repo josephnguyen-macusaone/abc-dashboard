@@ -6,7 +6,11 @@ import {
   RegisterResponse,
   AuthStatusResponse,
   ApiResponse,
-  AuthTokens
+  AuthTokens,
+  ProfileUpdateResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  User
 } from '@/infrastructure/api/types';
 import logger from '@/shared/utils/logger';
 
@@ -90,11 +94,15 @@ export class AuthApiService {
   }
 
   /**
-   * Verify email
+   * Verify email with JWT token
    */
-  static async verifyEmail(token: string): Promise<void> {
+  static async verifyEmail(token: string): Promise<{ user: User; message: string }> {
     try {
-      await httpClient.post('/auth/verify-email', { token });
+      const response = await httpClient.post<ApiResponse<{ user: User; message: string }>>('/auth/verify-email', { token });
+      if (!response.data) {
+        throw new Error('Email verification response missing data');
+      }
+      return response.data;
     } catch (error) {
       throw error;
     }
@@ -112,19 +120,6 @@ export class AuthApiService {
     }
   }
 
-  /**
-   * Change password (authenticated)
-   */
-  static async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    try {
-      await httpClient.post('/auth/change-password', {
-        currentPassword,
-        newPassword
-      });
-    } catch (error) {
-      throw error;
-    }
-  }
 
   /**
    * Get user profile

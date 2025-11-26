@@ -33,6 +33,7 @@ export interface LoginResponse {
 }
 
 export interface RegisterRequest {
+  username: string;
   email: string;
   password: string;
   firstName: string;
@@ -67,7 +68,7 @@ export interface ProfileUpdateResponse {
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
-  confirmPassword: string;
+  confirmPassword?: string; // Optional for API calls
 }
 
 export interface ChangePasswordResponse {

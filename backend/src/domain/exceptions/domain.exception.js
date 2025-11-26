@@ -1,4 +1,4 @@
-import { ErrorResponse } from '../../shared/utils/error-responses.js';
+import { ErrorResponse } from '../../shared/http/error-responses.js';
 
 /**
  * Base Domain Exception

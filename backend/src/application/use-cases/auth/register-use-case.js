@@ -19,8 +19,8 @@ export class RegisterUseCase {
   async execute({ username, email, password, firstName, lastName, avatarUrl, avatarId, bio, phone }) {
     try {
       // Validate input
-      if (!username || !email || !password || !firstName || !lastName) {
-        throw new ValidationException('Username, email, password, firstName, and lastName are required');
+      if (!email || !password || !firstName || !lastName) {
+        throw new ValidationException('Email, password, firstName, and lastName are required');
       }
 
       // Check if email already exists
@@ -29,10 +29,27 @@ export class RegisterUseCase {
         throw new EmailAlreadyExistsException();
       }
 
-      // Check if username already exists
-      const existingUsername = await this.userRepository.findByUsername(username);
+      // Auto-generate username if not provided
+      let finalUsername = username;
+      if (!finalUsername) {
+        // Generate username from first name + last name, or use email prefix
+        const baseUsername = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(/[^a-z0-9_]/g, '');
+        finalUsername = baseUsername || email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+        // Ensure uniqueness by appending numbers if needed
+        let counter = 0;
+        let candidateUsername = finalUsername;
+        while (await this.userRepository.findByUsername(candidateUsername)) {
+          counter++;
+          candidateUsername = `${finalUsername}${counter}`;
+        }
+        finalUsername = candidateUsername;
+      } else {
+        // Check if provided username already exists
+        const existingUsername = await this.userRepository.findByUsername(finalUsername);
       if (existingUsername) {
         throw new ValidationException('Username already taken');
+        }
       }
 
       // Hash password
@@ -41,9 +58,9 @@ export class RegisterUseCase {
       // Combine firstName and lastName into displayName
       const displayName = `${firstName} ${lastName}`.trim();
 
-      // Create user entity (without verification fields initially)
+      // Create user entity (inactive by default)
       const user = await this.userRepository.save({
-        username,
+        username: finalUsername,
         hashedPassword,
         email,
         displayName,
@@ -53,23 +70,18 @@ export class RegisterUseCase {
         phone
       });
 
-      // Generate email verification OTP
-      const otp = user.generateEmailVerificationToken();
+      // Generate email verification JWT token
+      const verificationToken = this.tokenService.generateEmailVerificationToken(user.id, user.email);
 
-      // Update user with verification token
-      await this.userRepository.updateEmailVerification(user.id, {
-        emailVerificationToken: otp,
-        emailVerificationExpires: user.emailVerificationExpires
-      });
-
-      // Send email verification OTP
+      // Send email verification link
       try {
         if (this.emailService) {
+          const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
           await this.emailService.sendEmail(
             user.email,
             'Verify Your Email - ABC Dashboard',
-            'Hi {{displayName}}! Welcome to ABC Dashboard. Your verification code is: <strong>{{otp}}</strong><br><br>This code will expire in 10 minutes.',
-            { displayName: user.displayName, otp: otp }
+            'Hi {{displayName}}! Welcome to ABC Dashboard. Please click the link below to verify your email address:<br><br><a href="{{verificationUrl}}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a><br><br>This link will expire in 10 minutes.<br><br>If the button doesn\'t work, copy and paste this URL into your browser:<br>{{verificationUrl}}',
+            { displayName: user.displayName, verificationUrl }
           );
         }
 
@@ -77,7 +89,7 @@ export class RegisterUseCase {
         logger.info('New user registered - verification email sent', {
           userId: user.id,
           email: user.email,
-          username: user.username
+          username: finalUsername
         });
       } catch (error) {
         logger.error('Failed to send verification email:', error);
@@ -95,10 +107,10 @@ export class RegisterUseCase {
           avatarId: user.avatarId,
           bio: user.bio,
           phone: user.phone,
-          isEmailVerified: false,
+          isActive: false, // New users are inactive until email verification
           createdAt: user.createdAt
         },
-        message: 'Registration successful. Please check your email for verification code.'
+        message: 'Registration successful. Please check your email for verification link.'
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

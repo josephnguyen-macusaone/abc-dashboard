@@ -13,9 +13,7 @@ export class User {
     avatarId,
     bio,
     phone,
-    emailVerificationToken,
-    emailVerificationExpires,
-    isEmailVerified,
+    isActive,
     createdAt,
     updatedAt
   }) {
@@ -28,9 +26,7 @@ export class User {
     this.avatarId = avatarId;
     this.bio = bio;
     this.phone = phone;
-    this.emailVerificationToken = emailVerificationToken;
-    this.emailVerificationExpires = emailVerificationExpires;
-    this.isEmailVerified = isEmailVerified || false;
+    this.isActive = isActive || false;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
 
@@ -81,7 +77,7 @@ export class User {
       avatarId: this.avatarId || null,
       bio: this.bio || null,
       phone: this.phone || null,
-      isEmailVerified: this.isEmailVerified,
+      isActive: this.isActive,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };
@@ -134,41 +130,19 @@ export class User {
   }
 
   /**
-   * Generate email verification token
+   * Activate user account (after email verification)
    */
-  generateEmailVerificationToken() {
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    this.emailVerificationToken = otp;
-    this.emailVerificationExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    return otp;
-  }
-
-  /**
-   * Verify email with token
-   */
-  verifyEmail(token) {
-    if (this.isEmailVerified) {
-      throw new Error('Email already verified');
+  activate() {
+    if (this.isActive) {
+      throw new Error('Account already activated');
     }
 
-    if (!this.emailVerificationToken || !this.emailVerificationExpires) {
-      throw new Error('No verification token found');
-    }
+    this.isActive = true;
 
-    if (Date.now() > this.emailVerificationExpires) {
-      throw new Error('Verification token has expired');
-    }
-
-    if (this.emailVerificationToken !== token) {
-      throw new Error('Invalid verification token');
-    }
-
-    this.isEmailVerified = true;
-    this.emailVerificationToken = null;
-    this.emailVerificationExpires = null;
-
-    return true;
+    return {
+      type: 'UserActivated',
+      userId: this.id,
+      occurredAt: new Date()
+    };
   }
 }

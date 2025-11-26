@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { LoadingOverlay } from '@/presentation/components/atoms';
 
 interface ProtectedRouteProps {
@@ -19,7 +19,7 @@ export function ProtectedRoute({
   requireAdmin = false
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, canAccessProtectedRoutes } = useAuthStore();
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
@@ -28,11 +28,18 @@ export function ProtectedRoute({
       return;
     }
 
-    if (!requireAuth && isAuthenticated) {
-      // Redirect based on user role
+    // Check if user is authenticated but not email-verified
+    if (requireAuth && isAuthenticated && !canAccessProtectedRoutes()) {
+      // User is logged in but email not verified - redirect to verification page
+      router.push(`/verify-email?email=${encodeURIComponent(user?.email || '')}`);
+      return;
+    }
+
+    if (!requireAuth && isAuthenticated && canAccessProtectedRoutes()) {
+      // Redirect authenticated users away from auth pages
       router.push(`/dashboard/${user?.role}`);
     }
-  }, [isAuthenticated, isAdmin, isLoading, requireAuth, requireAdmin, redirectTo, router, user]);
+  }, [isAuthenticated, isAdmin, isLoading, requireAuth, requireAdmin, redirectTo, router, user, canAccessProtectedRoutes]);
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -41,6 +48,11 @@ export function ProtectedRoute({
 
   // Show loading while checking authentication and admin status
   if (requireAuth && !isAuthenticated) {
+    return <LoadingOverlay text="Loading..." />;
+  }
+
+  // Show loading if user is authenticated but not verified
+  if (requireAuth && isAuthenticated && !canAccessProtectedRoutes()) {
     return <LoadingOverlay text="Loading..." />;
   }
 

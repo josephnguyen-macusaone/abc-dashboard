@@ -56,7 +56,7 @@ export class User {
       obj.name,
       obj.email,
       obj.role,
-      obj.isActive,
+      obj.isActive !== undefined ? obj.isActive : false, // Default to false if not provided
       obj.avatar,
       obj.firstName,
       obj.lastName,
@@ -145,8 +145,8 @@ export class AuthResult {
    * Create unauthenticated result
    */
   static unauthenticated(): AuthResult {
-    const emptyUser = new User('', '', '', UserRole.STAFF, false, undefined, new Date());
-    const emptyTokens = new AuthTokens('');
+    const emptyUser = new User('', '', '', UserRole.STAFF, false);
+    const emptyTokens = new AuthTokens('', '');
     return new AuthResult(emptyUser, emptyTokens, false);
   }
 }

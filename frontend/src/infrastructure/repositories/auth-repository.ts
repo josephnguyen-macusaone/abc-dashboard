@@ -48,6 +48,7 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async register(
+    username: string,
     firstName: string,
     lastName: string,
     email: string,
@@ -70,6 +71,7 @@ export class AuthRepository implements IAuthRepository {
 
       const startTime = Date.now();
       const response = await authApi.register({
+        username,
         email,
         password,
         firstName,
@@ -145,7 +147,8 @@ export class AuthRepository implements IAuthRepository {
 
       if (response.isAuthenticated && response.user) {
         const user = User.fromObject(response.user);
-        const tokens = new AuthTokens(''); // Token would be in cookies/storage
+        // For auth status, tokens are managed by cookies/storage
+        const tokens = new AuthTokens('', ''); // Tokens are in cookies, not returned by API
 
         this.logger.http(`Auth status API call successful - authenticated`, {
           correlationId,
@@ -206,7 +209,7 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
-  async verifyEmail(token: string): Promise<void> {
+  async verifyEmail(email: string, token: string): Promise<{ user: User; message: string }> {
     const correlationId = generateCorrelationId();
 
     try {
@@ -216,14 +219,17 @@ export class AuthRepository implements IAuthRepository {
       });
 
       const startTime = Date.now();
-      await authApi.verifyEmail(token);
+      const response = await authApi.verifyEmail(token);
       const duration = Date.now() - startTime;
 
       this.logger.http(`Verify email API call successful`, {
         correlationId,
+        userId: response.user.id,
         duration,
         operation: 'verify_email_api_success',
       });
+
+      return { user: User.fromObject(response.user), message: response.message };
     } catch (error) {
       this.logger.http(`Verify email API call failed`, {
         correlationId,
@@ -245,7 +251,7 @@ export class AuthRepository implements IAuthRepository {
       });
 
       const startTime = Date.now();
-      await authApi.changePassword(currentPassword, newPassword);
+      await authApi.changePassword({ currentPassword, newPassword });
       const duration = Date.now() - startTime;
 
       this.logger.http(`Change password API call successful`, {

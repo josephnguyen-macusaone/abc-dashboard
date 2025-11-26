@@ -76,11 +76,11 @@ export class AuthService {
    * Register new user
    */
   async register(
+    username: string,
     firstName: string,
     lastName: string,
     email: string,
     password: string,
-    confirmPassword: string,
     role?: string
   ): Promise<AuthResult> {
     const correlationId = generateCorrelationId();
@@ -95,7 +95,7 @@ export class AuthService {
       });
 
       const startTime = Date.now();
-      const result = await this.registerUseCase.execute(firstName, lastName, email, password, confirmPassword, role);
+      const result = await this.registerUseCase.execute(username, firstName, lastName, email, password, role);
       const duration = Date.now() - startTime;
 
       if (result.isAuthenticated) {
@@ -281,7 +281,7 @@ export class AuthService {
   /**
    * Verify email with token
    */
-  async verifyEmail(token: string): Promise<void> {
+  async verifyEmail(email: string, token: string): Promise<{ user: User; message: string }> {
     const correlationId = generateCorrelationId();
     const currentUser = await this.getCurrentUser();
 
@@ -293,20 +293,24 @@ export class AuthService {
       });
 
       const startTime = Date.now();
-      await this.authRepository.verifyEmail(token);
+      const response = await this.authRepository.verifyEmail(email, token);
       const duration = Date.now() - startTime;
 
       this.logger.warn(`🔒 Email verification successful`, {
         correlationId,
         userId: currentUser?.id,
+        verifiedUserId: response.user.id,
         operation: 'email_verification_success',
       });
 
       this.logger.info(`👤 User email verified`, {
         correlationId,
         userId: currentUser?.id,
+        verifiedUserId: response.user.id,
         operation: 'email_verification',
       });
+
+      return response;
 
       this.logger.info(`⚡ Email verification completed`, {
         correlationId,
@@ -426,44 +430,4 @@ export class AuthService {
     }
   }
 
-  /**
-   * Change current user's password
-   */
-  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const correlationId = generateCorrelationId();
-    const currentUser = await this.getCurrentUser();
-
-    try {
-      this.logger.warn(`🔒 Password change initiated`, {
-        correlationId,
-        userId: currentUser?.id,
-        operation: 'password_change_attempt',
-      });
-
-      const startTime = Date.now();
-      await this.authRepository.changePassword(currentPassword, newPassword);
-      const duration = Date.now() - startTime;
-
-      this.logger.warn(`🔒 Password change successful`, {
-        correlationId,
-        userId: currentUser?.id,
-        operation: 'password_change_success',
-      });
-
-      this.logger.info(`⚡ Password change operation completed`, {
-        correlationId,
-        userId: currentUser?.id,
-        duration,
-        operation: 'password_change',
-      });
-    } catch (error) {
-      this.logger.warn(`🔒 Password change failed`, {
-        correlationId,
-        userId: currentUser?.id,
-        operation: 'password_change_error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
 }

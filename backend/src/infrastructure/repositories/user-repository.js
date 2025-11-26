@@ -26,13 +26,6 @@ export class UserRepository extends IUserRepository {
     return userDoc ? this._toEntity(userDoc) : null;
   }
 
-  async findByEmailVerificationToken(token) {
-    const userDoc = await this.UserModel.findOne({
-      emailVerificationToken: token,
-      emailVerificationExpires: { $gt: new Date() }
-    });
-    return userDoc ? this._toEntity(userDoc) : null;
-  }
 
   async findUsers(options = {}) {
     const {
@@ -136,18 +129,12 @@ export class UserRepository extends IUserRepository {
   }
 
   /**
-   * Convert Mongoose document to Domain Entity
+   * Update user active status
    */
-  async updateEmailVerification(userId, verificationData) {
+  async updateUserStatus(userId, statusData) {
     const updateData = {};
-    if (verificationData.emailVerificationToken !== undefined) {
-      updateData.emailVerificationToken = verificationData.emailVerificationToken;
-    }
-    if (verificationData.emailVerificationExpires !== undefined) {
-      updateData.emailVerificationExpires = verificationData.emailVerificationExpires;
-    }
-    if (verificationData.isEmailVerified !== undefined) {
-      updateData.isEmailVerified = verificationData.isEmailVerified;
+    if (statusData.isActive !== undefined) {
+      updateData.isActive = statusData.isActive;
     }
 
     const userDoc = await this.UserModel.findByIdAndUpdate(
@@ -170,9 +157,7 @@ export class UserRepository extends IUserRepository {
       avatarId: userDoc.avatarId,
       bio: userDoc.bio,
       phone: userDoc.phone,
-      emailVerificationToken: userDoc.emailVerificationToken,
-      emailVerificationExpires: userDoc.emailVerificationExpires,
-      isEmailVerified: userDoc.isEmailVerified,
+      isActive: userDoc.isActive || false,
       createdAt: userDoc.createdAt,
       updatedAt: userDoc.updatedAt
     });

@@ -4,7 +4,6 @@ import 'joi';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import connectDB from './src/infrastructure/config/database.js';
@@ -16,12 +15,11 @@ import { securityHeaders, requestSizeLimiter, injectionProtection, createRateLim
 import logger from './src/infrastructure/config/logger.js';
 import { config } from './src/infrastructure/config/config.js';
 import swaggerSpec from './src/infrastructure/config/swagger.js';
-import { initRedis } from './src/infrastructure/config/redis.js';
-import { monitorMiddleware, getHealthWithMetrics, getHealthData } from './src/infrastructure/config/monitoring.js';
+import { monitorMiddleware, getHealthWithMetrics } from './src/infrastructure/config/monitoring.js';
+import { responseHelpersMiddleware } from './src/shared/http/response-transformer.js';
 
 // Load environment configuration (this will load the appropriate .env file)
 import './src/infrastructure/config/env.js';
-
 
 const app = express();
 const PORT = config.PORT;
@@ -35,7 +33,6 @@ const performStartupChecks = async () => {
 
   const checks = {
     database: false,
-    redis: false,
   };
 
   // Check MongoDB connection
@@ -51,32 +48,10 @@ const performStartupChecks = async () => {
     });
   }
 
-  // Check Redis connection (if enabled)
-  if (config.REDIS_ENABLED) {
-    try {
-      logger.startup('Checking Redis connection...');
-      const redisConnected = await initRedis();
-      checks.redis = redisConnected;
-      if (redisConnected) {
-        logger.startup('Redis connection check passed');
-      } else {
-        logger.warn('Redis connection check failed - using in-memory cache');
-      }
-    } catch (error) {
-      logger.warn('Redis connection check failed - using in-memory cache', {
-        error: error.message,
-      });
-    }
-  } else {
-    logger.startup('Redis is disabled - using in-memory cache');
-  }
-
-
   // Log startup summary
   const dbType = config.DATABASE_TYPE === 'postgresql' ? 'PostgreSQL' : 'MongoDB';
   const dbStatus = checks.database ? 'Connected' : 'Failed';
-  const redisStatus = config.REDIS_ENABLED ? (checks.redis ? 'Connected' : 'Failed') : 'Disabled';
-  logger.startup(`Startup Health Check Summary - ${dbType}: ${dbStatus}, Redis: ${redisStatus}`);
+  logger.startup(`Startup Health Check Summary - ${dbType}: ${dbStatus}, Cache: In-Memory`);
 
   return checks;
 };
@@ -87,6 +62,7 @@ app.use(correlationIdMiddleware);
 // Security middleware
 app.use(helmet());
 app.use(securityHeaders);
+
 // CORS configuration
 const corsOptions = config.NODE_ENV === 'development' ? {
   origin: function (origin, callback) {
@@ -131,6 +107,9 @@ app.use(requestLogger);
 
 // API monitoring middleware
 app.use(monitorMiddleware);
+
+// Response helpers middleware (adds res.paginated, res.success, etc.)
+app.use(responseHelpersMiddleware);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

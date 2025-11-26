@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import dotenv from 'dotenv';
-import connectDB from '../config/database.js';
+import connectDB, { closeDB } from '../config/database.js';
 import {
   runMigrations,
   rollbackMigrations,
@@ -26,12 +26,14 @@ async function main() {
       case undefined: // Default to migrate
         console.log('Running migrations...');
         await runMigrations();
+        console.log('Migrations completed successfully');
         break;
 
       case 'rollback':
         const steps = argument ? parseInt(argument) : 1;
         console.log(`Rolling back ${steps} migration(s)...`);
         await rollbackMigrations(steps);
+        console.log('Rollback completed successfully');
         break;
 
       case 'seed':
@@ -42,6 +44,7 @@ async function main() {
           console.log('Running all seeds...');
           await runSeeds();
         }
+        console.log('Seed completed successfully');
         break;
 
       case 'status':
@@ -57,11 +60,17 @@ async function main() {
         console.log('  npm run seed                 # Run all seed files');
         console.log('  npm run seed <filename>      # Run specific seed file');
         console.log('  npm run db:status            # Show migration status');
+        await closeDB();
         process.exit(1);
     }
 
+    // Close database connection and exit successfully
+    await closeDB();
+    process.exit(0);
+
   } catch (error) {
     console.error('Command failed:', error.message);
+    await closeDB();
     process.exit(1);
   }
 }

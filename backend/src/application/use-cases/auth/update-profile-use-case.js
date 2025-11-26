@@ -68,7 +68,7 @@ export class UpdateProfileUseCase {
           avatarId: updatedUser.avatarId,
           bio: updatedUser.bio,
           phone: updatedUser.phone,
-          isEmailVerified: updatedUser.isEmailVerified,
+          isActive: updatedUser.isActive,
           updatedAt: updatedUser.updatedAt
         },
         message: 'Profile updated successfully'

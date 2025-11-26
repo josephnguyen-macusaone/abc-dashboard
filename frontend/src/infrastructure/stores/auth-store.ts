@@ -22,10 +22,11 @@ interface AuthState {
   // Actions
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (firstName: string, lastName: string, email: string, password: string, role?: string) => Promise<void>;
+  register: (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
-  verifyEmail: (token: string) => Promise<void>;
+  verifyEmail: (email: string, token: string) => Promise<{ user: User; message: string }>;
+  canAccessProtectedRoutes: () => boolean;
   updateProfile: (updates: Partial<{
     firstName: string;
     lastName: string;
@@ -119,6 +120,11 @@ export const useAuthStore = create<AuthState>()(
 
               const authResult = await authService.login(email, password);
 
+              // Check if user is active (verified)
+              if (!authResult.user.isActive) {
+                throw new Error('Please verify your email before logging in. Check your email for the verification link.');
+              }
+
               set({ token: authResult.tokens.accessToken });
 
               // Store tokens
@@ -129,38 +135,21 @@ export const useAuthStore = create<AuthState>()(
                 LocalStorageService.setRefreshToken(authResult.tokens.refreshToken);
               }
 
-              // Fetch fresh profile data after successful login
-              try {
-                const profileResponse = await authService.getCurrentUser();
+              // Transform the login response user to User entity
+              const loginUser = User.fromObject({
+                id: authResult.user.id,
+                name: authResult.user.name,
+                email: authResult.user.email,
+                role: authResult.user.role,
+                isActive: authResult.user.isActive,
+                avatar: authResult.user.avatar,
+                lastLogin: new Date(),
+                updatedAt: new Date()
+              });
 
-                if (profileResponse) {
-                  // Transform the API response to User entity
-                  const profileUser = User.fromObject({
-                    id: profileResponse.id,
-                    name: profileResponse.name,
-                    email: profileResponse.email,
-                    role: profileResponse.role,
-                    isActive: true,
-                    avatar: profileResponse.avatar,
-                    lastLogin: new Date(),
-                    updatedAt: new Date()
-                  });
-
-                  set({ user: profileUser });
-                  CookieService.setUser(profileUser);
-                  LocalStorageService.setUser(profileUser);
-                }
-
-              } catch (profileError) {
-                // If profile fetch fails, fall back to login response user data
-                storeLogger.warn('Profile fetch failed after login, using login response data', {
-                  error: profileError instanceof Error ? profileError.message : String(profileError)
-                });
-
-                set({ user: authResult.user });
-                CookieService.setUser(authResult.user);
-                LocalStorageService.setUser(authResult.user);
-              }
+              set({ user: loginUser });
+              CookieService.setUser(loginUser);
+              LocalStorageService.setUser(loginUser);
 
               set({ isAuthenticated: true });
             } catch (error: any) {
@@ -170,56 +159,36 @@ export const useAuthStore = create<AuthState>()(
             }
           },
 
-          register: async (firstName: string, lastName: string, email: string, password: string, role?: string) => {
+          register: async (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => {
             try {
               set({ isLoading: true });
 
-              const authResult = await authService.register(firstName, lastName, email, password, password, role);
+              const registerResult = await authService.register(username, firstName, lastName, email, password, role);
 
-              set({ token: authResult.tokens.accessToken });
+              // Store user data (no tokens since user is not active yet)
+              const registeredUser = User.fromObject({
+                id: registerResult.user.id,
+                name: registerResult.user.name,
+                email: registerResult.user.email,
+                role: registerResult.user.role,
+                isActive: registerResult.user.isActive || false,
+                avatar: registerResult.user.avatar,
+                lastLogin: new Date(),
+                updatedAt: new Date()
+              });
 
-              // Store tokens
-              CookieService.setToken(authResult.tokens.accessToken);
-              LocalStorageService.setToken(authResult.tokens.accessToken);
+              set({ user: registeredUser });
+              CookieService.setUser(registeredUser);
+              LocalStorageService.setUser(registeredUser);
 
-              if (authResult.tokens.refreshToken) {
-                LocalStorageService.setRefreshToken(authResult.tokens.refreshToken);
-              }
+              // User is registered but not active yet - no authentication
+              set({ isAuthenticated: false });
 
-              // Fetch fresh profile data after successful registration
-              try {
-                const profileResponse = await authService.getCurrentUser();
-
-                if (profileResponse) {
-                  // Transform the API response to User entity
-                  const profileUser = User.fromObject({
-                    id: profileResponse.id,
-                    name: profileResponse.name,
-                    email: profileResponse.email,
-                    role: profileResponse.role,
-                    isActive: true,
-                    avatar: profileResponse.avatar,
-                    lastLogin: new Date(),
-                    updatedAt: new Date()
-                  });
-
-                  set({ user: profileUser });
-                  CookieService.setUser(profileUser);
-                  LocalStorageService.setUser(profileUser);
-                }
-
-              } catch (profileError) {
-                // If profile fetch fails, fall back to registration response user data
-                storeLogger.warn('Profile fetch failed after registration, using registration response data', {
-                  error: profileError instanceof Error ? profileError.message : String(profileError)
-                });
-
-                set({ user: authResult.user });
-                CookieService.setUser(authResult.user);
-                LocalStorageService.setUser(authResult.user);
-              }
-
-              set({ isAuthenticated: true });
+              storeLogger.info('User registered successfully, awaiting email verification', {
+                userId: registeredUser.id,
+                email: registeredUser.email,
+                isActive: registeredUser.isActive
+              });
             } catch (error: any) {
               throw new Error(getErrorMessage(error));
             } finally {
@@ -267,16 +236,22 @@ export const useAuthStore = create<AuthState>()(
             }
           },
 
-          verifyEmail: async (token: string) => {
+          verifyEmail: async (email: string, token: string) => {
             try {
-              await authService.verifyEmail(token);
+              const response = await authService.verifyEmail(email, token);
               storeLogger.info('Email verification successful');
+              return response;
             } catch (error) {
               storeLogger.warn('Email verification failed', {
                 error: error instanceof Error ? error.message : String(error)
               });
               throw error;
             }
+          },
+
+          canAccessProtectedRoutes: () => {
+            const state = get();
+            return state.isAuthenticated && state.user?.isActive === true;
           },
 
           updateProfile: async (updates) => {

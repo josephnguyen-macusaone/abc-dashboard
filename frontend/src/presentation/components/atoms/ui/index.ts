@@ -1,3 +1,5 @@
+export * from './alert';
+export * from './badge';
 export * from './dialog';
 export * from './dropdown-menu';
 export * from './card';

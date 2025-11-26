@@ -13,7 +13,7 @@ export interface IAuthRepository {
   /**
    * Register new user
    */
-  register(firstName: string, lastName: string, email: string, password: string, role?: string): Promise<AuthResult>;
+  register(username: string, firstName: string, lastName: string, email: string, password: string, role?: string): Promise<AuthResult>;
 
   /**
    * Logout current user
@@ -33,7 +33,7 @@ export interface IAuthRepository {
   /**
    * Verify email with token
    */
-  verifyEmail(token: string): Promise<void>;
+  verifyEmail(email: string, token: string): Promise<{ user: User; message: string }>;
 
 
   /**

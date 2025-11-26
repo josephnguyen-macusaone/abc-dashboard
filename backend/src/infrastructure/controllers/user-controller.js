@@ -4,7 +4,6 @@
  */
 import {
   ValidationException,
-  ResourceNotFoundException,
   InsufficientPermissionsException
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../infrastructure/config/logger.js';

@@ -12,13 +12,14 @@ import {
 import logger from '../../infrastructure/config/logger.js';
 
 export class AuthController {
-  constructor(loginUseCase, registerUseCase, refreshTokenUseCase, verifyEmailUseCase, updateProfileUseCase, changePasswordUseCase) {
+  constructor(loginUseCase, registerUseCase, refreshTokenUseCase, verifyEmailUseCase, updateProfileUseCase, changePasswordUseCase, tokenService) {
     this.loginUseCase = loginUseCase;
     this.registerUseCase = registerUseCase;
     this.refreshTokenUseCase = refreshTokenUseCase;
     this.verifyEmailUseCase = verifyEmailUseCase;
     this.updateProfileUseCase = updateProfileUseCase;
     this.changePasswordUseCase = changePasswordUseCase;
+    this.tokenService = tokenService;
   }
 
   async register(req, res) {
@@ -37,12 +38,22 @@ export class AuthController {
         phone
       });
 
+      // Generate tokens for immediate login (skip email verification requirement)
+      const tokens = await this.tokenService.generateTokens({
+        id: result.user.id,
+        email: result.user.email,
+        username: result.user.username
+      });
+
       res.status(201).json({
         success: true,
         message: result.message,
         data: {
           user: result.user,
-          tokens: result.tokens
+          tokens: {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken
+          }
         }
       });
     } catch (error) {
@@ -254,10 +265,9 @@ export class AuthController {
 
   async verifyEmail(req, res) {
     try {
-      const { email, token } = req.body;
+      const { token } = req.body;
 
       const result = await this.verifyEmailUseCase.execute({
-        email,
         token
       });
 

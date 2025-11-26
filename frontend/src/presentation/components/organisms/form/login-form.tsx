@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
-import { useToast } from '@/presentation/hooks/use-toast';
 import { cn } from '@/shared/utils';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { useToast } from '@/presentation/hooks/use-toast';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -64,10 +64,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister, className }: LoginFor
       await login(formData.email, formData.password);
       onSuccess?.();
     } catch (error) {
-      showError(
-        'Login Failed',
-        error instanceof Error ? error : 'An unexpected error occurred'
-      );
+      // Error toast is now handled by the auth context
     } finally {
       setIsLoading(false);
     }

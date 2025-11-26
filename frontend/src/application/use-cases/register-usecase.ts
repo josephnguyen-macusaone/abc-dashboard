@@ -18,11 +18,11 @@ export class RegisterUseCase {
    * Execute registration use case
    */
   async execute(
+    username: string,
     firstName: string,
     lastName: string,
     email: string,
     password: string,
-    confirmPassword: string,
     role?: string,
     correlationId?: string
   ): Promise<AuthResult> {
@@ -39,16 +39,13 @@ export class RegisterUseCase {
       });
 
       // Validate input
-      this.validateInput(firstName, lastName, email, password, confirmPassword, cid);
+      this.validateInput(firstName, lastName, email, password, cid);
 
       // Determine user role
       const userRole = AuthDomainService.getDefaultRole(role);
 
-      // Combine first and last name
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-
       // Execute registration through repository
-      const authResult = await this.authRepository.register(fullName, email, password, userRole);
+      const authResult = await this.authRepository.register(username, firstName, lastName, email, password, userRole);
 
       // Apply additional application rules
       this.validateRegistrationResult(authResult, cid);
@@ -86,7 +83,6 @@ export class RegisterUseCase {
     lastName: string,
     email: string,
     password: string,
-    confirmPassword: string,
     correlationId: string
   ): void {
     // Validate first name
@@ -174,15 +170,6 @@ export class RegisterUseCase {
       throw new Error('Password is required');
     }
 
-    // Check password confirmation
-    if (password !== confirmPassword) {
-      this.logger.warn(`Registration validation failed: passwords don't match`, {
-        correlationId,
-        email,
-        operation: 'registration_validation_error',
-      });
-      throw new Error('Passwords do not match');
-    }
 
     // Validate password strength
     const passwordValidation = AuthDomainService.validatePasswordStrength(password);
@@ -210,26 +197,11 @@ export class RegisterUseCase {
       throw new Error('Registration failed to authenticate user');
     }
 
-    if (!authResult.user.isActiveUser()) {
-      this.logger.warn(`Registration result validation failed: account inactive`, {
-        correlationId,
-        userId: authResult.user.id,
-        operation: 'registration_result_validation_error',
-      });
-      throw new Error('New account is not active. Please contact administrator.');
-    }
+    // Note: New users are inactive until email verification
+    // The isActiveUser() check is not applied during registration
 
-    // Additional application-specific validations can be added here
-    const accountValidation = AuthDomainService.validateUserAccountStatus(authResult.user);
-    if (!accountValidation.isValid) {
-      this.logger.warn(`Registration result validation failed: ${accountValidation.reason}`, {
-        correlationId,
-        userId: authResult.user.id,
-        operation: 'registration_result_validation_error',
-        reason: accountValidation.reason,
-      });
-      throw new Error(`Registration successful but ${accountValidation.reason}`);
-    }
+    // Note: Account status validation is not applied during registration
+    // New users are inactive until email verification
 
     this.logger.debug(`Registration result validation passed`, {
       correlationId,

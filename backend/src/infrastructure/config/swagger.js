@@ -66,10 +66,6 @@ const swaggerDefinition = {
             enum: ['admin', 'manager', 'staff'],
             description: 'User role'
           },
-          isEmailVerified: {
-            type: 'boolean',
-            description: 'Email verification status'
-          },
           isActive: {
             type: 'boolean',
             description: 'Account active status'
@@ -85,7 +81,7 @@ const swaggerDefinition = {
             description: 'Last update timestamp'
           }
         },
-        required: ['id', 'name', 'email', 'role', 'isEmailVerified', 'isActive']
+        required: ['id', 'name', 'email', 'role', 'isActive']
       },
       AuthResponse: {
         type: 'object',

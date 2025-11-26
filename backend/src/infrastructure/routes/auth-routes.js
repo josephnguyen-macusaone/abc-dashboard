@@ -40,6 +40,9 @@ export function createAuthRoutes(authController) {
    *                 type: string
    *               lastName:
    *                 type: string
+   *               username:
+   *                 type: string
+   *                 description: Optional username. If not provided, will be auto-generated.
    *               role:
    *                 type: string
    *                 enum: [admin, manager, staff]

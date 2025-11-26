@@ -4,6 +4,7 @@ import { Literata } from "next/font/google";
 
 import { AuthProvider } from '@/presentation/contexts/auth-context';
 import { ThemeProvider } from '@/presentation/contexts/theme-context';
+import { ErrorProvider } from '@/presentation/contexts/error-context';
 import { Toaster } from '@/presentation/components/atoms';
 import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
 import { APP_CONFIG } from '@/shared/constants';
@@ -33,12 +34,14 @@ export default function RootLayout({
       <body className={literata.className}>
         <ErrorBoundary>
           <ThemeProvider defaultTheme={APP_CONFIG.DEFAULT_THEME}>
-            <AuthProvider>
-              {children}
-              <Toaster />
-            </AuthProvider>
+            <ErrorProvider>
+              <AuthProvider>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </ErrorProvider>
           </ThemeProvider>
-      </ErrorBoundary>
+        </ErrorBoundary>
       </body>
     </html>
   );

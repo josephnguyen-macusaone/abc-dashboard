@@ -1,5 +1,6 @@
 import { cache, cacheKeys } from './redis.js';
 import logger from './logger.js';
+import { getComprehensiveMetrics, applicationMetrics, cacheMetrics } from './metrics.js';
 
 class APIMonitor {
   constructor() {
@@ -13,16 +14,8 @@ class APIMonitor {
 
     this.resetInterval = 5 * 60 * 1000; // Reset every 5 minutes
     this.maxResponseTimes = 1000; // Keep last 1000 response times
-    this.persistenceInterval = 30 * 1000; // Persist to Redis every 30 seconds
-    this.redisEnabled = !!cache;
-
-    // Load persisted metrics on startup
-    this.loadPersistedMetrics();
-
-    // Auto-persist metrics periodically
-    setInterval(() => {
-      this.persistMetrics();
-    }, this.persistenceInterval);
+    this.persistenceInterval = 30 * 1000; // Persist metrics every 30 seconds (disabled)
+    this.redisEnabled = false; // Redis disabled, using in-memory only
 
     // Auto-reset metrics periodically (but keep historical data)
     setInterval(() => {
@@ -89,12 +82,11 @@ class APIMonitor {
     };
   }
 
-  // Reset metrics (but keep historical data in Redis)
+  // Reset metrics (in-memory only - no persistence)
   resetMetrics() {
-    logger.info('Resetting API monitoring metrics (persisting historical data)');
+    logger.info('Resetting API monitoring metrics (in-memory only)');
 
-    // Persist current data before reset
-    this.persistMetrics();
+    // No persistence - data will be lost
 
     // Reset in-memory metrics but keep some historical context
     this.metrics = {
@@ -106,50 +98,16 @@ class APIMonitor {
     };
   }
 
-  // Load persisted metrics from Redis
+  // Load persisted metrics (disabled - Redis removed)
   async loadPersistedMetrics() {
-    if (!this.redisEnabled) return;
-
-    try {
-      const persistedData = await cache.get('api_monitoring_data');
-      if (persistedData) {
-        // Restore persisted metrics
-        const data = JSON.parse(persistedData);
-
-        // Convert plain objects back to Maps
-        this.metrics.endpoints = new Map(Object.entries(data.endpoints || {}));
-        this.metrics.statusCodes = new Map(Object.entries(data.statusCodes || {}));
-
-        // Restore primitive values
-        this.metrics.requests = data.requests || 0;
-        this.metrics.errors = data.errors || 0;
-        this.metrics.responseTimes = data.responseTimes || [];
-
-        logger.info('Loaded persisted monitoring data from Redis');
-      }
-    } catch (error) {
-      logger.warn('Failed to load persisted monitoring data:', error.message);
-    }
+    // Metrics persistence disabled - using in-memory only
+    logger.info('Metrics persistence disabled - using in-memory storage only');
   }
 
-  // Persist current metrics to Redis
+  // Persist current metrics (disabled - Redis removed)
   async persistMetrics() {
-    if (!this.redisEnabled) return;
-
-    try {
-      const dataToPersist = {
-        requests: this.metrics.requests,
-        errors: this.metrics.errors,
-        responseTimes: this.metrics.responseTimes,
-        endpoints: Object.fromEntries(this.metrics.endpoints),
-        statusCodes: Object.fromEntries(this.metrics.statusCodes),
-        lastUpdated: new Date().toISOString()
-      };
-
-      await cache.set('api_monitoring_data', dataToPersist, 24 * 60 * 60); // Persist for 24 hours
-    } catch (error) {
-      logger.warn('Failed to persist monitoring data:', error.message);
-    }
+    // Metrics persistence disabled - data will be lost on restart
+    // This is a no-op since we're using in-memory storage only
   }
 
   // Cache metrics response (for API endpoint caching)
@@ -176,72 +134,178 @@ export const monitorMiddleware = (req, res, next) => {
   const originalEnd = res.end;
   res.end = function(...args) {
     const responseTime = Date.now() - startTime;
+
+    // Record in legacy API monitor
     apiMonitor.recordRequest(req, res, responseTime);
+
+    // Record in new comprehensive metrics
+    applicationMetrics.recordEndpointCall(
+      req.route?.path || req.path,
+      req.method,
+      res.statusCode,
+      responseTime
+    );
+
     originalEnd.apply(this, args);
   };
 
   next();
 };
 
-// Health check with metrics
-export const getHealthWithMetrics = (req, res) => {
-  const metrics = apiMonitor.getMetrics();
+// Health check with comprehensive metrics
+export const getHealthWithMetrics = async (req, res) => {
+  try {
+    const comprehensiveMetrics = await getComprehensiveMetrics();
+    const apiMetrics = apiMonitor.getMetrics();
 
-  const healthData = {
-    status: 'OK',
-    message: 'Server is running',
-    correlationId: req.correlationId,
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    port: process.env.PORT || '5000',
-    jwtSecret: process.env.JWT_SECRET,
-    mongodbUri: process.env.MONGODB_URI,
-    metrics: {
-      requests: metrics.summary.totalRequests,
-      errorRate: metrics.summary.errorRate,
-      avgResponseTime: metrics.summary.averageResponseTime,
-    },
-  };
+    const healthData = {
+      status: comprehensiveMetrics.summary?.status || 'OK',
+      message: 'Server is running',
+      correlationId: req.correlationId,
+      timestamp: comprehensiveMetrics.timestamp,
+      environment: comprehensiveMetrics.environment,
+      version: comprehensiveMetrics.version,
 
-  if (res) {
-    res.json(healthData);
+      // System health indicators
+      system: {
+        uptime: comprehensiveMetrics.system?.uptime,
+        memoryUsagePercent: comprehensiveMetrics.system?.memory?.usedPercent,
+        cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
+        loadAverage: comprehensiveMetrics.system?.loadAverage,
+        platform: comprehensiveMetrics.system?.platform,
+        hostname: comprehensiveMetrics.system?.hostname
+      },
+
+      // Database health
+      database: {
+        connected: comprehensiveMetrics.database?.connected,
+        name: comprehensiveMetrics.database?.name,
+        collections: comprehensiveMetrics.database?.databaseStats?.collections,
+        objects: comprehensiveMetrics.database?.databaseStats?.objects
+      },
+
+      // Cache health
+      cache: {
+        hitRate: comprehensiveMetrics.cache?.hitRate,
+        type: comprehensiveMetrics.cache?.cacheStats?.cache_type || 'in-memory',
+        connected: comprehensiveMetrics.cache?.cacheStats?.connected_clients !== undefined
+      },
+
+      // Application metrics
+      application: {
+        activeUsers: comprehensiveMetrics.application?.activeUsers,
+        endpointCount: Object.keys(comprehensiveMetrics.application?.endpointStats || {}).length,
+        securityEvents: comprehensiveMetrics.application?.security
+      },
+
+      // Legacy API metrics (for backward compatibility)
+      legacyMetrics: {
+        totalRequests: apiMetrics.summary.totalRequests,
+        errorRate: apiMetrics.summary.errorRate,
+        averageResponseTime: apiMetrics.summary.averageResponseTime,
+        medianResponseTime: apiMetrics.summary.medianResponseTime,
+        p95ResponseTime: apiMetrics.summary.p95ResponseTime
+      },
+
+      // Detailed metrics available at /api/v1/metrics
+      detailedMetricsAvailable: true
+    };
+
+    if (res) {
+      res.json(healthData);
+    }
+
+    return healthData;
+  } catch (error) {
+    logger.error('Error generating health metrics:', error);
+
+    // Fallback to basic health check
+    const fallbackData = {
+      status: 'DEGRADED',
+      message: 'Server is running but metrics collection failed',
+      correlationId: req.correlationId,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      error: error.message
+    };
+
+    if (res) {
+      res.status(200).json(fallbackData); // Still return 200 for health checks
+    }
+
+    return fallbackData;
   }
-
-  return healthData;
 };
 
 // Helper function to get health data for dashboard
-export const getHealthData = () => {
-  const metrics = apiMonitor.getMetrics();
+export const getHealthData = async () => {
+  try {
+    const comprehensiveMetrics = await getComprehensiveMetrics();
+    const apiMetrics = apiMonitor.getMetrics();
 
-  return {
-    status: 'OK',
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    metrics: {
-      requests: metrics.summary.totalRequests,
-      errorRate: metrics.summary.errorRate,
-      avgResponseTime: metrics.summary.averageResponseTime,
-    },
-  };
+    return {
+      status: comprehensiveMetrics.summary?.status || 'OK',
+      message: 'Server is running',
+      timestamp: comprehensiveMetrics.timestamp,
+      environment: comprehensiveMetrics.environment,
+      uptime: comprehensiveMetrics.system?.uptime,
+      memory: comprehensiveMetrics.system?.memory,
+      version: comprehensiveMetrics.version,
+
+      // Summary metrics for dashboard
+      metrics: {
+        requests: apiMetrics.summary.totalRequests,
+        errorRate: apiMetrics.summary.errorRate,
+        avgResponseTime: apiMetrics.summary.averageResponseTime,
+        activeUsers: comprehensiveMetrics.application?.activeUsers,
+        memoryUsagePercent: comprehensiveMetrics.system?.memory?.usedPercent,
+        cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
+        databaseConnected: comprehensiveMetrics.database?.connected,
+        cacheHitRate: comprehensiveMetrics.cache?.hitRate
+      },
+
+      // System overview
+      system: {
+        platform: comprehensiveMetrics.system?.platform,
+        hostname: comprehensiveMetrics.system?.hostname,
+        loadAverage: comprehensiveMetrics.system?.loadAverage,
+        diskUsage: comprehensiveMetrics.system?.disk
+      }
+    };
+  } catch (error) {
+    logger.error('Error getting health data for dashboard:', error);
+    return {
+      status: 'ERROR',
+      message: 'Failed to collect health data',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    };
+  }
 };
 
 // Get detailed metrics (admin only)
-export const getDetailedMetrics = (req, res) => {
-  const metrics = apiMonitor.getMetrics();
+export const getDetailedMetrics = async (req, res) => {
+  try {
+    const comprehensiveMetrics = await getComprehensiveMetrics();
+    const apiMetrics = apiMonitor.getMetrics();
 
-  res.json({
-    success: true,
-    correlationId: req.correlationId,
-    data: {
-      metrics,
-    },
-  });
+    res.json({
+      success: true,
+      correlationId: req.correlationId,
+      data: {
+        comprehensive: comprehensiveMetrics,
+        apiMonitor: apiMetrics,
+      },
+    });
+  } catch (error) {
+    logger.error('Error getting detailed metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to collect metrics',
+      error: error.message,
+      correlationId: req.correlationId
+    });
+  }
 };
 
 // Reset metrics (admin only)

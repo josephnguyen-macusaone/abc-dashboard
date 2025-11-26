@@ -9,32 +9,39 @@ import {
 import logger from '../../../infrastructure/config/logger.js';
 
 export class VerifyEmailUseCase {
-  constructor(userRepository, emailService = null) {
+  constructor(userRepository, tokenService, emailService = null) {
     this.userRepository = userRepository;
+    this.tokenService = tokenService;
     this.emailService = emailService;
   }
 
-  async execute({ email, token }) {
+  async execute({ token }) {
     try {
       // Validate input
-      if (!email || !token) {
-        throw new ValidationException('Email and verification token are required');
+      if (!token) {
+        throw new ValidationException('Verification token is required');
       }
 
-      // Find user by email
-      const user = await this.userRepository.findByEmail(email);
+      // Verify JWT token
+      const decoded = this.tokenService.verifyEmailVerificationToken(token);
+
+      // Find user by ID from token
+      const user = await this.userRepository.findById(decoded.userId);
       if (!user) {
         throw new ResourceNotFoundException('User');
       }
 
-      // Verify the token
-      user.verifyEmail(token);
+      // Check if user is already active
+      if (user.isActive) {
+        throw new ValidationException('Account already activated');
+      }
+
+      // Activate the user
+      user.activate();
 
       // Update user in repository
-      const updatedUser = await this.userRepository.updateEmailVerification(user.id, {
-        isEmailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null
+      const updatedUser = await this.userRepository.updateUserStatus(user.id, {
+        isActive: true
       });
 
       // Send confirmation email
@@ -63,10 +70,10 @@ export class VerifyEmailUseCase {
           username: updatedUser.username,
           email: updatedUser.email,
           displayName: updatedUser.displayName,
-          isEmailVerified: updatedUser.isEmailVerified,
+          isActive: updatedUser.isActive,
           createdAt: updatedUser.createdAt
         },
-        message: 'Email verified successfully.'
+        message: 'Email verified successfully. Your account is now active.'
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

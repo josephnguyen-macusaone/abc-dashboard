@@ -27,7 +27,7 @@ export const run = async (mongoose) => {
       return await bcrypt.hash(password, salt);
     };
 
-    // Create admin user
+    // Create or update admin user
     const adminExists = await User.findOne({ email: 'admin@example.com' });
     if (!adminExists) {
       const hashedPassword = await hashPassword('Admin123!');
@@ -37,64 +37,39 @@ export const run = async (mongoose) => {
         email: 'admin@example.com',
         displayName: 'System Administrator',
         bio: 'System administrator account',
+        isActive: true, // Admin user is pre-activated
       });
       console.log('Admin user created: admin@example.com (username: admin)');
     } else {
-      console.log('Admin user already exists');
+      // Update existing admin user to be verified
+      await User.updateOne(
+        { email: 'admin@example.com' },
+        { $set: { isActive: true } }
+      );
+      console.log('Admin user updated: admin@example.com (marked as verified)');
     }
 
     // Create sample user 1
-    const user1Exists = await User.findOne({ email: 'john.doe@example.com' });
+    const user1Exists = await User.findOne({ email: 'user@example.com' });
     if (!user1Exists) {
       const hashedPassword = await hashPassword('User123!');
       await User.create({
-        username: 'johndoe',
+        username: 'user',
         hashedPassword,
-        email: 'john.doe@example.com',
+        email: 'user@example.com',
         displayName: 'John Doe',
         bio: 'Sample user account',
         phone: '+1234567890',
+        isActive: true, // Sample users are pre-verified
       });
-      console.log('User created: john.doe@example.com (username: johndoe)');
+      console.log('User created: user@example.com (username: user)');
     } else {
-      console.log('User john.doe@example.com already exists');
+      await User.updateOne(
+        { email: 'user@example.com' },
+        { $set: { isActive: true } }
+      );
+      console.log('User updated: user@example.com (marked as verified)');
     }
-
-    // Create sample user 2
-    const user2Exists = await User.findOne({ email: 'jane.smith@example.com' });
-    if (!user2Exists) {
-      const hashedPassword = await hashPassword('User123!');
-      await User.create({
-        username: 'janesmith',
-        hashedPassword,
-        email: 'jane.smith@example.com',
-        displayName: 'Jane Smith',
-        bio: 'Another sample user account',
-      });
-      console.log('User created: jane.smith@example.com (username: janesmith)');
-    } else {
-      console.log('User jane.smith@example.com already exists');
-    }
-
-    // Create sample user 3
-    const user3Exists = await User.findOne({ email: 'bob.wilson@example.com' });
-    if (!user3Exists) {
-      const hashedPassword = await hashPassword('User123!');
-      await User.create({
-        username: 'bobwilson',
-        hashedPassword,
-        email: 'bob.wilson@example.com',
-        displayName: 'Bob Wilson',
-        bio: 'Third sample user account',
-        phone: '+0987654321',
-      });
-      console.log('User created: bob.wilson@example.com (username: bobwilson)');
-    } else {
-      console.log('User bob.wilson@example.com already exists');
-    }
-
-    console.log('Sample users seeding completed');
-
   } catch (error) {
     console.error('Error seeding users:', error);
     throw error;

@@ -49,10 +49,6 @@ export function createUserRoutes(userController) {
    *         name: isActive
    *         schema:
    *           type: boolean
-   *       - in: query
-   *         name: isEmailVerified
-   *         schema:
-   *           type: boolean
    *     responses:
    *       200:
    *         description: Users retrieved successfully

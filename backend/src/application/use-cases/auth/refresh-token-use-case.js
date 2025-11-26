@@ -23,7 +23,7 @@ export class RefreshTokenUseCase {
       // Verify refresh token
       let decoded;
       try {
-        decoded = this.tokenService.verifyToken(refreshToken, 'your-app-refresh');
+        decoded = this.tokenService.verifyToken(refreshToken);
       } catch (error) {
         throw new InvalidCredentialsException('Invalid or expired refresh token');
       }

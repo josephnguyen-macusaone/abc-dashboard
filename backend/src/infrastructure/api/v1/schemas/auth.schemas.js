@@ -18,12 +18,12 @@ export const authSchemas = {
       .min(3)
       .max(30)
       .pattern(/^[a-zA-Z0-9_]+$/)
-      .required()
+      .allow('')
+      .optional()
       .messages({
         'string.min': 'Username must be at least 3 characters long',
         'string.max': 'Username cannot exceed 30 characters',
         'string.pattern.base': 'Username can only contain letters, numbers, and underscores',
-        'any.required': 'Username is required',
         'string.empty': 'Username cannot be empty'
       }),
 
@@ -126,15 +126,6 @@ export const authSchemas = {
    * Email verification schema
    */
   verifyEmail: Joi.object({
-    email: Joi.string()
-      .email({ tlds: { allow: false } })
-      .required()
-      .messages({
-        'string.email': 'Please provide a valid email address',
-        'any.required': 'Email is required',
-        'string.empty': 'Email cannot be empty'
-      }),
-
     token: Joi.string()
       .required()
       .messages({

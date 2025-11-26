@@ -26,28 +26,20 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     avatarUrl: {
-      type: String, // link CDN để hiển thị hình
+      type: String,
     },
     avatarId: {
       type: String,
     },
     bio: {
       type: String,
-      maxlength: 500, // tuỳ
+      maxlength: 500,
     },
     phone: {
       type: String,
-      sparse: true, // cho phép null, nhưng không được trùng
+      sparse: true,
     },
-    emailVerificationToken: {
-      type: String,
-      default: null,
-    },
-    emailVerificationExpires: {
-      type: Date,
-      default: null,
-    },
-    isEmailVerified: {
+    isActive: {
       type: Boolean,
       default: false,
     },

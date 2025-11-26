@@ -21,8 +21,8 @@ interface PasswordFormData {
 }
 
 export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePasswordFormProps) {
-  const { changePassword } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const { handleChangePassword } = useAuth();
+  const { showSuccess } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,7 +114,7 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
     setError(null);
 
     try {
-      await changePassword(formData.currentPassword, formData.newPassword);
+      await handleChangePassword(formData.currentPassword, formData.newPassword);
 
       // Clear form on success
       setFormData({
@@ -126,9 +126,10 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
       showSuccess('Password changed successfully!');
       onSuccess?.();
     } catch (error) {
+      // Error toast is now handled by the auth context
+      // We can still show local error state for validation feedback if needed
       const errorMessage = error instanceof Error ? error.message : 'Failed to change password';
       setError(errorMessage);
-      showError('Password Change Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }

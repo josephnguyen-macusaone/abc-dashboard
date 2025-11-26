@@ -24,8 +24,8 @@ interface ProfileFormData {
 }
 
 export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpdateFormProps) {
-  const { user, updateProfile } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const { user, handleUpdateProfile } = useAuth();
+  const { showSuccess } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,13 +111,14 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
         return;
       }
 
-      await updateProfile(updates);
+      await handleUpdateProfile(updates);
       showSuccess('Profile updated successfully!');
       onSuccess?.();
     } catch (error) {
+      // Error toast is now handled by the auth context
+      // We can still show local error state for validation feedback if needed
       const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
       setError(errorMessage);
-      showError('Update Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }

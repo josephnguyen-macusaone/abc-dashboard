@@ -9,8 +9,10 @@ import { config } from '../../infrastructure/config/config.js';
 export class TokenService {
   constructor() {
     this.jwtSecret = config.JWT_SECRET;
-    this.jwtExpiresIn = config.JWT_EXPIRES_IN || '1h';
-    this.refreshTokenExpiresIn = config.JWT_REFRESH_EXPIRES_IN || '7d';
+    this.jwtExpiresIn = config.JWT_EXPIRES_IN;
+    this.refreshTokenExpiresIn = config.JWT_REFRESH_EXPIRES_IN;
+    this.jwtIssuer = config.JWT_ISSUER;
+    this.emailVerificationExpiresIn = config.JWT_EMAIL_VERIFICATION_EXPIRES_IN;
   }
 
   /**
@@ -22,8 +24,7 @@ export class TokenService {
     try {
       return jwt.sign(payload, this.jwtSecret, {
         expiresIn: this.jwtExpiresIn,
-        issuer: 'your-app',
-        audience: 'your-app-users'
+        issuer: this.jwtIssuer
       });
     } catch (error) {
       throw new Error(`Failed to generate access token: ${error.message}`);
@@ -39,8 +40,7 @@ export class TokenService {
     try {
       return jwt.sign(payload, this.jwtSecret, {
         expiresIn: this.refreshTokenExpiresIn,
-        issuer: 'your-app',
-        audience: 'your-app-refresh'
+        issuer: this.jwtIssuer
       });
     } catch (error) {
       throw new Error(`Failed to generate refresh token: ${error.message}`);
@@ -50,14 +50,12 @@ export class TokenService {
   /**
    * Verify JWT token
    * @param {string} token - JWT token
-   * @param {string} expectedAudience - Expected audience
    * @returns {Object} Decoded payload
    */
-  verifyToken(token, expectedAudience = 'your-app-users') {
+  verifyToken(token) {
     try {
       return jwt.verify(token, this.jwtSecret, {
-        issuer: 'your-app',
-        audience: expectedAudience
+        issuer: this.jwtIssuer
       });
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
@@ -71,11 +69,68 @@ export class TokenService {
   }
 
   /**
-   * Generate email verification token
-   * @returns {string} Random token
+   * Generate email verification JWT token
+   * @param {string} userId - User ID
+   * @param {string} email - User email
+   * @returns {string} JWT verification token
    */
-  generateEmailVerificationToken() {
-    return crypto.randomBytes(32).toString('hex');
+  generateEmailVerificationToken(userId, email) {
+    try {
+      return jwt.sign(
+        {
+          userId,
+          email,
+          type: 'email_verification'
+        },
+        this.jwtSecret,
+        {
+          expiresIn: this.emailVerificationExpiresIn,
+          issuer: this.jwtIssuer
+        }
+      );
+    } catch (error) {
+      throw new Error(`Failed to generate email verification token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify email verification JWT token
+   * @param {string} token - JWT verification token
+   * @returns {Object} Decoded payload
+   */
+  verifyEmailVerificationToken(token) {
+    try {
+      return jwt.verify(token, this.jwtSecret, {
+        issuer: this.jwtIssuer
+      });
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new Error('Email verification token has expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid email verification token');
+      } else {
+        throw new Error(`Email verification token verification failed: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Generate both access and refresh tokens
+   * @param {Object} payload - Token payload (user data)
+   * @returns {Object} Object containing accessToken and refreshToken
+   */
+  generateTokens(payload) {
+    try {
+      const accessToken = this.generateAccessToken(payload);
+      const refreshToken = this.generateRefreshToken(payload);
+
+      return {
+        accessToken,
+        refreshToken
+      };
+    } catch (error) {
+      throw new Error(`Failed to generate tokens: ${error.message}`);
+    }
   }
 
   /**

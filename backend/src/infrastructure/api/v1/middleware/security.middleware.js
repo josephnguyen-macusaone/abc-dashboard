@@ -15,7 +15,7 @@ export const accountLockout = async (req, res, next) => {
     let attempts = null;
 
     if (cache) {
-      // Try to get from Redis
+      // Try to get from cache
       attempts = await cache.get(cacheKey);
       if (attempts) {
         attempts = JSON.parse(attempts);
@@ -48,7 +48,7 @@ export const accountLockout = async (req, res, next) => {
       }
     }
   } catch (error) {
-    // If Redis fails, allow the request (fail open)
+    // If cache fails, allow the request (fail open)
     logger.warn('Failed to check account lockout status:', error.message);
   }
 
@@ -64,7 +64,7 @@ export const trackFailedLogin = async (req) => {
     let attempts = { count: 0, lockoutTime: null };
 
     if (cache) {
-      // Try to get existing attempts from Redis
+      // Try to get existing attempts from cache
       const existing = await cache.get(cacheKey);
       if (existing) {
         attempts = JSON.parse(existing);
@@ -83,12 +83,12 @@ export const trackFailedLogin = async (req) => {
     }
 
     if (cache) {
-      // Store in Redis with expiration (lockout duration + some buffer)
+      // Store in cache with expiration (lockout duration + some buffer)
       const ttl = Math.max(LOCKOUT_DURATION, 24 * 60 * 60 * 1000); // At least 24 hours
       await cache.set(cacheKey, JSON.stringify(attempts), ttl);
     }
   } catch (error) {
-    // If Redis fails, log but don't block the security response
+    // If cache fails, log but don't block the security response
     logger.warn('Failed to track failed login attempt:', error.message);
   }
 };
@@ -108,7 +108,7 @@ export const resetFailedAttempts = async (req) => {
       clientIP
     });
   } catch (error) {
-    // If Redis fails, log but don't affect the login success
+    // If cache fails, log but don't affect the login success
     logger.warn('Failed to reset failed attempts:', error.message);
   }
 };
@@ -267,5 +267,5 @@ export const createRateLimit = (windowMs, maxRequests, message) => {
   };
 };
 
-// Note: Cleanup is handled automatically by Redis TTL
-// No manual cleanup needed when using Redis
+// Note: Cleanup is handled automatically by cache TTL
+// No manual cleanup needed when using in-memory cache

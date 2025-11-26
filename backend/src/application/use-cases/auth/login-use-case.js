@@ -28,9 +28,9 @@ export class LoginUseCase {
         throw new InvalidCredentialsException();
       }
 
-      // Check if email is verified
-      if (!user.isEmailVerified) {
-        throw new ValidationException('Please verify your email before logging in. Check your email for the verification code.');
+      // Check if account is active
+      if (!user.isActive) {
+        throw new ValidationException('Please verify your email before logging in. Check your email for the verification link.');
       }
 
       // Verify password

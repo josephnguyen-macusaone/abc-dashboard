@@ -1,15 +1,20 @@
 import VerifyEmailPage from '@/presentation/components/pages/verify-email-page';
+import { ProtectedRoute } from '@/presentation/components/routes';
 
 interface VerifyEmailProps {
   searchParams: {
-    email?: string;
     token?: string;
+    email?: string;
   };
 }
 
 export default function VerifyEmail({ searchParams }: VerifyEmailProps) {
-  const email = searchParams.email;
   const token = searchParams.token;
+  const email = searchParams.email;
 
-  return <VerifyEmailPage email={email} token={token} />;
+  return (
+    <ProtectedRoute requireAuth={false} redirectTo="/dashboard">
+      <VerifyEmailPage token={token} email={email} />
+    </ProtectedRoute>
+  );
 }

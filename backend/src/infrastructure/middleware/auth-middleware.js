@@ -77,9 +77,9 @@ export class AuthMiddleware {
 
       if (token) {
         try {
-          // Verify token with default audience (access token)
-          const decoded = this.tokenService.verifyToken(token, 'your-app-users');
-          
+          // Verify token
+          const decoded = this.tokenService.verifyToken(token);
+
           // Find user
           if (decoded && decoded.userId) {
         const user = await this.userRepository.findById(decoded.userId);

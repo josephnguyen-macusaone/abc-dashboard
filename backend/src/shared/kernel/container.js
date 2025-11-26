@@ -86,6 +86,7 @@ class Container {
   getVerifyEmailUseCase() {
     return new VerifyEmailUseCase(
       this.getUserRepository(),
+      this.getTokenService(),
       this.getEmailService()
     );
   }
@@ -136,7 +137,8 @@ class Container {
       this.getRefreshTokenUseCase(),
       this.getVerifyEmailUseCase(),
       this.getUpdateProfileUseCase(),
-      this.getChangePasswordUseCase()
+      this.getChangePasswordUseCase(),
+      this.getTokenService()
     );
   }
 

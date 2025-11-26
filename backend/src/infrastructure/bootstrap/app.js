@@ -9,9 +9,11 @@ import { errorHandler } from '../api/v1/middleware/error-handler.middleware.js';
 import { correlationIdMiddleware } from '../api/v1/middleware/correlation-id.middleware.js';
 import { requestLogger } from '../api/v1/middleware/request-logger.middleware.js';
 import { securityHeaders, requestSizeLimiter, injectionProtection, createRateLimit } from '../api/v1/middleware/security.middleware.js';
-import { responseHelpersMiddleware } from '../../shared/utils/response-transformer.js';
+import { responseHelpersMiddleware } from '../../shared/http/response-transformer.js';
+import { cacheTrackingMiddleware, userActivityMiddleware, securityMetricsMiddleware, performanceMiddleware } from '../api/v1/middleware/metrics.middleware.js';
 import swaggerSpec from '../config/swagger.js';
 import logger from '../config/logger.js';
+import { getHealthWithMetrics } from '../config/monitoring.js';
 
 // Create Express app
 const app = express();
@@ -44,6 +46,14 @@ app.use(express.urlencoded({ extended: true }));
 // Request logging
 app.use(requestLogger);
 
+// Performance monitoring
+app.use(performanceMiddleware);
+
+// Metrics collection middleware
+app.use(cacheTrackingMiddleware);
+app.use(userActivityMiddleware);
+app.use(securityMetricsMiddleware);
+
 // Response helpers
 app.use(responseHelpersMiddleware);
 
@@ -64,15 +74,24 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   }
 }));
 
-// Health check
-app.get('/api/v1/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: 'Server is running',
-    correlationId: req.correlationId,
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'test'
-  });
+// Health check with comprehensive metrics
+app.get('/api/v1/health', getHealthWithMetrics);
+
+// Detailed metrics endpoint (admin access recommended)
+app.get('/api/v1/metrics', async (req, res) => {
+  try {
+    // In production, you might want to add authentication/authorization here
+    const { getDetailedMetrics } = await import('../config/monitoring.js');
+    await getDetailedMetrics(req, res);
+  } catch (error) {
+    logger.error('Error in metrics endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve metrics',
+      error: error.message,
+      correlationId: req.correlationId
+    });
+  }
 });
 
 // API Routes

@@ -1,10 +1,13 @@
-'use client';
+import { RoleDashboardClient } from './client';
 
-import { useEffect, useState } from 'react';
-import { redirect } from 'next/navigation';
-import { ProtectedRoute } from '@/presentation/components/routes/protected-route';
-import { DashboardPage } from '@/presentation/components/pages/dashboard-page';
-import { LoadingOverlay } from '@/presentation/components/atoms';
+// Generate static params for all possible roles
+export async function generateStaticParams() {
+  return [
+    { role: 'admin' },
+    { role: 'manager' },
+    { role: 'staff' },
+  ];
+}
 
 interface RoleDashboardProps {
   params: Promise<{
@@ -12,41 +15,14 @@ interface RoleDashboardProps {
   }>;
 }
 
-function RoleDashboardContent({ role }: { role: string }) {
-  return <DashboardPage role={role} showRoleSpecificContent={true} />;
-}
-
-export default function RoleDashboard({ params }: RoleDashboardProps) {
-  const [role, setRole] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const getParams = async () => {
+export default async function RoleDashboard({ params }: RoleDashboardProps) {
       const resolvedParams = await params;
-      setRole(resolvedParams.role);
-      setIsLoading(false);
-    };
+  const role = resolvedParams.role;
 
-    getParams();
-  }, [params]);
-
-  // Redirect if role is not valid
-  useEffect(() => {
-    if (!isLoading && role && !['admin', 'manager', 'staff'].includes(role)) {
-      redirect('/dashboard');
-    }
-  }, [role, isLoading]);
-
-  if (isLoading || !role) {
-    return <LoadingOverlay text="Loading..." />;
+  // Validate role at build time
+  if (!['admin', 'manager', 'staff'].includes(role)) {
+    throw new Error(`Invalid role: ${role}`);
   }
 
-  return (
-    <ProtectedRoute requireAuth={true}>
-      <RoleDashboardContent role={role} />
-    </ProtectedRoute>
-  );
+  return <RoleDashboardClient role={role} />;
 }
-
-// Note: generateStaticParams is not available in client components
-// This page will be dynamically rendered

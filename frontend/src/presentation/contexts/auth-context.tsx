@@ -4,14 +4,16 @@ import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { useToast } from '@/presentation/hooks/use-toast';
+import { useErrorHandler } from '@/presentation/contexts/error-context';
+import { User } from '@/domain/entities/user-entity';
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (firstName: string, lastName: string, email: string, password: string, role?: string) => Promise<void>;
+  register: (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
-  verifyEmail: (token: string) => Promise<void>;
+  verifyEmail: (email: string,  token: string) => Promise<{ user: User; message: string }>;
   updateProfile: (updates: Partial<{
     firstName: string;
     lastName: string;
@@ -23,6 +25,16 @@ interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
+  handleVerifyEmail: (email: string, token: string) => Promise<{ user: User; message: string }>;
+  handleUpdateProfile: (updates: Partial<{
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    bio: string;
+    phone: string;
+    avatarUrl: string;
+  }>) => Promise<User>;
+  handleChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +54,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
   const { toast } = useToast();
+  const { handleAuthError } = useErrorHandler();
 
   // Use Zustand store
   const {
@@ -67,15 +80,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await login(email, password);
     } catch (error: any) {
-      throw error; // Re-throw the error from the store
+      handleAuthError(error);
+      throw error; // Re-throw for component-level handling if needed
     }
   };
 
-  const handleRegister = async (firstName: string, lastName: string, email: string, password: string, role?: string) => {
+  const handleRegister = async (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => {
     try {
-      await register(firstName, lastName, email, password, role);
+      await register(username, firstName, lastName, email, password, role);
     } catch (error: any) {
-      throw error; // Re-throw the error from the store
+      handleAuthError(error);
+      throw error; // Re-throw for component-level handling if needed
     }
   };
 
@@ -98,6 +113,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const handleVerifyEmail = async (email: string, token: string) => {
+    try {
+      return await verifyEmail(email, token);
+    } catch (error: any) {
+      handleAuthError(error);
+      throw error; // Re-throw for component-level handling if needed
+    }
+  };
+
+  const handleUpdateProfile = async (updates: Partial<{
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    bio: string;
+    phone: string;
+    avatarUrl: string;
+  }>) => {
+    try {
+      return await updateProfile(updates);
+    } catch (error: any) {
+      handleAuthError(error);
+      throw error; // Re-throw for component-level handling if needed
+    }
+  };
+
+  const handleChangePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await changePassword(currentPassword, newPassword);
+    } catch (error: any) {
+      handleAuthError(error);
+      throw error; // Re-throw for component-level handling if needed
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -109,6 +158,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword,
     isLoading,
     isAuthenticated,
+    handleVerifyEmail,
+    handleUpdateProfile,
+    handleChangePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
