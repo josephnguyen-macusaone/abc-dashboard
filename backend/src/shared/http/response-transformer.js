@@ -80,6 +80,26 @@ export class ResponseTransformer {
       timestamp: new Date().toISOString()
     };
   }
+
+  /**
+   * Create an error response
+   * @param {string} message - Error message
+   * @param {object} errors - Optional error details
+   * @returns {object} Formatted response
+   */
+  static error(message = 'An error occurred', errors = {}) {
+    const response = {
+      success: false,
+      message,
+      timestamp: new Date().toISOString()
+    };
+
+    if (Object.keys(errors).length > 0) {
+      response.errors = errors;
+    }
+
+    return response;
+  }
 }
 
 /**
@@ -129,6 +149,17 @@ export const responseHelpers = {
   noContent(message = 'Resource deleted successfully') {
     const response = ResponseTransformer.noContent(message);
     return this.status(204).json(response);
+  },
+
+  /**
+   * Send an error response
+   * @param {string} message - Error message
+   * @param {number} statusCode - HTTP status code (default: 500)
+   * @param {object} errors - Optional error details
+   */
+  error(message = 'An error occurred', statusCode = 500, errors = {}) {
+    const response = ResponseTransformer.error(message, errors);
+    return this.status(statusCode).json(response);
   }
 };
 

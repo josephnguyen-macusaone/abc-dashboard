@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
-import { InputField, FormField } from '@/presentation/components/molecules';
+import { FormField, InputField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
-import { useToast } from '@/presentation/hooks/use-toast';
+import { toast } from '@/presentation/components/atoms';
 import { cn } from '@/shared/utils';
 import { Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 
@@ -22,9 +22,7 @@ interface PasswordFormData {
 
 export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePasswordFormProps) {
   const { handleChangePassword } = useAuth();
-  const { showSuccess } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<PasswordFormData>({
     currentPassword: '',
@@ -111,72 +109,38 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setError(null);
 
     try {
       await handleChangePassword(formData.currentPassword, formData.newPassword);
 
-      // Clear form on success
       setFormData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
 
-      showSuccess('Password changed successfully!');
+      toast.success('Password changed successfully!');
+
       onSuccess?.();
-    } catch (error) {
-      // Error toast is now handled by the auth context
-      // We can still show local error state for validation feedback if needed
-      const errorMessage = error instanceof Error ? error.message : 'Failed to change password';
-      setError(errorMessage);
+    } catch {
+      toast.error('Failed to change password');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn('w-full max-w-md space-y-6', className)}>
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="rounded-lg bg-primary/10 p-2">
-          <KeyRound className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <Typography variant="h3" size="lg" weight="semibold">
-            Change Password
-          </Typography>
-          <Typography variant="p" size="sm" className="text-muted-foreground">
-            Update your password to keep your account secure
-          </Typography>
-        </div>
-      </div>
-
-      {/* Error Alert */}
-      {error && (
-        <div className={cn(
-          'p-4 rounded-lg border border-destructive/20 bg-destructive/10',
-          'flex items-start space-x-3'
-        )}>
-          <div className="flex-1">
-            <Typography variant="p" size="sm" weight="medium" color="destructive" className="text-destructive">
-              Password Change Error
-            </Typography>
-            <Typography variant="p" size="sm" color="destructive" className="text-destructive/80 mt-1">
-              {error}
-            </Typography>
-          </div>
-        </div>
-      )}
-
+    <div className={cn('w-full space-y-6', className)}>
       {/* Password Change Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Current Password */}
         <FormField
           label="Current Password"
+          error={errors.currentPassword}
           className="space-y-3"
         >
           <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type={showCurrentPassword ? 'text' : 'password'}
               placeholder="Enter your current password"
@@ -184,15 +148,15 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
               onChange={(e) => handleInputChange('currentPassword', e.target.value)}
               disabled={isLoading}
               className={cn(
-                'h-11 pr-10',
-                errors.currentPassword && 'border-destructive focus-visible:ring-destructive'
+                'pl-10 pr-10 h-11',
+                errors.currentPassword && 'border-destructive focus:border-destructive'
               )}
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
               onClick={() => setShowCurrentPassword(!showCurrentPassword)}
               disabled={isLoading}
             >
@@ -203,19 +167,16 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
               )}
             </Button>
           </div>
-          {errors.currentPassword && (
-            <Typography variant="p" size="xs" color="destructive" className="text-destructive">
-              {errors.currentPassword}
-            </Typography>
-          )}
         </FormField>
 
         {/* New Password */}
         <FormField
           label="New Password"
+          error={errors.newPassword}
           className="space-y-3"
         >
           <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type={showNewPassword ? 'text' : 'password'}
               placeholder="Enter your new password"
@@ -223,15 +184,15 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
               onChange={(e) => handleInputChange('newPassword', e.target.value)}
               disabled={isLoading}
               className={cn(
-                'h-11 pr-10',
-                errors.newPassword && 'border-destructive focus-visible:ring-destructive'
+                'pl-10 pr-10 h-11',
+                errors.newPassword && 'border-destructive focus:border-destructive'
               )}
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
               onClick={() => setShowNewPassword(!showNewPassword)}
               disabled={isLoading}
             >
@@ -242,19 +203,16 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
               )}
             </Button>
           </div>
-          {errors.newPassword && (
-            <Typography variant="p" size="xs" color="destructive" className="text-destructive">
-              {errors.newPassword}
-            </Typography>
-          )}
         </FormField>
 
         {/* Confirm New Password */}
         <FormField
           label="Confirm New Password"
+          error={errors.confirmPassword}
           className="space-y-3"
         >
           <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirm your new password"
@@ -262,15 +220,15 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
               onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
               disabled={isLoading}
               className={cn(
-                'h-11 pr-10',
-                errors.confirmPassword && 'border-destructive focus-visible:ring-destructive'
+                'pl-10 pr-10 h-11',
+                errors.confirmPassword && 'border-destructive focus:border-destructive'
               )}
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               disabled={isLoading}
             >
@@ -281,19 +239,14 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
               )}
             </Button>
           </div>
-          {errors.confirmPassword && (
-            <Typography variant="p" size="xs" color="destructive" className="text-destructive">
-              {errors.confirmPassword}
-            </Typography>
-          )}
         </FormField>
 
         {/* Password Requirements */}
-        <div className="text-xs text-muted-foreground space-y-1">
-          <Typography variant="p" size="xs" weight="medium" className="text-foreground">
+        <div className="bg-muted/50 rounded-lg p-4 border border-border">
+          <Typography variant="p" size="xs" weight="medium" className="text-foreground mb-2">
             Password Requirements:
           </Typography>
-          <ul className="list-disc list-inside space-y-0.5 ml-2">
+          <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 ml-2">
             <li>At least 8 characters long</li>
             <li>One uppercase letter</li>
             <li>One lowercase letter</li>
@@ -303,21 +256,22 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row justify-end gap-3">
           <Button
             type="submit"
             disabled={isLoading}
-            className="flex-1 sm:flex-none"
+            className="w-full sm:w-auto"
+            variant="default"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Changing...
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className='text-xs pb-0.5'>Changing...</span>
               </>
             ) : (
               <>
-                <Lock className="w-4 h-4 mr-2" />
-                Change Password
+                <Lock className="w-4 h-4" />
+                <span className='text-xs pb-0.5'>Change Password</span>
               </>
             )}
           </Button>
@@ -327,9 +281,10 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
             variant="outline"
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 sm:flex-none"
+            className="w-full sm:w-auto"
           >
-            Cancel
+            <KeyRound className="w-4 h-4" />
+            <span className='text-xs pb-0.5'>Cancel</span>
           </Button>
         </div>
       </form>

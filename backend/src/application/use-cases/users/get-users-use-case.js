@@ -17,12 +17,16 @@ export class GetUsersUseCase {
           username: user.username,
           email: user.email,
           displayName: user.displayName,
+          role: user.role,
           avatarUrl: user.avatarUrl,
-          avatarId: user.avatarId,
-          bio: user.bio,
           phone: user.phone,
+          isActive: user.isActive,
+          isFirstLogin: user.isFirstLogin,
+          langKey: user.langKey,
           createdAt: user.createdAt,
-          updatedAt: user.updatedAt
+          updatedAt: user.updatedAt,
+          createdBy: user.createdBy,
+          lastModifiedBy: user.lastModifiedBy
         })),
         pagination: {
           page: result.page,

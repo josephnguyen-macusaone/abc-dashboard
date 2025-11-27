@@ -8,6 +8,8 @@ import axios, {
 import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
 import { handleApiError, isRetryableError } from '@/infrastructure/api/errors';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import { RetryUtils } from '@/shared/utils/retry';
+import { startTrace, injectIntoHeaders, logWithTrace, traceAsyncFunction } from '@/shared/utils/tracing';
 import { API_CONFIG } from '@/shared/constants';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 
@@ -92,6 +94,14 @@ class HttpClient {
         const correlationId = generateCorrelationId();
         (config as any).correlationId = correlationId;
 
+        // Start trace for this request
+        const trace = startTrace(`api_${config.method?.toUpperCase()}_${config.url}`);
+        (config as any).trace = trace;
+
+        // Inject trace headers
+        const traceHeaders = injectIntoHeaders(trace);
+        Object.assign(config.headers, traceHeaders);
+
         // Add authorization header if token exists
         if (typeof window !== 'undefined') {
           const token = this.getAuthToken();
@@ -108,12 +118,13 @@ class HttpClient {
           };
         }
 
-        // Log outgoing request
-        logger.api(`→ ${config.method?.toUpperCase()} ${config.url}`, {
+        // Log outgoing request with trace information
+        logWithTrace('info', `API Request: ${config.method?.toUpperCase()} ${config.url}`, {
           correlationId,
           url: config.url,
           method: config.method,
-          headers: config.headers,
+          traceId: trace.traceId,
+          spanId: trace.spanId,
         });
 
         return config;
@@ -133,13 +144,16 @@ class HttpClient {
     this.instance.interceptors.response.use(
       (response: AxiosResponse) => {
         const correlationId = (response.config as any)?.correlationId;
+        const trace = (response.config as any)?.trace;
 
-        // Log successful response
-        logger.api(`← ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+        // Log successful response with trace information
+        logWithTrace('info', `API Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
           correlationId,
           status: response.status,
           duration: Date.now() - (response.config as any)?.startTime,
           url: response.config.url,
+          traceId: trace?.traceId,
+          spanId: trace?.spanId,
         });
 
         return response;
@@ -227,7 +241,7 @@ class HttpClient {
           });
         }
 
-        // Retry logic for other retryable errors (not 401)
+        // Retry logic for other retryable errors (not 401) using standardized retry utility
         if (
           originalRequest &&
           !originalRequest._retry &&
@@ -237,17 +251,39 @@ class HttpClient {
           originalRequest._retry = true;
           originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
 
-          // Exponential backoff
-          const delay = this.retryConfig.retryDelay * Math.pow(2, originalRequest._retryCount - 1);
-
-          logger.warn(`Retrying request (${originalRequest._retryCount}/${this.retryConfig.maxRetries})`, {
+          const retryConfig = {
+            maxRetries: this.retryConfig.maxRetries,
+            baseDelay: this.retryConfig.retryDelay,
+            maxDelay: 30000, // 30 seconds max
+            backoffFactor: 2,
+            retryCondition: () => isRetryableError(error),
+            onRetry: (retryError: any, attempt: number, delay: number) => {
+              logger.warn(`Retrying API request (${attempt}/${this.retryConfig.maxRetries})`, {
             correlationId,
             url: originalRequest.url,
             delay,
-          });
+                error: retryError?.message,
+              });
+            },
+          };
 
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return this.instance(originalRequest);
+          try {
+            // Use RetryUtils to handle the retry with proper backoff
+            return await RetryUtils.apiCallWithRetry(
+              () => this.instance(originalRequest),
+              retryConfig,
+              `api_retry_${originalRequest.url}`
+            );
+          } catch (retryError) {
+            // If retry also fails, continue with original error handling
+            logger.error('API retry failed', {
+              correlationId,
+              url: originalRequest.url,
+              retryCount: originalRequest._retryCount,
+              error: retryError instanceof Error ? retryError.message : String(retryError),
+            });
+            // Continue to reject with original error
+          }
         }
 
         return Promise.reject(handleApiError(error));

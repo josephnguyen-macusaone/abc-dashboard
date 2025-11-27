@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { cn } from '@/shared/utils';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { useToast } from '@/presentation/hooks/use-toast';
+import { toast } from '@/presentation/components/atoms';
 
 interface LoginFormProps {
   onSuccess?: () => void;
-  onSwitchToRegister?: () => void;
   className?: string;
 }
 
@@ -19,9 +19,9 @@ interface LoginFormData {
   password: string;
 }
 
-export function LoginForm({ onSuccess, onSwitchToRegister, className }: LoginFormProps) {
+export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const { login } = useAuth();
-  const { showError } = useToast();
+  const { emailVerificationRequired, emailVerificationMessage, clearEmailVerificationState } = useAuthStore();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
@@ -30,6 +30,14 @@ export function LoginForm({ onSuccess, onSwitchToRegister, className }: LoginFor
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string | null>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Show email verification message when required
+  useEffect(() => {
+    if (emailVerificationRequired && emailVerificationMessage) {
+      toast.info(`${emailVerificationMessage}`);
+      clearEmailVerificationState();
+    }
+  }, [emailVerificationRequired, emailVerificationMessage, clearEmailVerificationState]);
 
   const handleInputChange = (field: keyof LoginFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -63,8 +71,13 @@ export function LoginForm({ onSuccess, onSwitchToRegister, className }: LoginFor
     try {
       await login(formData.email, formData.password);
       onSuccess?.();
-    } catch (error) {
-      // Error toast is now handled by the auth context
+    } catch (error: unknown) {
+      // Only show error for non-email-verification errors
+      const errorMessage = (error as Error)?.message || 'Login failed';
+      if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
+        toast.error(errorMessage);
+      }
+      // Email verification errors are handled by the useEffect above
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +137,6 @@ export function LoginForm({ onSuccess, onSwitchToRegister, className }: LoginFor
           </div>
         </FormField>
 
-
         {/* Submit Button */}
         <Button
           type="submit"
@@ -143,20 +155,19 @@ export function LoginForm({ onSuccess, onSwitchToRegister, className }: LoginFor
         </Button>
       </form>
 
-      {/* Footer */}
-      <div className="text-center">
-        <Typography variant="p" size="sm" color="muted" className="text-muted-foreground">
-          Don't have an account?{' '}
-          <Button
-            type="button"
-            variant="link"
-            className="p-0 h-auto text-sm text-primary hover:text-primary/80"
-            onClick={onSwitchToRegister}
-            disabled={isLoading}
-          >
-            Sign up
-          </Button>
-        </Typography>
+      {/* Additional Links */}
+      <div className="text-center space-y-2">
+        <Button
+          type="button"
+          variant="link"
+          className="text-sm text-muted-foreground hover:text-primary p-0 h-auto"
+          onClick={() => {
+            // TODO: Implement forgot password functionality
+            toast.info('Password reset functionality will be available soon.');
+          }}
+        >
+          Forgot your password?
+        </Button>
       </div>
     </div>
   );

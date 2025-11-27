@@ -77,6 +77,181 @@ export const USER_ROLE_LABELS = {
 } as const;
 
 /**
+ * User Permissions
+ */
+export const USER_PERMISSIONS = {
+  CREATE_USER: 'CREATE_USER',
+  READ_USER: 'READ_USER',
+  UPDATE_USER: 'UPDATE_USER',
+  DELETE_USER: 'DELETE_USER',
+  MANAGE_SYSTEM: 'MANAGE_SYSTEM',
+  VIEW_DASHBOARD: 'VIEW_DASHBOARD',
+  MANAGE_OWN_PROFILE: 'MANAGE_OWN_PROFILE',
+} as const;
+
+/**
+ * Role-Based Permissions Matrix
+ * Based on the enterprise user management system specification
+ */
+export const ROLE_PERMISSIONS: Record<UserRoleType, readonly PermissionType[]> = {
+  [USER_ROLES.ADMIN]: [
+    USER_PERMISSIONS.CREATE_USER,
+    USER_PERMISSIONS.READ_USER,
+    USER_PERMISSIONS.UPDATE_USER,
+    USER_PERMISSIONS.DELETE_USER,
+    USER_PERMISSIONS.MANAGE_SYSTEM,
+    USER_PERMISSIONS.VIEW_DASHBOARD,
+    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
+  [USER_ROLES.MANAGER]: [
+    USER_PERMISSIONS.CREATE_USER,
+    USER_PERMISSIONS.READ_USER,
+    USER_PERMISSIONS.UPDATE_USER, // With restrictions
+    USER_PERMISSIONS.VIEW_DASHBOARD,
+    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
+  [USER_ROLES.STAFF]: [
+    USER_PERMISSIONS.READ_USER,
+    USER_PERMISSIONS.UPDATE_USER, // Only own profile
+    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
+} as const;
+
+/**
+ * Type alias for permission values
+ */
+export type PermissionType = typeof USER_PERMISSIONS[keyof typeof USER_PERMISSIONS];
+
+/**
+ * Type for valid user roles (defined directly to avoid circular reference)
+ */
+export type UserRoleType = 'admin' | 'manager' | 'staff';
+
+/**
+ * Type guard to check if a string is a valid user role
+ */
+export function isValidUserRole(role: string | undefined): role is UserRoleType {
+  const validRoles: readonly string[] = [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF];
+  return role !== undefined && validRoles.includes(role);
+}
+
+/**
+ * Permission Utility Functions
+ * Based on the enterprise role-based access control system
+ */
+export const PermissionUtils = {
+  /**
+   * Check if a user role has a specific permission
+   */
+  hasPermission: (userRole: string | undefined, permission: PermissionType): boolean => {
+    // Use type guard for better type safety
+    if (!isValidUserRole(userRole)) {
+      return false;
+    }
+
+    // TypeScript now knows userRole is a valid UserRoleType
+    // With explicit typing, includes() should work naturally
+    return ROLE_PERMISSIONS[userRole].includes(permission);
+  },
+
+  /**
+   * Check if user can create users (with role restrictions)
+   */
+  canCreateUser: (userRole: string | undefined): boolean => {
+    return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.CREATE_USER);
+  },
+
+  /**
+   * Check if user can read users
+   */
+  canReadUser: (userRole: string | undefined): boolean => {
+    return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.READ_USER);
+  },
+
+  /**
+   * Check if user can update users (with hierarchical restrictions)
+   */
+  canUpdateUser: (userRole: string | undefined, targetUserRole?: string): boolean => {
+    if (!PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.UPDATE_USER)) {
+      return false;
+    }
+
+    // Admin can update anyone
+    if (userRole === USER_ROLES.ADMIN) {
+      return true;
+    }
+
+    // Manager cannot update admins or other managers
+    if (userRole === USER_ROLES.MANAGER) {
+      return targetUserRole === USER_ROLES.STAFF || !targetUserRole;
+    }
+
+    // Staff can only update their own profile
+    return false;
+  },
+
+  /**
+   * Check if user can delete users
+   */
+  canDeleteUser: (userRole: string | undefined): boolean => {
+    return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.DELETE_USER);
+  },
+
+  /**
+   * Check if user can manage system
+   */
+  canManageSystem: (userRole: string | undefined): boolean => {
+    return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.MANAGE_SYSTEM);
+  },
+
+  /**
+   * Check if user can view dashboard
+   */
+  canViewDashboard: (userRole: string | undefined): boolean => {
+    return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.VIEW_DASHBOARD);
+  },
+
+  /**
+   * Check if user can manage their own profile
+   */
+  canManageOwnProfile: (userRole: string | undefined): boolean => {
+    return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.MANAGE_OWN_PROFILE);
+  },
+
+  /**
+   * Get all permissions for a role
+   */
+  getRolePermissions: (userRole: string | undefined): PermissionType[] => {
+    if (!isValidUserRole(userRole)) {
+      return [];
+    }
+    // With explicit typing, we can safely spread the readonly array
+    return [...ROLE_PERMISSIONS[userRole]];
+  },
+
+  /**
+   * Check if user is admin
+   */
+  isAdmin: (userRole: string | undefined): boolean => {
+    return userRole === USER_ROLES.ADMIN;
+  },
+
+  /**
+   * Check if user is manager
+   */
+  isManager: (userRole: string | undefined): boolean => {
+    return userRole === USER_ROLES.MANAGER;
+  },
+
+  /**
+   * Check if user is staff
+   */
+  isStaff: (userRole: string | undefined): boolean => {
+    return userRole === USER_ROLES.STAFF;
+  },
+};
+
+/**
  * Theme Options
  */
 export const THEMES = {

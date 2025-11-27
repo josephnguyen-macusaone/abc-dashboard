@@ -125,6 +125,12 @@ export const ERROR_LIST = {
     category: 'validation'
   },
 
+  VALIDATION_FAILED: {
+    statusCode: 400,
+    message: 'Validation failed',
+    category: 'validation'
+  },
+
   // File upload errors
   FILE_TOO_LARGE: {
     statusCode: 413,
@@ -200,6 +206,52 @@ export const ERROR_LIST = {
     statusCode: 415,
     message: 'Unsupported media type',
     category: 'api'
+  },
+
+  // Infrastructure errors
+  NETWORK_TIMEOUT: {
+    statusCode: 408,
+    message: '{{operation}} timed out. Please try again.',
+    category: 'infrastructure',
+    template: true
+  },
+
+  EXTERNAL_SERVICE_UNAVAILABLE: {
+    statusCode: 503,
+    message: '{{service}} is temporarily unavailable. Please try again later.',
+    category: 'infrastructure',
+    template: true
+  },
+
+  CONCURRENT_MODIFICATION: {
+    statusCode: 409,
+    message: '{{resource}} was modified by another process. Please refresh and try again.',
+    category: 'infrastructure',
+    template: true
+  },
+
+  // Security errors
+  SECURITY_VIOLATION: {
+    statusCode: 400,
+    message: 'Security violation detected',
+    category: 'security'
+  },
+
+  RATE_LIMIT_EXCEEDED: {
+    statusCode: 429,
+    message: 'Too many requests. Please try again later.',
+    category: 'security',
+    additionalData: (retryAfter) => ({
+      retryAfter,
+      retryAfterMinutes: Math.ceil(retryAfter / 60)
+    })
+  },
+
+  // Data integrity errors
+  DATA_INTEGRITY_VIOLATION: {
+    statusCode: 422,
+    message: 'Data integrity violation',
+    category: 'data'
   }
 };
 

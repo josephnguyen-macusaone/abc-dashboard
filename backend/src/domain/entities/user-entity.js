@@ -1,3 +1,5 @@
+import { ROLES } from '../../shared/constants/roles.js';
+
 /**
  * User Domain Entity
  * Represents the core business concept of a User
@@ -9,26 +11,32 @@ export class User {
     hashedPassword,
     email,
     displayName,
+    role,
     avatarUrl,
-    avatarId,
-    bio,
     phone,
     isActive,
+    isFirstLogin,
+    langKey,
     createdAt,
-    updatedAt
+    updatedAt,
+    createdBy,
+    lastModifiedBy
   }) {
     this.id = id;
     this.username = username;
     this.hashedPassword = hashedPassword;
     this.email = email;
     this.displayName = displayName;
+    this.role = role;
     this.avatarUrl = avatarUrl;
-    this.avatarId = avatarId;
-    this.bio = bio;
     this.phone = phone;
     this.isActive = isActive || false;
+    this.isFirstLogin = isFirstLogin ?? true;
+    this.langKey = langKey || 'en';
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.createdBy = createdBy;
+    this.lastModifiedBy = lastModifiedBy;
 
     this.validate();
   }
@@ -49,6 +57,11 @@ export class User {
       throw new Error('Display name is required');
     }
 
+    // Role validation
+    if (!this.role || !Object.values(ROLES).includes(this.role)) {
+      throw new Error('Invalid role specified');
+    }
+
     // Username validation
     if (this.username.length < 3) {
       throw new Error('Username must be at least 3 characters long');
@@ -58,9 +71,9 @@ export class User {
       throw new Error('Username can only contain letters, numbers, and underscores');
     }
 
-    // Bio length validation
-    if (this.bio && this.bio.length > 500) {
-      throw new Error('Bio cannot exceed 500 characters');
+    // Language key validation
+    if (this.langKey && typeof this.langKey !== 'string') {
+      throw new Error('Language key must be a string');
     }
   }
 
@@ -73,18 +86,21 @@ export class User {
       username: this.username,
       email: this.email,
       displayName: this.displayName,
+      role: this.role,
       avatarUrl: this.avatarUrl || null,
-      avatarId: this.avatarId || null,
-      bio: this.bio || null,
       phone: this.phone || null,
       isActive: this.isActive,
+      isFirstLogin: this.isFirstLogin,
+      langKey: this.langKey,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
+      createdBy: this.createdBy,
+      lastModifiedBy: this.lastModifiedBy
     };
   }
 
   updateProfile(updates) {
-    const allowedFields = ['displayName', 'avatarUrl', 'avatarId', 'bio', 'phone'];
+    const allowedFields = ['displayName', 'avatarUrl', 'phone', 'langKey'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) {
         this[field] = updates[field];
@@ -106,15 +122,13 @@ export class User {
     };
   }
 
-  updateAvatar(avatarUrl, avatarId) {
+  updateAvatar(avatarUrl) {
     this.avatarUrl = avatarUrl;
-    this.avatarId = avatarId;
 
     return {
       type: 'UserAvatarUpdated',
       userId: this.id,
       avatarUrl: this.avatarUrl,
-      avatarId: this.avatarId,
       occurredAt: new Date()
     };
   }

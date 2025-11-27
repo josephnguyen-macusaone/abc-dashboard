@@ -144,3 +144,54 @@ export class BusinessRuleViolationException extends DomainException {
     this.message = message;
   }
 }
+
+/**
+ * Infrastructure Exceptions
+ */
+export class NetworkTimeoutException extends DomainException {
+  constructor(operation = 'Operation') {
+    super('NETWORK_TIMEOUT', { operation });
+    this.message = `${operation} timed out. Please try again.`;
+  }
+}
+
+export class ExternalServiceUnavailableException extends DomainException {
+  constructor(service = 'External service') {
+    super('EXTERNAL_SERVICE_UNAVAILABLE', { service });
+    this.message = `${service} is temporarily unavailable. Please try again later.`;
+  }
+}
+
+export class ConcurrentModificationException extends DomainException {
+  constructor(resource = 'Resource') {
+    super('CONCURRENT_MODIFICATION', { resource });
+    this.message = `${resource} was modified by another process. Please refresh and try again.`;
+  }
+}
+
+/**
+ * Security Exceptions
+ */
+export class SecurityViolationException extends DomainException {
+  constructor(violation = 'Security violation') {
+    super('SECURITY_VIOLATION');
+    this.message = violation;
+  }
+}
+
+export class RateLimitExceededException extends DomainException {
+  constructor(retryAfter = 60) {
+    super('RATE_LIMIT_EXCEEDED', {}, { retryAfter });
+    this.message = 'Too many requests. Please try again later.';
+  }
+}
+
+/**
+ * Data Integrity Exceptions
+ */
+export class DataIntegrityViolationException extends DomainException {
+  constructor(details = 'Data integrity violation') {
+    super('DATA_INTEGRITY_VIOLATION');
+    this.message = details;
+  }
+}

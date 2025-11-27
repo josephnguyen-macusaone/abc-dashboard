@@ -16,7 +16,7 @@ export class RegisterUseCase {
     this.emailService = emailService;
   }
 
-  async execute({ username, email, password, firstName, lastName, avatarUrl, avatarId, bio, phone }) {
+  async execute({ username, email, password, firstName, lastName, avatarUrl, bio, phone }) {
     try {
       // Validate input
       if (!email || !password || !firstName || !lastName) {
@@ -65,10 +65,20 @@ export class RegisterUseCase {
         email,
         displayName,
         avatarUrl,
-        avatarId,
-        bio,
         phone
       });
+
+      // Create user profile if bio is provided
+      if (bio) {
+        const { container } = await import('../../../shared/kernel/container.js');
+        const userProfileRepository = container.getUserProfileRepository();
+
+        await userProfileRepository.save({
+          userId: user.id,
+          bio,
+          emailVerified: false
+        });
+      }
 
       // Generate email verification JWT token
       const verificationToken = this.tokenService.generateEmailVerificationToken(user.id, user.email);
@@ -103,9 +113,8 @@ export class RegisterUseCase {
           username: user.username,
           email: user.email,
           displayName: user.displayName,
+          role: user.role,
           avatarUrl: user.avatarUrl,
-          avatarId: user.avatarId,
-          bio: user.bio,
           phone: user.phone,
           isActive: false, // New users are inactive until email verification
           createdAt: user.createdAt
@@ -123,3 +132,4 @@ export class RegisterUseCase {
     }
   }
 }
+

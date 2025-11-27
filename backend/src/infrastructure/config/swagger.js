@@ -318,6 +318,10 @@ const swaggerDefinition = {
     {
       name: 'Users',
       description: 'User management and profile operations'
+    },
+    {
+      name: 'Profile',
+      description: 'User profile management operations'
     }
   ],
   externalDocs: {
@@ -332,6 +336,7 @@ const options = {
   apis: [
     './src/infrastructure/routes/auth-routes.js',
     './src/infrastructure/routes/user-routes.js',
+    './src/infrastructure/routes/profile-routes.js',
     './src/infrastructure/controllers/*.js'
   ]
 };

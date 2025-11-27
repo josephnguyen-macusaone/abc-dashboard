@@ -58,11 +58,15 @@ export class UpdateUserUseCase {
           username: updatedUser.username,
           email: updatedUser.email,
           displayName: updatedUser.displayName,
+          role: updatedUser.role,
           avatarUrl: updatedUser.avatarUrl,
-          avatarId: updatedUser.avatarId,
-          bio: updatedUser.bio,
           phone: updatedUser.phone,
-          updatedAt: updatedUser.updatedAt
+          isActive: updatedUser.isActive,
+          isFirstLogin: updatedUser.isFirstLogin,
+          langKey: updatedUser.langKey,
+          updatedAt: updatedUser.updatedAt,
+          createdBy: updatedUser.createdBy,
+          lastModifiedBy: updatedUser.lastModifiedBy
         },
         message: 'User profile updated successfully'
       };

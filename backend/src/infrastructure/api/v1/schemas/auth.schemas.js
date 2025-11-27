@@ -80,19 +80,6 @@ export const authSchemas = {
         'string.uri': 'Avatar URL must be a valid URI'
       }),
 
-    avatarId: Joi.string()
-      .allow('')
-      .messages({
-        'string.base': 'Avatar ID must be a string'
-      }),
-
-    bio: Joi.string()
-      .max(500)
-      .allow('')
-      .messages({
-        'string.max': 'Bio cannot exceed 500 characters'
-      }),
-
     phone: Joi.string()
       .pattern(/^[\+]?[1-9][\d]{0,15}$/)
       .allow('')
@@ -148,6 +135,17 @@ export const authSchemas = {
       })
   }),
 
+  requestPasswordReset: Joi.object({
+    email: Joi.string()
+      .email({ tlds: { allow: false } })
+      .required()
+      .messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required',
+        'string.empty': 'Email cannot be empty'
+      })
+  }),
+
   /**
    * Password reset schema
    */
@@ -187,12 +185,12 @@ export const authSchemas = {
     newPassword: Joi.string()
       .min(8)
       .max(128)
-      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/)
       .required()
       .messages({
         'string.min': 'New password must be at least 8 characters long',
         'string.max': 'New password cannot exceed 128 characters',
-        'string.pattern.base': 'New password must contain at least one lowercase letter, one uppercase letter, and one number',
+        'string.pattern.base': 'New password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
         'any.required': 'New password is required',
         'string.empty': 'New password cannot be empty'
       })

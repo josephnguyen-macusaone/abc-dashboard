@@ -1,32 +1,69 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { config } from '../../infrastructure/config/config.js';
+import logger from '../../infrastructure/config/logger.js';
+import { ValidationException, TokenExpiredException, InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
 
 /**
  * Token Service
- * Handles JWT token generation and verification
+ * Handles JWT token generation and verification with comprehensive error handling
  */
 export class TokenService {
-  constructor() {
+  constructor(correlationId = null) {
+    this.correlationId = correlationId;
+    this.operationId = correlationId ? `${correlationId}_token` : null;
     this.jwtSecret = config.JWT_SECRET;
     this.jwtExpiresIn = config.JWT_EXPIRES_IN;
     this.refreshTokenExpiresIn = config.JWT_REFRESH_EXPIRES_IN;
     this.jwtIssuer = config.JWT_ISSUER;
     this.emailVerificationExpiresIn = config.JWT_EMAIL_VERIFICATION_EXPIRES_IN;
+    this.passwordResetExpiresIn = config.JWT_PASSWORD_RESET_EXPIRES_IN;
+
+    // Validate configuration
+    if (!this.jwtSecret) {
+      throw new Error('JWT_SECRET is required for token service');
+    }
   }
 
   /**
-   * Generate access token
+   * Generate access token with validation and error handling
    * @param {Object} payload - Token payload
    * @returns {string} JWT access token
    */
   generateAccessToken(payload) {
     try {
-      return jwt.sign(payload, this.jwtSecret, {
+      if (!payload || typeof payload !== 'object') {
+        throw new ValidationException('Token payload must be a valid object');
+      }
+
+      if (!payload.userId && !payload.id) {
+        throw new ValidationException('Token payload must contain userId or id');
+      }
+
+      const token = jwt.sign(payload, this.jwtSecret, {
         expiresIn: this.jwtExpiresIn,
-        issuer: this.jwtIssuer
+        issuer: this.jwtIssuer,
+        audience: payload.email || 'user'
       });
+
+      logger.debug('Access token generated successfully', {
+        correlationId: this.correlationId,
+        userId: payload.userId || payload.id,
+        expiresIn: this.jwtExpiresIn
+      });
+
+      return token;
     } catch (error) {
+      if (error instanceof ValidationException) {
+        throw error;
+      }
+
+      logger.error('Failed to generate access token', {
+        correlationId: this.correlationId,
+        error: error.message,
+        payloadKeys: payload ? Object.keys(payload) : null
+      });
+
       throw new Error(`Failed to generate access token: ${error.message}`);
     }
   }
@@ -54,17 +91,49 @@ export class TokenService {
    */
   verifyToken(token) {
     try {
-      return jwt.verify(token, this.jwtSecret, {
+      if (!token || typeof token !== 'string') {
+        throw new ValidationException('Token must be a non-empty string');
+      }
+
+      const decoded = jwt.verify(token, this.jwtSecret, {
         issuer: this.jwtIssuer
       });
+
+      logger.debug('Token verified successfully', {
+        correlationId: this.correlationId,
+        tokenType: 'access',
+        userId: decoded.userId || decoded.id
+      });
+
+      return decoded;
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
-        throw new Error('Token has expired');
-      } else if (error.name === 'JsonWebTokenError') {
-        throw new Error('Invalid token');
-      } else {
-        throw new Error(`Token verification failed: ${error.message}`);
+      if (error instanceof ValidationException) {
+        throw error;
       }
+
+      if (error.name === 'TokenExpiredError') {
+        logger.warn('Token verification failed - expired token', {
+          correlationId: this.correlationId,
+          expiredAt: error.expiredAt
+        });
+        throw new TokenExpiredException();
+      }
+
+      if (error.name === 'JsonWebTokenError') {
+        logger.warn('Token verification failed - invalid token', {
+          correlationId: this.correlationId,
+          error: error.message
+        });
+        throw new InvalidTokenException();
+      }
+
+      logger.error('Token verification failed - unexpected error', {
+        correlationId: this.correlationId,
+        error: error.message,
+        errorName: error.name
+      });
+
+      throw new InvalidTokenException();
     }
   }
 
@@ -110,6 +179,52 @@ export class TokenService {
         throw new Error('Invalid email verification token');
       } else {
         throw new Error(`Email verification token verification failed: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Generate password reset JWT token
+   * @param {string} userId - User ID
+   * @param {string} email - User email
+   * @returns {string} JWT password reset token
+   */
+  generatePasswordResetToken(userId, email) {
+    try {
+      return jwt.sign(
+        {
+          userId,
+          email,
+          type: 'password_reset'
+        },
+        this.jwtSecret,
+        {
+          expiresIn: this.passwordResetExpiresIn,
+          issuer: this.jwtIssuer
+        }
+      );
+    } catch (error) {
+      throw new Error(`Failed to generate password reset token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify password reset JWT token
+   * @param {string} token - JWT password reset token
+   * @returns {Object} Decoded payload
+   */
+  verifyPasswordResetToken(token) {
+    try {
+      return jwt.verify(token, this.jwtSecret, {
+        issuer: this.jwtIssuer
+      });
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new Error('Password reset token has expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid password reset token');
+      } else {
+        throw new Error(`Password reset token verification failed: ${error.message}`);
       }
     }
   }

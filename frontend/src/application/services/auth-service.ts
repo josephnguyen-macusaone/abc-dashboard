@@ -279,6 +279,39 @@ export class AuthService {
   }
 
   /**
+   * Get complete user profile (including profile data)
+   */
+  async getCompleteProfile(): Promise<any> {
+    const correlationId = generateCorrelationId();
+
+    try {
+      this.logger.http(`🌐 Making get profile API call`, {
+        correlationId,
+        operation: 'get_profile_api_request',
+      });
+
+      const startTime = Date.now();
+      const profileData = await this.authRepository.getProfile();
+      const duration = Date.now() - startTime;
+
+      this.logger.http(`Get profile API call successful`, {
+        correlationId,
+        duration,
+        operation: 'get_profile_api_success',
+      });
+
+      return profileData;
+    } catch (error) {
+      this.logger.http(`Get profile API call failed`, {
+        correlationId,
+        operation: 'get_profile_api_error',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Verify email with token
    */
   async verifyEmail(email: string, token: string): Promise<{ user: User; message: string }> {

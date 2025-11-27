@@ -1,6 +1,8 @@
 import { cache, cacheKeys } from './redis.js';
 import logger from './logger.js';
 import { getComprehensiveMetrics, applicationMetrics, cacheMetrics } from './metrics.js';
+import { errorMonitor } from '../../shared/utils/error-monitor.js';
+import { gracefulDegradationManager } from '../../shared/utils/graceful-degradation.js';
 
 class APIMonitor {
   constructor() {
@@ -157,10 +159,62 @@ export const getHealthWithMetrics = async (req, res) => {
   try {
     const comprehensiveMetrics = await getComprehensiveMetrics();
     const apiMetrics = apiMonitor.getMetrics();
+    const errorMetrics = errorMonitor.getMetrics();
+    const errorHealth = errorMonitor.getHealthStatus();
+    const degradationStatus = gracefulDegradationManager.getSystemStatus();
+
+    // Determine overall health status based on all systems
+    let overallStatus = 'healthy';
+    let overallScore = 100;
+    const healthIssues = [];
+
+    // Check error monitoring health
+    if (errorHealth.status !== 'healthy') {
+      overallScore -= (100 - errorHealth.score);
+      healthIssues.push({
+        system: 'error_monitoring',
+        status: errorHealth.status,
+        score: errorHealth.score,
+        issues: errorHealth.issues
+      });
+    }
+
+    // Check database health
+    if (!comprehensiveMetrics.database?.connected) {
+      overallScore -= 50;
+      overallStatus = 'unhealthy';
+      healthIssues.push({
+        system: 'database',
+        status: 'disconnected',
+        message: 'Database connection failed'
+      });
+    }
+
+    // Check API error rate
+    const apiErrorRate = parseFloat(apiMetrics.summary.errorRate);
+    if (apiErrorRate > 5) { // More than 5% error rate
+      overallScore -= Math.min(30, apiErrorRate * 2);
+      healthIssues.push({
+        system: 'api',
+        status: 'high_error_rate',
+        errorRate: apiErrorRate,
+        message: `API error rate is ${apiErrorRate}%`
+      });
+    }
+
+    // Determine overall status
+    if (overallScore < 50) {
+      overallStatus = 'critical';
+    } else if (overallScore < 75) {
+      overallStatus = 'unhealthy';
+    } else if (overallScore < 90) {
+      overallStatus = 'degraded';
+    }
 
     const healthData = {
-      status: comprehensiveMetrics.summary?.status || 'OK',
-      message: 'Server is running',
+      status: overallStatus,
+      score: Math.max(0, Math.min(100, overallScore)),
+      message: overallStatus === 'healthy' ? 'All systems operational' : `${healthIssues.length} system(s) have issues`,
       correlationId: req.correlationId,
       timestamp: comprehensiveMetrics.timestamp,
       environment: comprehensiveMetrics.environment,
@@ -198,6 +252,27 @@ export const getHealthWithMetrics = async (req, res) => {
         securityEvents: comprehensiveMetrics.application?.security
       },
 
+      // Error monitoring health
+      errorMonitoring: {
+        status: errorHealth.status,
+        score: errorHealth.score,
+        totalErrors: errorMetrics.total,
+        errorRates: errorMetrics.rates,
+        recentErrorsCount: errorMetrics.recentErrors?.length || 0,
+        topErrorCategories: Object.fromEntries(
+          Array.from(errorMetrics.byCategory.entries())
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5)
+        )
+      },
+
+      // Graceful degradation status
+      gracefulDegradation: {
+        level: degradationStatus.degradationLevel,
+        lastUpdated: degradationStatus.lastUpdated,
+        features: degradationStatus.features
+      },
+
       // Legacy API metrics (for backward compatibility)
       legacyMetrics: {
         totalRequests: apiMetrics.summary.totalRequests,
@@ -206,6 +281,9 @@ export const getHealthWithMetrics = async (req, res) => {
         medianResponseTime: apiMetrics.summary.medianResponseTime,
         p95ResponseTime: apiMetrics.summary.p95ResponseTime
       },
+
+      // Health issues summary
+      issues: healthIssues.length > 0 ? healthIssues : undefined,
 
       // Detailed metrics available at /api/v1/metrics
       detailedMetricsAvailable: true

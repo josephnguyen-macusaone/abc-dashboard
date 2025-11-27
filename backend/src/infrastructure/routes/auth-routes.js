@@ -170,49 +170,6 @@ export function createAuthRoutes(authController) {
    */
   router.get('/profile', authenticate, authController.getProfile.bind(authController));
 
-  /**
-   * @swagger
-   * /auth/profile:
-   *   put:
-   *     summary: Update user profile
-   *     tags: [Authentication]
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               displayName:
-   *                 type: string
-   *                 minLength: 1
-   *                 maxLength: 100
-   *               avatarUrl:
-   *                 type: string
-   *                 format: uri
-   *               avatarId:
-   *                 type: string
-   *               bio:
-   *                 type: string
-   *                 maxLength: 500
-   *               phone:
-   *                 type: string
-   *                 pattern: '^[\+]?[1-9][\d]{0,15}$'
-   *     responses:
-   *       200:
-   *         description: Profile updated successfully
-   *       400:
-   *         description: Validation error
-   *       401:
-   *         description: Unauthorized
-   */
-  router.put('/profile',
-    authenticate,
-    validateRequest(userSchemas.updateProfile),
-    authController.updateProfile.bind(authController)
-  );
 
   /**
    * @swagger
@@ -306,6 +263,93 @@ export function createAuthRoutes(authController) {
    *         description: Logout successful
    */
   router.post('/logout', authenticate, authController.logout.bind(authController));
+
+  /**
+   * @swagger
+   * /auth/forgot-password:
+   *   post:
+   *     summary: Request password reset
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: User email address
+   *     responses:
+   *       200:
+   *         description: Password reset email sent if account exists
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Password reset email sent if account exists"
+   */
+  router.post('/forgot-password',
+    validateRequest(authSchemas.requestPasswordReset),
+    authController.requestPasswordReset.bind(authController)
+  );
+
+  /**
+   * @swagger
+   * /auth/reset-password:
+   *   post:
+   *     summary: Reset password with token
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - token
+   *               - newPassword
+   *             properties:
+   *               token:
+   *                 type: string
+   *                 description: Password reset token from email
+   *               newPassword:
+   *                 type: string
+   *                 minLength: 8
+   *                 description: New password
+   *     responses:
+   *       200:
+   *         description: Password reset successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Password reset successfully"
+   *                 data:
+   *                   type: object
+   *                   description: Updated user information
+   *       400:
+   *         description: Invalid or expired token, or validation error
+   */
+  router.post('/reset-password',
+    validateRequest(authSchemas.resetPassword),
+    authController.resetPassword.bind(authController)
+  );
 
   return router;
 }

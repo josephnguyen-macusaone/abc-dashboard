@@ -1,5 +1,4 @@
 export { Logo } from './logo';
-export { UserAvatar } from './user-avatar';
 export { Loading, LoadingSpinner, LoadingCard, LoadingTable } from './loading';
 export { LoadingOverlay } from './loading-overlay';
 export { Toaster, toast } from './toast';

@@ -2,3 +2,4 @@
 export * from './forms';
 export * from './ui';
 export * from './display';
+export * from './permission-guard';

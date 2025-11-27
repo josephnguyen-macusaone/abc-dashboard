@@ -52,6 +52,11 @@ export interface IAuthRepository {
     phone: string;
     avatarUrl: string;
   }>): Promise<User>;
+
+  /**
+   * Get complete user profile
+   */
+  getProfile(): Promise<any>;
 }
 
 /**

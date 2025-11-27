@@ -1,29 +1,87 @@
 import { User } from '../../domain/entities/user-entity.js';
 import { IUserRepository } from '../../domain/repositories/interfaces/i-user-repository.js';
+import { withTimeout, TimeoutPresets } from '../../shared/utils/retry.js';
+import logger from '../config/logger.js';
 
 /**
  * User Repository Implementation
  * Implements the IUserRepository interface using Mongoose
  */
 export class UserRepository extends IUserRepository {
-  constructor(userModel) {
+  constructor(userModel, correlationId = null) {
     super();
     this.UserModel = userModel;
+    this.correlationId = correlationId;
+    this.operationId = correlationId ? `${correlationId}_repo` : null;
+  }
+
+  // Method to set correlation ID for request-scoped operations
+  setCorrelationId(correlationId) {
+    this.correlationId = correlationId;
+    this.operationId = correlationId ? `${correlationId}_repo` : null;
   }
 
   async findById(id) {
-    const userDoc = await this.UserModel.findById(id);
-    return userDoc ? this._toEntity(userDoc) : null;
+    return withTimeout(
+      async () => {
+        const userDoc = await this.UserModel.findById(id);
+        return userDoc ? this._toEntity(userDoc) : null;
+      },
+      TimeoutPresets.DATABASE,
+      'user_findById',
+      {
+        correlationId: this.correlationId,
+        onTimeout: (error) => {
+          logger.error('User findById timed out', {
+            correlationId: this.correlationId,
+            userId: id,
+            timeout: TimeoutPresets.DATABASE
+          });
+        }
+      }
+    );
   }
 
   async findByEmail(email) {
-    const userDoc = await this.UserModel.findOne({ email: email.toLowerCase() });
-    return userDoc ? this._toEntity(userDoc) : null;
+    return withTimeout(
+      async () => {
+        const userDoc = await this.UserModel.findOne({ email: email.toLowerCase() });
+        return userDoc ? this._toEntity(userDoc) : null;
+      },
+      TimeoutPresets.DATABASE,
+      'user_findByEmail',
+      {
+        correlationId: this.correlationId,
+        onTimeout: (error) => {
+          logger.error('User findByEmail timed out', {
+            correlationId: this.correlationId,
+            email,
+            timeout: TimeoutPresets.DATABASE
+          });
+        }
+      }
+    );
   }
 
   async findByUsername(username) {
-    const userDoc = await this.UserModel.findOne({ username: username.toLowerCase() });
-    return userDoc ? this._toEntity(userDoc) : null;
+    return withTimeout(
+      async () => {
+        const userDoc = await this.UserModel.findOne({ username: username.toLowerCase() });
+        return userDoc ? this._toEntity(userDoc) : null;
+      },
+      TimeoutPresets.DATABASE,
+      'user_findByUsername',
+      {
+        correlationId: this.correlationId,
+        onTimeout: (error) => {
+          logger.error('User findByUsername timed out', {
+            correlationId: this.correlationId,
+            username,
+            timeout: TimeoutPresets.DATABASE
+          });
+        }
+      }
+    );
   }
 
 
@@ -51,8 +109,19 @@ export class UserRepository extends IUserRepository {
     if (filters.hasAvatar !== undefined) {
       query.avatarUrl = filters.hasAvatar ? { $exists: true, $ne: '' } : { $exists: false };
     }
+    // Bio filtering is now handled separately since bio is in user_profiles collection
+    let bioFilterUsers = null;
     if (filters.hasBio !== undefined) {
-      query.bio = filters.hasBio ? { $exists: true, $ne: '' } : { $exists: false };
+      // Import UserProfileModel for bio filtering
+      const { default: UserProfileModel } = await import('../models/user-profile-model.js');
+      const bioQuery = filters.hasBio ? { bio: { $exists: true, $ne: '' } } : { bio: { $exists: false } };
+      const bioProfiles = await UserProfileModel.find(bioQuery, { userId: 1 });
+      bioFilterUsers = bioProfiles.map(p => p.userId.toString());
+    }
+
+    // Apply bio filter if set
+    if (bioFilterUsers !== null) {
+      query._id = { $in: bioFilterUsers };
     }
 
     const skip = (page - 1) * limit;
@@ -80,12 +149,29 @@ export class UserRepository extends IUserRepository {
   }
 
   async update(id, updates) {
-    const updatedDoc = await this.UserModel.findByIdAndUpdate(
-      id,
-      { ...updates, updatedAt: new Date() },
-      { new: true }
+    return withTimeout(
+      async () => {
+        const updatedDoc = await this.UserModel.findByIdAndUpdate(
+          id,
+          { ...updates, updatedAt: new Date() },
+          { new: true }
+        );
+        return updatedDoc ? this._toEntity(updatedDoc) : null;
+      },
+      TimeoutPresets.DATABASE,
+      'user_update',
+      {
+        correlationId: this.correlationId,
+        onTimeout: (error) => {
+          logger.error('User update timed out', {
+            correlationId: this.correlationId,
+            userId: id,
+            updateFields: Object.keys(updates),
+            timeout: TimeoutPresets.DATABASE
+          });
+        }
+      }
     );
-    return updatedDoc ? this._toEntity(updatedDoc) : null;
   }
 
   async delete(id) {
@@ -103,6 +189,9 @@ export class UserRepository extends IUserRepository {
   }
 
   async getUserStats() {
+    // Import UserProfileModel for bio stats
+    const { default: UserProfileModel } = await import('../models/user-profile-model.js');
+
     const [
       totalUsers,
       usersWithAvatars,
@@ -112,7 +201,7 @@ export class UserRepository extends IUserRepository {
     ] = await Promise.all([
       this.UserModel.countDocuments(),
       this.UserModel.countDocuments({ avatarUrl: { $exists: true, $ne: '' } }),
-      this.UserModel.countDocuments({ bio: { $exists: true, $ne: '' } }),
+      UserProfileModel.countDocuments({ bio: { $exists: true, $ne: '' } }),
       this.UserModel.countDocuments({ phone: { $exists: true, $ne: null } }),
       this.UserModel.countDocuments({
         createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
@@ -153,13 +242,16 @@ export class UserRepository extends IUserRepository {
       hashedPassword: userDoc.hashedPassword,
       email: userDoc.email,
       displayName: userDoc.displayName,
+      role: userDoc.role,
       avatarUrl: userDoc.avatarUrl,
-      avatarId: userDoc.avatarId,
-      bio: userDoc.bio,
       phone: userDoc.phone,
       isActive: userDoc.isActive || false,
+      isFirstLogin: userDoc.isFirstLogin ?? true,
+      langKey: userDoc.langKey || 'en',
       createdAt: userDoc.createdAt,
-      updatedAt: userDoc.updatedAt
+      updatedAt: userDoc.updatedAt,
+      createdBy: userDoc.createdBy,
+      lastModifiedBy: userDoc.lastModifiedBy
     });
   }
 }

@@ -16,6 +16,7 @@ export interface SidebarProps {
   userInitials: string;
   userDisplayName: string;
   userRole?: string;
+  userAvatarUrl?: string;
   onNavigate: (href: string) => void;
   onProfileClick: () => void;
   onLogout: () => void;
@@ -30,6 +31,7 @@ export function Sidebar({
   userInitials,
   userDisplayName,
   userRole,
+  userAvatarUrl,
   onNavigate,
   onProfileClick,
   onLogout,
@@ -60,6 +62,7 @@ export function Sidebar({
           initials={userInitials}
           displayName={userDisplayName}
           role={userRole}
+          avatarUrl={userAvatarUrl}
           onProfileClick={onProfileClick}
           onLogout={onLogout}
         />

@@ -1,6 +1,6 @@
 'use client';
 
-import { UserAvatar } from '@/presentation/components/atoms';
+import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/ui';
 import { cn } from '@/shared/utils';
 import { ChevronDown } from 'lucide-react';
 import React from 'react';
@@ -9,10 +9,11 @@ export interface UserMenuTriggerProps extends React.ButtonHTMLAttributes<HTMLBut
   initials: string;
   displayName: string;
   role?: string;
+  avatarUrl?: string;
 }
 
 export const UserMenuTrigger = React.forwardRef<HTMLButtonElement, UserMenuTriggerProps>(
-  ({ initials, displayName, role, className, ...props }, ref) => {
+  ({ initials, displayName, role, avatarUrl, className, ...props }, ref) => {
     // Capitalize the role for display
     const displayRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User';
 
@@ -32,11 +33,16 @@ export const UserMenuTrigger = React.forwardRef<HTMLButtonElement, UserMenuTrigg
         <div className="flex items-center space-x-3">
           {/* Avatar */}
           <div className="relative">
-            <UserAvatar initials={initials} />
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={avatarUrl} alt={`${initials} avatar`} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
           </div>
           {/* User info */}
           <div className="text-left min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+            <p className="text-xs font-medium text-foreground truncate">{displayName}</p>
             <p className="text-xs text-muted-foreground">{displayRole}</p>
           </div>
         </div>

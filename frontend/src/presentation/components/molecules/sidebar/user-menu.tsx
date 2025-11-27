@@ -14,6 +14,7 @@ export interface UserMenuProps {
   initials: string;
   displayName: string;
   role?: string;
+  avatarUrl?: string;
   onProfileClick: () => void;
   onLogout: () => void;
   className?: string;
@@ -23,18 +24,20 @@ export function UserMenu({
   initials,
   displayName,
   role,
+  avatarUrl,
   onProfileClick,
   onLogout,
   className,
 }: UserMenuProps) {
   return (
-    <div className={`border-t border-border shrink-0 ${className || ''}`}>
+    <div className={`shrink-0 ${className || ''}`}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <UserMenuTrigger
             initials={initials}
             displayName={displayName}
             role={role}
+            avatarUrl={avatarUrl}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent

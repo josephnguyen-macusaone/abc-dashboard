@@ -100,13 +100,6 @@ export const userSchemas = {
         'string.empty': 'Username cannot be empty'
       }),
 
-    hashedPassword: Joi.string()
-      .required()
-      .messages({
-        'any.required': 'Password is required',
-        'string.empty': 'Password cannot be empty'
-      }),
-
     email: Joi.string()
       .email({ tlds: { allow: false } })
       .required()
@@ -132,18 +125,6 @@ export const userSchemas = {
       .uri()
       .messages({
         'string.uri': 'Avatar URL must be a valid URI'
-      }),
-
-    avatarId: Joi.string()
-      .messages({
-        'string.base': 'Avatar ID must be a string'
-      }),
-
-    bio: Joi.string()
-      .max(500)
-      .allow('')
-      .messages({
-        'string.max': 'Bio cannot exceed 500 characters'
       }),
 
     phone: Joi.string()
@@ -172,19 +153,6 @@ export const userSchemas = {
       .allow('')
       .messages({
         'string.uri': 'Avatar URL must be a valid URI'
-      }),
-
-    avatarId: Joi.string()
-      .allow('')
-      .messages({
-        'string.base': 'Avatar ID must be a string'
-      }),
-
-    bio: Joi.string()
-      .max(500)
-      .allow('')
-      .messages({
-        'string.max': 'Bio cannot exceed 500 characters'
       }),
 
     phone: Joi.string()
@@ -217,18 +185,6 @@ export const userSchemas = {
         'string.uri': 'Avatar URL must be a valid URI'
       }),
 
-    avatarId: Joi.string()
-      .allow('')
-      .messages({
-        'string.base': 'Avatar ID must be a string'
-      }),
-
-    bio: Joi.string()
-      .max(500)
-      .allow('')
-      .messages({
-        'string.max': 'Bio cannot exceed 500 characters'
-      }),
 
     phone: Joi.string()
       .pattern(/^[\+]?[1-9][\d]{0,15}$/)
@@ -249,15 +205,9 @@ export const userSchemas = {
       .allow('')
       .messages({
         'string.uri': 'Avatar URL must be a valid URI'
-      }),
-
-    avatarId: Joi.string()
-      .allow('')
-      .messages({
-        'string.base': 'Avatar ID must be a string'
       })
   }).min(1).messages({
-    'object.min': 'At least one avatar field must be provided'
+    'object.min': 'Avatar URL must be provided'
   }),
 
   /**

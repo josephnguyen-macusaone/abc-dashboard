@@ -10,7 +10,8 @@ export const config = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1h', // Access token expiration
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d', // Refresh token expiration
   JWT_ISSUER: process.env.JWT_ISSUER || 'abc-dashboard',
-  JWT_EMAIL_VERIFICATION_EXPIRES_IN: process.env.JWT_EMAIL_VERIFICATION_EXPIRES_IN || '10m',
+  JWT_EMAIL_VERIFICATION_EXPIRES_IN: process.env.JWT_EMAIL_VERIFICATION_EXPIRES_IN || '24h', // Email verification expiration
+  JWT_PASSWORD_RESET_EXPIRES_IN: process.env.JWT_PASSWORD_RESET_EXPIRES_IN || '10m', // Password reset expiration
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 12,
 

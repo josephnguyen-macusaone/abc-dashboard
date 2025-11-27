@@ -1,58 +1,57 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Typography } from '@/presentation/components/atoms';
-import { InputField, TextAreaField, FormField } from '@/presentation/components/molecules';
+import { Button } from '@/presentation/components/atoms';
+import { InputField, TextAreaField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
-import { useToast } from '@/presentation/hooks/use-toast';
+import { useErrorHandler } from '@/presentation/contexts/error-context';
+import { toast } from '@/presentation/components/atoms';
 import { cn } from '@/shared/utils';
-import { User, Save, X, Loader2 } from 'lucide-react';
+import { Save, X, Loader2 } from 'lucide-react';
 
 interface ProfileUpdateFormProps {
+  initialData?: {
+    displayName: string;
+    bio: string;
+    phone: string;
+  };
   onSuccess?: () => void;
   onCancel?: () => void;
   className?: string;
 }
 
 interface ProfileFormData {
-  firstName: string;
-  lastName: string;
   displayName: string;
   bio: string;
   phone: string;
-  avatarUrl: string;
 }
 
-export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpdateFormProps) {
+export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className }: ProfileUpdateFormProps) {
   const { user, handleUpdateProfile } = useAuth();
-  const { showSuccess } = useToast();
+  const { handleApiError } = useErrorHandler();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<ProfileFormData>({
-    firstName: '',
-    lastName: '',
-    displayName: '',
-    bio: '',
-    phone: '',
-    avatarUrl: '',
+  const [formData, setFormData] = useState<ProfileFormData>(() => {
+    console.log('initialData', initialData);
+    return {
+      displayName: initialData?.displayName ?? '',
+      bio: initialData?.bio ?? '',
+      phone: initialData?.phone ?? '',
+    };
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileFormData, string | null>>>({});
 
-  // Initialize form with current user data
+  // Update form data when initialData changes (for re-initialization)
   useEffect(() => {
-    if (user) {
+    if (initialData) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        displayName: user.displayName || '',
-        bio: user.bio || '',
-        phone: user.phone || '',
-        avatarUrl: user.avatar || '',
+        displayName: initialData.displayName,
+        bio: initialData.bio,
+        phone: initialData.phone,
       });
     }
-  }, [user]);
+  }, [initialData]);
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -66,21 +65,14 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
   const validateForm = (): boolean => {
     const validationErrors: Partial<Record<keyof ProfileFormData, string | null>> = {};
 
-    if (!formData.firstName.trim()) {
-      validationErrors.firstName = 'First name is required';
-    }
-
-    if (!formData.lastName.trim()) {
-      validationErrors.lastName = 'Last name is required';
+    if (!formData.displayName.trim()) {
+      validationErrors.displayName = 'Display name is required';
     }
 
     if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
       validationErrors.phone = 'Please enter a valid phone number';
     }
 
-    if (formData.avatarUrl && !/^https?:\/\/.+/.test(formData.avatarUrl)) {
-      validationErrors.avatarUrl = 'Please enter a valid URL starting with http:// or https://';
-    }
 
     setErrors(validationErrors);
     return Object.values(validationErrors).every(error => !error);
@@ -92,102 +84,44 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setError(null);
 
     try {
-      // Prepare update data - only include changed fields
-      const updates: Partial<ProfileFormData> = {};
+      // Prepare complete profile data for PUT request
+      const cleanString = (str: string) => str.trim().replace(/[\r\n\t]/g, ' ').replace(/"/g, '\\"');
 
-      if (formData.firstName !== (user?.firstName || '')) updates.firstName = formData.firstName.trim();
-      if (formData.lastName !== (user?.lastName || '')) updates.lastName = formData.lastName.trim();
-      if (formData.displayName !== (user?.displayName || '')) updates.displayName = formData.displayName.trim();
-      if (formData.bio !== (user?.bio || '')) updates.bio = formData.bio.trim();
-      if (formData.phone !== (user?.phone || '')) updates.phone = formData.phone.trim();
-      if (formData.avatarUrl !== (user?.avatar || '')) updates.avatarUrl = formData.avatarUrl.trim();
+      const profileData = {
+        displayName: cleanString(formData.displayName) || '',
+        bio: cleanString(formData.bio) || '',
+        phone: cleanString(formData.phone) || '',
+      };
 
-      if (Object.keys(updates).length === 0) {
-        showSuccess('No changes to save');
+      // Check if any data actually changed
+      const hasDisplayNameChanged = formData.displayName.trim() !== (user?.displayName ?? '');
+      const hasBioChanged = formData.bio.trim() !== (user?.bio ?? '');
+      const hasPhoneChanged = formData.phone.trim() !== (user?.phone ?? '');
+
+      if (!hasDisplayNameChanged && !hasBioChanged && !hasPhoneChanged) {
+        toast.success('No changes to save');
         onSuccess?.();
         return;
       }
 
-      await handleUpdateProfile(updates);
-      showSuccess('Profile updated successfully!');
+      await handleUpdateProfile(profileData);
+      toast.success('Profile updated successfully!');
       onSuccess?.();
     } catch (error) {
-      // Error toast is now handled by the auth context
-      // We can still show local error state for validation feedback if needed
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
-      setError(errorMessage);
+      handleApiError(error, 'Failed to update profile');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn('w-full max-w-2xl space-y-6', className)}>
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="rounded-lg bg-primary/10 p-2">
-          <User className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <Typography variant="h3" size="lg" weight="semibold">
-            Update Profile
-          </Typography>
-          <Typography variant="p" size="sm" className="text-muted-foreground">
-            Update your personal information and preferences
-          </Typography>
-        </div>
-      </div>
-
-      {/* Error Alert */}
-      {error && (
-        <div className={cn(
-          'p-4 rounded-lg border border-destructive/20 bg-destructive/10',
-          'flex items-start space-x-3'
-        )}>
-          <div className="flex-1">
-            <Typography variant="p" size="sm" weight="medium" color="destructive" className="text-destructive">
-              Update Error
-            </Typography>
-            <Typography variant="p" size="sm" color="destructive" className="text-destructive/80 mt-1">
-              {error}
-            </Typography>
-          </div>
-        </div>
-      )}
-
+    <div className={cn('w-full space-y-6', className)}>
       {/* Profile Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Name Fields */}
+      <form onSubmit={handleSubmit} className="space-y-6" >
+        {/* Display Name and Phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField
-            label="First Name"
-            type="text"
-            placeholder="Enter your first name"
-            value={formData.firstName}
-            onChange={(e) => handleInputChange('firstName', e.target.value)}
-            error={errors.firstName}
-            disabled={isLoading}
-            inputClassName="h-11"
-            className="space-y-3"
-          />
-
-          <InputField
-            label="Last Name"
-            type="text"
-            placeholder="Enter your last name"
-            value={formData.lastName}
-            onChange={(e) => handleInputChange('lastName', e.target.value)}
-            error={errors.lastName}
-            disabled={isLoading}
-            inputClassName="h-11"
-            className="space-y-3"
-          />
-        </div>
-
-        {/* Display Name */}
         <InputField
           label="Display Name"
           type="text"
@@ -200,7 +134,6 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
           className="space-y-3"
         />
 
-        {/* Phone */}
         <InputField
           label="Phone Number"
           type="tel"
@@ -212,19 +145,8 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
           inputClassName="h-11"
           className="space-y-3"
         />
+        </div>
 
-        {/* Avatar URL */}
-        <InputField
-          label="Avatar URL"
-          type="url"
-          placeholder="https://example.com/avatar.jpg"
-          value={formData.avatarUrl}
-          onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
-          error={errors.avatarUrl}
-          disabled={isLoading}
-          inputClassName="h-11"
-          className="space-y-3"
-        />
 
         {/* Bio */}
         <TextAreaField
@@ -239,21 +161,22 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
         />
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row justify-end gap-3">
           <Button
             type="submit"
             disabled={isLoading}
-            className="flex-1 sm:flex-none"
+            className="w-full sm:w-auto"
+            variant="default"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Updating...
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className='text-xs pb-0.5'>Updating...</span>
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                <Save className="w-4 h-4" />
+                <span className='text-xs pb-0.5'>Save Changes</span>
               </>
             )}
           </Button>
@@ -263,10 +186,10 @@ export function ProfileUpdateForm({ onSuccess, onCancel, className }: ProfileUpd
             variant="outline"
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 sm:flex-none"
+            className="w-full sm:w-auto"
           >
-            <X className="w-4 h-4 mr-2" />
-            Cancel
+            <X className="w-4 h-4" />
+            <span className='text-xs pb-0.5'>Cancel</span>
           </Button>
         </div>
       </form>

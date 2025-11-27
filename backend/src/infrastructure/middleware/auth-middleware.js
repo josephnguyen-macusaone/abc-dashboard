@@ -66,6 +66,61 @@ export class AuthMiddleware {
   };
 
   /**
+   * Authorize based on user roles and permissions
+   * @param {string[]} requiredPermissions - Array of required permissions
+   */
+  authorize = (requiredPermissions) => {
+    return (req, res, next) => {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      // Import here to avoid circular dependencies
+      const { hasPermission } = require('../../shared/constants/roles.js');
+
+      // Check if user has any of the required permissions
+      const hasRequiredPermission = requiredPermissions.some(permission =>
+        hasPermission(req.user.role, permission)
+      );
+
+      if (!hasRequiredPermission) {
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient permissions'
+        });
+      }
+
+      next();
+    };
+  };
+
+  /**
+   * Authorize admin only access
+   */
+  requireAdmin = (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const { ROLES } = require('../../shared/constants/roles.js');
+
+    if (req.user.role !== ROLES.ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    next();
+  };
+
+  /**
    * Optional authentication - doesn't fail if no token
    */
   optionalAuth = async (req, res, next) => {
@@ -112,6 +167,13 @@ export class AuthMiddleware {
 // Export middleware functions from container
 import { container } from '../../shared/kernel/container.js';
 
-export const authenticate = container.getAuthenticateMiddleware();
-export const authorizeSelf = container.getAuthorizeSelfMiddleware();
-export const optionalAuth = container.getOptionalAuthMiddleware();
+const authMiddleware = new AuthMiddleware(
+  container.getTokenService(),
+  container.getUserRepository()
+);
+
+export const authenticate = authMiddleware.authenticate;
+export const authorizeSelf = authMiddleware.authorizeSelf;
+export const authorize = authMiddleware.authorize;
+export const requireAdmin = authMiddleware.requireAdmin;
+export const optionalAuth = authMiddleware.optionalAuth;

@@ -16,7 +16,14 @@ export class User {
     public readonly bio?: string,
     public readonly phone?: string,
     public readonly lastLogin?: Date,
-    public readonly updatedAt?: Date
+    public readonly updatedAt?: Date,
+    public readonly isFirstLogin?: boolean,
+    public readonly langKey?: string,
+    public readonly emailVerified?: boolean,
+    public readonly lastActivity?: Date,
+    public readonly createdAt?: Date,
+    public readonly createdBy?: string,
+    public readonly lastModifiedBy?: string
   ) {}
 
   /**
@@ -48,6 +55,57 @@ export class User {
   }
 
   /**
+   * Check if user needs to change password on first login
+   */
+  needsPasswordChange(): boolean {
+    return this.isFirstLogin === true;
+  }
+
+  /**
+   * Check if user email is verified
+   */
+  isEmailVerified(): boolean {
+    return this.emailVerified === true;
+  }
+
+  /**
+   * Get user's preferred language
+   */
+  getLanguage(): string {
+    return this.langKey || 'en';
+  }
+
+  /**
+   * Activate user account (email verification)
+   */
+  activateAccount(): { type: string; userId: string } {
+    if (this.isActive) {
+      throw new Error('Account already activated');
+    }
+
+    // Return domain event for account activation
+    return {
+      type: 'UserActivated',
+      userId: this.id
+    };
+  }
+
+  /**
+   * Record user's first login
+   */
+  recordFirstLogin(): { type: string; userId: string } {
+    if (this.isFirstLogin === false) {
+      throw new Error('First login already recorded');
+    }
+
+    // Return domain event for first login
+    return {
+      type: 'UserFirstLoginRecorded',
+      userId: this.id
+    };
+  }
+
+  /**
    * Create a new User instance from plain object
    */
   static fromObject(obj: any): User {
@@ -64,7 +122,14 @@ export class User {
       obj.bio,
       obj.phone,
       obj.lastLogin ? new Date(obj.lastLogin) : undefined,
-      obj.updatedAt ? new Date(obj.updatedAt) : undefined
+      obj.updatedAt ? new Date(obj.updatedAt) : undefined,
+      obj.isFirstLogin !== undefined ? obj.isFirstLogin : true, // Default to true for new users
+      obj.langKey || 'en',
+      obj.emailVerified !== undefined ? obj.emailVerified : false,
+      obj.lastActivity ? new Date(obj.lastActivity) : undefined,
+      obj.createdAt ? new Date(obj.createdAt) : undefined,
+      obj.createdBy,
+      obj.lastModifiedBy
     );
   }
 
@@ -86,6 +151,13 @@ export class User {
       phone: this.phone,
       lastLogin: this.lastLogin?.toISOString(),
       updatedAt: this.updatedAt?.toISOString(),
+      isFirstLogin: this.isFirstLogin,
+      langKey: this.langKey,
+      emailVerified: this.emailVerified,
+      lastActivity: this.lastActivity?.toISOString(),
+      createdAt: this.createdAt?.toISOString(),
+      createdBy: this.createdBy,
+      lastModifiedBy: this.lastModifiedBy,
     };
   }
 }

@@ -15,19 +15,20 @@ export class ChangePasswordUseCase {
     this.emailService = emailService;
   }
 
-  async execute(userId, { currentPassword, newPassword }) {
+  async execute(userId, { currentPassword, newPassword, isFirstLoginChange = false }) {
     try {
       // Validate input
       if (!userId) {
         throw new ValidationException('User ID is required');
       }
 
-      if (!currentPassword || !newPassword) {
-        throw new ValidationException('Current password and new password are required');
+      if (!newPassword) {
+        throw new ValidationException('New password is required');
       }
 
-      if (currentPassword === newPassword) {
-        throw new ValidationException('New password must be different from current password');
+      // For first login changes, currentPassword is not required
+      if (!isFirstLoginChange && !currentPassword) {
+        throw new ValidationException('Current password is required');
       }
 
       // Validate new password strength (basic check)
@@ -41,53 +42,79 @@ export class ChangePasswordUseCase {
         throw new ResourceNotFoundException('User');
       }
 
-      // Verify current password
-      const isCurrentPasswordValid = await this.authService.verifyPassword(currentPassword, user.hashedPassword);
-      if (!isCurrentPasswordValid) {
-        throw new ValidationException('Current password is incorrect');
+      // Verify current password (skip for first login changes)
+      if (!isFirstLoginChange) {
+        const isCurrentPasswordValid = await this.authService.verifyPassword(currentPassword, user.hashedPassword);
+        if (!isCurrentPasswordValid) {
+          throw new ValidationException('Current password is incorrect');
+        }
       }
 
       // Hash new password
       const newHashedPassword = await this.authService.hashPassword(newPassword);
 
-      // Update user password
-      const updatedUser = await this.userRepository.update(userId, {
+      // Prepare update data
+      const updateData = {
         hashedPassword: newHashedPassword
-      });
+      };
+
+      // Mark first login as completed if this is a first login change
+      if (isFirstLoginChange && user.isFirstLogin) {
+        updateData.isFirstLogin = false;
+      }
+
+      // Update user password and first login status
+      const updatedUser = await this.userRepository.update(userId, updateData);
 
       if (!updatedUser) {
         throw new Error('Failed to update password');
       }
 
-      // Send password change notification email
+      // Send appropriate notification email
       try {
         if (this.emailService) {
+          const emailSubject = isFirstLoginChange
+            ? 'Welcome - Password Set Successfully'
+            : 'Password Changed Successfully';
+
+          const emailTemplate = isFirstLoginChange
+            ? 'Hi {{displayName}}! Welcome to ABC Dashboard. Your password has been successfully set. You can now access all features.'
+            : 'Hi {{displayName}}! Your password has been successfully changed. If you did not make this change, please contact support immediately.';
+
           await this.emailService.sendEmail(
             user.email,
-            'Password Changed Successfully',
-            'Hi {{displayName}}! Your password has been successfully changed. If you did not make this change, please contact support immediately.',
+            emailSubject,
+            emailTemplate,
             { displayName: user.displayName }
           );
         }
 
         // Log security event
-        logger.security('Password changed', {
+        const eventType = isFirstLoginChange ? 'First login password set' : 'Password changed';
+        logger.security(eventType, {
           userId,
           email: user.email,
-          changedAt: new Date().toISOString()
+          changedAt: new Date().toISOString(),
+          isFirstLoginChange
         });
 
-        logger.info('Password changed successfully', {
+        logger.info(`${eventType} successfully`, {
           userId,
-          email: user.email
+          email: user.email,
+          isFirstLoginChange
         });
       } catch (error) {
         logger.error('Failed to send password change notification:', error);
         // Don't fail the password change if email fails
       }
 
+      const message = isFirstLoginChange
+        ? 'Welcome! Your password has been set successfully.'
+        : 'Password changed successfully';
+
       return {
-        message: 'Password changed successfully'
+        message,
+        isFirstLoginChange
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

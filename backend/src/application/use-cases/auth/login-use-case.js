@@ -7,6 +7,7 @@ import {
   AccountDeactivatedException,
   ValidationException
 } from '../../../domain/exceptions/domain.exception.js';
+import { withTimeout, TimeoutPresets } from '../../../shared/utils/retry.js';
 
 export class LoginUseCase {
   constructor(userRepository, authService, tokenService) {
@@ -33,16 +34,24 @@ export class LoginUseCase {
         throw new ValidationException('Please verify your email before logging in. Check your email for the verification link.');
       }
 
-      // Verify password
-      const isPasswordValid = await this.authService.verifyPassword(password, user.hashedPassword);
+      // Verify password with timeout
+      const isPasswordValid = await withTimeout(
+        () => this.authService.verifyPassword(password, user.hashedPassword),
+        TimeoutPresets.QUICK, // Password verification should be fast
+        'password_verification'
+      );
       if (!isPasswordValid) {
         throw new InvalidCredentialsException();
       }
 
+      // Check if this is first login and password change is required
+      const requiresPasswordChange = user.isFirstLogin === true;
+
       // Generate tokens
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
-        email: user.email
+        email: user.email,
+        requiresPasswordChange
       });
 
       const refreshToken = this.tokenService.generateRefreshToken({
@@ -56,15 +65,18 @@ export class LoginUseCase {
           username: user.username,
           email: user.email,
           displayName: user.displayName,
+          role: user.role,
           avatarUrl: user.avatarUrl,
-          bio: user.bio,
           phone: user.phone,
+          isActive: user.isActive,
+          isFirstLogin: user.isFirstLogin,
           createdAt: user.createdAt
         },
         tokens: {
           accessToken,
           refreshToken
-        }
+        },
+        requiresPasswordChange
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

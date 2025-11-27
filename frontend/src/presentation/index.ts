@@ -8,4 +8,3 @@ export * from './components';
 export * from './contexts';
 
 // Custom Hooks
-export { useToast } from './hooks/use-toast';

@@ -9,5 +9,8 @@ export { authSchemas } from './auth.schemas.js';
 // User management schemas
 export { userSchemas } from './user.schemas.js';
 
+// Profile management schemas
+export { profileSchemas } from './profile.schemas.js';
+
 // Future schemas can be added here:
 // export { adminSchemas } from './admin.schemas.js';

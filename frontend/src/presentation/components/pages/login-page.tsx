@@ -12,17 +12,10 @@ function LoginPage() {
   const { user } = useAuth();
 
   const handleLoginSuccess = () => {
-    // Redirect based on user role
-    if (user?.role) {
-      router.push(`/dashboard/${user.role}`);
-    } else {
-      router.push('/dashboard');
-    }
+    // Always redirect to general dashboard first - it will handle role-based redirection internally
+    router.push('/dashboard');
   };
 
-  const handleSwitchToRegister = () => {
-    router.push('/register');
-  };
 
   return (
     <div className="h-screen flex items-center justify-center bg-background px-4 py-6 sm:px-6 lg:px-8 overflow-hidden">
@@ -51,7 +44,6 @@ function LoginPage() {
           >
             <LoginForm
               onSuccess={handleLoginSuccess}
-              onSwitchToRegister={handleSwitchToRegister}
             />
           </AuthTemplate>
         </ErrorBoundary>

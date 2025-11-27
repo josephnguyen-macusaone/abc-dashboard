@@ -122,7 +122,7 @@ export class AuthApiService {
 
 
   /**
-   * Get user profile
+   * Get user profile (complete profile data from auth endpoint)
    */
   static async getProfile(): Promise<any> {
     try {
@@ -148,7 +148,7 @@ export class AuthApiService {
     avatarUrl: string;
   }>): Promise<ProfileUpdateResponse> {
     try {
-      const response = await httpClient.put<ApiResponse<ProfileUpdateResponse>>('/auth/profile', updates);
+      const response = await httpClient.put<ApiResponse<ProfileUpdateResponse>>('/profile', updates);
       if (!response.data) {
         throw new Error('Update profile response missing data');
       }

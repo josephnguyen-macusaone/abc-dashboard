@@ -18,6 +18,8 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  emailVerificationRequired: boolean;
+  emailVerificationMessage: string | null;
 
   // Actions
   initialize: () => Promise<void>;
@@ -39,6 +41,7 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
+  clearEmailVerificationState: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -68,6 +71,8 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isLoading: true,
           isAuthenticated: false,
+          emailVerificationRequired: false,
+          emailVerificationMessage: null,
 
           // Initialize auth state from storage
           initialize: async () => {
@@ -135,25 +140,83 @@ export const useAuthStore = create<AuthState>()(
                 LocalStorageService.setRefreshToken(authResult.tokens.refreshToken);
               }
 
-              // Transform the login response user to User entity
-              const loginUser = User.fromObject({
-                id: authResult.user.id,
-                name: authResult.user.name,
-                email: authResult.user.email,
-                role: authResult.user.role,
-                isActive: authResult.user.isActive,
-                avatar: authResult.user.avatar,
-                lastLogin: new Date(),
-                updatedAt: new Date()
-              });
+              // Fetch complete profile data after login to get merged user + profile data
+              let userId = authResult.user.id;
+              try {
+                const profileData = await authService.getCompleteProfile();
+                if (profileData) {
+                  userId = profileData.id; // Update with profile data ID if different
 
-              set({ user: loginUser });
-              CookieService.setUser(loginUser);
-              LocalStorageService.setUser(loginUser);
+                  // Create complete User entity from merged profile data
+                  const completeUser = User.fromObject({
+                    id: profileData.id,
+                    name: profileData.displayName || profileData.username,
+                    email: profileData.email,
+                    role: profileData.role,
+                    isActive: profileData.isActive,
+                    avatar: profileData.avatarUrl,
+                    displayName: profileData.displayName,
+                    bio: profileData.bio,
+                    phone: profileData.phone,
+                    emailVerified: profileData.emailVerified,
+                    lastLogin: new Date(),
+                    updatedAt: new Date(),
+                    createdAt: profileData.createdAt ? new Date(profileData.createdAt) : undefined
+                  });
 
-              set({ isAuthenticated: true });
+                  set({ user: completeUser });
+                  CookieService.setUser(completeUser);
+                  LocalStorageService.setUser(completeUser);
+                  set({ isAuthenticated: true });
+
+                  storeLogger.info('Profile data loaded after login', {
+                    userId: completeUser.id,
+                    hasAvatar: !!profileData.avatarUrl,
+                    hasBio: !!profileData.bio,
+                    phone: profileData.phone
+                  });
+                } else {
+                  // Profile response invalid, create basic user from login data
+                  throw new Error('Invalid profile response');
+                }
+              } catch (profileError) {
+                // Profile fetch failed, create basic user from login data
+                storeLogger.warn('Failed to fetch complete profile after login, using basic login data', {
+                  userId,
+                  error: profileError instanceof Error ? profileError.message : String(profileError)
+                });
+
+                const basicUser = User.fromObject({
+                  id: authResult.user.id,
+                  name: authResult.user.displayName || authResult.user.name,
+                  email: authResult.user.email,
+                  role: authResult.user.role,
+                  isActive: authResult.user.isActive,
+                  avatar: authResult.user.avatar,
+                  displayName: authResult.user.displayName,
+                  phone: authResult.user.phone,
+                  lastLogin: new Date(),
+                  updatedAt: new Date()
+                });
+
+                set({ user: basicUser });
+                CookieService.setUser(basicUser);
+                LocalStorageService.setUser(basicUser);
+                set({ isAuthenticated: true });
+              }
             } catch (error: any) {
-              throw new Error(getErrorMessage(error));
+              const errorMessage = getErrorMessage(error);
+
+              // Check if this is an email verification error
+              if (errorMessage.includes('verify your email') || errorMessage.includes('Check your email')) {
+                set({
+                  emailVerificationRequired: true,
+                  emailVerificationMessage: errorMessage
+                });
+                return; // Don't throw error for email verification
+              }
+
+              throw new Error(errorMessage);
             } finally {
               set({ isLoading: false });
             }
@@ -310,6 +373,11 @@ export const useAuthStore = create<AuthState>()(
             set({ isAuthenticated: !!(get().user && token) });
           },
           setLoading: (isLoading: boolean) => set({ isLoading }),
+
+          clearEmailVerificationState: () => set({
+            emailVerificationRequired: false,
+            emailVerificationMessage: null
+          }),
         };
       },
       {

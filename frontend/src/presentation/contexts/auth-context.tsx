@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
-import { useToast } from '@/presentation/hooks/use-toast';
+import { toast } from '@/presentation/components/atoms';
 import { useErrorHandler } from '@/presentation/contexts/error-context';
 import { User } from '@/domain/entities/user-entity';
 
@@ -53,7 +53,6 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
-  const { toast } = useToast();
   const { handleAuthError } = useErrorHandler();
 
   // Use Zustand store
@@ -79,8 +78,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogin = async (email: string, password: string) => {
     try {
       await login(email, password);
-    } catch (error: any) {
-      handleAuthError(error);
+    } catch (error: unknown) {
+      // Don't handle email verification errors as auth errors
+      const errorMessage = (error as Error)?.message || '';
+      if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
+        handleAuthError(error);
+      }
       throw error; // Re-throw for component-level handling if needed
     }
   };
@@ -100,11 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await logout();
 
       // Show success toast
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account.",
-        variant: "default",
-      });
+      toast.success("Logged out successfully");
 
       router.push('/login');
     } catch (error) {

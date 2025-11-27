@@ -269,6 +269,36 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
+  async getProfile(): Promise<any> {
+    const correlationId = generateCorrelationId();
+
+    try {
+      this.logger.http(`Making get profile API call`, {
+        correlationId,
+        operation: 'get_profile_api_request',
+      });
+
+      const startTime = Date.now();
+      const response = await authApi.getProfile();
+      const duration = Date.now() - startTime;
+
+      this.logger.http(`Get profile API call successful`, {
+        correlationId,
+        duration,
+        operation: 'get_profile_api_success',
+      });
+
+      return response;
+    } catch (error) {
+      this.logger.http(`Get profile API call failed`, {
+        correlationId,
+        operation: 'get_profile_api_error',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
   async updateProfile(updates: Partial<{
     firstName: string;
     lastName: string;
@@ -290,7 +320,7 @@ export class AuthRepository implements IAuthRepository {
       const response = await authApi.updateProfile(updates);
       const duration = Date.now() - startTime;
 
-      const user = User.fromObject(response);
+      const user = User.fromObject(response.user);
 
       this.logger.http(`Update profile API call successful`, {
         correlationId,

@@ -2,41 +2,42 @@
  * Auth Controller
  * Handles HTTP requests for authentication
  */
-import {
-  InvalidCredentialsException,
-  AccountDeactivatedException,
-  ValidationException,
-  EmailAlreadyExistsException,
-  ResourceNotFoundException
-} from '../../domain/exceptions/domain.exception.js';
-import logger from '../../infrastructure/config/logger.js';
+import { BaseController } from './base-controller.js';
+import logger from '../config/logger.js';
 
-export class AuthController {
-  constructor(loginUseCase, registerUseCase, refreshTokenUseCase, verifyEmailUseCase, updateProfileUseCase, changePasswordUseCase, tokenService) {
+export class AuthController extends BaseController {
+  constructor(loginUseCase, registerUseCase, refreshTokenUseCase, verifyEmailUseCase, changePasswordUseCase, requestPasswordResetUseCase, resetPasswordUseCase, tokenService) {
+    super();
     this.loginUseCase = loginUseCase;
     this.registerUseCase = registerUseCase;
     this.refreshTokenUseCase = refreshTokenUseCase;
     this.verifyEmailUseCase = verifyEmailUseCase;
-    this.updateProfileUseCase = updateProfileUseCase;
     this.changePasswordUseCase = changePasswordUseCase;
+    this.requestPasswordResetUseCase = requestPasswordResetUseCase;
+    this.resetPasswordUseCase = resetPasswordUseCase;
     this.tokenService = tokenService;
   }
 
   async register(req, res) {
     try {
-      const { username, email, password, firstName, lastName, avatarUrl, avatarId, bio, phone } = req.body;
+      this.validateRequired(req, ['username', 'email', 'password']);
 
-      const result = await this.registerUseCase.execute({
-        username,
-        email,
-        password,
-        firstName,
-        lastName,
-        avatarUrl,
-        avatarId,
-        bio,
-        phone
-      });
+      const { username, email, password, firstName, lastName, avatarUrl, bio, phone } = req.body;
+
+      const result = await this.executeUseCase(
+        this.registerUseCase,
+        {
+          username,
+          email,
+          password,
+          firstName,
+          lastName,
+          avatarUrl,
+          bio,
+          phone
+        },
+        { operation: 'register', email, username }
+      );
 
       // Generate tokens for immediate login (skip email verification requirement)
       const tokens = await this.tokenService.generateTokens({
@@ -57,26 +58,26 @@ export class AuthController {
         }
       });
     } catch (error) {
-      // Handle domain exceptions
-      if (error instanceof ValidationException ||
-          error instanceof EmailAlreadyExistsException) {
-        return res.status(error.statusCode).json(error.toResponse());
-      }
-
-      // Handle unexpected errors
-      logger.error('Registration error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'An unexpected error occurred during registration'
+      return this.handleError(error, req, res, {
+        operation: 'register',
+        requestBody: { ...req.body, password: '[REDACTED]' }
       });
     }
   }
 
   async login(req, res) {
-    try {
-      const { email, password } = req.body;
+    let email, password;
 
-      const result = await this.loginUseCase.execute({ email, password });
+    try {
+      this.validateRequired(req, ['email', 'password']);
+
+      ({ email, password } = req.body);
+
+      const result = await this.executeUseCase(
+        this.loginUseCase,
+        { email, password },
+        { operation: 'login', email }
+      );
 
       res.json({
         success: true,
@@ -84,18 +85,12 @@ export class AuthController {
         data: result
       });
     } catch (error) {
-      // Handle domain exceptions
-      if (error instanceof InvalidCredentialsException ||
-          error instanceof AccountDeactivatedException ||
-          error instanceof ValidationException) {
-        return res.status(error.statusCode).json(error.toResponse());
-      }
-
-      // Handle unexpected errors
-      logger.error('Login error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'An unexpected error occurred during login'
+      return this.handleError(error, req, res, {
+        operation: 'login',
+        requestBody: {
+          email: email || 'undefined',
+          password: '[REDACTED]'
+        }
       });
     }
   }
@@ -126,19 +121,24 @@ export class AuthController {
         if (typeof req.user.getProfile === 'function') {
           userData = req.user.getProfile();
         } else {
-          // Fallback: extract properties manually
-          userData = {
-            id: req.user.id || req.user._id?.toString(),
-            username: req.user.username || null,
-            email: req.user.email || null,
-            displayName: req.user.displayName || null,
-            avatarUrl: req.user.avatarUrl || null,
-            avatarId: req.user.avatarId || null,
-            bio: req.user.bio || null,
-            phone: req.user.phone || null,
-            createdAt: req.user.createdAt || null,
-            updatedAt: req.user.updatedAt || null
-          };
+        // Get user profile for bio
+        const { container } = await import('../../shared/kernel/container.js');
+        const userProfileRepository = container.getUserProfileRepository();
+        const profile = await userProfileRepository.findByUserId(req.user.id);
+
+        // Fallback: extract properties manually
+        userData = {
+          id: req.user.id || req.user._id?.toString(),
+          username: req.user.username || null,
+          email: req.user.email || null,
+          displayName: req.user.displayName || null,
+          role: req.user.role || null,
+          avatarUrl: req.user.avatarUrl || null,
+          bio: profile?.bio || null,
+          phone: req.user.phone || null,
+          createdAt: req.user.createdAt || null,
+          updatedAt: req.user.updatedAt || null
+        };
         }
 
         res.status(200).json({
@@ -152,7 +152,7 @@ export class AuthController {
         // Check if token was provided but invalid
         const authHeader = req.headers.authorization || req.headers.Authorization;
         const hasToken = authHeader && authHeader.startsWith('Bearer ');
-        
+
         res.status(200).json({
           success: true,
           data: {
@@ -184,6 +184,11 @@ export class AuthController {
       // User info is already attached by auth middleware
       const user = req.user;
 
+      // Get user profile for bio
+      const { container } = await import('../../shared/kernel/container.js');
+      const userProfileRepository = container.getUserProfileRepository();
+      const profile = await userProfileRepository.findByUserId(user.id);
+
       res.json({
         success: true,
         data: {
@@ -191,10 +196,12 @@ export class AuthController {
           username: user.username,
           email: user.email,
           displayName: user.displayName,
+          role: user.role,
           avatarUrl: user.avatarUrl || null,
-          avatarId: user.avatarId || null,
-          bio: user.bio || null,
+          bio: profile?.bio,
           phone: user.phone || null,
+          isActive: user.isActive,
+          emailVerified: profile?.emailVerified ?? false,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         }
@@ -234,34 +241,6 @@ export class AuthController {
     }
   }
 
-  async updateProfile(req, res) {
-    try {
-      const userId = req.user._id.toString();
-      const updates = req.body;
-
-      const result = await this.updateProfileUseCase.execute(userId, updates);
-
-      res.json({
-        success: true,
-        message: result.message,
-        data: {
-          user: result.user
-        }
-      });
-    } catch (error) {
-      // Handle domain exceptions
-      if (error instanceof ValidationException || error instanceof ResourceNotFoundException) {
-        return res.status(error.statusCode).json(error.toResponse());
-      }
-
-      // Handle unexpected errors
-      logger.error('Profile update error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'An unexpected error occurred during profile update'
-      });
-    }
-  }
 
   async verifyEmail(req, res) {
     try {
@@ -296,7 +275,20 @@ export class AuthController {
 
   async changePassword(req, res) {
     try {
-      const userId = req.user._id.toString();
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User authentication required'
+        });
+      }
+
+      const userId = req.user.id || (req.user._id ? req.user._id.toString() : null);
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User authentication failed'
+        });
+      }
       const { currentPassword, newPassword } = req.body;
 
       const result = await this.changePasswordUseCase.execute(userId, {
@@ -306,7 +298,8 @@ export class AuthController {
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
+        data: result
       });
     } catch (error) {
       // Handle domain exceptions
@@ -315,7 +308,13 @@ export class AuthController {
       }
 
       // Handle unexpected errors
-      logger.error('Password change error:', error);
+      logger.error('Password change error:', {
+        error: error.message,
+        stack: error.stack,
+        userId: typeof userId !== 'undefined' ? userId : 'undefined',
+        hasUser: !!req.user,
+        email: req.user?.email
+      });
       res.status(500).json({
         success: false,
         message: 'An unexpected error occurred during password change'
@@ -335,6 +334,59 @@ export class AuthController {
       res.status(500).json({
         success: false,
         message: 'Logout failed'
+      });
+    }
+  }
+
+  async requestPasswordReset(req, res) {
+    try {
+      const { email } = req.body;
+
+      const result = await this.requestPasswordResetUseCase.execute({ email });
+
+      res.json({
+        success: true,
+        message: result.message
+      });
+    } catch (error) {
+      // Handle domain exceptions
+      if (error instanceof ValidationException) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      // Don't reveal if email exists or not for security
+      logger.error('Password reset request error:', error);
+      res.json({
+        success: true,
+        message: 'Password reset email sent if account exists'
+      });
+    }
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+
+      const result = await this.resetPasswordUseCase.execute({
+        token,
+        newPassword
+      });
+
+      res.json({
+        success: true,
+        message: result.message,
+        data: result.user
+      });
+    } catch (error) {
+      // Handle domain exceptions
+      if (error instanceof ValidationException || error instanceof ResourceNotFoundException) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Password reset error:', error);
+      res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
       });
     }
   }

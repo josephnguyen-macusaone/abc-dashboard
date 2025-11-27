@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { AuthTemplate } from '@/presentation/components/templates/auth-template';
 import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { toast } from '@/presentation/hooks/use-toast';
+import { toast } from '@/presentation/components/atoms';
 
 interface VerifyEmailPageProps {
   token?: string;
@@ -20,22 +20,14 @@ function VerifyEmailPage({ token, email }: VerifyEmailPageProps) {
   useEffect(() => {
     const verifyEmailToken = async () => {
       if (!token) {
-        toast({
-          title: 'Verification Error',
-          description: 'Verification token missing. Please check your email for the verification link.',
-          variant: 'destructive',
-        });
-        router.push('/login');
+        // Don't immediately redirect - show helpful UI instead
+        setIsVerifying(false);
         return;
       }
 
       try {
         const response = await verifyEmail(email || '', token || '');
-        toast({
-          title: 'Email Verified!',
-          description: response.message,
-          variant: 'default',
-        });
+        toast.success(response.message || 'Email verified successfully!');
         router.push('/login?verified=true');
       } catch (error) {
         console.error('Email verification error:', error);
@@ -54,12 +46,8 @@ function VerifyEmailPage({ token, email }: VerifyEmailPageProps) {
           }
         }
 
-        toast({
-          title: 'Verification Failed',
-          description: errorMessage,
-          variant: 'destructive',
-        });
-        router.push(redirectTo);
+        toast.error(errorMessage);
+        router.push('/login');
       } finally {
         setIsVerifying(false);
       }
@@ -98,7 +86,71 @@ function VerifyEmailPage({ token, email }: VerifyEmailPageProps) {
     );
   }
 
-  return null;
+  // Show helpful message when no token is provided
+  return (
+    <ErrorBoundary fallback={
+      <AuthTemplate
+        title="Something went wrong"
+        subtitle="We encountered an error while loading the verification page"
+      >
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">
+            Please try refreshing the page or contact support if the problem persists.
+          </p>
+        </div>
+      </AuthTemplate>
+    }>
+      <AuthTemplate
+        title="Check Your Email"
+        subtitle="We sent you a verification link"
+      >
+        <div className="text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-gray-900">Verification Link Required</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              To verify your email address, please check your email inbox for a verification link from us.
+              Click the link in the email to complete your email verification.
+            </p>
+
+            {email && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600">
+                  <strong>Email sent to:</strong> {email}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">
+                Didn't receive the email? Check your spam folder or contact support.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() => router.push('/login')}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Back to Login
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Refresh Page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </AuthTemplate>
+    </ErrorBoundary>
+  );
 }
 
 export default VerifyEmailPage;
