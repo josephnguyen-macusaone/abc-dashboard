@@ -3,6 +3,7 @@ export * from '@/infrastructure/api/types';
 export * from '@/infrastructure/api/errors';
 export { httpClient, HttpClient } from '@/infrastructure/api/client';
 export { AuthApiService, authApi } from '@/infrastructure/api/auth';
+export { UserApiService, userApi } from '@/infrastructure/api/users';
 
 // Re-export commonly used types and utilities
 export type {

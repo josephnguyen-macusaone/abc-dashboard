@@ -10,6 +10,7 @@ import { Button } from '@/presentation/components/atoms/ui/button';
 import { Users, UserPlus, DollarSign, MessageSquare, Home, Building2, AlertTriangle, TrendingUp, Calendar, FileText, CreditCard, Activity, Mail, Wallet, UserCircle, Shield, Settings, UserCheck } from 'lucide-react';
 import { PermissionUtils, USER_ROLES } from '@/shared/constants';
 import { CanCreateUser, AdminOnly, ManagerOrHigher } from '@/presentation/components/atoms';
+import { UserManagementPage } from '@/presentation/components/pages/user-management-page';
 
 interface DashboardPageProps {
   role?: string;
@@ -43,37 +44,7 @@ export function DashboardPage({ role, showRoleSpecificContent = false }: Dashboa
     switch (activeSection) {
       case 'users':
         return PermissionUtils.canReadUser(user?.role) ? (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  User Management
-                </CardTitle>
-                <CardDescription>
-                  Create, edit, and manage system users
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <CanCreateUser>
-                    <Button className="w-full sm:w-auto">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add New User
-                    </Button>
-                  </CanCreateUser>
-                  <div className="text-sm text-muted-foreground">
-                    {PermissionUtils.isAdmin(user?.role)
-                      ? 'Full user management functionality will be implemented here.'
-                      : PermissionUtils.isManager(user?.role)
-                      ? 'Manage your team members and user approvals.'
-                      : 'View user information and manage your profile.'
-                    }
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <UserManagementPage />
         ) : null;
 
       case 'settings':
