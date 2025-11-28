@@ -4,6 +4,8 @@
  */
 import logger from '../../../infrastructure/config/logger.js';
 import { generateTemporaryPassword } from '../../../shared/utils/crypto.js';
+import { CreateUserRequestDto } from '../../dto/user/index.js';
+import { UserResponseDto } from '../../dto/user/index.js';
 
 export class CreateUserUseCase {
   constructor(userRepository, authService, emailService) {
@@ -12,12 +14,16 @@ export class CreateUserUseCase {
     this.emailService = emailService;
   }
 
-  async execute({ username, email, displayName, role, avatarUrl, bio, phone }, createdBy) {
+  /**
+   * Execute create user use case
+   * @param {CreateUserRequestDto} createUserRequest - Validated request data
+   * @param {string} createdBy - User ID who created this user
+   * @returns {Promise<Object>} Created user data
+   */
+  async execute(createUserRequest, createdBy) {
     try {
-      // Validate input
-      if (!username || !email || !displayName) {
-        throw new Error('Required fields are missing');
-      }
+      // Request DTO is already validated by controller
+      const { username, email, displayName, role, avatarUrl, phone } = createUserRequest;
 
       // Check if email already exists
       const existingUser = await this.userRepository.findByEmail(email);
@@ -45,20 +51,8 @@ export class CreateUserUseCase {
         avatarUrl,
         phone,
         isFirstLogin: true,
-        langKey: 'en'
+        langKey: 'en',
       });
-
-      // Create user profile if bio is provided
-      if (bio) {
-        const { container } = await import('../../../shared/kernel/container.js');
-        const userProfileRepository = container.getUserProfileRepository();
-
-        await userProfileRepository.save({
-          userId: user.id,
-          bio,
-          emailVerified: false
-        });
-      }
 
       // Send welcome email with temporary password
       try {
@@ -66,18 +60,18 @@ export class CreateUserUseCase {
           displayName: user.displayName,
           username: user.username,
           password: temporaryPassword,
-          loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000/login'
+          loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000/login',
         });
 
         logger.info('Welcome email sent', {
           userId: user.id,
-          email: user.email
+          email: user.email,
         });
       } catch (emailError) {
         logger.error('Failed to send welcome email', {
           userId: user.id,
           email: user.email,
-          error: emailError.message
+          error: emailError.message,
         });
         // Don't fail the user creation if email fails
         // Admin can manually resend or user can request password reset
@@ -89,24 +83,14 @@ export class CreateUserUseCase {
         createdBy,
         email: user.email,
         username: user.username,
-        temporaryPasswordSent: true
+        temporaryPasswordSent: true,
       });
 
-      // Return user data (without sensitive information)
+      // Return user data as DTO (without sensitive information)
       return {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-          avatarUrl: user.avatarUrl,
-          phone: user.phone,
-          isFirstLogin: user.isFirstLogin,
-          createdAt: user.createdAt
-        },
+        user: UserResponseDto.fromEntity(user),
         message: 'User created successfully. Welcome email sent with temporary password.',
-        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined // Only expose in dev
+        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined, // Only expose in dev
       };
     } catch (error) {
       throw new Error(`User creation failed: ${error.message}`);

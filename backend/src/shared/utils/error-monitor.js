@@ -9,10 +9,10 @@ import logger from '../../infrastructure/config/logger.js';
  * Error severity levels
  */
 export const ErrorSeverity = {
-  LOW: 'low',       // Informational errors, user mistakes
+  LOW: 'low', // Informational errors, user mistakes
   MEDIUM: 'medium', // Application errors that affect functionality
-  HIGH: 'high',     // Critical errors that break core features
-  CRITICAL: 'critical' // System-level failures requiring immediate attention
+  HIGH: 'high', // Critical errors that break core features
+  CRITICAL: 'critical', // System-level failures requiring immediate attention
 };
 
 /**
@@ -22,7 +22,7 @@ export const AlertLevel = {
   INFO: 'info',
   WARNING: 'warning',
   ERROR: 'error',
-  CRITICAL: 'critical'
+  CRITICAL: 'critical',
 };
 
 /**
@@ -34,14 +34,14 @@ export class ErrorMonitor {
     this.config = {
       metricsWindow: 300000, // 5 minutes window for rate calculations
       alertThresholds: {
-        [ErrorSeverity.LOW]: 100,     // errors per minute
+        [ErrorSeverity.LOW]: 100, // errors per minute
         [ErrorSeverity.MEDIUM]: 50,
         [ErrorSeverity.HIGH]: 10,
-        [ErrorSeverity.CRITICAL]: 1
+        [ErrorSeverity.CRITICAL]: 1,
       },
       alertCooldown: 300000, // 5 minutes between similar alerts
       maxMetricsHistory: 1000, // Maximum error records to keep in memory
-      ...config
+      ...config,
     };
 
     // Error tracking data
@@ -53,7 +53,7 @@ export class ErrorMonitor {
         [ErrorSeverity.LOW]: 0,
         [ErrorSeverity.MEDIUM]: 0,
         [ErrorSeverity.HIGH]: 0,
-        [ErrorSeverity.CRITICAL]: 0
+        [ErrorSeverity.CRITICAL]: 0,
       },
       byCategory: new Map(),
       byOperation: new Map(),
@@ -62,10 +62,10 @@ export class ErrorMonitor {
         [ErrorSeverity.LOW]: 0,
         [ErrorSeverity.MEDIUM]: 0,
         [ErrorSeverity.HIGH]: 0,
-        [ErrorSeverity.CRITICAL]: 0
+        [ErrorSeverity.CRITICAL]: 0,
       },
       recentErrors: [],
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     };
 
     // Start cleanup interval
@@ -89,7 +89,7 @@ export class ErrorMonitor {
         stack: error.stack,
         code: error.code,
         statusCode: error.statusCode,
-        category: error.category
+        category: error.category,
       },
       context: {
         operation: context.operation,
@@ -99,9 +99,9 @@ export class ErrorMonitor {
         ip: context.ip,
         url: context.url,
         method: context.method,
-        ...context
+        ...context,
       },
-      severity: this._determineSeverity(error, context)
+      severity: this._determineSeverity(error, context),
     };
 
     // Add to errors array
@@ -135,7 +135,7 @@ export class ErrorMonitor {
     return {
       ...this.metrics,
       timestamp: Date.now(),
-      windowSize: this.config.metricsWindow
+      windowSize: this.config.metricsWindow,
     };
   }
 
@@ -147,7 +147,7 @@ export class ErrorMonitor {
     const health = {
       status: 'healthy',
       score: 100,
-      issues: []
+      issues: [],
     };
 
     // Check each severity level against thresholds
@@ -158,7 +158,7 @@ export class ErrorMonitor {
           severity,
           currentRate: rate,
           threshold,
-          exceededBy: rate - threshold
+          exceededBy: rate - threshold,
         });
         health.score -= this._getSeverityPenalty(severity);
       }
@@ -187,19 +187,19 @@ export class ErrorMonitor {
 
     // Apply filters
     if (filters.severity) {
-      filteredErrors = filteredErrors.filter(e => e.severity === filters.severity);
+      filteredErrors = filteredErrors.filter((e) => e.severity === filters.severity);
     }
 
     if (filters.category) {
-      filteredErrors = filteredErrors.filter(e => e.error.category === filters.category);
+      filteredErrors = filteredErrors.filter((e) => e.error.category === filters.category);
     }
 
     if (filters.operation) {
-      filteredErrors = filteredErrors.filter(e => e.context.operation === filters.operation);
+      filteredErrors = filteredErrors.filter((e) => e.context.operation === filters.operation);
     }
 
     if (filters.since) {
-      filteredErrors = filteredErrors.filter(e => e.timestamp >= filters.since);
+      filteredErrors = filteredErrors.filter((e) => e.timestamp >= filters.since);
     }
 
     if (filters.limit) {
@@ -229,7 +229,7 @@ export class ErrorMonitor {
         [ErrorSeverity.LOW]: 0,
         [ErrorSeverity.MEDIUM]: 0,
         [ErrorSeverity.HIGH]: 0,
-        [ErrorSeverity.CRITICAL]: 0
+        [ErrorSeverity.CRITICAL]: 0,
       },
       byCategory: new Map(),
       byOperation: new Map(),
@@ -238,10 +238,10 @@ export class ErrorMonitor {
         [ErrorSeverity.LOW]: 0,
         [ErrorSeverity.MEDIUM]: 0,
         [ErrorSeverity.HIGH]: 0,
-        [ErrorSeverity.CRITICAL]: 0
+        [ErrorSeverity.CRITICAL]: 0,
       },
       recentErrors: [],
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     };
   }
 
@@ -254,8 +254,10 @@ export class ErrorMonitor {
     const cutoffTime = now - this.config.metricsWindow;
 
     // Clean old errors
-    this.errors = this.errors.filter(error => error.timestamp > cutoffTime);
-    this.metrics.recentErrors = this.metrics.recentErrors.filter(error => error.timestamp > cutoffTime);
+    this.errors = this.errors.filter((error) => error.timestamp > cutoffTime);
+    this.metrics.recentErrors = this.metrics.recentErrors.filter(
+      (error) => error.timestamp > cutoffTime
+    );
 
     // Clean old alerts (allow re-alerting after cooldown)
     for (const [alertKey, lastAlertTime] of this.alerts.entries()) {
@@ -282,22 +284,25 @@ export class ErrorMonitor {
 
   _determineSeverity(error, context) {
     // Critical errors
-    if (error.statusCode >= 500 ||
-        error.name === 'ExternalServiceUnavailableException' ||
-        context.operation === 'database_connection') {
+    if (
+      error.statusCode >= 500 ||
+      error.name === 'ExternalServiceUnavailableException' ||
+      context.operation === 'database_connection'
+    ) {
       return ErrorSeverity.CRITICAL;
     }
 
     // High severity errors
-    if (error.statusCode === 429 ||
-        error.name === 'RateLimitExceededException' ||
-        context.operation?.includes('auth')) {
+    if (
+      error.statusCode === 429 ||
+      error.name === 'RateLimitExceededException' ||
+      context.operation?.includes('auth')
+    ) {
       return ErrorSeverity.HIGH;
     }
 
     // Medium severity errors
-    if (error.statusCode >= 400 ||
-        error.name === 'ValidationException') {
+    if (error.statusCode >= 400 || error.name === 'ValidationException') {
       return ErrorSeverity.MEDIUM;
     }
 
@@ -321,7 +326,10 @@ export class ErrorMonitor {
 
     // Update status code metrics
     if (error.statusCode) {
-      this.metrics.byStatusCode.set(error.statusCode, (this.metrics.byStatusCode.get(error.statusCode) || 0) + 1);
+      this.metrics.byStatusCode.set(
+        error.statusCode,
+        (this.metrics.byStatusCode.get(error.statusCode) || 0) + 1
+      );
     }
   }
 
@@ -331,11 +339,11 @@ export class ErrorMonitor {
     const windowDurationMinutes = this.config.metricsWindow / 60000;
 
     // Count errors in the current window
-    const windowErrors = this.errors.filter(error => error.timestamp > windowStart);
+    const windowErrors = this.errors.filter((error) => error.timestamp > windowStart);
 
     // Calculate rates by severity
-    Object.keys(this.metrics.rates).forEach(severity => {
-      const severityErrors = windowErrors.filter(error => error.severity === severity);
+    Object.keys(this.metrics.rates).forEach((severity) => {
+      const severityErrors = windowErrors.filter((error) => error.severity === severity);
       this.metrics.rates[severity] = severityErrors.length / windowDurationMinutes;
     });
 
@@ -349,14 +357,14 @@ export class ErrorMonitor {
       [ErrorSeverity.LOW]: 0,
       [ErrorSeverity.MEDIUM]: 0,
       [ErrorSeverity.HIGH]: 0,
-      [ErrorSeverity.CRITICAL]: 0
+      [ErrorSeverity.CRITICAL]: 0,
     };
     this.metrics.byCategory.clear();
     this.metrics.byOperation.clear();
     this.metrics.byStatusCode.clear();
 
     // Recalculate from remaining errors
-    this.errors.forEach(errorRecord => this._updateMetrics(errorRecord));
+    this.errors.forEach((errorRecord) => this._updateMetrics(errorRecord));
   }
 
   _checkAlerts(errorRecord) {
@@ -369,12 +377,17 @@ export class ErrorMonitor {
       const lastAlert = this.alerts.get(alertKey);
 
       // Only alert if we haven't alerted recently for this issue
-      if (!lastAlert || (Date.now() - lastAlert) > this.config.alertCooldown) {
-        this._sendAlert(severity, `Error rate exceeded for ${severity} severity`, {
-          currentRate: rate,
-          threshold,
-          exceededBy: rate - threshold
-        }, alertKey);
+      if (!lastAlert || Date.now() - lastAlert > this.config.alertCooldown) {
+        this._sendAlert(
+          severity,
+          `Error rate exceeded for ${severity} severity`,
+          {
+            currentRate: rate,
+            threshold,
+            exceededBy: rate - threshold,
+          },
+          alertKey
+        );
       }
     }
   }
@@ -392,7 +405,7 @@ export class ErrorMonitor {
       message,
       context,
       timestamp: new Date().toISOString(),
-      metrics: this.getMetrics()
+      metrics: this.getMetrics(),
     });
 
     // Here you could integrate with external alerting systems
@@ -438,7 +451,7 @@ export class ErrorMonitor {
       errorMessage: error.message,
       statusCode: error.statusCode,
       category: error.category,
-      stack: error.stack?.split('\n')[1]?.trim() // First line of stack trace
+      stack: error.stack?.split('\n')[1]?.trim(), // First line of stack trace
     };
 
     // Log based on severity
@@ -467,8 +480,8 @@ export const errorMonitor = new ErrorMonitor({
     [ErrorSeverity.LOW]: 100,
     [ErrorSeverity.MEDIUM]: 50,
     [ErrorSeverity.HIGH]: 10,
-    [ErrorSeverity.CRITICAL]: 1
-  }
+    [ErrorSeverity.CRITICAL]: 1,
+  },
 });
 
 /**
@@ -488,7 +501,7 @@ export const errorMonitoringMiddleware = (req, res, next) => {
       userAgent: req.get('User-Agent'),
       ip: req.ip,
       duration: Date.now() - startTime,
-      ...additionalContext
+      ...additionalContext,
     };
 
     errorMonitor.recordError(error, context);
@@ -500,15 +513,13 @@ export const errorMonitoringMiddleware = (req, res, next) => {
 /**
  * Health check endpoint data
  */
-export const getHealthCheckData = () => {
-  return {
-    errorMonitor: {
-      metrics: errorMonitor.getMetrics(),
-      health: errorMonitor.getHealthStatus(),
-      recentErrors: errorMonitor.getRecentErrors({ limit: 10 })
-    }
-  };
-};
+export const getHealthCheckData = () => ({
+  errorMonitor: {
+    metrics: errorMonitor.getMetrics(),
+    health: errorMonitor.getHealthStatus(),
+    recentErrors: errorMonitor.getRecentErrors({ limit: 10 }),
+  },
+});
 
 export default {
   ErrorMonitor,
@@ -516,5 +527,5 @@ export default {
   AlertLevel,
   errorMonitor,
   errorMonitoringMiddleware,
-  getHealthCheckData
+  getHealthCheckData,
 };

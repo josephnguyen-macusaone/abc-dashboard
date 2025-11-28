@@ -18,9 +18,15 @@ export class GetUserStatsUseCase {
           usersWithBio: stats.usersWithBio,
           usersWithPhone: stats.usersWithPhone,
           recentRegistrations: stats.recentRegistrations,
-          profileCompletionRate: stats.totalUsers > 0 ?
-            Math.round(((stats.usersWithAvatars + stats.usersWithBio + stats.usersWithPhone) / (stats.totalUsers * 3)) * 100) : 0
-        }
+          profileCompletionRate:
+            stats.totalUsers > 0
+              ? Math.round(
+                  ((stats.usersWithAvatars + stats.usersWithBio + stats.usersWithPhone) /
+                    (stats.totalUsers * 3)) *
+                    100
+                )
+              : 0,
+        },
       };
     } catch (error) {
       throw new Error(`Failed to get user statistics: ${error.message}`);

@@ -8,7 +8,7 @@ import { executeWithDegradation } from '../utils/graceful-degradation.js';
 import {
   ExternalServiceUnavailableException,
   NetworkTimeoutException,
-  ValidationException
+  ValidationException,
 } from '../../domain/exceptions/domain.exception.js';
 
 /**
@@ -33,14 +33,17 @@ export class EmailService {
         host: config.EMAIL_HOST,
         port: config.EMAIL_PORT,
         secure: config.EMAIL_SECURE,
-        auth: config.EMAIL_USER && config.EMAIL_PASS ? {
-          user: config.EMAIL_USER,
-          pass: config.EMAIL_PASS
-        } : undefined,
+        auth:
+          config.EMAIL_USER && config.EMAIL_PASS
+            ? {
+                user: config.EMAIL_USER,
+                pass: config.EMAIL_PASS,
+              }
+            : undefined,
         // Add connection timeout
         connectionTimeout: 10000, // 10 seconds
-        greetingTimeout: 5000,    // 5 seconds
-        socketTimeout: 30000      // 30 seconds
+        greetingTimeout: 5000, // 5 seconds
+        socketTimeout: 30000, // 30 seconds
       };
 
       const transporter = nodemailer.createTransport(transporterConfig);
@@ -50,7 +53,7 @@ export class EmailService {
         logger.error('Email transporter error', {
           correlationId: this.correlationId,
           error: error.message,
-          code: error.code
+          code: error.code,
         });
         this.isHealthy = false;
       });
@@ -59,7 +62,7 @@ export class EmailService {
     } catch (error) {
       logger.error('Failed to create email transporter', {
         correlationId: this.correlationId,
-        error: error.message
+        error: error.message,
       });
       throw new ExternalServiceUnavailableException('Email service configuration');
     }
@@ -183,50 +186,52 @@ export class EmailService {
         subject,
         html,
         priority, // high, normal, low
-        headers: correlationId ? { 'X-Correlation-ID': correlationId } : undefined
+        headers: correlationId ? { 'X-Correlation-ID': correlationId } : undefined,
       };
 
       // Send with circuit breaker, retry logic, and timeout
       const result = await withCircuitBreaker(
         'email-service',
-        () => withTimeout(
-          () => withServiceRetry(
-            async () => {
-              try {
-                const sendResult = await this.transporter.sendMail(mailOptions);
-                this.isHealthy = true; // Mark as healthy on success
-                return sendResult;
-              } catch (sendError) {
-                // Map nodemailer errors to domain exceptions
-                throw this._mapEmailError(sendError);
-              }
-            },
-            {
-              correlationId,
-              onRetry: (error, attempt, delay) => {
-                logger.warn(`Email send retry attempt ${attempt + 1}`, {
+        () =>
+          withTimeout(
+            () =>
+              withServiceRetry(
+                async () => {
+                  try {
+                    const sendResult = await this.transporter.sendMail(mailOptions);
+                    this.isHealthy = true; // Mark as healthy on success
+                    return sendResult;
+                  } catch (sendError) {
+                    // Map nodemailer errors to domain exceptions
+                    throw this._mapEmailError(sendError);
+                  }
+                },
+                {
                   correlationId,
-                  to,
-                  subject,
-                  error: error.message,
-                  delay
-                });
-              }
-            }
+                  onRetry: (error, attempt, delay) => {
+                    logger.warn(`Email send retry attempt ${attempt + 1}`, {
+                      correlationId,
+                      to,
+                      subject,
+                      error: error.message,
+                      delay,
+                    });
+                  },
+                }
+              ),
+            45000, // 45 second timeout
+            'Email sending'
           ),
-          45000, // 45 second timeout
-          'Email sending'
-        ),
         {
           correlationId,
-          failureThreshold: 3,    // Open circuit after 3 failures
+          failureThreshold: 3, // Open circuit after 3 failures
           recoveryTimeout: 30000, // Try to close after 30 seconds
-          monitoringPeriod: 60000 // Monitor failures over 1 minute
+          monitoringPeriod: 60000, // Monitor failures over 1 minute
         },
         {
           to,
           subject,
-          template: template.substring(0, 50) + '...' // Log template preview
+          template: `${template.substring(0, 50)}...`, // Log template preview
         }
       );
 
@@ -234,7 +239,7 @@ export class EmailService {
         correlationId,
         to,
         subject,
-        messageId: result.messageId
+        messageId: result.messageId,
       });
 
       return result;
@@ -244,13 +249,15 @@ export class EmailService {
         to,
         subject,
         error: error.message,
-        errorType: error.constructor.name
+        errorType: error.constructor.name,
       });
 
       // Re-throw domain exceptions as-is
-      if (error instanceof ExternalServiceUnavailableException ||
-          error instanceof NetworkTimeoutException ||
-          error instanceof ValidationException) {
+      if (
+        error instanceof ExternalServiceUnavailableException ||
+        error instanceof NetworkTimeoutException ||
+        error instanceof ValidationException
+      ) {
         throw error;
       }
 
@@ -265,41 +272,44 @@ export class EmailService {
   async verifyConnection() {
     try {
       const result = await withTimeout(
-        () => withServiceRetry(
-          async () => {
-            try {
-              await this.transporter.verify();
-              this.isHealthy = true;
-              this.lastHealthCheck = new Date();
-              return true;
-            } catch (verifyError) {
-              this.isHealthy = false;
-              throw this._mapEmailError(verifyError);
+        () =>
+          withServiceRetry(
+            async () => {
+              try {
+                await this.transporter.verify();
+                this.isHealthy = true;
+                this.lastHealthCheck = new Date();
+                return true;
+              } catch (verifyError) {
+                this.isHealthy = false;
+                throw this._mapEmailError(verifyError);
+              }
+            },
+            {
+              correlationId: this.correlationId,
+              maxRetries: 2, // Fewer retries for health checks
             }
-          },
-          {
-            correlationId: this.correlationId,
-            maxRetries: 2 // Fewer retries for health checks
-          }
-        ),
+          ),
         10000, // 10 second timeout
         'Email connection verification'
       );
 
       logger.info('Email service connection verified', {
         correlationId: this.correlationId,
-        healthy: this.isHealthy
+        healthy: this.isHealthy,
       });
 
       return result;
     } catch (error) {
       logger.error('Email service connection verification failed', {
         correlationId: this.correlationId,
-        error: error.message
+        error: error.message,
       });
 
-      if (error instanceof ExternalServiceUnavailableException ||
-          error instanceof NetworkTimeoutException) {
+      if (
+        error instanceof ExternalServiceUnavailableException ||
+        error instanceof NetworkTimeoutException
+      ) {
         throw error;
       }
 
@@ -315,7 +325,7 @@ export class EmailService {
       service: 'email',
       healthy: this.isHealthy,
       lastHealthCheck: this.lastHealthCheck,
-      correlationId: this.correlationId
+      correlationId: this.correlationId,
     };
   }
 
@@ -329,7 +339,7 @@ export class EmailService {
       emailType,
       recipient: emailData.to,
       subject: emailData.subject,
-      error: error.message
+      error: error.message,
     });
 
     // In a production system, you would store this in a database table
@@ -342,7 +352,7 @@ export class EmailService {
       recipient: emailData.to,
       subject: emailData.subject,
       correlationId: this.correlationId,
-      queuedAt: new Date().toISOString()
+      queuedAt: new Date().toISOString(),
     };
   }
 
@@ -363,43 +373,49 @@ export class EmailService {
     const errorMessage = error.message?.toLowerCase() || '';
 
     // Connection errors
-    if (error.code === 'ECONNREFUSED' ||
-        error.code === 'ENOTFOUND' ||
-        errorMessage.includes('connection') ||
-        errorMessage.includes('connect')) {
+    if (
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ENOTFOUND' ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('connect')
+    ) {
       return new ExternalServiceUnavailableException('Email SMTP server');
     }
 
     // Timeout errors
-    if (error.code === 'ETIMEDOUT' ||
-        error.code === 'ESOCKETTIMEDOUT' ||
-        errorMessage.includes('timeout')) {
+    if (
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ESOCKETTIMEDOUT' ||
+      errorMessage.includes('timeout')
+    ) {
       return new NetworkTimeoutException('Email sending');
     }
 
     // Authentication errors
-    if (error.code === 'EAUTH' ||
-        errorMessage.includes('authentication') ||
-        errorMessage.includes('credentials')) {
+    if (
+      error.code === 'EAUTH' ||
+      errorMessage.includes('authentication') ||
+      errorMessage.includes('credentials')
+    ) {
       return new ExternalServiceUnavailableException('Email authentication');
     }
 
     // Rate limiting
-    if (error.code === 'EMESSAGE' &&
-        errorMessage.includes('rate limit')) {
+    if (error.code === 'EMESSAGE' && errorMessage.includes('rate limit')) {
       return new ExternalServiceUnavailableException('Email rate limiting');
     }
 
     // Invalid recipient
-    if (error.code === 'EENVELOPE' ||
-        errorMessage.includes('invalid recipient') ||
-        errorMessage.includes('mailbox')) {
+    if (
+      error.code === 'EENVELOPE' ||
+      errorMessage.includes('invalid recipient') ||
+      errorMessage.includes('mailbox')
+    ) {
       return new ValidationException('Invalid email recipient');
     }
 
     // Generic service unavailable
-    if (error.code === 'ESOCKET' ||
-        error.responseCode >= 500) {
+    if (error.code === 'ESOCKET' || error.responseCode >= 500) {
       return new ExternalServiceUnavailableException('Email delivery service');
     }
 

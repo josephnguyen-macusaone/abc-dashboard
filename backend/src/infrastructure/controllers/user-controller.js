@@ -4,10 +4,13 @@
  */
 import {
   ValidationException,
-  InsufficientPermissionsException
+  InsufficientPermissionsException,
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../infrastructure/config/logger.js';
 import { PERMISSIONS, hasPermission } from '../../shared/constants/roles.js';
+import { UserValidator } from '../../application/validators/index.js';
+import { CreateUserRequestDto } from '../../application/dto/user/index.js';
+
 export class UserController {
   constructor(
     getUsersUseCase,
@@ -26,18 +29,19 @@ export class UserController {
   async getUsers(req, res) {
     try {
       const currentUser = req.user;
+
+      // Use comprehensive UserValidator for query validation and sanitization
+      const sanitizedQuery = UserValidator.validateListQuery(req.query);
+
       const options = {
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 10,
+        ...sanitizedQuery,
         filters: {
           email: req.query.email,
           username: req.query.username,
           displayName: req.query.displayName,
           hasAvatar: req.query.hasAvatar ? req.query.hasAvatar === 'true' : undefined,
-          hasBio: req.query.hasBio ? req.query.hasBio === 'true' : undefined
+          hasBio: req.query.hasBio ? req.query.hasBio === 'true' : undefined,
         },
-        sortBy: req.query.sortBy || 'createdAt',
-        sortOrder: req.query.sortOrder || 'desc'
       };
 
       // Permission check: Only admins and managers can list users
@@ -47,7 +51,7 @@ export class UserController {
 
       const result = await this.getUsersUseCase.execute(options);
 
-      res.paginated(
+      return res.paginated(
         result.users,
         result.pagination.page,
         result.pagination.limit,
@@ -56,8 +60,10 @@ export class UserController {
       );
     } catch (error) {
       // Handle domain exceptions
-      if (error instanceof ValidationException ||
-          error instanceof InsufficientPermissionsException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
@@ -65,13 +71,13 @@ export class UserController {
       logger.error('Get users error:', {
         message: error.message,
         stack: error.stack,
-        error: error
+        error,
       });
-      res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve users',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      return res.error(
+        'Failed to retrieve users',
+        500,
+        process.env.NODE_ENV === 'development' ? { details: error.message } : {}
+      );
     }
   }
 
@@ -81,38 +87,29 @@ export class UserController {
       const currentUser = req.user;
 
       // Permission check: Users can view their own profile, admins/managers can view any profile
-      if (currentUser._id.toString() !== id && !hasPermission(currentUser.role, PERMISSIONS.READ_USER)) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied'
-        });
+      if (
+        currentUser._id.toString() !== id &&
+        !hasPermission(currentUser.role, PERMISSIONS.READ_USER)
+      ) {
+        return res.error('Access denied', 403);
       }
 
       // For now, reuse getUsers logic but filter for single user
       const options = {
         page: 1,
         limit: 1,
-        filters: { id }
+        filters: { id },
       };
 
       const result = await this.getUsersUseCase.execute(options);
 
       if (result.users.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
+        return res.error('User not found', 404);
       }
 
-      res.json({
-        success: true,
-        data: { user: result.users[0] }
-      });
+      return res.success({ user: result.users[0] }, 'User retrieved successfully');
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      return res.error(error.message, 500);
     }
   }
 
@@ -128,19 +125,22 @@ export class UserController {
       const { username, email, displayName, role, avatarUrl, phone } = req.body;
       const createdBy = req.user._id.toString();
 
-      const result = await this.createUserUseCase.execute({
+      // Create and validate request DTO
+      const createUserRequest = CreateUserRequestDto.fromRequest({
         username,
         email,
         displayName,
         role,
         avatarUrl,
-        phone
-      }, createdBy);
+        phone,
+      });
+      createUserRequest.validate();
+
+      const result = await this.createUserUseCase.execute(createUserRequest, createdBy);
 
       // Return user data but don't expose temporary password in production
       const responseData = {
         user: result.user,
-        message: result.message
       };
 
       // Only include temporary password in development for testing
@@ -148,18 +148,17 @@ export class UserController {
         responseData.temporaryPassword = result.temporaryPassword;
       }
 
-      res.created(responseData, result.message);
+      return res.created(responseData, result.message);
     } catch (error) {
       // Handle domain exceptions
-      if (error instanceof ValidationException ||
-          error instanceof InsufficientPermissionsException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      return res.error(error.message, 400);
     }
   }
 
@@ -173,7 +172,9 @@ export class UserController {
       const isUpdatingSelf = currentUser._id.toString() === id;
 
       if (!isUpdatingSelf && !hasPermission(currentUser.role, PERMISSIONS.UPDATE_USER)) {
-        throw new InsufficientPermissionsException('You do not have permission to update other users');
+        throw new InsufficientPermissionsException(
+          'You do not have permission to update other users'
+        );
       }
 
       // Additional check: Managers cannot update admins or other managers
@@ -185,32 +186,32 @@ export class UserController {
         if (targetUserResult.users.length > 0) {
           const targetUser = targetUserResult.users[0];
           if (targetUser.role === 'admin' || targetUser.role === 'manager') {
-            throw new InsufficientPermissionsException('Managers cannot update admins or other managers');
+            throw new InsufficientPermissionsException(
+              'Managers cannot update admins or other managers'
+            );
           }
         }
       }
 
+      // Use comprehensive UserValidator for update validation
+      UserValidator.validateUpdateUser(updates);
+
       const result = await this.updateUserUseCase.execute(id, updates, {
         id: currentUser._id.toString(),
-        role: currentUser.role
+        role: currentUser.role,
       });
 
-      res.json({
-        success: true,
-        message: result.message,
-        data: result.user
-      });
+      return res.success(result.user, result.message);
     } catch (error) {
       // Handle domain exceptions
-      if (error instanceof ValidationException ||
-          error instanceof InsufficientPermissionsException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      return res.error(error.message, 400);
     }
   }
 
@@ -247,31 +248,29 @@ export class UserController {
         if (targetUserResult.users.length > 0) {
           const targetUser = targetUserResult.users[0];
           if (targetUser.role === 'admin' || targetUser.role === 'manager') {
-            throw new InsufficientPermissionsException('Managers cannot delete admins or other managers');
+            throw new InsufficientPermissionsException(
+              'Managers cannot delete admins or other managers'
+            );
           }
         }
       }
 
       const result = await this.deleteUserUseCase.execute(id, {
         id: currentUser._id.toString(),
-        role: currentUser.role
+        role: currentUser.role,
       });
 
-      res.json({
-        success: true,
-        message: result.message
-      });
+      return res.success(null, result.message);
     } catch (error) {
       // Handle domain exceptions
-      if (error instanceof ValidationException ||
-          error instanceof InsufficientPermissionsException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      return res.error(error.message, 400);
     }
   }
 
@@ -279,15 +278,9 @@ export class UserController {
     try {
       const result = await this.getUserStatsUseCase.execute();
 
-      res.json({
-        success: true,
-        data: result.stats
-      });
+      return res.success(result.stats, 'User statistics retrieved successfully');
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      return res.error(error.message, 500);
     }
   }
 }

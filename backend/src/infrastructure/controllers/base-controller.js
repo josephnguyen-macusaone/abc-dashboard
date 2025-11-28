@@ -15,7 +15,7 @@ import {
   ConcurrentModificationException,
   SecurityViolationException,
   RateLimitExceededException,
-  DataIntegrityViolationException
+  DataIntegrityViolationException,
 } from '../../domain/exceptions/domain.exception.js';
 
 export class BaseController {
@@ -31,21 +31,23 @@ export class BaseController {
     const operation = context.operation || 'unknown_operation';
 
     // Set correlation ID on container for this request (fire and forget)
-    import('../../shared/kernel/container.js').then(({ container }) => {
-      try {
-        container.setCorrelationId(correlationId);
-      } catch (containerError) {
-        logger.warn('Could not set correlation ID on container', {
+    import('../../shared/kernel/container.js')
+      .then(({ container }) => {
+        try {
+          container.setCorrelationId(correlationId);
+        } catch (containerError) {
+          logger.warn('Could not set correlation ID on container', {
+            correlationId,
+            error: containerError.message,
+          });
+        }
+      })
+      .catch((containerError) => {
+        logger.warn('Could not import container for correlation ID setting', {
           correlationId,
-          error: containerError.message
+          error: containerError.message,
         });
-      }
-    }).catch(containerError => {
-      logger.warn('Could not import container for correlation ID setting', {
-        correlationId,
-        error: containerError.message
       });
-    });
 
     // Record error with monitoring system
     errorMonitor.recordError(error, {
@@ -56,7 +58,7 @@ export class BaseController {
       url: req.originalUrl,
       userAgent: req.get('User-Agent'),
       ip: req.ip,
-      ...context
+      ...context,
     });
 
     // Enhanced error logging with full context
@@ -70,15 +72,15 @@ export class BaseController {
         stack: error.stack,
         code: error.code,
         statusCode: error.statusCode,
-        category: error.category
+        category: error.category,
       },
       requestContext: {
         method: req.method,
         url: req.originalUrl,
         userAgent: req.get('User-Agent'),
         ip: req.ip,
-        ...context
-      }
+        ...context,
+      },
     });
 
     // Handle Domain Exceptions (business logic errors)
@@ -184,8 +186,8 @@ export class BaseController {
         code: error.statusCode || 400,
         type: 'VALIDATION_ERROR',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -197,8 +199,8 @@ export class BaseController {
         code: error.statusCode || 404,
         type: 'RESOURCE_NOT_FOUND',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -210,8 +212,8 @@ export class BaseController {
         code: error.statusCode || 403,
         type: 'PERMISSION_DENIED',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -223,8 +225,8 @@ export class BaseController {
         code: error.statusCode || 401,
         type: 'AUTHENTICATION_ERROR',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -236,8 +238,8 @@ export class BaseController {
         code: error.statusCode || 401,
         type: 'ACCOUNT_ERROR',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -249,8 +251,8 @@ export class BaseController {
         code: error.statusCode || 408,
         type: 'NETWORK_TIMEOUT',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -262,8 +264,8 @@ export class BaseController {
         code: error.statusCode || 503,
         type: 'EXTERNAL_SERVICE_UNAVAILABLE',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -275,8 +277,8 @@ export class BaseController {
         code: error.statusCode || 409,
         type: 'CONCURRENT_MODIFICATION',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -288,8 +290,8 @@ export class BaseController {
         code: error.statusCode || 400,
         type: 'SECURITY_VIOLATION',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -306,8 +308,8 @@ export class BaseController {
         category: error.category,
         details: error.message,
         retryAfter,
-        retryAfterMinutes: Math.ceil(retryAfter / 60)
-      }
+        retryAfterMinutes: Math.ceil(retryAfter / 60),
+      },
     });
   }
 
@@ -319,8 +321,8 @@ export class BaseController {
         code: error.statusCode || 422,
         type: 'DATA_INTEGRITY_VIOLATION',
         category: error.category,
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -329,10 +331,11 @@ export class BaseController {
       errorName: error.name,
       errorCode: error.code,
       errorCodeName: error.codeName,
-      collection: error.collection
+      collection: error.collection,
     });
 
-    if (error.code === 11000) { // Duplicate key error
+    if (error.code === 11000) {
+      // Duplicate key error
       return res.status(409).json({
         success: false,
         message: 'A field value conflicts with existing data.',
@@ -340,8 +343,8 @@ export class BaseController {
           code: 409,
           type: 'DUPLICATE_ERROR',
           category: 'database',
-          details: 'Duplicate key constraint violation'
-        }
+          details: 'Duplicate key constraint violation',
+        },
       });
     }
 
@@ -352,8 +355,8 @@ export class BaseController {
         code: 500,
         type: 'DATABASE_ERROR',
         category: 'database',
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -365,8 +368,8 @@ export class BaseController {
         code: 503,
         type: 'NETWORK_ERROR',
         category: 'network',
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -378,8 +381,8 @@ export class BaseController {
         code: 502,
         type: 'EXTERNAL_SERVICE_ERROR',
         category: 'external_service',
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -391,8 +394,8 @@ export class BaseController {
         code: 408,
         type: 'TIMEOUT_ERROR',
         category: 'timeout',
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 
@@ -405,36 +408,42 @@ export class BaseController {
         type: 'INTERNAL_ERROR',
         category: 'server',
         correlationId,
-        operation
-      }
+        operation,
+      },
     });
   }
 
   // Error type detection methods
 
   _isDatabaseError(error) {
-    return error.name === 'MongoError' ||
-           error.name === 'MongoServerError' ||
-           error.name === 'ValidationError' ||
-           error.code === 11000;
+    return (
+      error.name === 'MongoError' ||
+      error.name === 'MongoServerError' ||
+      error.name === 'ValidationError' ||
+      error.code === 11000
+    );
   }
 
   _isNetworkError(error) {
-    return error.code === 'ECONNREFUSED' ||
-           error.code === 'ENOTFOUND' ||
-           error.code === 'ECONNRESET';
+    return (
+      error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ECONNRESET'
+    );
   }
 
   _isExternalServiceError(error) {
-    return error.code === 'EBADGATEWAY' ||
-           error.code === 'ESERVICEUNAVAILABLE' ||
-           (error.response && error.response.status >= 500);
+    return (
+      error.code === 'EBADGATEWAY' ||
+      error.code === 'ESERVICEUNAVAILABLE' ||
+      (error.response && error.response.status >= 500)
+    );
   }
 
   _isTimeoutError(error) {
-    return error.code === 'ETIMEDOUT' ||
-           error.code === 'ESOCKETTIMEDOUT' ||
-           error.message?.includes('timeout');
+    return (
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ESOCKETTIMEDOUT' ||
+      error.message?.includes('timeout')
+    );
   }
 
   // Utility methods for controllers
@@ -443,7 +452,7 @@ export class BaseController {
    * Validate required fields in request body
    */
   validateRequired(req, fields) {
-    const missing = fields.filter(field => !req.body[field]);
+    const missing = fields.filter((field) => !req.body[field]);
     if (missing.length > 0) {
       throw new ValidationException(`Missing required fields: ${missing.join(', ')}`);
     }
@@ -472,17 +481,19 @@ export class BaseController {
       }
     } catch (error) {
       // Re-throw domain exceptions as-is, wrap others
-      if (error instanceof ValidationException ||
-          error instanceof ResourceNotFoundException ||
-          error instanceof InsufficientPermissionsException ||
-          error instanceof InvalidCredentialsException ||
-          error instanceof AccountDeactivatedException ||
-          error instanceof NetworkTimeoutException ||
-          error instanceof ExternalServiceUnavailableException ||
-          error instanceof ConcurrentModificationException ||
-          error instanceof SecurityViolationException ||
-          error instanceof RateLimitExceededException ||
-          error instanceof DataIntegrityViolationException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof ResourceNotFoundException ||
+        error instanceof InsufficientPermissionsException ||
+        error instanceof InvalidCredentialsException ||
+        error instanceof AccountDeactivatedException ||
+        error instanceof NetworkTimeoutException ||
+        error instanceof ExternalServiceUnavailableException ||
+        error instanceof ConcurrentModificationException ||
+        error instanceof SecurityViolationException ||
+        error instanceof RateLimitExceededException ||
+        error instanceof DataIntegrityViolationException
+      ) {
         throw error;
       }
       throw new Error(`${context.operation || 'Use case'} failed: ${error.message}`);

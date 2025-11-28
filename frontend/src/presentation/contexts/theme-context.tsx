@@ -2,14 +2,12 @@
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useThemeStore } from '@/infrastructure/stores/theme-store';
-import { APP_CONFIG } from '@/shared/constants';
-
-type Theme = 'dark' | 'light' | 'system';
+import { APP_CONFIG, THEMES } from '@/shared/constants';
 
 interface ThemeContextType {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  actualTheme: 'dark' | 'light'; // The resolved theme (dark or light)
+  theme: (typeof THEMES)[keyof typeof THEMES];
+  setTheme: (theme: (typeof THEMES)[keyof typeof THEMES]) => void;
+  actualTheme: 'dark' | 'light' | 'system';
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -24,12 +22,12 @@ export const useTheme = () => {
 
 interface ThemeProviderProps {
   children: ReactNode;
-  defaultTheme?: Theme;
+  defaultTheme?: (typeof THEMES)[keyof typeof THEMES];
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
-  defaultTheme = APP_CONFIG.DEFAULT_THEME as Theme
+  defaultTheme = APP_CONFIG.DEFAULT_THEME,
 }) => {
   const { theme, actualTheme, setTheme, initialize } = useThemeStore();
 

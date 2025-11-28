@@ -9,7 +9,7 @@ import { ROLES } from '../../../shared/constants/roles.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const run = async (mongoose) => {
+export const run = async (_mongoose) => {
   // Import User model using absolute path
   const userModelPath = path.join(__dirname, '../../models/user-model.js');
   const userProfileModelPath = path.join(__dirname, '../../models/user-profile-model.js');
@@ -34,7 +34,7 @@ export const run = async (mongoose) => {
     // Hash password helper
     const hashPassword = async (password) => {
       const salt = await bcrypt.genSalt(12);
-      return await bcrypt.hash(password, salt);
+      return bcrypt.hash(password, salt);
     };
 
     // Define users to create with their roles
@@ -48,8 +48,8 @@ export const run = async (mongoose) => {
         phone: '+1-555-0100',
         profile: {
           bio: 'System administrator with full access',
-          emailVerified: true
-        }
+          emailVerified: true,
+        },
       },
       {
         username: 'manager',
@@ -60,8 +60,8 @@ export const run = async (mongoose) => {
         phone: '+1-555-0200',
         profile: {
           bio: 'Operations manager with user management permissions',
-          emailVerified: true
-        }
+          emailVerified: true,
+        },
       },
       {
         username: 'staff',
@@ -72,9 +72,9 @@ export const run = async (mongoose) => {
         phone: '+1-555-0300',
         profile: {
           bio: 'Regular staff member with basic permissions',
-          emailVerified: true
-        }
-      }
+          emailVerified: true,
+        },
+      },
     ];
 
     // Create or update each user
@@ -91,7 +91,7 @@ export const run = async (mongoose) => {
           role: userData.role,
           phone: userData.phone,
           isActive: true, // All seed users are pre-activated
-          isFirstLogin: false // Seed users don't need first login password change
+          isFirstLogin: false, // Seed users don't need first login password change
         });
 
         // Create user profile
@@ -99,10 +99,12 @@ export const run = async (mongoose) => {
           userId: user._id,
           bio: userData.profile.bio,
           emailVerified: userData.profile.emailVerified,
-          emailVerifiedAt: userData.profile.emailVerified ? new Date() : undefined
+          emailVerifiedAt: userData.profile.emailVerified ? new Date() : undefined,
         });
 
-        console.log(`${userData.role.charAt(0).toUpperCase() + userData.role.slice(1)} user created: ${userData.email} (username: ${userData.username})`);
+        console.log(
+          `${userData.role.charAt(0).toUpperCase() + userData.role.slice(1)} user created: ${userData.email} (username: ${userData.username})`
+        );
       } else {
         // Update existing user to ensure they have the correct role and are active
         await User.updateOne(
@@ -113,8 +115,8 @@ export const run = async (mongoose) => {
               isActive: true,
               displayName: userData.displayName,
               phone: userData.phone,
-              isFirstLogin: false
-            }
+              isFirstLogin: false,
+            },
           }
         );
 
@@ -125,13 +127,15 @@ export const run = async (mongoose) => {
             $set: {
               bio: userData.profile.bio,
               emailVerified: userData.profile.emailVerified,
-              emailVerifiedAt: userData.profile.emailVerified ? new Date() : undefined
-            }
+              emailVerifiedAt: userData.profile.emailVerified ? new Date() : undefined,
+            },
           },
           { upsert: true, new: true }
         );
 
-        console.log(`${userData.role.charAt(0).toUpperCase() + userData.role.slice(1)} user updated: ${userData.email}`);
+        console.log(
+          `${userData.role.charAt(0).toUpperCase() + userData.role.slice(1)} user updated: ${userData.email}`
+        );
       }
     }
   } catch (error) {

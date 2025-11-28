@@ -45,7 +45,6 @@ export class AuthDomainService {
       errors.push('Password must contain at least one number');
     }
 
-
     return {
       isValid: errors.length === 0,
       errors,

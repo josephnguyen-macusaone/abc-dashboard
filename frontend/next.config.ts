@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   },
+
+  // Turbopack configuration (Next.js 16+ uses Turbopack by default)
+  turbopack: {
+    resolveAlias: {
+      '@assets': './assets',
+    },
+  },
 };
 
 export default nextConfig;

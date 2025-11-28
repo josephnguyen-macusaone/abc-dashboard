@@ -2,10 +2,9 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from '@/domain/entities/user-entity';
 import { AuthService } from '@/application/services/auth-service';
-import { LoginUseCase } from '@/application/use-cases/login-usecase';
-import { RegisterUseCase } from '@/application/use-cases/register-usecase';
-import { LogoutUseCase } from '@/application/use-cases/logout-usecase';
+import { LoginUseCase, RegisterUseCase, LogoutUseCase, UpdateProfileUseCase, GetProfileUseCase } from '@/application/use-cases';
 import { AuthRepository } from '@/infrastructure/repositories/auth-repository';
+import { UserRepository } from '@/infrastructure/repositories/user-repository';
 import { httpClient } from '@/infrastructure/api/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
@@ -37,6 +36,7 @@ interface AuthState {
     phone: string;
     avatarUrl: string;
   }>) => Promise<User>;
+  refreshCurrentUser: () => Promise<User | null>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
@@ -53,11 +53,15 @@ export const useAuthStore = create<AuthState>()(
         const loginUseCase = new LoginUseCase(authRepository);
         const registerUseCase = new RegisterUseCase(authRepository);
         const logoutUseCase = new LogoutUseCase(authRepository);
+        const updateProfileUseCase = new UpdateProfileUseCase(authRepository);
+        const getProfileUseCase = new GetProfileUseCase(authRepository);
         const authService = new AuthService(
           authRepository,
           loginUseCase,
           registerUseCase,
-          logoutUseCase
+          logoutUseCase,
+          updateProfileUseCase,
+          getProfileUseCase
         );
 
         // Initialize logger
@@ -92,24 +96,8 @@ export const useAuthStore = create<AuthState>()(
                 set({ user: storedUser });
               }
 
-              // If we have a token but no user, try to get user from API
-              if (storedToken && !storedUser) {
-                try {
-                  const currentUser = await authService.getCurrentUser();
-                  if (currentUser) {
-                    set({ user: currentUser });
-                    CookieService.setUser(currentUser);
-                    LocalStorageService.setUser(currentUser);
-                  }
-                } catch (error) {
-                  // Token might be invalid, clear it
-                  storeLogger.warn('Failed to get current user', { error: error instanceof Error ? error.message : String(error) });
-                  CookieService.clearAuthCookies();
-                  LocalStorageService.clearAuthData();
-                  httpClient.setAuthToken(null);
-                  set({ user: null, token: null });
-                }
-              }
+              // Note: getCurrentUser() is no longer available since backend removed auth status endpoint
+              // Authentication state is now managed locally with stored tokens and user data
 
               set({ isAuthenticated: !!(get().user && get().token) });
             } catch (error) {
@@ -147,21 +135,11 @@ export const useAuthStore = create<AuthState>()(
                 if (profileData) {
                   userId = profileData.id; // Update with profile data ID if different
 
-                  // Create complete User entity from merged profile data
+                  // Since profileData is already a User entity, just update the lastLogin and return it
                   const completeUser = User.fromObject({
-                    id: profileData.id,
-                    name: profileData.displayName || profileData.username,
-                    email: profileData.email,
-                    role: profileData.role,
-                    isActive: profileData.isActive,
-                    avatar: profileData.avatarUrl,
-                    displayName: profileData.displayName,
-                    bio: profileData.bio,
-                    phone: profileData.phone,
-                    emailVerified: profileData.emailVerified,
+                    ...profileData.toObject(),
                     lastLogin: new Date(),
-                    updatedAt: new Date(),
-                    createdAt: profileData.createdAt ? new Date(profileData.createdAt) : undefined
+                    updatedAt: new Date()
                   });
 
                   set({ user: completeUser });
@@ -171,8 +149,7 @@ export const useAuthStore = create<AuthState>()(
 
                   storeLogger.info('Profile data loaded after login', {
                     userId: completeUser.id,
-                    hasAvatar: !!profileData.avatarUrl,
-                    hasBio: !!profileData.bio,
+                    hasAvatar: !!profileData.avatar,
                     phone: profileData.phone
                   });
                 } else {
@@ -373,6 +350,31 @@ export const useAuthStore = create<AuthState>()(
             set({ isAuthenticated: !!(get().user && token) });
           },
           setLoading: (isLoading: boolean) => set({ isLoading }),
+
+          refreshCurrentUser: async () => {
+            try {
+              const userRepository = new UserRepository();
+              const currentUser = await userRepository.getCurrentUser();
+
+              if (currentUser) {
+                // Update user in store
+                set({ user: currentUser });
+                CookieService.setUser(currentUser);
+                LocalStorageService.setUser(currentUser);
+
+                storeLogger.info('Current user refreshed successfully', { userId: currentUser.id });
+                return currentUser;
+              }
+
+              storeLogger.warn('Failed to refresh current user - no user returned from repository');
+              return null;
+            } catch (error) {
+              storeLogger.error('Failed to refresh current user', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+              throw error;
+            }
+          },
 
           clearEmailVerificationState: () => set({
             emailVerificationRequired: false,

@@ -9,7 +9,7 @@ import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
 import { handleApiError, isRetryableError } from '@/infrastructure/api/errors';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 import { RetryUtils } from '@/shared/utils/retry';
-import { startTrace, injectIntoHeaders, logWithTrace, traceAsyncFunction } from '@/shared/utils/tracing';
+import { startTrace, injectIntoHeaders, logWithTrace } from '@/shared/utils/tracing';
 import { API_CONFIG } from '@/shared/constants';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 
@@ -18,7 +18,7 @@ import { useAuthStore } from '@/infrastructure/stores/auth-store';
  * Ensures the URL has a valid http:// or https:// scheme for CORS requests
  */
 const validateAndNormalizeBaseURL = (url: string | undefined): string => {
-  const DEFAULT_URL = API_CONFIG.BASE_URL || 'http://localhost:5000/api';
+  const DEFAULT_URL = API_CONFIG.BASE_URL || 'http://localhost:5000/api/v1';
 
   // If URL is empty, undefined, or null, use default
   if (!url || url.trim() === '') {

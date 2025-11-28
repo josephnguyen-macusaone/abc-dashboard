@@ -20,7 +20,7 @@ export class User {
     createdAt,
     updatedAt,
     createdBy,
-    lastModifiedBy
+    lastModifiedBy,
   }) {
     this.id = id;
     this.username = username;
@@ -95,13 +95,13 @@ export class User {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       createdBy: this.createdBy,
-      lastModifiedBy: this.lastModifiedBy
+      lastModifiedBy: this.lastModifiedBy,
     };
   }
 
   updateProfile(updates) {
     const allowedFields = ['displayName', 'avatarUrl', 'phone', 'langKey'];
-    allowedFields.forEach(field => {
+    allowedFields.forEach((field) => {
       if (updates[field] !== undefined) {
         this[field] = updates[field];
       }
@@ -118,7 +118,7 @@ export class User {
         }
         return acc;
       }, {}),
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 
@@ -129,7 +129,7 @@ export class User {
       type: 'UserAvatarUpdated',
       userId: this.id,
       avatarUrl: this.avatarUrl,
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 
@@ -139,7 +139,7 @@ export class User {
     return {
       type: 'UserPasswordChanged',
       userId: this.id,
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 
@@ -156,7 +156,7 @@ export class User {
     return {
       type: 'UserActivated',
       userId: this.id,
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 }

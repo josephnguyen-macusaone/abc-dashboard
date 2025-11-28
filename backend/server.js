@@ -11,7 +11,12 @@ import v1Routes from './src/infrastructure/routes/index.js';
 import { errorHandler } from './src/infrastructure/api/v1/middleware/error-handler.middleware.js';
 import { correlationIdMiddleware } from './src/infrastructure/api/v1/middleware/correlation-id.middleware.js';
 import { requestLogger } from './src/infrastructure/api/v1/middleware/request-logger.middleware.js';
-import { securityHeaders, requestSizeLimiter, injectionProtection, createRateLimit } from './src/infrastructure/api/v1/middleware/security.middleware.js';
+import {
+  securityHeaders,
+  requestSizeLimiter,
+  injectionProtection,
+  createRateLimit,
+} from './src/infrastructure/api/v1/middleware/security.middleware.js';
 import logger from './src/infrastructure/config/logger.js';
 import { config } from './src/infrastructure/config/config.js';
 import swaggerSpec from './src/infrastructure/config/swagger.js';
@@ -64,29 +69,34 @@ app.use(helmet());
 app.use(securityHeaders);
 
 // CORS configuration
-const corsOptions = config.NODE_ENV === 'development' ? {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
+const corsOptions =
+  config.NODE_ENV === 'development'
+    ? {
+        origin(origin, callback) {
+          // Allow requests with no origin (mobile apps, curl, etc.)
+          if (!origin) {
+            return callback(null, true);
+          }
 
-    // Allow localhost on any port for development
-    if (origin.match(/^http:\/\/localhost:\d+$/)) {
-      return callback(null, true);
-    }
+          // Allow localhost on any port for development
+          if (origin.match(/^http:\/\/localhost:\d+$/)) {
+            return callback(null, true);
+          }
 
-    // Allow the configured client URL
-    if (origin === config.CLIENT_URL) {
-      return callback(null, true);
-    }
+          // Allow the configured client URL
+          if (origin === config.CLIENT_URL) {
+            return callback(null, true);
+          }
 
-    // Reject other origins in development
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true
-} : {
-  origin: config.CLIENT_URL,
-  credentials: true
-};
+          // Reject other origins in development
+          return callback(new Error('Not allowed by CORS'));
+        },
+        credentials: true,
+      }
+    : {
+        origin: config.CLIENT_URL,
+        credentials: true,
+      };
 
 app.use(cors(corsOptions));
 
@@ -116,21 +126,25 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    docExpansion: 'none',
-    filter: true,
-    showExtensions: true,
-    showCommonExtensions: true,
-    syntaxHighlight: {
-      activate: true,
-      theme: 'arta'
-    }
-  }
-}));
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      docExpansion: 'none',
+      filter: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+      syntaxHighlight: {
+        activate: true,
+        theme: 'arta',
+      },
+    },
+  })
+);
 
 // Health check endpoint
 app.get('/api/v1/health', getHealthWithMetrics);
@@ -139,9 +153,8 @@ app.get('/api/v1/health', getHealthWithMetrics);
 // Serve dashboard HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'dashboard.html'));
-});
+}); // Routes
 
-﻿// Routes
 app.use('/api/v1', v1Routes);
 
 // Serve static files from public directory
@@ -160,7 +173,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     message: 'Route not found',
-    correlationId: req.correlationId
+    correlationId: req.correlationId,
   });
 });
 
@@ -188,7 +201,6 @@ const startServer = async () => {
       logger.startup(`API Documentation at http://localhost:${PORT}/api-docs`);
       logger.startup(`Health Check at http://localhost:${PORT}/api/v1/health`);
     });
-
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);
@@ -231,12 +243,14 @@ process.on('uncaughtException', (error) => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   logger.error(`Unhandled Rejection: ${reason?.message || reason}`);
   process.exit(1);
 });
 
-// Start the server
-startServer();
+// Start the server only when this file is run directly (not when imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startServer();
+}
 
 export default app;

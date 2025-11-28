@@ -21,7 +21,8 @@ class SystemMetrics {
     this.cpuUsageStart = process.cpuUsage(); // Reset for next measurement
 
     // Convert to percentage
-    const cpuPercent = ((cpuUsage.user + cpuUsage.system) / 1000000) / (os.cpus().length * 100) * 100;
+    const cpuPercent =
+      ((cpuUsage.user + cpuUsage.system) / 1000000 / (os.cpus().length * 100)) * 100;
 
     // Disk usage (basic implementation - can be enhanced)
     let diskUsage = null;
@@ -33,7 +34,7 @@ class SystemMetrics {
         total: totalSpace,
         free: freeSpace,
         used: totalSpace - freeSpace,
-        usedPercent: ((totalSpace - freeSpace) / totalSpace * 100).toFixed(2)
+        usedPercent: (((totalSpace - freeSpace) / totalSpace) * 100).toFixed(2),
       };
     } catch (error) {
       logger.warn('Could not get disk usage:', error.message);
@@ -49,7 +50,7 @@ class SystemMetrics {
       cpu: {
         cores: os.cpus().length,
         model: os.cpus()[0].model,
-        usagePercent: cpuPercent.toFixed(2)
+        usagePercent: cpuPercent.toFixed(2),
       },
       memory: {
         total: totalMemory,
@@ -60,10 +61,13 @@ class SystemMetrics {
         rss: process.memoryUsage().rss,
         heapTotal: process.memoryUsage().heapTotal,
         heapUsed: process.memoryUsage().heapUsed,
-        heapUsedPercent: ((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100).toFixed(2)
+        heapUsedPercent: (
+          (process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) *
+          100
+        ).toFixed(2),
       },
       disk: diskUsage,
-      networkInterfaces: Object.keys(os.networkInterfaces()).length
+      networkInterfaces: Object.keys(os.networkInterfaces()).length,
     };
   }
 
@@ -76,15 +80,15 @@ class SystemMetrics {
     return {
       pid: process.pid,
       ppid: process.ppid,
-      uptime: uptime,
-      processUptime: processUptime,
+      uptime,
+      processUptime,
       version: process.version,
       versions: process.versions,
       execPath: process.execPath,
       execArgv: process.execArgv,
       cwd: process.cwd(),
       memoryUsage: process.memoryUsage(),
-      cpuUsage: process.cpuUsage()
+      cpuUsage: process.cpuUsage(),
     };
   }
 }
@@ -93,42 +97,82 @@ class DatabaseMetrics {
   // MongoDB connection metrics
   async getMongoDBMetrics() {
     try {
-      const db = mongoose.connection.db;
-      if (!db) return null;
+      // Check if mongoose is connected
+      if (mongoose.connection.readyState !== 1) {
+        return {
+          connected: false,
+          readyState: mongoose.connection.readyState,
+          name: mongoose.connection.name || null,
+          host: mongoose.connection.host || null,
+          port: mongoose.connection.port || null,
+        };
+      }
 
-      const stats = await db.stats();
-      const serverStatus = await db.admin().serverStatus();
+      const db = mongoose.connection.db;
+      if (!db) {
+        return {
+          connected: false,
+          readyState: mongoose.connection.readyState,
+          name: mongoose.connection.name || null,
+        };
+      }
+
+      // Get database stats (this should always work if connected)
+      let stats = null;
+      try {
+        stats = await db.stats();
+      } catch (statsError) {
+        logger.warn('Could not get database stats:', statsError.message);
+      }
+
+      // Get server status (this might fail on some MongoDB versions/configurations)
+      let serverStatus = null;
+      try {
+        serverStatus = await db.admin().serverStatus();
+      } catch (serverStatusError) {
+        logger.warn('Could not get server status (this is optional):', serverStatusError.message);
+        // Server status is optional, continue without it
+      }
 
       return {
-        connected: mongoose.connection.readyState === 1,
+        connected: true,
         readyState: mongoose.connection.readyState,
         name: mongoose.connection.name,
         host: mongoose.connection.host,
         port: mongoose.connection.port,
-        databaseStats: {
-          collections: stats.collections,
-          objects: stats.objects,
-          avgObjSize: stats.avgObjSize,
-          dataSize: stats.dataSize,
-          storageSize: stats.storageSize,
-          indexes: stats.indexes,
-          indexSize: stats.indexSize,
-          fileSize: stats.fileSize
-        },
-        serverStatus: {
-          uptime: serverStatus.uptime,
-          connections: serverStatus.connections,
-          opcounters: serverStatus.opcounters,
-          network: serverStatus.network,
-          memory: serverStatus.memory,
-          asserts: serverStatus.asserts
-        }
+        databaseStats: stats
+          ? {
+              collections: stats.collections,
+              objects: stats.objects,
+              avgObjSize: stats.avgObjSize,
+              dataSize: stats.dataSize,
+              storageSize: stats.storageSize,
+              indexes: stats.indexes,
+              indexSize: stats.indexSize,
+              fileSize: stats.fileSize,
+            }
+          : null,
+        serverStatus: serverStatus
+          ? {
+              uptime: serverStatus.uptime,
+              connections: serverStatus.connections,
+              opcounters: serverStatus.opcounters,
+              network: serverStatus.network,
+              memory: serverStatus.memory,
+              asserts: serverStatus.asserts,
+            }
+          : null,
       };
     } catch (error) {
-      logger.warn('Could not get MongoDB metrics:', error.message);
+      logger.warn('Could not get MongoDB metrics:', {
+        message: error.message,
+        stack: error.stack,
+      });
       return {
-        connected: false,
-        error: error.message
+        connected: mongoose.connection.readyState === 1,
+        readyState: mongoose.connection.readyState,
+        name: mongoose.connection.name || null,
+        error: error.message,
       };
     }
   }
@@ -142,14 +186,22 @@ class CacheMetrics {
     this.cacheDeletes = 0;
   }
 
-  recordHit() { this.cacheHits++; }
-  recordMiss() { this.cacheMisses++; }
-  recordSet() { this.cacheSets++; }
-  recordDelete() { this.cacheDeletes++; }
+  recordHit() {
+    this.cacheHits++;
+  }
+  recordMiss() {
+    this.cacheMisses++;
+  }
+  recordSet() {
+    this.cacheSets++;
+  }
+  recordDelete() {
+    this.cacheDeletes++;
+  }
 
   async getCacheMetrics() {
     const totalRequests = this.cacheHits + this.cacheMisses;
-    const hitRate = totalRequests > 0 ? (this.cacheHits / totalRequests * 100).toFixed(2) : 0;
+    const hitRate = totalRequests > 0 ? ((this.cacheHits / totalRequests) * 100).toFixed(2) : 0;
 
     let cacheStats = null;
     try {
@@ -163,9 +215,9 @@ class CacheMetrics {
       misses: this.cacheMisses,
       sets: this.cacheSets,
       deletes: this.cacheDeletes,
-      hitRate: hitRate,
-      totalRequests: totalRequests,
-      cacheStats: cacheStats
+      hitRate,
+      totalRequests,
+      cacheStats,
     };
   }
 
@@ -185,16 +237,19 @@ class ApplicationMetrics {
       failedLogins: 0,
       rateLimitedRequests: 0,
       blockedIPs: new Set(),
-      suspiciousActivities: 0
+      suspiciousActivities: 0,
     };
   }
 
   recordActiveUser(userId) {
     this.activeUsers.add(userId);
     // Clean up old entries (simple implementation)
-    setTimeout(() => {
-      this.activeUsers.delete(userId);
-    }, 30 * 60 * 1000); // Remove after 30 minutes
+    setTimeout(
+      () => {
+        this.activeUsers.delete(userId);
+      },
+      30 * 60 * 1000
+    ); // Remove after 30 minutes
   }
 
   recordEndpointCall(endpoint, method, statusCode, responseTime) {
@@ -205,7 +260,7 @@ class ApplicationMetrics {
         totalTime: 0,
         avgTime: 0,
         statusCodes: new Map(),
-        errors: 0
+        errors: 0,
       });
     }
 
@@ -221,10 +276,18 @@ class ApplicationMetrics {
     }
   }
 
-  recordFailedLogin() { this.securityEvents.failedLogins++; }
-  recordRateLimitedRequest() { this.securityEvents.rateLimitedRequests++; }
-  recordBlockedIP(ip) { this.securityEvents.blockedIPs.add(ip); }
-  recordSuspiciousActivity() { this.securityEvents.suspiciousActivities++; }
+  recordFailedLogin() {
+    this.securityEvents.failedLogins++;
+  }
+  recordRateLimitedRequest() {
+    this.securityEvents.rateLimitedRequests++;
+  }
+  recordBlockedIP(ip) {
+    this.securityEvents.blockedIPs.add(ip);
+  }
+  recordSuspiciousActivity() {
+    this.securityEvents.suspiciousActivities++;
+  }
 
   getApplicationMetrics() {
     return {
@@ -234,8 +297,8 @@ class ApplicationMetrics {
         failedLogins: this.securityEvents.failedLogins,
         rateLimitedRequests: this.securityEvents.rateLimitedRequests,
         blockedIPs: this.securityEvents.blockedIPs.size,
-        suspiciousActivities: this.securityEvents.suspiciousActivities
-      }
+        suspiciousActivities: this.securityEvents.suspiciousActivities,
+      },
     };
   }
 
@@ -254,72 +317,119 @@ const cacheMetrics = new CacheMetrics();
 const applicationMetrics = new ApplicationMetrics();
 
 // Auto-reset application metrics every 5 minutes
-setInterval(() => {
-  applicationMetrics.reset();
-}, 5 * 60 * 1000);
+setInterval(
+  () => {
+    applicationMetrics.reset();
+  },
+  5 * 60 * 1000
+);
 
 // Auto-reset cache metrics every 15 minutes
-setInterval(() => {
-  cacheMetrics.reset();
-}, 15 * 60 * 1000);
+setInterval(
+  () => {
+    cacheMetrics.reset();
+  },
+  15 * 60 * 1000
+);
 
 // Comprehensive metrics collector
 export const getComprehensiveMetrics = async () => {
   const timestamp = new Date().toISOString();
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const nodeVersion = process.version;
 
   try {
-    const [system, process, database, cache, application] = await Promise.all([
+    // Use Promise.allSettled to handle partial failures gracefully
+    const results = await Promise.allSettled([
       Promise.resolve(systemMetrics.getSystemMetrics()),
       Promise.resolve(systemMetrics.getProcessMetrics()),
       databaseMetrics.getMongoDBMetrics(),
       cacheMetrics.getCacheMetrics(),
-      Promise.resolve(applicationMetrics.getApplicationMetrics())
+      Promise.resolve(applicationMetrics.getApplicationMetrics()),
     ]);
+
+    // Extract results, handling failures gracefully
+    const system = results[0].status === 'fulfilled' ? results[0].value : null;
+    const processInfo = results[1].status === 'fulfilled' ? results[1].value : null;
+    const database = results[2].status === 'fulfilled' ? results[2].value : { connected: false };
+    const cacheData = results[3].status === 'fulfilled' ? results[3].value : { hitRate: 0 };
+    const application = results[4].status === 'fulfilled' ? results[4].value : { activeUsers: 0 };
+
+    // Log any failures
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const metricNames = ['system', 'process', 'database', 'cache', 'application'];
+        logger.warn(`Failed to collect ${metricNames[index]} metrics:`, {
+          error: result.reason?.message || result.reason,
+          stack: result.reason?.stack,
+        });
+      }
+    });
+
+    // Ensure we have valid system metrics (they should always succeed)
+    if (!system) {
+      throw new Error('Failed to collect essential system metrics');
+    }
 
     return {
       timestamp,
-      environment: process.env.NODE_ENV || 'development',
-      version: process.version,
+      environment: nodeEnv,
+      version: nodeVersion,
 
       system,
-      process,
-      database,
-      cache,
-      application,
+      process: processInfo,
+      database: database || { connected: false },
+      cache: cacheData || { hitRate: 0 },
+      application: application || { activeUsers: 0 },
 
       // Summary metrics for quick overview
       summary: {
         status: 'healthy',
-        uptime: process.uptime,
-        memoryUsagePercent: system.memory.usedPercent,
-        cpuUsagePercent: system.cpu.usagePercent,
-        activeUsers: application.activeUsers,
-        cacheHitRate: cache.hitRate,
-        databaseConnected: database?.connected || false
-      }
+        uptime: processInfo?.uptime || 0,
+        memoryUsagePercent: system.memory?.usedPercent || 0,
+        cpuUsagePercent: system.cpu?.usagePercent || 0,
+        activeUsers: application?.activeUsers || 0,
+        cacheHitRate: cacheData?.hitRate || 0,
+        databaseConnected: database?.connected || false,
+      },
     };
   } catch (error) {
-    logger.error('Error collecting comprehensive metrics:', error);
+    logger.error('Error collecting comprehensive metrics:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     return {
       timestamp,
+      environment: nodeEnv,
+      version: nodeVersion,
       error: error.message,
-      status: 'error'
+      status: 'error',
+      system: null,
+      process: null,
+      database: { connected: false },
+      cache: { hitRate: 0 },
+      application: { activeUsers: 0 },
+      summary: {
+        status: 'error',
+        uptime: 0,
+        memoryUsagePercent: 0,
+        cpuUsagePercent: 0,
+        activeUsers: 0,
+        cacheHitRate: 0,
+        databaseConnected: false,
+      },
     };
   }
 };
 
 // Export individual metric collectors for middleware use
-export {
-  systemMetrics,
-  databaseMetrics,
-  cacheMetrics,
-  applicationMetrics
-};
+export { systemMetrics, databaseMetrics, cacheMetrics, applicationMetrics };
 
 export default {
   getComprehensiveMetrics,
   systemMetrics,
   databaseMetrics,
   cacheMetrics,
-  applicationMetrics
+  applicationMetrics,
 };

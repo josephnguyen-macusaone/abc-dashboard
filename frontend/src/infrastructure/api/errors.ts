@@ -1,9 +1,9 @@
-import { ApiException, ApiError } from '@/infrastructure/api/types';
+import { ApiExceptionDto, ApiErrorDto } from '@/application/dto/api-dto';
 
 /**
  * Handles API errors and converts them to ApiException
  */
-export function handleApiError(error: any): ApiException {
+export function handleApiError(error: any): ApiExceptionDto {
   // Axios error
   if (error.response) {
     const { status, data } = error.response;
@@ -12,12 +12,12 @@ export function handleApiError(error: any): ApiException {
     const message = data?.message || data?.error || `Request failed with status ${status}`;
     const code = data?.code || `HTTP_${status}`;
 
-    return new ApiException(message, code, status, data);
+    return new ApiExceptionDto(message, code, status, data);
   }
 
   // Network error
   if (error.request) {
-    return new ApiException(
+    return new ApiExceptionDto(
       'Network error - please check your connection',
       'NETWORK_ERROR',
       0,
@@ -26,7 +26,7 @@ export function handleApiError(error: any): ApiException {
   }
 
   // Other error
-  return new ApiException(
+  return new ApiExceptionDto(
     error.message || 'An unexpected error occurred',
     'UNKNOWN_ERROR',
     0,
@@ -50,7 +50,7 @@ export function isRetryableError(error: any): boolean {
  * Gets user-friendly error message
  */
 export function getErrorMessage(error: any): string {
-  if (error instanceof ApiException) {
+  if (error instanceof ApiExceptionDto) {
     return error.message;
   }
 
@@ -68,8 +68,8 @@ export function getErrorMessage(error: any): string {
 /**
  * Creates a standardized error response
  */
-export function createErrorResponse(error: any): ApiError {
-  const apiException = error instanceof ApiException ? error : handleApiError(error);
+export function createErrorResponse(error: any): ApiErrorDto {
+  const apiException = error instanceof ApiExceptionDto ? error : handleApiError(error);
 
   return {
     message: apiException.message,

@@ -4,9 +4,10 @@
  */
 import {
   ValidationException,
-  ResourceNotFoundException
+  ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
+import { UserAuthDto } from '../../dto/auth/index.js';
 
 export class VerifyEmailUseCase {
   constructor(userRepository, tokenService, emailService = null) {
@@ -15,6 +16,11 @@ export class VerifyEmailUseCase {
     this.emailService = emailService;
   }
 
+  /**
+   * Execute verify email use case
+   * @param {{ token: string }} input - Verification token
+   * @returns {Promise<{ user: UserAuthDto, message: string }>}
+   */
   async execute({ token }) {
     try {
       // Validate input
@@ -41,7 +47,7 @@ export class VerifyEmailUseCase {
 
       // Update user in repository
       const updatedUser = await this.userRepository.updateUserStatus(user.id, {
-        isActive: true
+        isActive: true,
       });
 
       // Send confirmation email
@@ -57,7 +63,7 @@ export class VerifyEmailUseCase {
 
         logger.info('Email verification successful', {
           userId: user.id,
-          email: user.email
+          email: user.email,
         });
       } catch (error) {
         logger.error('Failed to send verification confirmation email:', error);
@@ -65,19 +71,12 @@ export class VerifyEmailUseCase {
       }
 
       return {
-        user: {
-          id: updatedUser.id,
-          username: updatedUser.username,
-          email: updatedUser.email,
-          displayName: updatedUser.displayName,
-          isActive: updatedUser.isActive,
-          createdAt: updatedUser.createdAt
-        },
-        message: 'Email verified successfully. Your account is now active.'
+        user: UserAuthDto.fromEntity(updatedUser),
+        message: 'Email verified successfully. Your account is now active.',
       };
     } catch (error) {
       // Re-throw domain exceptions as-is
-      if (error instanceof ValidationException || error instanceof NotFoundException) {
+      if (error instanceof ValidationException || error instanceof ResourceNotFoundException) {
         throw error;
       }
       // Wrap unexpected errors

@@ -6,7 +6,7 @@
 // TODO: Replace with proper logger after initialization
 const logger = console;
 
-import { NetworkTimeoutException, ExternalServiceUnavailableException } from '../../domain/exceptions/domain.exception.js';
+import { NetworkTimeoutException } from '../../domain/exceptions/domain.exception.js';
 
 /**
  * Default retry configuration
@@ -24,15 +24,15 @@ const DEFAULT_CONFIG = {
     'ETIMEDOUT',
     'ESOCKETTIMEDOUT',
     'MongoNetworkError',
-    'MongoTimeoutError'
-  ]
+    'MongoTimeoutError',
+  ],
 };
 
 /**
  * Sleep for a specified number of milliseconds
  * @param {number} ms - Milliseconds to sleep
  */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Calculate delay with exponential backoff and optional jitter
@@ -44,7 +44,7 @@ const calculateDelay = (attempt, config = {}) => {
     initialDelay = DEFAULT_CONFIG.initialDelay,
     maxDelay = DEFAULT_CONFIG.maxDelay,
     backoffMultiplier = DEFAULT_CONFIG.backoffMultiplier,
-    jitter = DEFAULT_CONFIG.jitter
+    jitter = DEFAULT_CONFIG.jitter,
   } = config;
 
   let delay = initialDelay * Math.pow(backoffMultiplier, attempt);
@@ -66,7 +66,9 @@ const calculateDelay = (attempt, config = {}) => {
  * @param {Array} retryableErrors - List of retryable error codes/types
  */
 const isRetryableError = (error, retryableErrors = DEFAULT_CONFIG.retryableErrors) => {
-  if (!error) return false;
+  if (!error) {
+    return false;
+  }
 
   // Check error code
   if (error.code && retryableErrors.includes(error.code)) {
@@ -81,10 +83,12 @@ const isRetryableError = (error, retryableErrors = DEFAULT_CONFIG.retryableError
   // Check for network-related errors
   if (error.message) {
     const message = error.message.toLowerCase();
-    if (message.includes('timeout') ||
-        message.includes('connection') ||
-        message.includes('network') ||
-        message.includes('service unavailable')) {
+    if (
+      message.includes('timeout') ||
+      message.includes('connection') ||
+      message.includes('network') ||
+      message.includes('service unavailable')
+    ) {
       return true;
     }
   }
@@ -113,7 +117,7 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
     maxRetries,
     retryableErrors,
     onRetry,
-    correlationId = `retry_${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+    correlationId = `retry_${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
   } = config;
 
   let lastError;
@@ -137,7 +141,7 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
           attempt,
           error: error.message,
           errorCode: error.code,
-          errorName: error.name
+          errorName: error.name,
         });
         break;
       }
@@ -151,7 +155,7 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
         delay,
         error: error.message,
         errorCode: error.code,
-        errorName: error.name
+        errorName: error.name,
       });
 
       // Call retry callback if provided
@@ -161,7 +165,7 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
         } catch (callbackError) {
           logger.error('Error in retry callback', {
             correlationId,
-            callbackError: callbackError.message
+            callbackError: callbackError.message,
           });
         }
       }
@@ -174,7 +178,7 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
   logger.error(`${operation} failed after ${maxRetries + 1} attempts`, {
     correlationId,
     maxRetries,
-    finalError: lastError.message
+    finalError: lastError.message,
   });
 
   throw lastError;
@@ -184,11 +188,12 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
  * Retry decorator for async methods
  * @param {Object} options - Retry options
  */
-export const retryable = (options = {}) => {
-  return (target, propertyKey, descriptor) => {
+export const retryable =
+  (options = {}) =>
+  (target, propertyKey, descriptor) => {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function(...args) {
+    descriptor.value = async function (...args) {
       const operation = `${target.constructor.name}.${propertyKey}`;
       const correlationId = this.correlationId || options.correlationId;
 
@@ -201,7 +206,6 @@ export const retryable = (options = {}) => {
 
     return descriptor;
   };
-};
 
 /**
  * Specialized retry for database operations
@@ -212,13 +216,8 @@ export const withDatabaseRetry = async (fn, options = {}) => {
   const dbRetryConfig = {
     maxRetries: 2, // Fewer retries for DB operations
     initialDelay: 500,
-    retryableErrors: [
-      'MongoNetworkError',
-      'MongoTimeoutError',
-      'ECONNREFUSED',
-      'ETIMEDOUT'
-    ],
-    ...options
+    retryableErrors: ['MongoNetworkError', 'MongoTimeoutError', 'ECONNREFUSED', 'ETIMEDOUT'],
+    ...options,
   };
 
   return withRetry(fn, dbRetryConfig, 'database_operation');
@@ -239,9 +238,9 @@ export const withServiceRetry = async (fn, options = {}) => {
       'ETIMEDOUT',
       'ESOCKETTIMEDOUT',
       'EBADGATEWAY',
-      'ESERVICEUNAVAILABLE'
+      'ESERVICEUNAVAILABLE',
     ],
-    ...options
+    ...options,
   };
 
   return withRetry(fn, serviceRetryConfig, 'external_service_call');
@@ -255,11 +254,7 @@ export const withServiceRetry = async (fn, options = {}) => {
  * @param {Object} options - Additional timeout options
  */
 export const withTimeout = async (fn, timeoutMs = 5000, operation = 'operation', options = {}) => {
-  const {
-    correlationId,
-    onTimeout,
-    customMessage
-  } = options;
+  const { correlationId, onTimeout, customMessage } = options;
 
   let timeoutId;
 
@@ -272,7 +267,7 @@ export const withTimeout = async (fn, timeoutMs = 5000, operation = 'operation',
         correlationId,
         operation,
         timeoutMs,
-        customMessage
+        customMessage,
       });
 
       if (onTimeout) {
@@ -281,7 +276,7 @@ export const withTimeout = async (fn, timeoutMs = 5000, operation = 'operation',
         } catch (callbackError) {
           logger.error('Error in timeout callback', {
             correlationId,
-            callbackError: callbackError.message
+            callbackError: callbackError.message,
           });
         }
       }
@@ -305,25 +300,25 @@ export const withTimeout = async (fn, timeoutMs = 5000, operation = 'operation',
  */
 export const TimeoutPresets = {
   // Quick operations (validation, simple DB queries)
-  QUICK: 2000,      // 2 seconds
+  QUICK: 2000, // 2 seconds
 
   // Normal operations (most API calls, DB operations)
-  NORMAL: 10000,    // 10 seconds
+  NORMAL: 10000, // 10 seconds
 
   // Slow operations (external API calls, file processing)
-  SLOW: 30000,      // 30 seconds
+  SLOW: 30000, // 30 seconds
 
   // Very slow operations (bulk operations, reports)
-  BULK: 120000,     // 2 minutes
+  BULK: 120000, // 2 minutes
 
   // Email operations
-  EMAIL: 45000,     // 45 seconds
+  EMAIL: 45000, // 45 seconds
 
   // Database operations
-  DATABASE: 15000,  // 15 seconds
+  DATABASE: 15000, // 15 seconds
 
   // External service calls
-  EXTERNAL_API: 20000 // 20 seconds
+  EXTERNAL_API: 20000, // 20 seconds
 };
 
 /**
@@ -334,29 +329,29 @@ export const RetryPresets = {
   FAST: {
     maxRetries: 2,
     initialDelay: 100,
-    maxDelay: 1000
+    maxDelay: 1000,
   },
 
   // Standard retries for normal operations
   STANDARD: {
     maxRetries: 3,
     initialDelay: 1000,
-    maxDelay: 10000
+    maxDelay: 10000,
   },
 
   // Slow retries for external services
   EXTERNAL_SERVICE: {
     maxRetries: 3,
     initialDelay: 2000,
-    maxDelay: 30000
+    maxDelay: 30000,
   },
 
   // Conservative retries for critical operations
   CRITICAL: {
     maxRetries: 5,
     initialDelay: 1000,
-    maxDelay: 60000
-  }
+    maxDelay: 60000,
+  },
 };
 
 export default {
@@ -367,5 +362,5 @@ export default {
   withTimeout,
   RetryPresets,
   isRetryableError,
-  calculateDelay
+  calculateDelay,
 };

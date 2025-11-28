@@ -2,39 +2,32 @@
  * Get Users Use Case
  * Handles retrieving users with pagination and filtering
  */
+import { UserListResponseDto, UserResponseDto } from '../../dto/user/index.js';
+import { PaginationDto } from '../../dto/common/index.js';
+
 export class GetUsersUseCase {
   constructor(userRepository) {
     this.userRepository = userRepository;
   }
 
+  /**
+   * Execute get users use case
+   * @param {Object} options - Query options (page, limit, filters)
+   * @returns {Promise<UserListResponseDto>} Paginated list of users
+   */
   async execute(options = {}) {
     try {
       const result = await this.userRepository.findUsers(options);
 
-      return {
-        users: result.users.map(user => ({
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-          avatarUrl: user.avatarUrl,
-          phone: user.phone,
-          isActive: user.isActive,
-          isFirstLogin: user.isFirstLogin,
-          langKey: user.langKey,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-          createdBy: user.createdBy,
-          lastModifiedBy: user.lastModifiedBy
-        })),
-        pagination: {
+      return new UserListResponseDto({
+        users: result.users.map((user) => UserResponseDto.fromEntity(user)),
+        pagination: new PaginationDto({
           page: result.page,
           limit: result.limit || options.limit || 10,
           total: result.total,
-          totalPages: result.totalPages
-        }
-      };
+          totalPages: result.totalPages,
+        }),
+      });
     } catch (error) {
       throw new Error(`Failed to get users: ${error.message}`);
     }

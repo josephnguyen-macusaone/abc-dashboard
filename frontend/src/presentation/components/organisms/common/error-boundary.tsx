@@ -2,10 +2,9 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Typography, Button } from '@/presentation/components/atoms';
-import { AlertTriangle, RefreshCw, Home, Bug, ExternalLink } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { logger } from '@/shared/utils';
-import { useErrorHandler } from '@/presentation/contexts/error-context';
 
 interface Props {
   children: ReactNode;
@@ -30,17 +29,6 @@ interface State {
  * Enhanced Error Boundary Component
  * Catches React errors in component tree and displays fallback UI
  * Prevents white screen of death and provides error recovery options
- *
- * Features:
- * - Error reporting and tracking
- * - Automatic retry mechanisms
- * - Configurable fallback UI
- * - Error boundary levels (page/section/component)
- * - Integration with error context
- *
- * Placement: organisms/common (cross-cutting infrastructure component)
- * MVVM: Pure View layer - no ViewModel or Model dependencies
- * Atomic Design: Organism level - complex, reusable UI section
  */
 export class ErrorBoundary extends Component<Props, State> {
   private maxRetries: number = 3;
@@ -241,15 +229,17 @@ function ErrorFallback({
         </div>
 
         <div className="space-y-2">
-          <Typography variant="h1" size="xl" weight="bold" className="text-foreground">
+          {/* MAC USA ONE Typography: Title L for error title */}
+          <Typography variant="title-l" className="text-foreground">
             {title}
           </Typography>
-          <Typography variant="p" size="sm" color="muted" className="text-muted-foreground">
+          {/* MAC USA ONE Typography: Body M for error message */}
+          <Typography variant="body-m" color="muted">
             {message}
           </Typography>
 
           {errorId && (
-            <Typography variant="p" size="xs" color="muted" className="text-muted-foreground font-mono">
+            <Typography variant="body-xs" color="muted" className="font-mono">
               Error ID: {errorId}
             </Typography>
           )}
@@ -257,10 +247,11 @@ function ErrorFallback({
 
         {shouldShowErrorDetails && error && (
           <div className="mt-4 p-4 bg-muted rounded-lg text-left">
-            <Typography variant="p" size="xs" weight="medium" className="text-destructive mb-2">
+            {/* MAC USA ONE Typography: Label S for error details label */}
+            <Typography variant="label-s" className="text-destructive mb-2">
               Error Details {isDevelopment ? '(Development Only)' : ''}:
             </Typography>
-            <pre className="text-xs text-muted-foreground overflow-auto max-h-32">
+            <pre className="text-body-xs text-muted-foreground overflow-auto max-h-32">
               {error.message}
               {error.stack && shouldShowErrorDetails && (
                 <>
@@ -271,7 +262,8 @@ function ErrorFallback({
             </pre>
 
             <div className="mt-3 pt-3 border-t border-border">
-              <Typography variant="p" size="xs" color="muted" className="mb-2">
+              {/* MAC USA ONE Typography: Body XS for copy instruction */}
+              <Typography variant="body-xs" color="muted" className="mb-2">
                 Copy error details for debugging or support.
               </Typography>
               <Button
@@ -318,7 +310,7 @@ function ErrorFallback({
         </div>
 
         {canRetry && retryCount > 0 && (
-          <Typography variant="p" size="xs" color="muted" className="text-muted-foreground">
+          <Typography variant="body-xs" color="muted">
             Retry attempt {retryCount} of {maxRetries}
           </Typography>
         )}

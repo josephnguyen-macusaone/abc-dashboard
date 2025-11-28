@@ -4,7 +4,7 @@
  */
 import {
   ValidationException,
-  ResourceNotFoundException
+  ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
 import { executeWithDegradation } from '../../../shared/utils/graceful-degradation.js';
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/retry.js';
@@ -41,7 +41,7 @@ export class UpdateProfileUseCase {
       const avatarUrlUpdate = updates.avatarUrl;
 
       // Separate updates by collection
-      Object.keys(updates).forEach(key => {
+      Object.keys(updates).forEach((key) => {
         if (userFields.includes(key)) {
           userUpdates[key] = updates[key];
         } else if (profileFields.includes(key)) {
@@ -50,7 +50,8 @@ export class UpdateProfileUseCase {
       });
 
       // Check if we have any required updates (excluding avatarUrl)
-      const hasRequiredUpdates = Object.keys(userUpdates).length > 0 || Object.keys(profileUpdates).length > 0;
+      const hasRequiredUpdates =
+        Object.keys(userUpdates).length > 0 || Object.keys(profileUpdates).length > 0;
 
       if (!hasRequiredUpdates && !avatarUrlUpdate) {
         throw new ValidationException('No valid fields provided for update');
@@ -68,17 +69,19 @@ export class UpdateProfileUseCase {
       // Handle avatarUrl with graceful degradation - don't fail the whole update if it has issues
       let avatarUrlSkipped = false;
       if (avatarUrlUpdate !== undefined) {
-        const avatarResult = await executeWithDegradation(
+        // Result is intentionally unused - side effect updates updatedUser inside callback
+        const _avatarResult = await executeWithDegradation(
           'avatar_processing',
           async () => {
             logger.info('Processing avatar URL update', {
               userId,
               avatarUrlType: typeof avatarUrlUpdate,
-              avatarUrlLength: typeof avatarUrlUpdate === 'string' ? avatarUrlUpdate.length : 'N/A'
+              avatarUrlLength: typeof avatarUrlUpdate === 'string' ? avatarUrlUpdate.length : 'N/A',
             });
 
             // Ensure avatarUrl is a string to prevent type errors
-            const safeAvatarUrl = typeof avatarUrlUpdate === 'string' ? avatarUrlUpdate : String(avatarUrlUpdate || '');
+            const safeAvatarUrl =
+              typeof avatarUrlUpdate === 'string' ? avatarUrlUpdate : String(avatarUrlUpdate || '');
             const avatarOnlyUpdate = { avatarUrl: safeAvatarUrl };
 
             const userWithAvatar = await this.userRepository.update(userId, avatarOnlyUpdate);
@@ -95,7 +98,7 @@ export class UpdateProfileUseCase {
             logger.warn('Avatar processing failed, using graceful degradation', {
               userId,
               error: error.message,
-              willUseDefault: true
+              willUseDefault: true,
             });
             return { success: false, skipped: true, reason: 'processing_failed' };
           },
@@ -117,7 +120,7 @@ export class UpdateProfileUseCase {
             // Ensure profile record exists with default values
             await userProfileRepository.updateByUserId(userId, {
               bio: null,
-              emailVerified: false
+              emailVerified: false,
             });
           }
         },
@@ -129,9 +132,9 @@ export class UpdateProfileUseCase {
             logger.error('Profile update operation timed out', {
               userId,
               profileUpdates: Object.keys(profileUpdates),
-              timeout: TimeoutPresets.DATABASE
+              timeout: TimeoutPresets.DATABASE,
             });
-          }
+          },
         }
       );
 
@@ -139,11 +142,11 @@ export class UpdateProfileUseCase {
       const updatedFields = [
         ...Object.keys(userUpdates),
         ...Object.keys(profileUpdates),
-        ...(avatarUrlUpdate !== undefined ? ['avatarUrl'] : [])
+        ...(avatarUrlUpdate !== undefined ? ['avatarUrl'] : []),
       ];
       logger.info('User profile updated', {
         userId,
-        updatedFields
+        updatedFields,
       });
 
       // Fetch the updated profile data to include in response
@@ -163,10 +166,10 @@ export class UpdateProfileUseCase {
             onTimeout: (error) => {
               logger.warn('Profile fetch after update timed out, using existing bio', {
                 userId,
-                existingBio: updatedUser.bio
+                existingBio: updatedUser.bio,
               });
               // Continue with existing bio if fetch times out
-            }
+            },
           }
         );
       }
@@ -182,15 +185,20 @@ export class UpdateProfileUseCase {
           bio: finalBio,
           phone: updatedUser.phone,
           isActive: updatedUser.isActive,
-          updatedAt: updatedUser.updatedAt
+          updatedAt: updatedUser.updatedAt,
         },
         message: avatarUrlSkipped
           ? 'Profile updated successfully, but avatar URL was skipped due to validation issues'
           : 'Profile updated successfully',
-        warnings: avatarUrlSkipped ? [{
-          field: 'avatarUrl',
-          message: 'Avatar URL was not updated due to validation or processing issues. Other profile fields were updated successfully.'
-        }] : undefined
+        warnings: avatarUrlSkipped
+          ? [
+              {
+                field: 'avatarUrl',
+                message:
+                  'Avatar URL was not updated due to validation or processing issues. Other profile fields were updated successfully.',
+              },
+            ]
+          : undefined,
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

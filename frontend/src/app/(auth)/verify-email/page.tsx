@@ -1,4 +1,4 @@
-import VerifyEmailPage from '@/presentation/components/pages/verify-email-page';
+import { VerifyEmailPage } from '@/presentation/components/pages';
 import { ProtectedRoute } from '@/presentation/components/routes';
 
 interface VerifyEmailProps {

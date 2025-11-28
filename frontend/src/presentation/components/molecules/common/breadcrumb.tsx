@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Home, ChevronRight, LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/utils';
+import { Typography } from '@/presentation/components/atoms';
 
 interface BreadcrumbItem {
   name: string;
@@ -57,7 +58,7 @@ export function Breadcrumb() {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center space-x-1 text-sm">
+    <nav aria-label="Breadcrumb" className="flex items-center space-x-1">
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
         const Icon = crumb.icon;
@@ -68,10 +69,13 @@ export function Breadcrumb() {
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )}
             {isLast ? (
-              <span className="font-medium text-foreground flex items-center space-x-1">
+              <Typography
+                variant="body-s"
+                className="font-medium text-foreground flex items-center space-x-1"
+              >
                 {Icon && <Icon className="h-4 w-4" />}
                 <span>{crumb.name}</span>
-              </span>
+              </Typography>
             ) : (
               <Link
                 href={crumb.href}
@@ -81,7 +85,10 @@ export function Breadcrumb() {
                 )}
               >
                 {crumb.icon && <crumb.icon className="h-4 w-4" />}
-                <span>{crumb.name}</span>
+                {/* MAC USA ONE Typography: Body S for breadcrumb links */}
+                <Typography variant="body-s" as="span">
+                  {crumb.name}
+                </Typography>
               </Link>
             )}
           </div>
@@ -90,4 +97,3 @@ export function Breadcrumb() {
     </nav>
   );
 }
-

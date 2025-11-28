@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Metadata } from "next";
-import { Literata } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 
 import { AuthProvider } from '@/presentation/contexts/auth-context';
 import { ThemeProvider } from '@/presentation/contexts/theme-context';
@@ -11,17 +11,24 @@ import { APP_CONFIG } from '@/shared/constants';
 
 import "./globals.css";
 
-// Configure Literata font as per typography guide
-const literata = Literata({
+// Configure Archivo font for display/headings
+const archivo = Archivo({
   subsets: ["latin", "latin-ext", "vietnamese"],
   display: "swap",
-  variable: "--font-literata",
-  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-archivo",
+  weight: ["400", "500", "600", "700", "800", "900"],
+});
+
+// Configure Inter font for body/UI text
+const inter = Inter({
+  subsets: ["latin", "latin-ext", "vietnamese"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "ABC Dashboard",
-  description: "A modern MERN authentication application with role-based access",
 };
 
 export default function RootLayout({
@@ -30,8 +37,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={literata.className}>
+    <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${inter.variable}`}>
+      <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider defaultTheme={APP_CONFIG.DEFAULT_THEME}>
             <ErrorProvider>

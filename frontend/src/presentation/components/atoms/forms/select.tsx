@@ -19,7 +19,8 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full min-w-0 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none ring-offset-background placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm [&>span]:line-clamp-1",
+      // MAC USA ONE Typography: Body S for select trigger (matches input)
+      "flex h-11 w-full min-w-0 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-body-s shadow-xs transition-[color,box-shadow] outline-none ring-offset-background placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       "dark:bg-input/30",
       "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
       "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
@@ -108,7 +109,8 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
+    // MAC USA ONE Typography: Label S for select labels (matches form label)
+    className={cn("py-1.5 pl-8 pr-2 text-label-s", className)}
     {...props}
   />
 ))
@@ -121,7 +123,8 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // MAC USA ONE Typography: Body S for select items
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-body-s outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -161,4 +164,3 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 }
-

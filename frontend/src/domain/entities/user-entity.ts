@@ -9,6 +9,7 @@ export class User {
     public readonly email: string,
     public readonly role: UserRole,
     public readonly isActive: boolean,
+    public readonly username?: string,
     public readonly avatar?: string,
     public readonly firstName?: string,
     public readonly lastName?: string,
@@ -115,6 +116,7 @@ export class User {
       obj.email,
       obj.role,
       obj.isActive !== undefined ? obj.isActive : false, // Default to false if not provided
+      obj.username, // Add username field
       obj.avatar,
       obj.firstName,
       obj.lastName,
@@ -143,6 +145,7 @@ export class User {
       email: this.email,
       role: this.role,
       isActive: this.isActive,
+      username: this.username,
       avatar: this.avatar,
       firstName: this.firstName,
       lastName: this.lastName,

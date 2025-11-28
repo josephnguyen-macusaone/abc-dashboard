@@ -4,9 +4,10 @@
  */
 import {
   ValidationException,
-  EmailAlreadyExistsException
+  EmailAlreadyExistsException,
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
+import { RegisterResponseDto, UserAuthDto } from '../../dto/auth/index.js';
 
 export class RegisterUseCase {
   constructor(userRepository, authService, tokenService, emailService = null) {
@@ -33,8 +34,16 @@ export class RegisterUseCase {
       let finalUsername = username;
       if (!finalUsername) {
         // Generate username from first name + last name, or use email prefix
-        const baseUsername = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(/[^a-z0-9_]/g, '');
-        finalUsername = baseUsername || email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const baseUsername = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(
+          /[^a-z0-9_]/g,
+          ''
+        );
+        finalUsername =
+          baseUsername ||
+          email
+            .split('@')[0]
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '');
 
         // Ensure uniqueness by appending numbers if needed
         let counter = 0;
@@ -47,8 +56,8 @@ export class RegisterUseCase {
       } else {
         // Check if provided username already exists
         const existingUsername = await this.userRepository.findByUsername(finalUsername);
-      if (existingUsername) {
-        throw new ValidationException('Username already taken');
+        if (existingUsername) {
+          throw new ValidationException('Username already taken');
         }
       }
 
@@ -65,7 +74,7 @@ export class RegisterUseCase {
         email,
         displayName,
         avatarUrl,
-        phone
+        phone,
       });
 
       // Create user profile if bio is provided
@@ -76,12 +85,15 @@ export class RegisterUseCase {
         await userProfileRepository.save({
           userId: user.id,
           bio,
-          emailVerified: false
+          emailVerified: false,
         });
       }
 
       // Generate email verification JWT token
-      const verificationToken = this.tokenService.generateEmailVerificationToken(user.id, user.email);
+      const verificationToken = this.tokenService.generateEmailVerificationToken(
+        user.id,
+        user.email
+      );
 
       // Send email verification link
       try {
@@ -99,32 +111,22 @@ export class RegisterUseCase {
         logger.info('New user registered - verification email sent', {
           userId: user.id,
           email: user.email,
-          username: finalUsername
+          username: finalUsername,
         });
       } catch (error) {
         logger.error('Failed to send verification email:', error);
         // Don't fail registration if email fails
       }
 
-      // Return user data (no tokens until email is verified)
-      return {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-          avatarUrl: user.avatarUrl,
-          phone: user.phone,
-          isActive: false, // New users are inactive until email verification
-          createdAt: user.createdAt
-        },
-        message: 'Registration successful. Please check your email for verification link.'
-      };
+      // Return user data as DTO (no tokens until email is verified)
+      return new RegisterResponseDto({
+        user: UserAuthDto.fromEntity({ ...user, isActive: false }),
+        message: 'Registration successful. Please check your email for verification link.',
+        requiresVerification: true,
+      });
     } catch (error) {
       // Re-throw domain exceptions as-is
-      if (error instanceof ValidationException ||
-          error instanceof EmailAlreadyExistsException) {
+      if (error instanceof ValidationException || error instanceof EmailAlreadyExistsException) {
         throw error;
       }
       // Wrap unexpected errors
@@ -132,4 +134,3 @@ export class RegisterUseCase {
     }
   }
 }
-

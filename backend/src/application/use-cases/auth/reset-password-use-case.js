@@ -4,7 +4,7 @@
  */
 import {
   ValidationException,
-  ResourceNotFoundException
+  ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
 
@@ -59,7 +59,7 @@ export class ResetPasswordUseCase {
 
       // Update user password and clear first login flag if set
       const updateData = {
-        hashedPassword
+        hashedPassword,
       };
 
       // If this was a first login scenario, mark as completed
@@ -93,13 +93,13 @@ ABC Dashboard Team`,
 
         logger.info('Password reset successful', {
           userId: user.id,
-          email: user.email
+          email: user.email,
         });
       } catch (emailError) {
         logger.error('Failed to send password reset confirmation email', {
           userId: user.id,
           email: user.email,
-          error: emailError.message
+          error: emailError.message,
         });
         // Don't fail the password reset if email fails
       }
@@ -110,8 +110,8 @@ ABC Dashboard Team`,
         user: {
           id: updatedUser.id,
           email: updatedUser.email,
-          displayName: updatedUser.displayName
-        }
+          displayName: updatedUser.displayName,
+        },
       };
     } catch (error) {
       // Re-throw domain exceptions

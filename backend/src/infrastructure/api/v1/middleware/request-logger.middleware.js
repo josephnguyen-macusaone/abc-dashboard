@@ -20,7 +20,7 @@ export const requestLogger = (req, res, next) => {
 
   // Override res.end to log response
   const originalEnd = res.end;
-  res.end = function(...args) {
+  res.end = function (...args) {
     const duration = Date.now() - start;
 
     requestLogger.http(`Outgoing ${req.method} ${req.originalUrl} - ${res.statusCode}`, {

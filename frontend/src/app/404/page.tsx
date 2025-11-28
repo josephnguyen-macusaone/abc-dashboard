@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/pre
 import { Home, ArrowLeft, Search, FileQuestion } from 'lucide-react';
 import { AuthTemplate } from '@/presentation/components/templates/auth-template';
 import { logger } from '@/shared/utils';
+import { Typography } from '@/presentation/components/atoms';
 
 export default function NotFoundPage() {
   const router = useRouter();
@@ -27,10 +28,7 @@ export default function NotFoundPage() {
   };
 
   return (
-    <AuthTemplate
-      title="Page Not Found"
-      subtitle="The page you're looking for doesn't exist or has been moved."
-    >
+    <AuthTemplate>
       <Card className="text-center">
         <CardHeader>
           <div className="flex justify-center mb-4">
@@ -38,15 +36,18 @@ export default function NotFoundPage() {
               <FileQuestion className="h-12 w-12 text-muted-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl">404 - Page Not Found</CardTitle>
-          <CardDescription className="text-base">
+          {/* MAC USA ONE Typography: Title L for 404 title */}
+          <CardTitle className="text-title-l">404 - Page Not Found</CardTitle>
+          {/* MAC USA ONE Typography: Body M for description */}
+          <CardDescription className="text-body-m">
             Sorry, we couldn't find the page you're looking for. It might have been moved, deleted, or you might have mistyped the URL.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            <strong>What you can try:</strong>
+          {/* MAC USA ONE Typography: Body S for help text */}
+          <div className="text-body-s text-muted-foreground bg-muted/50 p-3 rounded-lg">
+            <Typography variant="label-s" className="font-medium" as="strong">What you can try:</Typography>
             <ul className="mt-2 space-y-1 text-left">
               <li>• Check if the URL is correct</li>
               <li>• Go back to the previous page</li>
@@ -84,7 +85,8 @@ export default function NotFoundPage() {
           </div>
 
           <div className="pt-4 border-t">
-            <p className="text-xs text-muted-foreground">
+            {/* MAC USA ONE Typography: Body XS for footer text */}
+            <Typography variant="body-xs" color="muted" as="p">
               If you believe this is an error, please{' '}
               <button
                 onClick={() => {
@@ -97,7 +99,7 @@ export default function NotFoundPage() {
                 contact our support team
               </button>
               {' '}with details about what you were trying to access.
-            </p>
+            </Typography>
           </div>
         </CardContent>
       </Card>

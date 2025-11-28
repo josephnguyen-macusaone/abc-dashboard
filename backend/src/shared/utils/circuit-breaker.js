@@ -10,20 +10,20 @@ import { ExternalServiceUnavailableException } from '../../domain/exceptions/dom
  * Circuit Breaker States
  */
 export const CircuitState = {
-  CLOSED: 'CLOSED',       // Normal operation
-  OPEN: 'OPEN',           // Service is failing, reject all calls
-  HALF_OPEN: 'HALF_OPEN'  // Testing if service has recovered
+  CLOSED: 'CLOSED', // Normal operation
+  OPEN: 'OPEN', // Service is failing, reject all calls
+  HALF_OPEN: 'HALF_OPEN', // Testing if service has recovered
 };
 
 /**
  * Circuit Breaker Configuration
  */
 const DEFAULT_CONFIG = {
-  failureThreshold: 5,      // Number of failures before opening circuit
-  recoveryTimeout: 60000,   // Time in ms before trying to close circuit (1 minute)
-  monitoringPeriod: 10000,  // Time window for failure counting (10 seconds)
-  successThreshold: 3,      // Number of successes needed to close circuit from half-open
-  name: 'default'           // Circuit breaker name for logging
+  failureThreshold: 5, // Number of failures before opening circuit
+  recoveryTimeout: 60000, // Time in ms before trying to close circuit (1 minute)
+  monitoringPeriod: 10000, // Time window for failure counting (10 seconds)
+  successThreshold: 3, // Number of successes needed to close circuit from half-open
+  name: 'default', // Circuit breaker name for logging
 };
 
 /**
@@ -47,7 +47,7 @@ export class CircuitBreaker {
       successfulCalls: 0,
       failedCalls: 0,
       rejectedCalls: 0,
-      stateChanges: []
+      stateChanges: [],
     };
   }
 
@@ -116,15 +116,17 @@ export class CircuitBreaker {
     this.failureHistory.push({
       timestamp: Date.now(),
       error: error.message,
-      context
+      context,
     });
 
     // Clean old failure history
     this._cleanFailureHistory();
 
     // Check if we should open the circuit
-    if (this.state === CircuitState.CLOSED &&
-        this._getRecentFailures() >= this.config.failureThreshold) {
+    if (
+      this.state === CircuitState.CLOSED &&
+      this._getRecentFailures() >= this.config.failureThreshold
+    ) {
       this._transitionTo(CircuitState.OPEN);
     } else if (this.state === CircuitState.HALF_OPEN) {
       // If we're in half-open and get a failure, go back to open
@@ -138,7 +140,7 @@ export class CircuitBreaker {
       failureCount: this.failureCount,
       recentFailures: this._getRecentFailures(),
       error: error.message,
-      ...context
+      ...context,
     });
   }
 
@@ -147,7 +149,9 @@ export class CircuitBreaker {
    * @private
    */
   _shouldAttemptReset() {
-    if (!this.lastFailureTime) return false;
+    if (!this.lastFailureTime) {
+      return false;
+    }
 
     const timeSinceLastFailure = Date.now() - this.lastFailureTime;
     return timeSinceLastFailure >= this.config.recoveryTimeout;
@@ -174,7 +178,7 @@ export class CircuitBreaker {
     this.metrics.stateChanges.push({
       timestamp: Date.now(),
       from: oldState,
-      to: newState
+      to: newState,
     });
 
     logger.info('Circuit breaker state changed', {
@@ -183,7 +187,7 @@ export class CircuitBreaker {
       fromState: oldState,
       toState: newState,
       failureCount: this.failureCount,
-      recoveryTimeout: this.config.recoveryTimeout
+      recoveryTimeout: this.config.recoveryTimeout,
     });
   }
 
@@ -193,7 +197,7 @@ export class CircuitBreaker {
    */
   _getRecentFailures() {
     const cutoffTime = Date.now() - this.config.monitoringPeriod;
-    return this.failureHistory.filter(failure => failure.timestamp > cutoffTime).length;
+    return this.failureHistory.filter((failure) => failure.timestamp > cutoffTime).length;
   }
 
   /**
@@ -202,9 +206,7 @@ export class CircuitBreaker {
    */
   _cleanFailureHistory() {
     const cutoffTime = Date.now() - this.config.monitoringPeriod;
-    this.failureHistory = this.failureHistory.filter(
-      failure => failure.timestamp > cutoffTime
-    );
+    this.failureHistory = this.failureHistory.filter((failure) => failure.timestamp > cutoffTime);
   }
 
   /**
@@ -218,10 +220,12 @@ export class CircuitBreaker {
       successCount: this.successCount,
       recentFailures: this._getRecentFailures(),
       lastFailureTime: this.lastFailureTime,
-      nextAttemptTime: this.state === CircuitState.OPEN ?
-        (this.lastFailureTime || 0) + this.config.recoveryTimeout : null,
+      nextAttemptTime:
+        this.state === CircuitState.OPEN
+          ? (this.lastFailureTime || 0) + this.config.recoveryTimeout
+          : null,
       metrics: { ...this.metrics },
-      config: { ...this.config }
+      config: { ...this.config },
     };
   }
 
@@ -232,7 +236,7 @@ export class CircuitBreaker {
     this._transitionTo(CircuitState.CLOSED);
     logger.info('Circuit breaker manually reset', {
       correlationId: this.correlationId,
-      serviceName: this.config.name
+      serviceName: this.config.name,
     });
   }
 
@@ -243,7 +247,7 @@ export class CircuitBreaker {
     this._transitionTo(CircuitState.OPEN);
     logger.warn('Circuit breaker manually opened', {
       correlationId: this.correlationId,
-      serviceName: this.config.name
+      serviceName: this.config.name,
     });
   }
 }
@@ -262,10 +266,13 @@ export class CircuitBreakerRegistry {
    */
   getBreaker(serviceName, config = {}) {
     if (!this.breakers.has(serviceName)) {
-      this.breakers.set(serviceName, new CircuitBreaker({
-        name: serviceName,
-        ...config
-      }));
+      this.breakers.set(
+        serviceName,
+        new CircuitBreaker({
+          name: serviceName,
+          ...config,
+        })
+      );
     }
     return this.breakers.get(serviceName);
   }
@@ -297,15 +304,16 @@ export const circuitBreakerRegistry = new CircuitBreakerRegistry();
 /**
  * Circuit breaker decorator for methods
  */
-export const circuitBreak = (serviceName, config = {}) => {
-  return (target, propertyKey, descriptor) => {
+export const circuitBreak =
+  (serviceName, config = {}) =>
+  (target, propertyKey, descriptor) => {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function(...args) {
+    descriptor.value = async function (...args) {
       const breaker = circuitBreakerRegistry.getBreaker(serviceName, config);
       const context = {
         method: `${target.constructor.name}.${propertyKey}`,
-        argsCount: args.length
+        argsCount: args.length,
       };
 
       return breaker.execute(() => originalMethod.apply(this, args), context);
@@ -313,7 +321,6 @@ export const circuitBreak = (serviceName, config = {}) => {
 
     return descriptor;
   };
-};
 
 /**
  * Execute function with circuit breaker protection
@@ -329,5 +336,5 @@ export default {
   CircuitState,
   circuitBreakerRegistry,
   circuitBreak,
-  withCircuitBreaker
+  withCircuitBreaker,
 };

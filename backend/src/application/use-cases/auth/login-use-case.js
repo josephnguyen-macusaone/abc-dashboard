@@ -5,9 +5,10 @@
 import {
   InvalidCredentialsException,
   AccountDeactivatedException,
-  ValidationException
+  ValidationException,
 } from '../../../domain/exceptions/domain.exception.js';
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/retry.js';
+import { LoginResponseDto, UserAuthDto, TokensDto } from '../../dto/auth/index.js';
 
 export class LoginUseCase {
   constructor(userRepository, authService, tokenService) {
@@ -16,6 +17,11 @@ export class LoginUseCase {
     this.tokenService = tokenService;
   }
 
+  /**
+   * Execute login use case
+   * @param {{ email: string, password: string }} input - Login credentials
+   * @returns {Promise<LoginResponseDto>} Login response with user and tokens
+   */
   async execute({ email, password }) {
     try {
       // Validate input
@@ -31,7 +37,9 @@ export class LoginUseCase {
 
       // Check if account is active
       if (!user.isActive) {
-        throw new ValidationException('Please verify your email before logging in. Check your email for the verification link.');
+        throw new ValidationException(
+          'Please verify your email before logging in. Check your email for the verification link.'
+        );
       }
 
       // Verify password with timeout
@@ -51,38 +59,26 @@ export class LoginUseCase {
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
         email: user.email,
-        requiresPasswordChange
+        requiresPasswordChange,
       });
 
       const refreshToken = this.tokenService.generateRefreshToken({
-        userId: user.id
+        userId: user.id,
       });
 
-      // Return user data and tokens
-      return {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-          avatarUrl: user.avatarUrl,
-          phone: user.phone,
-          isActive: user.isActive,
-          isFirstLogin: user.isFirstLogin,
-          createdAt: user.createdAt
-        },
-        tokens: {
-          accessToken,
-          refreshToken
-        },
-        requiresPasswordChange
-      };
+      // Return structured DTO response
+      return new LoginResponseDto({
+        user: UserAuthDto.fromEntity(user),
+        tokens: new TokensDto({ accessToken, refreshToken }),
+        requiresPasswordChange,
+      });
     } catch (error) {
       // Re-throw domain exceptions as-is
-      if (error instanceof ValidationException ||
-          error instanceof InvalidCredentialsException ||
-          error instanceof AccountDeactivatedException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InvalidCredentialsException ||
+        error instanceof AccountDeactivatedException
+      ) {
         throw error;
       }
       // Wrap unexpected errors

@@ -4,7 +4,7 @@
  */
 import {
   ValidationException,
-  ResourceNotFoundException
+  ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
 
@@ -44,7 +44,10 @@ export class ChangePasswordUseCase {
 
       // Verify current password (skip for first login changes)
       if (!isFirstLoginChange) {
-        const isCurrentPasswordValid = await this.authService.verifyPassword(currentPassword, user.hashedPassword);
+        const isCurrentPasswordValid = await this.authService.verifyPassword(
+          currentPassword,
+          user.hashedPassword
+        );
         if (!isCurrentPasswordValid) {
           throw new ValidationException('Current password is incorrect');
         }
@@ -55,7 +58,7 @@ export class ChangePasswordUseCase {
 
       // Prepare update data
       const updateData = {
-        hashedPassword: newHashedPassword
+        hashedPassword: newHashedPassword,
       };
 
       // Mark first login as completed if this is a first login change
@@ -81,12 +84,9 @@ export class ChangePasswordUseCase {
             ? 'Hi {{displayName}}! Welcome to ABC Dashboard. Your password has been successfully set. You can now access all features.'
             : 'Hi {{displayName}}! Your password has been successfully changed. If you did not make this change, please contact support immediately.';
 
-          await this.emailService.sendEmail(
-            user.email,
-            emailSubject,
-            emailTemplate,
-            { displayName: user.displayName }
-          );
+          await this.emailService.sendEmail(user.email, emailSubject, emailTemplate, {
+            displayName: user.displayName,
+          });
         }
 
         // Log security event
@@ -95,13 +95,13 @@ export class ChangePasswordUseCase {
           userId,
           email: user.email,
           changedAt: new Date().toISOString(),
-          isFirstLoginChange
+          isFirstLoginChange,
         });
 
         logger.info(`${eventType} successfully`, {
           userId,
           email: user.email,
-          isFirstLoginChange
+          isFirstLoginChange,
         });
       } catch (error) {
         logger.error('Failed to send password change notification:', error);
@@ -114,7 +114,7 @@ export class ChangePasswordUseCase {
 
       return {
         message,
-        isFirstLoginChange
+        isFirstLoginChange,
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

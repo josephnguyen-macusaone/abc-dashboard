@@ -3,11 +3,20 @@
  * Handles user profile updates
  */
 import logger from '../../../infrastructure/config/logger.js';
+import { UserResponseDto } from '../../dto/user/index.js';
+
 export class UpdateUserUseCase {
   constructor(userRepository) {
     this.userRepository = userRepository;
   }
 
+  /**
+   * Execute update user use case
+   * @param {string} userId - User ID to update
+   * @param {Object} updates - Update data
+   * @param {Object} currentUser - Current authenticated user
+   * @returns {Promise<{ user: UserResponseDto, message: string }>}
+   */
   async execute(userId, updates, currentUser) {
     try {
       // Validate input
@@ -49,26 +58,12 @@ export class UpdateUserUseCase {
       logger.info('User profile updated', {
         userId,
         updatedBy: currentUser.id,
-        updatedFields: Object.keys(updates)
+        updatedFields: Object.keys(updates),
       });
 
       return {
-        user: {
-          id: updatedUser.id,
-          username: updatedUser.username,
-          email: updatedUser.email,
-          displayName: updatedUser.displayName,
-          role: updatedUser.role,
-          avatarUrl: updatedUser.avatarUrl,
-          phone: updatedUser.phone,
-          isActive: updatedUser.isActive,
-          isFirstLogin: updatedUser.isFirstLogin,
-          langKey: updatedUser.langKey,
-          updatedAt: updatedUser.updatedAt,
-          createdBy: updatedUser.createdBy,
-          lastModifiedBy: updatedUser.lastModifiedBy
-        },
-        message: 'User profile updated successfully'
+        user: UserResponseDto.fromEntity(updatedUser),
+        message: 'User profile updated successfully',
       };
     } catch (error) {
       throw new Error(`User update failed: ${error.message}`);

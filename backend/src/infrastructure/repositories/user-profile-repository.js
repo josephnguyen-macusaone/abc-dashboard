@@ -39,17 +39,26 @@ export class UserProfileRepository extends IUserProfileRepository {
   async update(id, updates) {
     const updateData = {};
 
-    if (updates.bio !== undefined) updateData.bio = updates.bio;
-    if (updates.emailVerified !== undefined) updateData.emailVerified = updates.emailVerified;
-    if (updates.lastLoginAt !== undefined) updateData.lastLoginAt = updates.lastLoginAt;
-    if (updates.lastActivityAt !== undefined) updateData.lastActivityAt = updates.lastActivityAt;
-    if (updates.emailVerifiedAt !== undefined) updateData.emailVerifiedAt = updates.emailVerifiedAt;
+    if (updates.bio !== undefined) {
+      updateData.bio = updates.bio;
+    }
+    if (updates.emailVerified !== undefined) {
+      updateData.emailVerified = updates.emailVerified;
+    }
+    if (updates.lastLoginAt !== undefined) {
+      updateData.lastLoginAt = updates.lastLoginAt;
+    }
+    if (updates.lastActivityAt !== undefined) {
+      updateData.lastActivityAt = updates.lastActivityAt;
+    }
+    if (updates.emailVerifiedAt !== undefined) {
+      updateData.emailVerifiedAt = updates.emailVerifiedAt;
+    }
 
-    const updatedDoc = await this.UserProfileModel.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const updatedDoc = await this.UserProfileModel.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     return updatedDoc ? this._toEntity(updatedDoc) : null;
   }
@@ -57,17 +66,27 @@ export class UserProfileRepository extends IUserProfileRepository {
   async updateByUserId(userId, updates) {
     const updateData = {};
 
-    if (updates.bio !== undefined) updateData.bio = updates.bio;
-    if (updates.emailVerified !== undefined) updateData.emailVerified = updates.emailVerified;
-    if (updates.lastLoginAt !== undefined) updateData.lastLoginAt = updates.lastLoginAt;
-    if (updates.lastActivityAt !== undefined) updateData.lastActivityAt = updates.lastActivityAt;
-    if (updates.emailVerifiedAt !== undefined) updateData.emailVerifiedAt = updates.emailVerifiedAt;
+    if (updates.bio !== undefined) {
+      updateData.bio = updates.bio;
+    }
+    if (updates.emailVerified !== undefined) {
+      updateData.emailVerified = updates.emailVerified;
+    }
+    if (updates.lastLoginAt !== undefined) {
+      updateData.lastLoginAt = updates.lastLoginAt;
+    }
+    if (updates.lastActivityAt !== undefined) {
+      updateData.lastActivityAt = updates.lastActivityAt;
+    }
+    if (updates.emailVerifiedAt !== undefined) {
+      updateData.emailVerifiedAt = updates.emailVerifiedAt;
+    }
 
-    const updatedDoc = await this.UserProfileModel.findOneAndUpdate(
-      { userId },
-      updateData,
-      { new: true, runValidators: true, upsert: true }
-    );
+    const updatedDoc = await this.UserProfileModel.findOneAndUpdate({ userId }, updateData, {
+      new: true,
+      runValidators: true,
+      upsert: true,
+    });
 
     return this._toEntity(updatedDoc);
   }
@@ -88,7 +107,7 @@ export class UserProfileRepository extends IUserProfileRepository {
       { userId },
       {
         lastLoginAt: now,
-        lastActivityAt: now
+        lastActivityAt: now,
       },
       { new: true, runValidators: true, upsert: true }
     );
@@ -113,7 +132,7 @@ export class UserProfileRepository extends IUserProfileRepository {
       { userId },
       {
         emailVerified: true,
-        emailVerifiedAt: now
+        emailVerifiedAt: now,
       },
       { new: true, runValidators: true, upsert: true }
     );
@@ -131,7 +150,7 @@ export class UserProfileRepository extends IUserProfileRepository {
       lastActivityAt: profileDoc.lastActivityAt,
       emailVerifiedAt: profileDoc.emailVerifiedAt,
       createdAt: profileDoc.createdAt,
-      updatedAt: profileDoc.updatedAt
+      updatedAt: profileDoc.updatedAt,
     });
   }
 }

@@ -9,11 +9,11 @@ import logger from '../../infrastructure/config/logger.js';
  * Degradation level definitions
  */
 export const DegradationLevel = {
-  NONE: 'none',           // Full functionality
-  MINOR: 'minor',         // Some non-critical features unavailable
-  MODERATE: 'moderate',   // Multiple non-critical features unavailable
-  MAJOR: 'major',         // Core features affected but system still operational
-  CRITICAL: 'critical'    // System severely degraded
+  NONE: 'none', // Full functionality
+  MINOR: 'minor', // Some non-critical features unavailable
+  MODERATE: 'moderate', // Multiple non-critical features unavailable
+  MAJOR: 'major', // Core features affected but system still operational
+  CRITICAL: 'critical', // System severely degraded
 };
 
 /**
@@ -22,7 +22,7 @@ export const DegradationLevel = {
 export const FeatureStatus = {
   AVAILABLE: 'available',
   DEGRADED: 'degraded',
-  UNAVAILABLE: 'unavailable'
+  UNAVAILABLE: 'unavailable',
 };
 
 /**
@@ -48,62 +48,58 @@ export class GracefulDegradationManager {
     this.registerFeature('authentication', {
       critical: true,
       fallback: null,
-      healthCheck: () => true // Always available
+      healthCheck: () => true, // Always available
     });
 
     this.registerFeature('database', {
       critical: true,
       fallback: null,
-      healthCheck: async () => {
+      healthCheck: async () =>
         // Would check database connectivity
-        return true; // Placeholder
-      }
+        true, // Placeholder
     });
 
     // Non-critical features
     this.registerFeature('email_service', {
       critical: false,
       fallback: 'log_to_database',
-      healthCheck: async () => {
+      healthCheck: async () =>
         // Would check email service health
-        return true; // Placeholder
-      }
+        true, // Placeholder
     });
 
     this.registerFeature('file_upload', {
       critical: false,
       fallback: 'skip_upload',
-      healthCheck: () => true // Always available (client-side validation)
+      healthCheck: () => true, // Always available (client-side validation)
     });
 
     this.registerFeature('avatar_processing', {
       critical: false,
       fallback: 'use_default_avatar',
-      healthCheck: () => true // Always available
+      healthCheck: () => true, // Always available
     });
 
     this.registerFeature('cache', {
       critical: false,
       fallback: 'no_cache',
-      healthCheck: async () => {
+      healthCheck: async () =>
         // Would check cache connectivity
-        return true; // Placeholder
-      }
+        true, // Placeholder
     });
 
     this.registerFeature('metrics_collection', {
       critical: false,
       fallback: 'reduced_metrics',
-      healthCheck: () => true // Always available (in-memory fallback)
+      healthCheck: () => true, // Always available (in-memory fallback)
     });
 
     this.registerFeature('external_apis', {
       critical: false,
       fallback: 'cached_data',
-      healthCheck: async () => {
+      healthCheck: async () =>
         // Would check external API connectivity
-        return false; // Assume degraded by default
-      }
+        false, // Assume degraded by default
     });
   }
 
@@ -123,8 +119,8 @@ export class GracefulDegradationManager {
         healthCheck: () => true,
         maxFailures: 3,
         recoveryTime: 300000, // 5 minutes
-        ...config
-      }
+        ...config,
+      },
     });
   }
 
@@ -158,14 +154,16 @@ export class GracefulDegradationManager {
    */
   reportRecovery(featureName) {
     const feature = this.features.get(featureName);
-    if (!feature) return;
+    if (!feature) {
+      return;
+    }
 
     feature.failureCount = 0;
     feature.status = FeatureStatus.AVAILABLE;
     feature.lastChecked = Date.now();
 
     logger.info(`Feature recovered: ${featureName}`, {
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     this.updateDegradationLevel();
@@ -177,7 +175,9 @@ export class GracefulDegradationManager {
    */
   markFeatureUnavailable(featureName, error, context) {
     const feature = this.features.get(featureName);
-    if (!feature || feature.status === FeatureStatus.UNAVAILABLE) return;
+    if (!feature || feature.status === FeatureStatus.UNAVAILABLE) {
+      return;
+    }
 
     feature.status = FeatureStatus.UNAVAILABLE;
 
@@ -185,7 +185,7 @@ export class GracefulDegradationManager {
       error: error.message,
       context,
       timestamp: new Date().toISOString(),
-      degradationLevel: this.degradationLevel
+      degradationLevel: this.degradationLevel,
     });
   }
 
@@ -204,14 +204,16 @@ export class GracefulDegradationManager {
    */
   getFeatureStatus(featureName) {
     const feature = this.features.get(featureName);
-    if (!feature) return null;
+    if (!feature) {
+      return null;
+    }
 
     return {
       name: featureName,
       status: feature.status,
       failureCount: feature.failureCount,
       lastChecked: feature.lastChecked,
-      config: feature.config
+      config: feature.config,
     };
   }
 
@@ -253,7 +255,7 @@ export class GracefulDegradationManager {
       if (fallbackFn) {
         logger.info(`Using fallback for ${featureName}`, {
           originalError: error.message,
-          context
+          context,
         });
         return fallbackFn(error);
       }
@@ -278,7 +280,7 @@ export class GracefulDegradationManager {
 
     logger.info(`Executing fallback strategy for ${featureName}: ${fallbackStrategy}`, {
       originalError: originalError.message,
-      context
+      context,
     });
 
     switch (fallbackStrategy) {
@@ -318,9 +320,9 @@ export class GracefulDegradationManager {
    */
   updateDegradationLevel() {
     const features = Array.from(this.features.values());
-    const unavailableCount = features.filter(f => f.status === FeatureStatus.UNAVAILABLE).length;
-    const criticalUnavailable = features.filter(f =>
-      f.status === FeatureStatus.UNAVAILABLE && f.config.critical
+    const unavailableCount = features.filter((f) => f.status === FeatureStatus.UNAVAILABLE).length;
+    const criticalUnavailable = features.filter(
+      (f) => f.status === FeatureStatus.UNAVAILABLE && f.config.critical
     ).length;
 
     let newLevel = DegradationLevel.NONE;
@@ -339,7 +341,7 @@ export class GracefulDegradationManager {
       logger.info(`System degradation level changed: ${this.degradationLevel} -> ${newLevel}`, {
         unavailableFeatures: unavailableCount,
         criticalUnavailable,
-        totalFeatures: features.length
+        totalFeatures: features.length,
       });
       this.degradationLevel = newLevel;
     }
@@ -361,10 +363,10 @@ export class GracefulDegradationManager {
             status: feature.status,
             failureCount: feature.failureCount,
             lastChecked: feature.lastChecked,
-            critical: feature.config.critical
-          }
+            critical: feature.config.critical,
+          },
         ])
-      )
+      ),
     };
   }
 
@@ -374,7 +376,7 @@ export class GracefulDegradationManager {
     // Log the intended email/notification to database for later processing
     logger.info(`Logging ${featureName} action to database for later processing`, {
       context,
-      originalError: error.message
+      originalError: error.message,
     });
 
     // In a real implementation, you would save to a notifications table
@@ -382,65 +384,65 @@ export class GracefulDegradationManager {
       logged: true,
       feature: featureName,
       willRetryLater: true,
-      context
+      context,
     };
   }
 
   async fallbackSkipUpload(featureName, error, context) {
     logger.warn(`Skipping ${featureName} due to unavailability`, {
       context,
-      originalError: error.message
+      originalError: error.message,
     });
 
     return {
       uploaded: false,
       skipped: true,
       reason: 'service_unavailable',
-      feature: featureName
+      feature: featureName,
     };
   }
 
   async fallbackUseDefaultAvatar(featureName, error, context) {
     logger.warn(`Using default avatar due to ${featureName} failure`, {
       context,
-      originalError: error.message
+      originalError: error.message,
     });
 
     return {
       avatarUrl: '/default-avatar.png',
       isDefault: true,
-      reason: 'service_unavailable'
+      reason: 'service_unavailable',
     };
   }
 
   async fallbackNoCache(featureName, error, context) {
     logger.warn(`Proceeding without ${featureName}`, {
       context,
-      originalError: error.message
+      originalError: error.message,
     });
 
     return {
       cached: false,
-      reason: 'cache_unavailable'
+      reason: 'cache_unavailable',
     };
   }
 
   async fallbackReducedMetrics(featureName, error, context) {
     logger.warn(`Using reduced metrics due to ${featureName} failure`, {
       context,
-      originalError: error.message
+      originalError: error.message,
     });
 
     return {
       metrics: 'reduced',
-      reason: 'metrics_service_unavailable'
+      reason: 'metrics_service_unavailable',
     };
   }
 
   async fallbackCachedData(featureName, error, context) {
     logger.warn(`Returning cached data due to ${featureName} failure`, {
       context,
-      originalError: error.message
+      originalError: error.message,
     });
 
     // In a real implementation, you would fetch from cache
@@ -448,7 +450,7 @@ export class GracefulDegradationManager {
       data: null,
       cached: true,
       reason: 'external_api_unavailable',
-      cacheAge: 'unknown'
+      cacheAge: 'unknown',
     };
   }
 }
@@ -461,11 +463,12 @@ export const gracefulDegradationManager = new GracefulDegradationManager();
 /**
  * Decorator for graceful degradation
  */
-export const withGracefulDegradation = (featureName, fallbackFn = null) => {
-  return (target, propertyKey, descriptor) => {
+export const withGracefulDegradation =
+  (featureName, fallbackFn = null) =>
+  (target, propertyKey, descriptor) => {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function(...args) {
+    descriptor.value = async function (...args) {
       return gracefulDegradationManager.executeWithDegradation(
         featureName,
         () => originalMethod.apply(this, args),
@@ -475,14 +478,12 @@ export const withGracefulDegradation = (featureName, fallbackFn = null) => {
 
     return descriptor;
   };
-};
 
 /**
  * Execute function with graceful degradation
  */
-export const executeWithDegradation = (featureName, fn, fallbackFn = null, context = {}) => {
-  return gracefulDegradationManager.executeWithDegradation(featureName, fn, fallbackFn, context);
-};
+export const executeWithDegradation = (featureName, fn, fallbackFn = null, context = {}) =>
+  gracefulDegradationManager.executeWithDegradation(featureName, fn, fallbackFn, context);
 
 export default {
   GracefulDegradationManager,
@@ -490,5 +491,5 @@ export default {
   FeatureStatus,
   gracefulDegradationManager,
   withGracefulDegradation,
-  executeWithDegradation
+  executeWithDegradation,
 };

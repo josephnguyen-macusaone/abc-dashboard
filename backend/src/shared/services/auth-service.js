@@ -33,7 +33,7 @@ export class AuthService {
 
       logger.debug('Password hashed successfully', {
         correlationId: this.correlationId,
-        passwordLength: password.length
+        passwordLength: password.length,
       });
 
       return hashedPassword;
@@ -45,7 +45,7 @@ export class AuthService {
       logger.error('Password hashing failed', {
         correlationId: this.correlationId,
         error: error.message,
-        errorType: error.constructor.name
+        errorType: error.constructor.name,
       });
 
       throw new Error(`Password hashing failed: ${error.message}`);
@@ -73,7 +73,7 @@ export class AuthService {
 
       logger.debug('Password verification completed', {
         correlationId: this.correlationId,
-        isValid
+        isValid,
       });
 
       return isValid;
@@ -85,7 +85,7 @@ export class AuthService {
       logger.error('Password verification failed', {
         correlationId: this.correlationId,
         error: error.message,
-        errorType: error.constructor.name
+        errorType: error.constructor.name,
       });
 
       throw new Error(`Password verification failed: ${error.message}`);
@@ -102,7 +102,7 @@ export class AuthService {
       return {
         isValid: false,
         score: 0,
-        feedback: ['Password must be a string']
+        feedback: ['Password must be a string'],
       };
     }
 
@@ -150,7 +150,7 @@ export class AuthService {
     return {
       isValid: score >= 75, // Require 75% score
       score: Math.min(score, 100),
-      feedback
+      feedback,
     };
   }
 }

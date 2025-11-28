@@ -1,12 +1,12 @@
 'use client';
 
-import { ScrollArea } from '@/presentation/components/atoms';
+import { ScrollArea, toast } from '@/presentation/components/atoms';
 import { DashboardHeader, MobileOverlay, NavigationItem} from '@/presentation/components/molecules';
 import { Sidebar } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
 import { useRouter, usePathname } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useState, Fragment } from 'react';
-import { Home, Loader2, Users, Shield, FileText, TrendingUp, Activity, Settings, UserCheck } from 'lucide-react';
+import { Home, Loader2, Users, Shield, FileText, TrendingUp, Activity, Settings, UserCheck, X } from 'lucide-react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { PermissionUtils } from '@/shared/constants';
 
@@ -70,10 +70,20 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const handleLogout = useCallback(async () => {
     try {
       await logout();
-      router.push('/login');
     } catch (error) {
-      // Logout should not fail navigation
-      router.push('/login');
+      toast.error('Failed to logout', {
+        description: 'Please try again later',
+        action: {
+          label: 'Try again',
+          onClick: () => {
+            handleLogout();
+          },
+        },
+        duration: 5000,
+        position: 'top-right',
+        className: 'bg-destructive text-destructive-foreground',
+        icon: <X className="h-4 w-4" />,
+      });
     }
   }, [logout, router]);
 

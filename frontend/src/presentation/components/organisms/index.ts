@@ -6,3 +6,6 @@ export * from './common/';
 
 // Form components
 export * from './form';
+
+// User management components
+export * from './user-management';

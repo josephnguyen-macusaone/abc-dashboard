@@ -15,7 +15,7 @@ export class ResponseTransformer {
     const response = {
       success: true,
       message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     if (data !== null) {
@@ -48,8 +48,8 @@ export class ResponseTransformer {
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
     });
   }
 
@@ -64,7 +64,7 @@ export class ResponseTransformer {
       success: true,
       message,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -77,7 +77,7 @@ export class ResponseTransformer {
     return {
       success: true,
       message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -91,7 +91,7 @@ export class ResponseTransformer {
     const response = {
       success: false,
       message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     if (Object.keys(errors).length > 0) {
@@ -160,7 +160,7 @@ export const responseHelpers = {
   error(message = 'An error occurred', statusCode = 500, errors = {}) {
     const response = ResponseTransformer.error(message, errors);
     return this.status(statusCode).json(response);
-  }
+  },
 };
 
 /**

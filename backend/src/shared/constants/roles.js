@@ -7,7 +7,7 @@
 export const ROLES = {
   ADMIN: 'admin',
   MANAGER: 'manager',
-  STAFF: 'staff'
+  STAFF: 'staff',
 };
 
 // Permission definitions
@@ -23,7 +23,7 @@ export const PERMISSIONS = {
   VIEW_DASHBOARD: 'view_dashboard',
 
   // Profile management (basic permission for all users)
-  MANAGE_OWN_PROFILE: 'manage_own_profile'
+  MANAGE_OWN_PROFILE: 'manage_own_profile',
 };
 
 // Role-based permissions mapping
@@ -35,20 +35,20 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.DELETE_USER,
     PERMISSIONS.MANAGE_SYSTEM,
     PERMISSIONS.VIEW_DASHBOARD,
-    PERMISSIONS.MANAGE_OWN_PROFILE
+    PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
   [ROLES.MANAGER]: [
     PERMISSIONS.CREATE_USER,
     PERMISSIONS.READ_USER,
     PERMISSIONS.UPDATE_USER,
     PERMISSIONS.VIEW_DASHBOARD,
-    PERMISSIONS.MANAGE_OWN_PROFILE
+    PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
   [ROLES.STAFF]: [
     PERMISSIONS.READ_USER,
     PERMISSIONS.UPDATE_USER, // Can update own profile
-    PERMISSIONS.MANAGE_OWN_PROFILE
-  ]
+    PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
 };
 
 /**
@@ -68,7 +68,7 @@ export function hasPermission(role, permission) {
  * @returns {boolean} True if role has at least one permission
  */
 export function hasAnyPermission(role, permissions) {
-  return permissions.some(permission => hasPermission(role, permission));
+  return permissions.some((permission) => hasPermission(role, permission));
 }
 
 /**
@@ -78,7 +78,7 @@ export function hasAnyPermission(role, permissions) {
  * @returns {boolean} True if role has all permissions
  */
 export function hasAllPermissions(role, permissions) {
-  return permissions.every(permission => hasPermission(role, permission));
+  return permissions.every((permission) => hasPermission(role, permission));
 }
 
 /**
@@ -97,5 +97,5 @@ export default {
   hasPermission,
   hasAnyPermission,
   hasAllPermissions,
-  getRolePermissions
+  getRolePermissions,
 };

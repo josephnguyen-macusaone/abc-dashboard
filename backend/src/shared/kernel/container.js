@@ -21,7 +21,7 @@ import { GetUserStatsUseCase } from '../../application/use-cases/users/get-user-
 import { GetProfileUseCase } from '../../application/use-cases/profiles/get-profile-use-case.js';
 import { UpdateProfileUseCase as ProfileUpdateProfileUseCase } from '../../application/use-cases/profiles/update-profile-use-case.js';
 import { RecordLoginUseCase } from '../../application/use-cases/profiles/record-login-use-case.js';
-import { VerifyEmailUseCase as ProfileVerifyEmailUseCase } from '../../application/use-cases/profiles/verify-email-use-case.js';
+import { MarkEmailVerifiedUseCase } from '../../application/use-cases/profiles/mark-email-verified-use-case.js';
 import { AuthService } from '../services/auth-service.js';
 import { TokenService } from '../services/token-service.js';
 import { EmailService } from '../services/email-service.js';
@@ -49,7 +49,9 @@ class Container {
   setCorrelationId(correlationId) {
     // Set on repositories
     const userRepo = this.instances.get('userRepository');
-    if (userRepo) userRepo.setCorrelationId(correlationId);
+    if (userRepo) {
+      userRepo.setCorrelationId(correlationId);
+    }
 
     const userProfileRepo = this.instances.get('userProfileRepository');
     if (userProfileRepo && userProfileRepo.setCorrelationId) {
@@ -58,13 +60,19 @@ class Container {
 
     // Set on services
     const authService = this.instances.get('authService');
-    if (authService) authService.correlationId = correlationId;
+    if (authService) {
+      authService.correlationId = correlationId;
+    }
 
     const tokenService = this.instances.get('tokenService');
-    if (tokenService) tokenService.correlationId = correlationId;
+    if (tokenService) {
+      tokenService.correlationId = correlationId;
+    }
 
     const emailService = this.instances.get('emailService');
-    if (emailService) emailService.correlationId = correlationId;
+    if (emailService) {
+      emailService.correlationId = correlationId;
+    }
 
     // Set on middleware
     const authMiddleware = this.instances.get('authMiddleware');
@@ -121,10 +129,7 @@ class Container {
   }
 
   getRefreshTokenUseCase() {
-    return new RefreshTokenUseCase(
-      this.getUserRepository(),
-      this.getTokenService()
-    );
+    return new RefreshTokenUseCase(this.getUserRepository(), this.getTokenService());
   }
 
   getAuthVerifyEmailUseCase() {
@@ -136,9 +141,7 @@ class Container {
   }
 
   getAuthUpdateProfileUseCase() {
-    return new AuthUpdateProfileUseCase(
-      this.getUserRepository()
-    );
+    return new AuthUpdateProfileUseCase(this.getUserRepository());
   }
 
   getChangePasswordUseCase() {
@@ -204,8 +207,8 @@ class Container {
     return new RecordLoginUseCase(this.getUserProfileRepository());
   }
 
-  getProfileVerifyEmailUseCase() {
-    return new ProfileVerifyEmailUseCase(this.getUserProfileRepository());
+  getMarkEmailVerifiedUseCase() {
+    return new MarkEmailVerifiedUseCase(this.getUserProfileRepository());
   }
 
   // Controllers
@@ -215,6 +218,7 @@ class Container {
       this.getRegisterUseCase(),
       this.getRefreshTokenUseCase(),
       this.getAuthVerifyEmailUseCase(),
+      this.getMarkEmailVerifiedUseCase(),
       this.getChangePasswordUseCase(),
       this.getRequestPasswordResetUseCase(),
       this.getResetPasswordUseCase(),
@@ -237,18 +241,17 @@ class Container {
       this.getGetProfileUseCase(),
       this.getProfileUpdateProfileUseCase(),
       this.getAuthUpdateProfileUseCase(),
-      this.getRecordLoginUseCase(),
-      this.getProfileVerifyEmailUseCase()
+      this.getRecordLoginUseCase()
     );
   }
 
   // Middleware
   getAuthMiddleware() {
     if (!this.instances.has('authMiddleware')) {
-      this.instances.set('authMiddleware', new AuthMiddleware(
-        this.getTokenService(),
-        this.getUserRepository()
-      ));
+      this.instances.set(
+        'authMiddleware',
+        new AuthMiddleware(this.getTokenService(), this.getUserRepository())
+      );
     }
     return this.instances.get('authMiddleware');
   }

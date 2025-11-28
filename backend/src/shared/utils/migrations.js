@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 const logger = {
   info: console.log,
   error: console.error,
-  warn: console.warn
+  warn: console.warn,
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,10 +21,11 @@ class MigrationManager {
     this.migrationCollection = 'migrations';
 
     // Define Migration model once
-    this.MigrationModel = mongoose.model('Migration',
+    this.MigrationModel = mongoose.model(
+      'Migration',
       new mongoose.Schema({
         name: { type: String, required: true, unique: true },
-        appliedAt: { type: Date, default: Date.now }
+        appliedAt: { type: Date, default: Date.now },
       })
     );
   }
@@ -45,8 +46,9 @@ class MigrationManager {
   // Get list of migration files
   getMigrationFiles() {
     try {
-      return fs.readdirSync(this.migrationsPath)
-        .filter(file => file.endsWith('.js'))
+      return fs
+        .readdirSync(this.migrationsPath)
+        .filter((file) => file.endsWith('.js'))
         .sort();
     } catch (error) {
       logger.error('Error reading migration files:', error);
@@ -57,8 +59,9 @@ class MigrationManager {
   // Get list of seed files
   getSeedFiles() {
     try {
-      return fs.readdirSync(this.seedsPath)
-        .filter(file => file.endsWith('.js'))
+      return fs
+        .readdirSync(this.seedsPath)
+        .filter((file) => file.endsWith('.js'))
         .sort();
     } catch (error) {
       logger.error('Error reading seed files:', error);
@@ -70,7 +73,7 @@ class MigrationManager {
   async getAppliedMigrations() {
     try {
       const applied = await this.MigrationModel.find({}, 'name').lean();
-      return applied.map(m => m.name);
+      return applied.map((m) => m.name);
     } catch (error) {
       logger.error('Error getting applied migrations:', error);
       return [];
@@ -103,7 +106,7 @@ class MigrationManager {
       logger.error(`Failed to apply migration ${filename}:`, {
         error: error.message,
         stack: error.stack,
-        code: error.code
+        code: error.code,
       });
       throw error;
     }
@@ -144,9 +147,7 @@ class MigrationManager {
     const migrationFiles = this.getMigrationFiles();
     const appliedMigrations = await this.getAppliedMigrations();
 
-    const pendingMigrations = migrationFiles.filter(file =>
-      !appliedMigrations.includes(file)
-    );
+    const pendingMigrations = migrationFiles.filter((file) => !appliedMigrations.includes(file));
 
     if (pendingMigrations.length === 0) {
       logger.info('No pending migrations to apply');
@@ -169,7 +170,7 @@ class MigrationManager {
         logger.error(`Migration failed: ${filename}`, {
           error: error.message,
           stack: error.stack,
-          code: error.code
+          code: error.code,
         });
       }
     }
@@ -254,18 +255,17 @@ class MigrationManager {
     const migrationFiles = this.getMigrationFiles();
     const appliedMigrations = await this.getAppliedMigrations();
 
-    const status = migrationFiles.map(filename => ({
+    const status = migrationFiles.map((filename) => ({
       name: filename,
       applied: appliedMigrations.includes(filename),
-      appliedAt: appliedMigrations.includes(filename) ?
-        appliedMigrations.indexOf(filename) : null
+      appliedAt: appliedMigrations.includes(filename) ? appliedMigrations.indexOf(filename) : null,
     }));
 
     return {
       total: migrationFiles.length,
       applied: appliedMigrations.length,
       pending: migrationFiles.length - appliedMigrations.length,
-      migrations: status
+      migrations: status,
     };
   }
 }
@@ -275,14 +275,16 @@ const migrationManager = new MigrationManager();
 
 // Export individual functions for backward compatibility
 export async function runMigrations() {
-  return await migrationManager.runMigrations();
+  return migrationManager.runMigrations();
 }
 
 export async function rollbackMigrations(steps = 1) {
   let rolledBack = 0;
   for (let i = 0; i < steps; i++) {
     const success = await migrationManager.rollbackLastMigration();
-    if (!success) break;
+    if (!success) {
+      break;
+    }
     rolledBack++;
   }
   return { rolledBack };
@@ -313,7 +315,7 @@ export async function runSeeds(specificFile) {
     }
   } else {
     // Run all seed files
-    return await migrationManager.runSeeds();
+    return migrationManager.runSeeds();
   }
 }
 
@@ -325,7 +327,7 @@ export async function showMigrationStatus() {
   console.log(`Pending: ${status.pending}`);
   console.log('\nMigration Status:');
 
-  status.migrations.forEach(migration => {
+  status.migrations.forEach((migration) => {
     const statusIcon = migration.applied ? '✅' : '⏳';
     console.log(`${statusIcon} ${migration.name}`);
   });

@@ -12,17 +12,15 @@ const startupLogger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp({ format: 'MM-DD HH:mm:ss' }),
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `[${timestamp}][${level.toUpperCase()}] ${message}`;
-    })
+    winston.format.printf(
+      ({ timestamp, level, message }) => `[${timestamp}][${level.toUpperCase()}] ${message}`
+    )
   ),
   transports: [
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize({ all: true })
-      )
-    })
-  ]
+      format: winston.format.combine(winston.format.colorize({ all: true })),
+    }),
+  ],
 });
 
 // Add startup method for consistency
@@ -37,7 +35,7 @@ const loadEnvironmentConfig = () => {
     development: path.join(__dirname, '../../../env/development.env'),
     production: path.join(__dirname, '../../../env/production.env'),
     staging: path.join(__dirname, '../../../env/staging.env'),
-    test: path.join(__dirname, '../../../env/development.env'), // Use dev config for tests
+    test: path.join(__dirname, '../../../env/test.env'), // Separate test config
   };
 
   const envFile = envFiles[nodeEnv];
@@ -48,14 +46,16 @@ const loadEnvironmentConfig = () => {
     dotenv.config({ path: envFile });
   } else {
     startupLogger.warn(`Environment file not found: ${envFile}`);
-    startupLogger.warn(`Make sure you have created the environment file or set environment variables manually`);
+    startupLogger.warn(
+      `Make sure you have created the environment file or set environment variables manually`
+    );
     startupLogger.startup(`Loading environment variables from system`);
     dotenv.config(); // Load from process.env
   }
 
   // Validate critical environment variables
   const requiredVars = ['JWT_SECRET'];
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
   if (missingVars.length > 0) {
     startupLogger.error(`Missing required environment variables: ${missingVars.join(', ')}`);
@@ -69,11 +69,15 @@ const loadEnvironmentConfig = () => {
   }
 
   // Import logger after environment is loaded to avoid circular dependencies
-  import('./logger.js').then(({ default: logger }) => {
-    logger.startup(`Environment loaded: ${nodeEnv.toUpperCase()}`);
-  }).catch(err => {
-    startupLogger.warn(`Environment loaded: ${nodeEnv.toUpperCase()} (full logger not available: ${err.message})`);
-  });
+  import('./logger.js')
+    .then(({ default: logger }) => {
+      logger.startup(`Environment loaded: ${nodeEnv.toUpperCase()}`);
+    })
+    .catch((err) => {
+      startupLogger.warn(
+        `Environment loaded: ${nodeEnv.toUpperCase()} (full logger not available: ${err.message})`
+      );
+    });
 };
 
 // Export the loader function

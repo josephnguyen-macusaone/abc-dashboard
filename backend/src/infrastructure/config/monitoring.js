@@ -1,6 +1,6 @@
 import { cache, cacheKeys } from './redis.js';
 import logger from './logger.js';
-import { getComprehensiveMetrics, applicationMetrics, cacheMetrics } from './metrics.js';
+import { getComprehensiveMetrics, applicationMetrics } from './metrics.js';
 import { errorMonitor } from '../../shared/utils/error-monitor.js';
 import { gracefulDegradationManager } from '../../shared/utils/graceful-degradation.js';
 
@@ -73,11 +73,18 @@ class APIMonitor {
       summary: {
         totalRequests: this.metrics.requests,
         totalErrors: this.metrics.errors,
-        errorRate: this.metrics.requests > 0 ? (this.metrics.errors / this.metrics.requests * 100).toFixed(2) : 0,
-        averageResponseTime: responseTimes.length > 0 ? (totalResponseTime / responseTimes.length).toFixed(2) : 0,
-        medianResponseTime: responseTimes.length > 0 ? responseTimes[Math.floor(responseTimes.length / 2)] : 0,
-        p95ResponseTime: responseTimes.length > 0 ? responseTimes[Math.floor(responseTimes.length * 0.95)] : 0,
-        p99ResponseTime: responseTimes.length > 0 ? responseTimes[Math.floor(responseTimes.length * 0.99)] : 0,
+        errorRate:
+          this.metrics.requests > 0
+            ? ((this.metrics.errors / this.metrics.requests) * 100).toFixed(2)
+            : 0,
+        averageResponseTime:
+          responseTimes.length > 0 ? (totalResponseTime / responseTimes.length).toFixed(2) : 0,
+        medianResponseTime:
+          responseTimes.length > 0 ? responseTimes[Math.floor(responseTimes.length / 2)] : 0,
+        p95ResponseTime:
+          responseTimes.length > 0 ? responseTimes[Math.floor(responseTimes.length * 0.95)] : 0,
+        p99ResponseTime:
+          responseTimes.length > 0 ? responseTimes[Math.floor(responseTimes.length * 0.99)] : 0,
       },
       endpoints: Object.fromEntries(this.metrics.endpoints),
       statusCodes: Object.fromEntries(this.metrics.statusCodes),
@@ -114,7 +121,9 @@ class APIMonitor {
 
   // Cache metrics response (for API endpoint caching)
   async cacheMetrics() {
-    if (!cache) return;
+    if (!cache) {
+      return;
+    }
 
     try {
       const metrics = this.getMetrics();
@@ -134,7 +143,7 @@ export const monitorMiddleware = (req, res, next) => {
 
   // Override res.end to capture response time
   const originalEnd = res.end;
-  res.end = function(...args) {
+  res.end = function (...args) {
     const responseTime = Date.now() - startTime;
 
     // Record in legacy API monitor
@@ -170,12 +179,12 @@ export const getHealthWithMetrics = async (req, res) => {
 
     // Check error monitoring health
     if (errorHealth.status !== 'healthy') {
-      overallScore -= (100 - errorHealth.score);
+      overallScore -= 100 - errorHealth.score;
       healthIssues.push({
         system: 'error_monitoring',
         status: errorHealth.status,
         score: errorHealth.score,
-        issues: errorHealth.issues
+        issues: errorHealth.issues,
       });
     }
 
@@ -186,19 +195,20 @@ export const getHealthWithMetrics = async (req, res) => {
       healthIssues.push({
         system: 'database',
         status: 'disconnected',
-        message: 'Database connection failed'
+        message: 'Database connection failed',
       });
     }
 
     // Check API error rate
     const apiErrorRate = parseFloat(apiMetrics.summary.errorRate);
-    if (apiErrorRate > 5) { // More than 5% error rate
+    if (apiErrorRate > 5) {
+      // More than 5% error rate
       overallScore -= Math.min(30, apiErrorRate * 2);
       healthIssues.push({
         system: 'api',
         status: 'high_error_rate',
         errorRate: apiErrorRate,
-        message: `API error rate is ${apiErrorRate}%`
+        message: `API error rate is ${apiErrorRate}%`,
       });
     }
 
@@ -214,7 +224,10 @@ export const getHealthWithMetrics = async (req, res) => {
     const healthData = {
       status: overallStatus,
       score: Math.max(0, Math.min(100, overallScore)),
-      message: overallStatus === 'healthy' ? 'All systems operational' : `${healthIssues.length} system(s) have issues`,
+      message:
+        overallStatus === 'healthy'
+          ? 'All systems operational'
+          : `${healthIssues.length} system(s) have issues`,
       correlationId: req.correlationId,
       timestamp: comprehensiveMetrics.timestamp,
       environment: comprehensiveMetrics.environment,
@@ -227,7 +240,7 @@ export const getHealthWithMetrics = async (req, res) => {
         cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
         loadAverage: comprehensiveMetrics.system?.loadAverage,
         platform: comprehensiveMetrics.system?.platform,
-        hostname: comprehensiveMetrics.system?.hostname
+        hostname: comprehensiveMetrics.system?.hostname,
       },
 
       // Database health
@@ -235,21 +248,21 @@ export const getHealthWithMetrics = async (req, res) => {
         connected: comprehensiveMetrics.database?.connected,
         name: comprehensiveMetrics.database?.name,
         collections: comprehensiveMetrics.database?.databaseStats?.collections,
-        objects: comprehensiveMetrics.database?.databaseStats?.objects
+        objects: comprehensiveMetrics.database?.databaseStats?.objects,
       },
 
       // Cache health
       cache: {
         hitRate: comprehensiveMetrics.cache?.hitRate,
         type: comprehensiveMetrics.cache?.cacheStats?.cache_type || 'in-memory',
-        connected: comprehensiveMetrics.cache?.cacheStats?.connected_clients !== undefined
+        connected: comprehensiveMetrics.cache?.cacheStats?.connected_clients !== undefined,
       },
 
       // Application metrics
       application: {
         activeUsers: comprehensiveMetrics.application?.activeUsers,
         endpointCount: Object.keys(comprehensiveMetrics.application?.endpointStats || {}).length,
-        securityEvents: comprehensiveMetrics.application?.security
+        securityEvents: comprehensiveMetrics.application?.security,
       },
 
       // Error monitoring health
@@ -261,16 +274,16 @@ export const getHealthWithMetrics = async (req, res) => {
         recentErrorsCount: errorMetrics.recentErrors?.length || 0,
         topErrorCategories: Object.fromEntries(
           Array.from(errorMetrics.byCategory.entries())
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 5)
-        )
+        ),
       },
 
       // Graceful degradation status
       gracefulDegradation: {
         level: degradationStatus.degradationLevel,
         lastUpdated: degradationStatus.lastUpdated,
-        features: degradationStatus.features
+        features: degradationStatus.features,
       },
 
       // Legacy API metrics (for backward compatibility)
@@ -279,14 +292,24 @@ export const getHealthWithMetrics = async (req, res) => {
         errorRate: apiMetrics.summary.errorRate,
         averageResponseTime: apiMetrics.summary.averageResponseTime,
         medianResponseTime: apiMetrics.summary.medianResponseTime,
-        p95ResponseTime: apiMetrics.summary.p95ResponseTime
+        p95ResponseTime: apiMetrics.summary.p95ResponseTime,
       },
 
       // Health issues summary
       issues: healthIssues.length > 0 ? healthIssues : undefined,
 
+      // Configuration (safe to expose)
+      config: {
+        port: process.env.PORT || 5000,
+        nodeEnv: process.env.NODE_ENV || 'development',
+        jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
+        mongodbUri: process.env.MONGODB_URI ? '✅ Set' : '❌ Missing',
+        emailService: process.env.EMAIL_SERVICE || 'not configured',
+        bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
+      },
+
       // Detailed metrics available at /api/v1/metrics
-      detailedMetricsAvailable: true
+      detailedMetricsAvailable: true,
     };
 
     if (res) {
@@ -295,7 +318,12 @@ export const getHealthWithMetrics = async (req, res) => {
 
     return healthData;
   } catch (error) {
-    logger.error('Error generating health metrics:', error);
+    logger.error('Error generating health metrics:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      correlationId: req.correlationId,
+    });
 
     // Fallback to basic health check
     const fallbackData = {
@@ -304,7 +332,15 @@ export const getHealthWithMetrics = async (req, res) => {
       correlationId: req.correlationId,
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
-      error: error.message
+      error: error.message,
+      config: {
+        port: process.env.PORT || 5000,
+        nodeEnv: process.env.NODE_ENV || 'development',
+        jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
+        mongodbUri: process.env.MONGODB_URI ? '✅ Set' : '❌ Missing',
+        emailService: process.env.EMAIL_SERVICE || 'not configured',
+        bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
+      },
     };
 
     if (res) {
@@ -339,7 +375,7 @@ export const getHealthData = async () => {
         memoryUsagePercent: comprehensiveMetrics.system?.memory?.usedPercent,
         cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
         databaseConnected: comprehensiveMetrics.database?.connected,
-        cacheHitRate: comprehensiveMetrics.cache?.hitRate
+        cacheHitRate: comprehensiveMetrics.cache?.hitRate,
       },
 
       // System overview
@@ -347,8 +383,8 @@ export const getHealthData = async () => {
         platform: comprehensiveMetrics.system?.platform,
         hostname: comprehensiveMetrics.system?.hostname,
         loadAverage: comprehensiveMetrics.system?.loadAverage,
-        diskUsage: comprehensiveMetrics.system?.disk
-      }
+        diskUsage: comprehensiveMetrics.system?.disk,
+      },
     };
   } catch (error) {
     logger.error('Error getting health data for dashboard:', error);
@@ -356,7 +392,7 @@ export const getHealthData = async () => {
       status: 'ERROR',
       message: 'Failed to collect health data',
       timestamp: new Date().toISOString(),
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -381,7 +417,7 @@ export const getDetailedMetrics = async (req, res) => {
       success: false,
       message: 'Failed to collect metrics',
       error: error.message,
-      correlationId: req.correlationId
+      correlationId: req.correlationId,
     });
   }
 };

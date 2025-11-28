@@ -31,14 +31,14 @@ export const accountLockout = async (req, res, next) => {
           correlationId: req.correlationId,
           clientIP,
           attempts: attempts.count,
-          remainingTime: `${remainingTime} minutes`
+          remainingTime: `${remainingTime} minutes`,
         });
 
         return res.status(429).json({
           success: false,
           message: `Account temporarily locked due to too many failed attempts. Try again in ${remainingTime} minutes.`,
           correlationId: req.correlationId,
-          retryAfter: remainingTime * 60 // seconds
+          retryAfter: remainingTime * 60, // seconds
         });
       } else {
         // Reset lockout after duration
@@ -78,7 +78,7 @@ export const trackFailedLogin = async (req) => {
       logger.warn('Account locked due to failed attempts', {
         correlationId: req.correlationId,
         clientIP,
-        attempts: attempts.count
+        attempts: attempts.count,
       });
     }
 
@@ -105,7 +105,7 @@ export const resetFailedAttempts = async (req) => {
 
     logger.info('Failed attempts reset after successful login', {
       correlationId: req.correlationId,
-      clientIP
+      clientIP,
     });
   } catch (error) {
     // If cache fails, log but don't affect the login success
@@ -116,13 +116,14 @@ export const resetFailedAttempts = async (req) => {
 // Security headers middleware
 export const securityHeaders = (req, res, next) => {
   // Content Security Policy
-  res.setHeader('Content-Security-Policy',
+  res.setHeader(
+    'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "font-src 'self' https://fonts.gstatic.com; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.example.com;"
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "img-src 'self' data: https:; " +
+      "connect-src 'self' https://api.example.com;"
   );
 
   // Prevent clickjacking
@@ -138,7 +139,8 @@ export const securityHeaders = (req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   // Permissions Policy
-  res.setHeader('Permissions-Policy',
+  res.setHeader(
+    'Permissions-Policy',
     'geolocation=(), microphone=(), camera=(), magnetometer=(), gyroscope=(), speaker=(), fullscreen=()'
   );
 
@@ -154,18 +156,19 @@ export const securityHeaders = (req, res, next) => {
 export const requestSizeLimiter = (req, res, next) => {
   const contentLength = parseInt(req.headers['content-length']);
 
-  if (contentLength && contentLength > 10 * 1024 * 1024) { // 10MB
+  if (contentLength && contentLength > 10 * 1024 * 1024) {
+    // 10MB
     logger.warn('Request too large', {
       correlationId: req.correlationId,
       contentLength,
       url: req.url,
-      method: req.method
+      method: req.method,
     });
 
     return res.status(413).json({
       success: false,
       message: 'Request entity too large',
-      correlationId: req.correlationId
+      correlationId: req.correlationId,
     });
   }
 
@@ -191,19 +194,21 @@ export const injectionProtection = (req, res, next) => {
               correlationId: req.correlationId,
               field: currentPath,
               pattern: pattern.toString(),
-              value: value.substring(0, 100) + (value.length > 100 ? '...' : '')
+              value: value.substring(0, 100) + (value.length > 100 ? '...' : ''),
             });
 
             return res.status(400).json({
               success: false,
               message: 'Invalid input detected',
-              correlationId: req.correlationId
+              correlationId: req.correlationId,
             });
           }
         }
       } else if (typeof value === 'object' && value !== null) {
         const result = checkObject(value, currentPath);
-        if (result) return result;
+        if (result) {
+          return result;
+        }
       }
     }
     return null;
@@ -211,12 +216,16 @@ export const injectionProtection = (req, res, next) => {
 
   if (req.body) {
     const suspicious = checkObject(req.body);
-    if (suspicious) return;
+    if (suspicious) {
+      return;
+    }
   }
 
   if (req.query) {
     const suspicious = checkObject(req.query);
-    if (suspicious) return;
+    if (suspicious) {
+      return;
+    }
   }
 
   next();
@@ -233,7 +242,10 @@ export const createRateLimit = (windowMs, maxRequests, message) => {
 
     // Clean old entries
     for (const [ip, timestamps] of requests.entries()) {
-      requests.set(ip, timestamps.filter(timestamp => timestamp > windowStart));
+      requests.set(
+        ip,
+        timestamps.filter((timestamp) => timestamp > windowStart)
+      );
       if (requests.get(ip).length === 0) {
         requests.delete(ip);
       }
@@ -248,14 +260,14 @@ export const createRateLimit = (windowMs, maxRequests, message) => {
         clientIP,
         requestCount: clientRequests.length,
         windowMs,
-        maxRequests
+        maxRequests,
       });
 
       return res.status(429).json({
         success: false,
         message: message || 'Too many requests, please try again later',
         correlationId: req.correlationId,
-        retryAfter: Math.ceil(windowMs / 1000)
+        retryAfter: Math.ceil(windowMs / 1000),
       });
     }
 

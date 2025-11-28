@@ -24,7 +24,7 @@ export const authSchemas = {
         'string.min': 'Username must be at least 3 characters long',
         'string.max': 'Username cannot exceed 30 characters',
         'string.pattern.base': 'Username can only contain letters, numbers, and underscores',
-        'string.empty': 'Username cannot be empty'
+        'string.empty': 'Username cannot be empty',
       }),
 
     email: Joi.string()
@@ -33,7 +33,7 @@ export const authSchemas = {
       .messages({
         'string.email': 'Please provide a valid email address',
         'any.required': 'Email is required',
-        'string.empty': 'Email cannot be empty'
+        'string.empty': 'Email cannot be empty',
       }),
 
     password: Joi.string()
@@ -44,48 +44,36 @@ export const authSchemas = {
       .messages({
         'string.min': 'Password must be at least 8 characters long',
         'string.max': 'Password cannot exceed 128 characters',
-        'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, and one number',
+        'string.pattern.base':
+          'Password must contain at least one lowercase letter, one uppercase letter, and one number',
         'any.required': 'Password is required',
-        'string.empty': 'Password cannot be empty'
+        'string.empty': 'Password cannot be empty',
       }),
 
-    firstName: Joi.string()
-      .trim()
-      .min(1)
-      .max(50)
-      .required()
-      .messages({
-        'string.min': 'First name cannot be empty',
-        'string.max': 'First name cannot exceed 50 characters',
-        'any.required': 'First name is required',
-        'string.empty': 'First name cannot be empty'
-      }),
+    firstName: Joi.string().trim().min(1).max(50).required().messages({
+      'string.min': 'First name cannot be empty',
+      'string.max': 'First name cannot exceed 50 characters',
+      'any.required': 'First name is required',
+      'string.empty': 'First name cannot be empty',
+    }),
 
-    lastName: Joi.string()
-      .trim()
-      .min(1)
-      .max(50)
-      .required()
-      .messages({
-        'string.min': 'Last name cannot be empty',
-        'string.max': 'Last name cannot exceed 50 characters',
-        'any.required': 'Last name is required',
-        'string.empty': 'Last name cannot be empty'
-      }),
+    lastName: Joi.string().trim().min(1).max(50).required().messages({
+      'string.min': 'Last name cannot be empty',
+      'string.max': 'Last name cannot exceed 50 characters',
+      'any.required': 'Last name is required',
+      'string.empty': 'Last name cannot be empty',
+    }),
 
-    avatarUrl: Joi.string()
-      .uri()
-      .allow('')
-      .messages({
-        'string.uri': 'Avatar URL must be a valid URI'
-      }),
+    avatarUrl: Joi.string().uri().allow('').messages({
+      'string.uri': 'Avatar URL must be a valid URI',
+    }),
 
     phone: Joi.string()
       .pattern(/^[\+]?[1-9][\d]{0,15}$/)
       .allow('')
       .messages({
-        'string.pattern.base': 'Phone number must be in valid format'
-      })
+        'string.pattern.base': 'Phone number must be in valid format',
+      }),
   }),
 
   /**
@@ -98,27 +86,29 @@ export const authSchemas = {
       .messages({
         'string.email': 'Please provide a valid email address',
         'any.required': 'Email is required',
-        'string.empty': 'Email cannot be empty'
+        'string.empty': 'Email cannot be empty',
       }),
 
-    password: Joi.string()
-      .required()
-      .messages({
-        'any.required': 'Password is required',
-        'string.empty': 'Password cannot be empty'
-      })
+    password: Joi.string().required().messages({
+      'any.required': 'Password is required',
+      'string.empty': 'Password cannot be empty',
+    }),
   }),
 
   /**
-   * Email verification schema
+   * Email verification/confirmation schema
+   * Accepts either token (for registration verification) or action (for authenticated user confirmation)
    */
-  verifyEmail: Joi.object({
-    token: Joi.string()
-      .required()
-      .messages({
-        'any.required': 'Verification token is required',
-        'string.empty': 'Verification token cannot be empty'
-      })
+  verifyEmail: Joi.object().keys({
+    token: Joi.string().messages({
+      'string.empty': 'Verification token cannot be empty',
+    }),
+    action: Joi.string().valid('confirm').messages({
+      'any.only': 'Action must be "confirm"',
+    }),
+  }).xor('token', 'action').messages({
+    'object.xor': 'Either token (for verification) or action (for confirmation) must be provided, but not both',
+    'object.missing': 'Either token (for verification) or action (for confirmation) must be provided',
   }),
 
   /**
@@ -131,8 +121,8 @@ export const authSchemas = {
       .messages({
         'string.email': 'Please provide a valid email address',
         'any.required': 'Email is required',
-        'string.empty': 'Email cannot be empty'
-      })
+        'string.empty': 'Email cannot be empty',
+      }),
   }),
 
   requestPasswordReset: Joi.object({
@@ -142,20 +132,18 @@ export const authSchemas = {
       .messages({
         'string.email': 'Please provide a valid email address',
         'any.required': 'Email is required',
-        'string.empty': 'Email cannot be empty'
-      })
+        'string.empty': 'Email cannot be empty',
+      }),
   }),
 
   /**
    * Password reset schema
    */
   resetPassword: Joi.object({
-    token: Joi.string()
-      .required()
-      .messages({
-        'any.required': 'Reset token is required',
-        'string.empty': 'Reset token cannot be empty'
-      }),
+    token: Joi.string().required().messages({
+      'any.required': 'Reset token is required',
+      'string.empty': 'Reset token cannot be empty',
+    }),
 
     password: Joi.string()
       .min(8)
@@ -165,22 +153,21 @@ export const authSchemas = {
       .messages({
         'string.min': 'Password must be at least 8 characters long',
         'string.max': 'Password cannot exceed 128 characters',
-        'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, and one number',
+        'string.pattern.base':
+          'Password must contain at least one lowercase letter, one uppercase letter, and one number',
         'any.required': 'Password is required',
-        'string.empty': 'Password cannot be empty'
-      })
+        'string.empty': 'Password cannot be empty',
+      }),
   }),
 
   /**
    * Change password schema
    */
   changePassword: Joi.object({
-    currentPassword: Joi.string()
-      .required()
-      .messages({
-        'any.required': 'Current password is required',
-        'string.empty': 'Current password cannot be empty'
-      }),
+    currentPassword: Joi.string().required().messages({
+      'any.required': 'Current password is required',
+      'string.empty': 'Current password cannot be empty',
+    }),
 
     newPassword: Joi.string()
       .min(8)
@@ -190,23 +177,22 @@ export const authSchemas = {
       .messages({
         'string.min': 'New password must be at least 8 characters long',
         'string.max': 'New password cannot exceed 128 characters',
-        'string.pattern.base': 'New password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+        'string.pattern.base':
+          'New password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
         'any.required': 'New password is required',
-        'string.empty': 'New password cannot be empty'
-      })
+        'string.empty': 'New password cannot be empty',
+      }),
   }),
 
   /**
    * Refresh token schema
    */
   refreshToken: Joi.object({
-    refreshToken: Joi.string()
-      .required()
-      .messages({
-        'any.required': 'Refresh token is required',
-        'string.empty': 'Refresh token cannot be empty'
-      })
-  })
+    refreshToken: Joi.string().required().messages({
+      'any.required': 'Refresh token is required',
+      'string.empty': 'Refresh token cannot be empty',
+    }),
+  }),
 };
 
 export default authSchemas;

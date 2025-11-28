@@ -32,7 +32,8 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+      // MAC USA ONE Typography: Title M for card titles
+      className={cn("text-title-m", className)}
       {...props}
     />
   )
@@ -42,7 +43,8 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      // MAC USA ONE Typography: Body S for descriptions
+      className={cn("text-body-s text-muted-foreground", className)}
       {...props}
     />
   )

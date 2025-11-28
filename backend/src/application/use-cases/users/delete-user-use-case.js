@@ -39,12 +39,12 @@ export class DeleteUserUseCase {
         userId,
         deletedBy: currentUser.id,
         email: user.email,
-        username: user.username
+        username: user.username,
       });
 
       return {
         message: 'User account deleted successfully',
-        userId: userId
+        userId,
       };
     } catch (error) {
       throw new Error(`User deletion failed: ${error.message}`);

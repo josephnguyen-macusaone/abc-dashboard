@@ -27,10 +27,11 @@ export class DomainException extends Error {
         code: this.statusCode,
         message: this.message,
         category: this.category,
-        ...(this.additionalData && Object.keys(this.additionalData).length > 0 && {
-          details: this.additionalData
-        })
-      }
+        ...(this.additionalData &&
+          Object.keys(this.additionalData).length > 0 && {
+            details: this.additionalData,
+          }),
+      },
     };
   }
 }

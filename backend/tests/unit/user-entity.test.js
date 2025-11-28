@@ -24,7 +24,7 @@ describe('User Entity', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: null,
-      lastModifiedBy: null
+      lastModifiedBy: null,
     };
   });
 
@@ -45,7 +45,9 @@ describe('User Entity', () => {
 
     it('should throw error for invalid username', () => {
       const invalidData = { ...validUserData, username: 'user@name' };
-      expect(() => new User(invalidData)).toThrow('Username can only contain letters, numbers, and underscores');
+      expect(() => new User(invalidData)).toThrow(
+        'Username can only contain letters, numbers, and underscores'
+      );
     });
 
     it('should throw error for invalid role', () => {
@@ -74,8 +76,11 @@ describe('User Entity', () => {
         phone: validUserData.phone,
         isActive: validUserData.isActive,
         isFirstLogin: validUserData.isFirstLogin,
+        langKey: validUserData.langKey,
         createdAt: validUserData.createdAt,
-        updatedAt: validUserData.updatedAt
+        updatedAt: validUserData.updatedAt,
+        createdBy: validUserData.createdBy,
+        lastModifiedBy: validUserData.lastModifiedBy,
       });
     });
 
@@ -93,7 +98,7 @@ describe('User Entity', () => {
       const updates = {
         displayName: 'Updated Name',
         avatarUrl: 'https://example.com/new-avatar.jpg',
-        phone: '+0987654321'
+        phone: '+0987654321',
       };
 
       const event = user.updateProfile(updates);
@@ -108,13 +113,23 @@ describe('User Entity', () => {
       expect(event.occurredAt).toBeInstanceOf(Date);
     });
 
-    it('should throw error for invalid updates', () => {
+    it('should ignore non-allowed fields in updates', () => {
       const user = new User(validUserData);
-      const invalidUpdates = {
-        username: 'newusername' // Not allowed
+      const originalUsername = user.username;
+      const updatesWithDisallowedFields = {
+        username: 'newusername', // Not allowed - should be ignored
+        displayName: 'New Display Name', // Allowed - should be updated
       };
 
-      expect(() => user.updateProfile(invalidUpdates)).toThrow();
+      const event = user.updateProfile(updatesWithDisallowedFields);
+
+      // Username should remain unchanged (not in allowed fields)
+      expect(user.username).toBe(originalUsername);
+      // DisplayName should be updated
+      expect(user.displayName).toBe('New Display Name');
+      // Event should only contain allowed field updates
+      expect(event.updates).not.toHaveProperty('username');
+      expect(event.updates).toHaveProperty('displayName', 'New Display Name');
     });
   });
 

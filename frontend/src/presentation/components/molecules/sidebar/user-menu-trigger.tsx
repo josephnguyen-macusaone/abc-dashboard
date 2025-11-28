@@ -35,15 +35,17 @@ export const UserMenuTrigger = React.forwardRef<HTMLButtonElement, UserMenuTrigg
           <div className="relative">
             <Avatar className="h-8 w-8">
               <AvatarImage src={avatarUrl} alt={`${initials} avatar`} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+              <AvatarFallback className="bg-primary text-primary-foreground text-label-s font-medium">
                 {initials}
               </AvatarFallback>
             </Avatar>
           </div>
           {/* User info */}
           <div className="text-left min-w-0 flex-1">
-            <p className="text-xs font-medium text-foreground truncate">{displayName}</p>
-            <p className="text-xs text-muted-foreground">{displayRole}</p>
+            {/* MAC USA ONE Typography: Body S for user name */}
+            <p className="text-body-s font-medium text-foreground truncate">{displayName}</p>
+            {/* MAC USA ONE Typography: Body XS for role */}
+            <p className="text-body-xs text-muted-foreground">{displayRole}</p>
           </div>
         </div>
         <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 shrink-0" />
@@ -53,4 +55,3 @@ export const UserMenuTrigger = React.forwardRef<HTMLButtonElement, UserMenuTrigg
 );
 
 UserMenuTrigger.displayName = 'UserMenuTrigger';
-

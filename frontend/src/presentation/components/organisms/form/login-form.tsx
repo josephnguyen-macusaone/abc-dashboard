@@ -41,7 +41,6 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
 
   const handleInputChange = (field: keyof LoginFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
@@ -50,7 +49,6 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     // Basic validation
     const validationErrors: Partial<Record<keyof LoginFormData, string | null>> = {};
     if (!formData.email.trim()) {
@@ -61,13 +59,10 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
     if (!formData.password.trim()) {
       validationErrors.password = 'Password is required';
     }
-
     setErrors(validationErrors);
     const hasErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
     if (hasErrors) return;
-
     setIsLoading(true);
-
     try {
       await login(formData.email, formData.password);
       onSuccess?.();
@@ -141,13 +136,14 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
         <Button
           type="submit"
           variant="default"
-          className="w-full h-11 mt-4 font-semibold rounded-lg"
+          className="w-full h-11 mt-4 text-button-m"
+          size="default"
           disabled={isLoading}
         >
           {isLoading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Signing in...</span>
+              <span className="text-button-m">Signing in...</span>
             </div>
           ) : (
             'Sign In'
@@ -160,9 +156,8 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
         <Button
           type="button"
           variant="link"
-          className="text-sm text-muted-foreground hover:text-primary p-0 h-auto"
+          className="text-muted-foreground hover:text-primary p-0 h-auto"
           onClick={() => {
-            // TODO: Implement forgot password functionality
             toast.info('Password reset functionality will be available soon.');
           }}
         >

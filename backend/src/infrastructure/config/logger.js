@@ -129,61 +129,86 @@ const enhancedLogger = {
   error: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.error(message, winstonMeta);
   },
   warn: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.warn(message, winstonMeta);
   },
   info: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.info(message, winstonMeta);
   },
   http: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.http(message, winstonMeta);
   },
   debug: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.debug(message, winstonMeta);
   },
 
   // Request-aware logging methods
   withRequest: (req) => ({
-    error: (message) => logger.error(message, {
-      correlationId: req.correlationId,
-      userId: req.user?._id,
-    }),
-    warn: (message) => logger.warn(message, {
-      correlationId: req.correlationId,
-      userId: req.user?._id,
-    }),
-    info: (message) => logger.info(message, {
-      correlationId: req.correlationId,
-      userId: req.user?._id,
-    }),
-    http: (message) => logger.http(message, {
-      correlationId: req.correlationId,
-      userId: req.user?._id,
-    }),
-    debug: (message) => logger.debug(message, {
-      correlationId: req.correlationId,
-      userId: req.user?._id,
-    }),
+    error: (message) =>
+      logger.error(message, {
+        correlationId: req.correlationId,
+        userId: req.user?._id,
+      }),
+    warn: (message) =>
+      logger.warn(message, {
+        correlationId: req.correlationId,
+        userId: req.user?._id,
+      }),
+    info: (message) =>
+      logger.info(message, {
+        correlationId: req.correlationId,
+        userId: req.user?._id,
+      }),
+    http: (message) =>
+      logger.http(message, {
+        correlationId: req.correlationId,
+        userId: req.user?._id,
+      }),
+    debug: (message) =>
+      logger.debug(message, {
+        correlationId: req.correlationId,
+        userId: req.user?._id,
+      }),
   }),
 
   // Context-aware logging for different parts of the application
@@ -199,8 +224,12 @@ const enhancedLogger = {
   startup: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.info(message, winstonMeta);
   },
 
@@ -208,8 +237,12 @@ const enhancedLogger = {
   security: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.warn(message, winstonMeta);
   },
 
@@ -217,8 +250,12 @@ const enhancedLogger = {
   database: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.debug(message, winstonMeta);
   },
 
@@ -226,8 +263,12 @@ const enhancedLogger = {
   api: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.http(message, winstonMeta);
   },
 
@@ -235,8 +276,12 @@ const enhancedLogger = {
   performance: (message, meta = {}) => {
     const { correlationId, userId, ...restMeta } = meta;
     const winstonMeta = { ...restMeta };
-    if (correlationId) winstonMeta.correlationId = correlationId;
-    if (userId) winstonMeta.userId = userId;
+    if (correlationId) {
+      winstonMeta.correlationId = correlationId;
+    }
+    if (userId) {
+      winstonMeta.userId = userId;
+    }
     return logger.info(message, winstonMeta);
   },
 };

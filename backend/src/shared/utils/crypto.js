@@ -1,14 +1,10 @@
 import crypto from 'crypto';
 
 // Generate a secure random token
-const generateToken = () => {
-  return crypto.randomBytes(32).toString('hex');
-};
+const generateToken = () => crypto.randomBytes(32).toString('hex');
 
 // Generate a secure hash for tokens
-const generateTokenHash = (token) => {
-  return crypto.createHash('sha256').update(token).digest('hex');
-};
+const generateTokenHash = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 // Generate a secure temporary password
 const generateTemporaryPassword = (length = 12) => {
@@ -27,11 +23,10 @@ const generateTemporaryPassword = (length = 12) => {
   }
 
   // Shuffle the password
-  return password.split('').sort(() => crypto.randomInt(2) - 1).join('');
+  return password
+    .split('')
+    .sort(() => crypto.randomInt(2) - 1)
+    .join('');
 };
 
-export {
-  generateToken,
-  generateTokenHash,
-  generateTemporaryPassword
-};
+export { generateToken, generateTokenHash, generateTemporaryPassword };

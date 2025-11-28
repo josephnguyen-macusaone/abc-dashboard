@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return await updateProfile(updates);
     } catch (error: any) {
       handleAuthError(error);
-      throw error; // Re-throw for component-level handling if needed
+      throw error;
     }
   };
 
@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await changePassword(currentPassword, newPassword);
     } catch (error: any) {
       handleAuthError(error);
-      throw error; // Re-throw for component-level handling if needed
+      throw error;
     }
   };
 

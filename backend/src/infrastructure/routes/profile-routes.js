@@ -1,5 +1,4 @@
 import express from 'express';
-import { ProfileController } from '../controllers/profile-controller.js';
 import { validateRequest } from '../middleware/validation-middleware.js';
 import { profileSchemas } from '../api/v1/schemas/profile.schemas.js';
 import { authenticate } from '../middleware/auth-middleware.js';
@@ -110,30 +109,6 @@ export function createProfileRoutes(profileController) {
     profileController.updateProfile(req, res)
   );
 
-  /**
-   * @swagger
-   * /profile/verify-email:
-   *   post:
-   *     summary: Verify current user's email
-   *     tags: [Profile]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Email verified successfully
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 data:
-   *                   type: object
-   *                   description: Updated profile with verified email
-   */
-  router.post('/profile/verify-email', (req, res) => profileController.verifyEmail(req, res));
 
   return router;
 }

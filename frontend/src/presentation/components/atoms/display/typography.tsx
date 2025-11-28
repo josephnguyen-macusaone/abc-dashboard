@@ -1,99 +1,169 @@
 import { cn } from "@/shared/utils";
+import { cva, type VariantProps } from "class-variance-authority";
 import { forwardRef, HTMLAttributes } from "react";
+import type { JSX } from "react";
 
-export interface TypographyProps extends HTMLAttributes<HTMLElement> {
-  variant?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "span" | "blockquote" | "code";
-  size?: "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl" | "8xl" | "9xl";
-  weight?: "thin" | "light" | "normal" | "medium" | "semibold" | "bold" | "extrabold" | "black";
-  color?: "default" | "muted" | "accent" | "destructive";
-  align?: "left" | "center" | "right" | "justify";
+/**
+ * MAC USA ONE Typography System
+ *
+ * Typography variants following the design system:
+ * - Display: Hero sections, landing pages (Archivo font)
+ * - Title: Page headings, section headers (Inter font)
+ * - Body: Paragraphs, readable content (Inter font)
+ * - Label: Form fields, UI components (Inter font)
+ * - Caption: Image descriptions, notes (Inter font)
+ * - Button: Action buttons, CTAs (Inter font)
+ */
+
+const typographyVariants = cva("", {
+  variants: {
+    variant: {
+      // Display variants (Archivo font) - Hero sections, marketing
+      "display-xl": "text-display-xl",
+      "display-l": "text-display-l",
+      "display-m": "text-display-m",
+
+      // Title variants (Inter font) - Headings, sections
+      "title-xl": "text-title-xl",
+      "title-l": "text-title-l",
+      "title-m": "text-title-m",
+      "title-s": "text-title-s",
+      "title-xs": "text-title-xs",
+
+      // Body variants (Inter font) - Paragraphs, content
+      "body-m": "text-body-m",
+      "body-s": "text-body-s",
+      "body-xs": "text-body-xs",
+
+      // Label variants (Inter font) - Form labels, UI
+      "label-l": "text-label-l",
+      "label-m": "text-label-m",
+      "label-s": "text-label-s",
+
+      // Caption variant (Inter font) - Captions, notes
+      "caption": "text-caption",
+
+      // Button variants (Inter font) - Buttons, CTAs
+      "button-l": "text-button-l",
+      "button-m": "text-button-m",
+      "button-s": "text-button-s",
+    },
+    color: {
+      default: "text-foreground",
+      muted: "text-muted-foreground",
+      primary: "text-primary",
+      secondary: "text-secondary",
+      success: "text-success",
+      warning: "text-warning",
+      error: "text-error",
+      info: "text-info",
+      inherit: "text-inherit",
+    },
+    align: {
+      left: "text-left",
+      center: "text-center",
+      right: "text-right",
+      justify: "text-justify",
+    },
+  },
+  defaultVariants: {
+    variant: "body-m",
+    color: "default",
+  },
+});
+
+// HTML element mapping based on semantic meaning
+const variantElementMap: Record<string, keyof JSX.IntrinsicElements> = {
+  // Display - use h1 for main hero, h2 for secondary
+  "display-xl": "h1",
+  "display-l": "h1",
+  "display-m": "h2",
+
+  // Titles - semantic heading levels
+  "title-xl": "h1",
+  "title-l": "h2",
+  "title-m": "h3",
+  "title-s": "h4",
+  "title-xs": "h5",
+
+  // Body - paragraphs
+  "body-m": "p",
+  "body-s": "p",
+  "body-xs": "p",
+
+  // Labels - spans (typically paired with form elements)
+  "label-l": "span",
+  "label-m": "span",
+  "label-s": "span",
+
+  // Caption - small or figcaption
+  "caption": "span",
+
+  // Button text - spans
+  "button-l": "span",
+  "button-m": "span",
+  "button-s": "span",
+};
+
+export interface TypographyProps
+  extends Omit<HTMLAttributes<HTMLElement>, "color">,
+    VariantProps<typeof typographyVariants> {
+  /** Override the default HTML element */
+  as?: keyof JSX.IntrinsicElements;
+  /** Truncate text with ellipsis */
   truncate?: boolean;
-  lineClamp?: number;
+  /** Limit text to specific number of lines */
+  lineClamp?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
-const sizeClasses = {
-  xs: "text-xs", // 12px
-  sm: "text-sm", // 14px
-  base: "text-base", // 16px
-  lg: "text-lg", // 18px
-  xl: "text-xl", // 20px
-  "2xl": "text-2xl", // 24px
-  "3xl": "text-3xl", // 30px
-  "4xl": "text-4xl", // 36px
-  "5xl": "text-5xl", // 48px
-  "6xl": "text-6xl", // 60px
-  "7xl": "text-7xl", // 72px
-  "8xl": "text-8xl", // 96px
-  "9xl": "text-9xl", // 128px
-};
-
-const weightClasses = {
-  thin: "font-thin", // 200
-  light: "font-light", // 300
-  normal: "font-normal", // 400
-  medium: "font-medium", // 500
-  semibold: "font-semibold", // 600
-  bold: "font-bold", // 700
-  extrabold: "font-extrabold", // 800
-  black: "font-black", // 900
-};
-
-const colorClasses = {
-  default: "text-foreground",
-  muted: "text-muted-foreground",
-  accent: "text-accent-foreground",
-  destructive: "text-destructive",
-};
-
-const alignClasses = {
-  left: "text-left",
-  center: "text-center",
-  right: "text-right",
-  justify: "text-justify",
-};
-
-const variantElements = {
-  h1: "h1",
-  h2: "h2",
-  h3: "h3",
-  h4: "h4",
-  h5: "h5",
-  h6: "h6",
-  p: "p",
-  span: "span",
-  blockquote: "blockquote",
-  code: "code",
-} as const;
-
+/**
+ * Typography Component
+ *
+ * @example
+ * Display heading for hero section
+ * <Typography variant="display-xl">Welcome to MAC USA ONE</Typography>
+ *
+ * Page title
+ * <Typography variant="title-xl">Dashboard</Typography>
+ *
+ * Body text
+ * <Typography variant="body-m">This is a paragraph of text.</Typography>
+ *
+ * Muted caption
+ * <Typography variant="caption" color="muted">Last updated: Today</Typography>
+ *
+ * Custom element
+ * <Typography variant="title-m" as="label">Form Label</Typography>
+ */
 export const Typography = forwardRef<HTMLElement, TypographyProps>(
-  ({
-    variant = "p",
-    size = "base",
-    weight = "normal",
-    color = "default",
-    align,
-    truncate = false,
-    lineClamp,
-    className,
-    children,
-    ...props
-  }, ref) => {
-    const Component = variantElements[variant];
+  (
+    {
+      variant = "body-m",
+      color = "default",
+      align,
+      as,
+      truncate = false,
+      lineClamp,
+      className,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    // Determine the HTML element to render
+    const Component = (as || variantElementMap[variant || "body-m"] || "p") as React.ElementType;
 
-    const classes = cn(
-      sizeClasses[size],
-      weightClasses[weight],
-      colorClasses[color],
-      align && alignClasses[align],
-      truncate && "truncate",
-      lineClamp && `line-clamp-${lineClamp}`,
-      className
-    );
+    const lineClampClass = lineClamp ? `line-clamp-${lineClamp}` : "";
 
     return (
       <Component
-        ref={ref as any}
-        className={classes}
+        ref={ref}
+        className={cn(
+          typographyVariants({ variant: variant!, color: color!, align }),
+          truncate && "truncate",
+          lineClampClass,
+          className
+        )}
         {...props}
       >
         {children}
@@ -104,43 +174,151 @@ export const Typography = forwardRef<HTMLElement, TypographyProps>(
 
 Typography.displayName = "Typography";
 
-// Convenience components for common use cases
-export const Heading1 = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="h1" size="4xl" weight="medium" {...props} />
-);
+// ============================================
+// Convenience Components - Display (Archivo)
+// ============================================
 
-export const Heading2 = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="h2" size="3xl" weight="medium" {...props} />
-);
+export type DisplayProps = Omit<TypographyProps, "variant">;
 
-export const Heading3 = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="h3" size="2xl" weight="medium" {...props} />
-);
+/** Display XL - 72px, for main hero headlines */
+export const DisplayXL = forwardRef<HTMLElement, DisplayProps>((props, ref) => (
+  <Typography ref={ref} variant="display-xl" {...props} />
+));
+DisplayXL.displayName = "DisplayXL";
 
-export const Heading4 = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="h4" size="xl" weight="medium" {...props} />
-);
+/** Display L - 56px, for secondary hero headlines */
+export const DisplayL = forwardRef<HTMLElement, DisplayProps>((props, ref) => (
+  <Typography ref={ref} variant="display-l" {...props} />
+));
+DisplayL.displayName = "DisplayL";
 
-export const Heading5 = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="h5" size="lg" weight="medium" {...props} />
-);
+/** Display M - 44px, for marketing highlights */
+export const DisplayM = forwardRef<HTMLElement, DisplayProps>((props, ref) => (
+  <Typography ref={ref} variant="display-m" {...props} />
+));
+DisplayM.displayName = "DisplayM";
 
-export const Heading6 = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="h6" size="base" weight="medium" {...props} />
-);
+// ============================================
+// Convenience Components - Title (Inter)
+// ============================================
 
-export const Paragraph = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="p" {...props} />
-);
+export type TitleProps = Omit<TypographyProps, "variant">;
 
-export const Span = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="span" {...props} />
-);
+/** Title XL - 36px, primary page headings */
+export const TitleXL = forwardRef<HTMLElement, TitleProps>((props, ref) => (
+  <Typography ref={ref} variant="title-xl" {...props} />
+));
+TitleXL.displayName = "TitleXL";
 
-export const Blockquote = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="blockquote" {...props} />
-);
+/** Title L - 28px, section headers */
+export const TitleL = forwardRef<HTMLElement, TitleProps>((props, ref) => (
+  <Typography ref={ref} variant="title-l" {...props} />
+));
+TitleL.displayName = "TitleL";
 
-export const Code = (props: Omit<TypographyProps, "variant">) => (
-  <Typography variant="code" {...props} />
-);
+/** Title M - 24px, card titles, module headers */
+export const TitleM = forwardRef<HTMLElement, TitleProps>((props, ref) => (
+  <Typography ref={ref} variant="title-m" {...props} />
+));
+TitleM.displayName = "TitleM";
+
+/** Title S - 20px, subtitles */
+export const TitleS = forwardRef<HTMLElement, TitleProps>((props, ref) => (
+  <Typography ref={ref} variant="title-s" {...props} />
+));
+TitleS.displayName = "TitleS";
+
+/** Title XS - 18px, small headers */
+export const TitleXS = forwardRef<HTMLElement, TitleProps>((props, ref) => (
+  <Typography ref={ref} variant="title-xs" {...props} />
+));
+TitleXS.displayName = "TitleXS";
+
+// ============================================
+// Convenience Components - Body (Inter)
+// ============================================
+
+export type BodyProps = Omit<TypographyProps, "variant">;
+
+/** Body M - 16px, standard paragraphs */
+export const BodyM = forwardRef<HTMLElement, BodyProps>((props, ref) => (
+  <Typography ref={ref} variant="body-m" {...props} />
+));
+BodyM.displayName = "BodyM";
+
+/** Body S - 14px, secondary text */
+export const BodyS = forwardRef<HTMLElement, BodyProps>((props, ref) => (
+  <Typography ref={ref} variant="body-s" {...props} />
+));
+BodyS.displayName = "BodyS";
+
+/** Body XS - 12px, metadata, small text */
+export const BodyXS = forwardRef<HTMLElement, BodyProps>((props, ref) => (
+  <Typography ref={ref} variant="body-xs" {...props} />
+));
+BodyXS.displayName = "BodyXS";
+
+// ============================================
+// Convenience Components - Label (Inter)
+// ============================================
+
+export type LabelTextProps = Omit<TypographyProps, "variant">;
+
+/** Label L - 16px, key form fields */
+export const LabelL = forwardRef<HTMLElement, LabelTextProps>((props, ref) => (
+  <Typography ref={ref} variant="label-l" as="span" {...props} />
+));
+LabelL.displayName = "LabelL";
+
+/** Label M - 14px, standard form labels */
+export const LabelM = forwardRef<HTMLElement, LabelTextProps>((props, ref) => (
+  <Typography ref={ref} variant="label-m" as="span" {...props} />
+));
+LabelM.displayName = "LabelM";
+
+/** Label S - 12px, badges, tags */
+export const LabelS = forwardRef<HTMLElement, LabelTextProps>((props, ref) => (
+  <Typography ref={ref} variant="label-s" as="span" {...props} />
+));
+LabelS.displayName = "LabelS";
+
+// ============================================
+// Convenience Components - Caption (Inter)
+// ============================================
+
+export type CaptionProps = Omit<TypographyProps, "variant">;
+
+/** Caption - 12px, image descriptions, notes */
+export const Caption = forwardRef<HTMLElement, CaptionProps>((props, ref) => (
+  <Typography ref={ref} variant="caption" as="span" {...props} />
+));
+Caption.displayName = "Caption";
+
+// ============================================
+// Convenience Components - Button Text (Inter)
+// ============================================
+
+export type ButtonTextProps = Omit<TypographyProps, "variant">;
+
+/** Button L - 16px, large action buttons */
+export const ButtonTextL = forwardRef<HTMLElement, ButtonTextProps>((props, ref) => (
+  <Typography ref={ref} variant="button-l" as="span" {...props} />
+));
+ButtonTextL.displayName = "ButtonTextL";
+
+/** Button M - 14px, default buttons */
+export const ButtonTextM = forwardRef<HTMLElement, ButtonTextProps>((props, ref) => (
+  <Typography ref={ref} variant="button-m" as="span" {...props} />
+));
+ButtonTextM.displayName = "ButtonTextM";
+
+/** Button S - 12px, compact buttons */
+export const ButtonTextS = forwardRef<HTMLElement, ButtonTextProps>((props, ref) => (
+  <Typography ref={ref} variant="button-s" as="span" {...props} />
+));
+ButtonTextS.displayName = "ButtonTextS";
+
+
+// Export variant types for external use
+export { typographyVariants };
+export type TypographyVariant = VariantProps<typeof typographyVariants>["variant"];

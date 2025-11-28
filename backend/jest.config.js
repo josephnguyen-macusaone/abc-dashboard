@@ -3,10 +3,11 @@ export default {
   // Test environment
   testEnvironment: 'node',
 
+  // ES Modules support
+  extensionsToTreatAsEsm: [],
+
   // Test files location
-  testMatch: [
-    '<rootDir>/tests/**/*.test.js'
-  ],
+  testMatch: ['<rootDir>/tests/**/*.test.js'],
 
   // Coverage configuration
   collectCoverageFrom: [
@@ -14,11 +15,21 @@ export default {
     '!src/infrastructure/config/database.js',
     '!src/infrastructure/config/logger.js',
     '!src/**/index.js',
-    '!src/**/bootstrap/**'
+    '!src/**/bootstrap/**',
   ],
 
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+
+  // Coverage thresholds
+  coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 50,
+      lines: 50,
+      statements: 50,
+    },
+  },
 
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
@@ -26,20 +37,21 @@ export default {
   // Transform configuration for ES modules
   transform: {},
 
-  // Module name mapping
-  moduleNameMapping: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
-  },
-
-  // Test timeout
-  testTimeout: 10000,
+  // Test timeout (increased for integration tests)
+  testTimeout: 30000,
 
   // Verbose output
   verbose: true,
 
-  // Force exit to prevent hanging
+  // Force exit to prevent hanging from supertest/express timeouts
   forceExit: true,
 
-  // Detect open handles
-  detectOpenHandles: true
+  // Only enable detectOpenHandles for debugging (shows warnings for supertest timeouts)
+  // detectOpenHandles: true,
+
+  // Clear mocks between tests
+  clearMocks: true,
+
+  // Restore mocks after each test
+  restoreMocks: true,
 };

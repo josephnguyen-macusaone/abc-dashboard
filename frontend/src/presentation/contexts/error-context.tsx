@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useCallback, useEffect, useState, useMemo } from 'react';
 import { toast } from '@/presentation/components/atoms';
-import { ApiException } from '@/infrastructure/api/types';
+import { ApiExceptionDto } from '@/application/dto/api-dto';
 import logger from '@/shared/utils/logger';
 import { RetryUtils } from '@/shared/utils/retry';
 
@@ -274,7 +274,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     logger.error(`API Error in ${context}:`, { error, context });
 
     // If it's already an ApiException, use it directly
-    if (error instanceof ApiException) {
+    if (error instanceof ApiExceptionDto) {
       toast.error(context, {
         description: error.message || 'An error occurred.'
       });

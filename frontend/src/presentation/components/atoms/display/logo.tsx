@@ -1,20 +1,50 @@
 'use client';
 
 import { cn } from '@/shared/utils';
+import Image from 'next/image';
+import LogoDark from '@assets/svgs/common/logo_dark.svg';
+import LogoLight from '@assets/svgs/common/logo_light.svg';
+
+export type LogoVariant = 'dark' | 'light' | 'text';
 
 export interface LogoProps {
+  variant?: LogoVariant;
+  width?: number;
+  height?: number;
+  className?: string;
+  // Legacy props for text variant
   iconText?: string;
   primaryText?: string;
   secondaryText?: string;
-  className?: string;
 }
 
 export function Logo({
+  variant = 'dark',
+  width = 160,
+  height = 64,
+  className,
   iconText = 'RP',
   primaryText = 'ABC',
   secondaryText = 'Dashboard',
-  className,
 }: LogoProps) {
+  // SVG logo variant
+  if (variant === 'dark' || variant === 'light') {
+    const logoSrc = variant === 'dark' ? LogoDark : LogoLight;
+
+    return (
+      <div className={cn('flex justify-center', className)}>
+        <Image
+          src={logoSrc}
+          alt="Logo"
+          width={width}
+          height={height}
+          priority
+        />
+      </div>
+    );
+  }
+
+  // Text-based logo variant (legacy)
   return (
     <div className={cn('flex items-center space-x-3', className)}>
       {/* Logo icon */}

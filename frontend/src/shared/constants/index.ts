@@ -1,5 +1,9 @@
 // Shared Constants - Application-wide constants
 
+// Asset Constants (auto-generated)
+export { SVGS, IMAGES, ASSETS } from './assets';
+export type { SvgAssetPaths, ImageAssetPaths, AssetPaths } from './assets';
+
 /**
  * Validates and normalizes the API base URL
  * Ensures the URL has a valid http:// or https:// scheme for CORS requests
@@ -275,7 +279,7 @@ export const VALIDATION = {
 export const APP_CONFIG = {
   NAME: 'MERN Auth App',
   VERSION: '1.0.0',
-  DEFAULT_THEME: THEMES.DARK,
+  DEFAULT_THEME: THEMES.LIGHT, // Default theme is light, but system theme option is available
 } as const;
 
 /**

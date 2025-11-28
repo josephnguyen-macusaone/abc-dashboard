@@ -2,7 +2,11 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { config } from '../../infrastructure/config/config.js';
 import logger from '../../infrastructure/config/logger.js';
-import { ValidationException, TokenExpiredException, InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
+import {
+  ValidationException,
+  TokenExpiredException,
+  InvalidTokenException,
+} from '../../domain/exceptions/domain.exception.js';
 
 /**
  * Token Service
@@ -43,13 +47,13 @@ export class TokenService {
       const token = jwt.sign(payload, this.jwtSecret, {
         expiresIn: this.jwtExpiresIn,
         issuer: this.jwtIssuer,
-        audience: payload.email || 'user'
+        audience: payload.email || 'user',
       });
 
       logger.debug('Access token generated successfully', {
         correlationId: this.correlationId,
         userId: payload.userId || payload.id,
-        expiresIn: this.jwtExpiresIn
+        expiresIn: this.jwtExpiresIn,
       });
 
       return token;
@@ -61,7 +65,7 @@ export class TokenService {
       logger.error('Failed to generate access token', {
         correlationId: this.correlationId,
         error: error.message,
-        payloadKeys: payload ? Object.keys(payload) : null
+        payloadKeys: payload ? Object.keys(payload) : null,
       });
 
       throw new Error(`Failed to generate access token: ${error.message}`);
@@ -77,7 +81,7 @@ export class TokenService {
     try {
       return jwt.sign(payload, this.jwtSecret, {
         expiresIn: this.refreshTokenExpiresIn,
-        issuer: this.jwtIssuer
+        issuer: this.jwtIssuer,
       });
     } catch (error) {
       throw new Error(`Failed to generate refresh token: ${error.message}`);
@@ -96,13 +100,13 @@ export class TokenService {
       }
 
       const decoded = jwt.verify(token, this.jwtSecret, {
-        issuer: this.jwtIssuer
+        issuer: this.jwtIssuer,
       });
 
       logger.debug('Token verified successfully', {
         correlationId: this.correlationId,
         tokenType: 'access',
-        userId: decoded.userId || decoded.id
+        userId: decoded.userId || decoded.id,
       });
 
       return decoded;
@@ -114,7 +118,7 @@ export class TokenService {
       if (error.name === 'TokenExpiredError') {
         logger.warn('Token verification failed - expired token', {
           correlationId: this.correlationId,
-          expiredAt: error.expiredAt
+          expiredAt: error.expiredAt,
         });
         throw new TokenExpiredException();
       }
@@ -122,7 +126,7 @@ export class TokenService {
       if (error.name === 'JsonWebTokenError') {
         logger.warn('Token verification failed - invalid token', {
           correlationId: this.correlationId,
-          error: error.message
+          error: error.message,
         });
         throw new InvalidTokenException();
       }
@@ -130,7 +134,7 @@ export class TokenService {
       logger.error('Token verification failed - unexpected error', {
         correlationId: this.correlationId,
         error: error.message,
-        errorName: error.name
+        errorName: error.name,
       });
 
       throw new InvalidTokenException();
@@ -149,12 +153,12 @@ export class TokenService {
         {
           userId,
           email,
-          type: 'email_verification'
+          type: 'email_verification',
         },
         this.jwtSecret,
         {
           expiresIn: this.emailVerificationExpiresIn,
-          issuer: this.jwtIssuer
+          issuer: this.jwtIssuer,
         }
       );
     } catch (error) {
@@ -170,7 +174,7 @@ export class TokenService {
   verifyEmailVerificationToken(token) {
     try {
       return jwt.verify(token, this.jwtSecret, {
-        issuer: this.jwtIssuer
+        issuer: this.jwtIssuer,
       });
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
@@ -195,12 +199,12 @@ export class TokenService {
         {
           userId,
           email,
-          type: 'password_reset'
+          type: 'password_reset',
         },
         this.jwtSecret,
         {
           expiresIn: this.passwordResetExpiresIn,
-          issuer: this.jwtIssuer
+          issuer: this.jwtIssuer,
         }
       );
     } catch (error) {
@@ -216,7 +220,7 @@ export class TokenService {
   verifyPasswordResetToken(token) {
     try {
       return jwt.verify(token, this.jwtSecret, {
-        issuer: this.jwtIssuer
+        issuer: this.jwtIssuer,
       });
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
@@ -241,7 +245,7 @@ export class TokenService {
 
       return {
         accessToken,
-        refreshToken
+        refreshToken,
       };
     } catch (error) {
       throw new Error(`Failed to generate tokens: ${error.message}`);

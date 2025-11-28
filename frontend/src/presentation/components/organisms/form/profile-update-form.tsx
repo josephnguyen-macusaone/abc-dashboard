@@ -55,7 +55,6 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
@@ -64,48 +63,37 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
 
   const validateForm = (): boolean => {
     const validationErrors: Partial<Record<keyof ProfileFormData, string | null>> = {};
-
     if (!formData.displayName.trim()) {
       validationErrors.displayName = 'Display name is required';
     }
-
     if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
       validationErrors.phone = 'Please enter a valid phone number';
     }
-
-
     setErrors(validationErrors);
     return Object.values(validationErrors).every(error => !error);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setIsLoading(true);
-
     try {
       // Prepare complete profile data for PUT request
       const cleanString = (str: string) => str.trim().replace(/[\r\n\t]/g, ' ').replace(/"/g, '\\"');
-
       const profileData = {
         displayName: cleanString(formData.displayName) || '',
         bio: cleanString(formData.bio) || '',
         phone: cleanString(formData.phone) || '',
       };
-
       // Check if any data actually changed
       const hasDisplayNameChanged = formData.displayName.trim() !== (user?.displayName ?? '');
       const hasBioChanged = formData.bio.trim() !== (user?.bio ?? '');
       const hasPhoneChanged = formData.phone.trim() !== (user?.phone ?? '');
-
       if (!hasDisplayNameChanged && !hasBioChanged && !hasPhoneChanged) {
         toast.success('No changes to save');
         onSuccess?.();
         return;
       }
-
       await handleUpdateProfile(profileData);
       toast.success('Profile updated successfully!');
       onSuccess?.();
@@ -171,12 +159,12 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className='text-xs pb-0.5'>Updating...</span>
+                <span className='text-button-s pb-0.5'>Updating...</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span className='text-xs pb-0.5'>Save Changes</span>
+                <span className='text-button-s pb-0.5'>Save Changes</span>
               </>
             )}
           </Button>
@@ -189,7 +177,7 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
             className="w-full sm:w-auto"
           >
             <X className="w-4 h-4" />
-            <span className='text-xs pb-0.5'>Cancel</span>
+            <span className='text-button-s pb-0.5'>Cancel</span>
           </Button>
         </div>
       </form>

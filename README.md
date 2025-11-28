@@ -4,7 +4,7 @@ A full-stack dashboard application with modern frontend and enterprise-grade bac
 
 ## 📁 Project Structure
 
-```
+```txt
 abc-dashboard/
 ├── backend/              # Node.js/Express API with Clean Architecture
 ├── frontend/             # Next.js React app with TypeScript
@@ -18,6 +18,7 @@ abc-dashboard/
 ## 🚀 Quick Start
 
 ### Development Setup
+
 **Prerequisites:** Node.js 18+, MongoDB, Redis (optional)
 
 ```bash
@@ -41,7 +42,9 @@ npm run dev
 Choose your preferred deployment method:
 
 #### 🐳 Docker Deployment (Recommended)
+
 **Best for:** Production, scaling, modern DevOps
+
 ```bash
 cd deployment/docker
 chmod +x docker-deploy.sh
@@ -49,7 +52,9 @@ chmod +x docker-deploy.sh
 ```
 
 #### 🏗️ OpenLiteSpeed Deployment
+
 **Best for:** Existing OpenLiteSpeed servers, manual control
+
 ```bash
 cd deployment/openlitespeed
 chmod +x deploy.sh
@@ -59,22 +64,21 @@ chmod +x deploy.sh
 ## 🌐 Production URLs
 
 After deployment, your application will be available at:
-- **Frontend:** https://portal.abcsalon.us
-- **API:** https://portal.abcsalon.us/api/v1
-- **API Docs:** https://portal.abcsalon.us/api-docs
-- **Health Check:** https://portal.abcsalon.us/api/v1/health
+
+- **Frontend:** <https://portal.abcsalon.us>
+- **API:** <https://portal.abcsalon.us/api/v1>
+- **API Docs:** <https://portal.abcsalon.us/api-docs>
+- **Health Check:** <https://portal.abcsalon.us/api/v1/health>
 
 ## 📚 Documentation Links
 
 - **[📚 Backend API](./backend/README.md)** - Complete API documentation and architecture
 - **[🎨 Frontend App](./frontend/README.md)** - React application guide and development
-- **[🚀 Deployment Guide](./deployment/README.md)** - Production deployment options
-- **[🐳 Docker Deployment](./deployment/docker/README.md)** - Container-based deployment
-- **[🏗️ OpenLiteSpeed Deployment](./deployment/openlitespeed/README.md)** - Traditional server deployment
 
 ## 🏗️ Architecture Overview
 
 ### Backend (Node.js/Express)
+
 - **Clean Architecture** with dependency injection
 - **MongoDB** with Mongoose ODM
 - **Redis** caching (optional)
@@ -83,6 +87,7 @@ After deployment, your application will be available at:
 - **Swagger** API documentation
 
 ### Frontend (Next.js/React)
+
 - **TypeScript** for type safety
 - **Tailwind CSS** for styling
 - **Zustand** for state management
@@ -90,6 +95,7 @@ After deployment, your application will be available at:
 - **Axios** for API calls
 
 ### Deployment Options
+
 - **Docker:** Containerized deployment with Docker Compose
 - **OpenLiteSpeed:** Traditional server deployment with PM2
 - **SSL/TLS:** Automatic HTTPS with Let's Encrypt

@@ -12,7 +12,7 @@ class InMemoryCache {
     try {
       this.cache.set(key, {
         value,
-        expires: Date.now() + (ttl * 1000)
+        expires: Date.now() + ttl * 1000,
       });
 
       // Clear existing timeout if any
@@ -37,7 +37,9 @@ class InMemoryCache {
   async get(key) {
     try {
       const item = this.cache.get(key);
-      if (!item) return null;
+      if (!item) {
+        return null;
+      }
 
       if (Date.now() > item.expires) {
         this.cache.delete(key);
@@ -72,7 +74,9 @@ class InMemoryCache {
   async exists(key) {
     try {
       const item = this.cache.get(key);
-      if (!item) return false;
+      if (!item) {
+        return false;
+      }
 
       if (Date.now() > item.expires) {
         this.cache.delete(key);
@@ -102,10 +106,10 @@ class InMemoryCache {
     }
   }
 
-  async clear(pattern = '*') {
+  async clear(_pattern = '*') {
     try {
       // Simple implementation - clear all for now
-      // In a real implementation, you'd filter by pattern
+      // TODO: In a real implementation, filter by pattern
       this.cache.clear();
       for (const timeout of this.timeouts.values()) {
         clearTimeout(timeout);
@@ -121,9 +125,9 @@ class InMemoryCache {
 
   async stats() {
     return {
-      memory_usage: `${(this.cache.size * 1024)} bytes`, // Rough estimate
+      memory_usage: `${this.cache.size * 1024} bytes`, // Rough estimate
       keys_count: this.cache.size,
-      type: 'in-memory'
+      type: 'in-memory',
     };
   }
 }
@@ -134,39 +138,39 @@ const inMemoryCache = new InMemoryCache();
 // Simplified cache operations using only in-memory cache
 export const cache = {
   // Set cache value
-  async set(key, value, ttl = config.CACHE_API_RESPONSE_TTL) {
-    return await inMemoryCache.set(key, value, ttl);
+  set(key, value, ttl = config.CACHE_API_RESPONSE_TTL) {
+    return inMemoryCache.set(key, value, ttl);
   },
 
   // Get cache value
-  async get(key) {
-    return await inMemoryCache.get(key);
+  get(key) {
+    return inMemoryCache.get(key);
   },
 
   // Delete cache key
-  async del(key) {
-    return await inMemoryCache.del(key);
+  del(key) {
+    return inMemoryCache.del(key);
   },
 
   // Check if key exists
-  async exists(key) {
-    return await inMemoryCache.exists(key);
+  exists(key) {
+    return inMemoryCache.exists(key);
   },
 
   // Set multiple keys
-  async mset(keyValuePairs, ttl = config.CACHE_API_RESPONSE_TTL) {
-    return await inMemoryCache.mset(keyValuePairs, ttl);
+  mset(keyValuePairs, ttl = config.CACHE_API_RESPONSE_TTL) {
+    return inMemoryCache.mset(keyValuePairs, ttl);
   },
 
   // Clear all cache
-  async clear(pattern = '*') {
-    return await inMemoryCache.clear(pattern);
+  clear(pattern = '*') {
+    return inMemoryCache.clear(pattern);
   },
 
   // Get cache statistics
-  async stats() {
-    return await inMemoryCache.stats();
-  }
+  stats() {
+    return inMemoryCache.stats();
+  },
 };
 
 // Cache key generators
@@ -189,14 +193,11 @@ export const initRedis = async () => {
   return false;
 };
 
-export const getRedisClient = () => {
-  return null;
-};
+export const getRedisClient = () => null;
 
-export const closeRedis = async () => {
+export const closeRedis = async () =>
   // No-op since Redis is not used
-  return true;
-};
+  true;
 
 export default {
   initRedis,

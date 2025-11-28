@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
-import { FormField, InputField } from '@/presentation/components/molecules';
+import { FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { toast } from '@/presentation/components/atoms';
 import { cn } from '@/shared/utils';
@@ -37,7 +37,6 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
 
   const handleInputChange = (field: keyof PasswordFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
@@ -46,27 +45,21 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
 
   const validatePasswordStrength = (password: string): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
-
     if (password.length < 8) {
       errors.push('Password must be at least 8 characters long');
     }
-
     if (!/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter');
     }
-
     if (!/[a-z]/.test(password)) {
       errors.push('Password must contain at least one lowercase letter');
     }
-
     if (!/\d/.test(password)) {
       errors.push('Password must contain at least one number');
     }
-
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
       errors.push('Password must contain at least one special character');
     }
-
     return {
       isValid: errors.length === 0,
       errors
@@ -75,11 +68,9 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
 
   const validateForm = (): boolean => {
     const validationErrors: Partial<Record<keyof PasswordFormData, string | null>> = {};
-
     if (!formData.currentPassword.trim()) {
       validationErrors.currentPassword = 'Current password is required';
     }
-
     if (!formData.newPassword.trim()) {
       validationErrors.newPassword = 'New password is required';
     } else {
@@ -88,39 +79,30 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
         validationErrors.newPassword = passwordValidation.errors[0];
       }
     }
-
     if (!formData.confirmPassword.trim()) {
       validationErrors.confirmPassword = 'Please confirm your new password';
     } else if (formData.newPassword !== formData.confirmPassword) {
       validationErrors.confirmPassword = 'Passwords do not match';
     }
-
     if (formData.currentPassword === formData.newPassword) {
       validationErrors.newPassword = 'New password must be different from current password';
     }
-
     setErrors(validationErrors);
     return Object.values(validationErrors).every(error => !error);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setIsLoading(true);
-
     try {
       await handleChangePassword(formData.currentPassword, formData.newPassword);
-
       setFormData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
-
       toast.success('Password changed successfully!');
-
       onSuccess?.();
     } catch {
       toast.error('Failed to change password');
@@ -243,10 +225,12 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
 
         {/* Password Requirements */}
         <div className="bg-muted/50 rounded-lg p-4 border border-border">
-          <Typography variant="p" size="xs" weight="medium" className="text-foreground mb-2">
+          {/* MAC USA ONE Typography: Label S for requirements title */}
+          <Typography variant="label-s" className="text-foreground mb-2">
             Password Requirements:
           </Typography>
-          <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 ml-2">
+          {/* MAC USA ONE Typography: Body XS for requirement list */}
+          <ul className="text-body-xs text-muted-foreground list-disc list-inside space-y-0.5 ml-2">
             <li>At least 8 characters long</li>
             <li>One uppercase letter</li>
             <li>One lowercase letter</li>
@@ -266,12 +250,12 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className='text-xs pb-0.5'>Changing...</span>
+                <span className='text-button-s pb-0.5'>Changing...</span>
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4" />
-                <span className='text-xs pb-0.5'>Change Password</span>
+                <span className='text-button-s pb-0.5'>Change Password</span>
               </>
             )}
           </Button>
@@ -284,7 +268,7 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
             className="w-full sm:w-auto"
           >
             <KeyRound className="w-4 h-4" />
-            <span className='text-xs pb-0.5'>Cancel</span>
+            <span className='text-button-s pb-0.5'>Cancel</span>
           </Button>
         </div>
       </form>

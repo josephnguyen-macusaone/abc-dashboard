@@ -1,5 +1,4 @@
 import express from 'express';
-import { UserController } from '../controllers/user-controller.js';
 import { validateRequest, validateQuery } from '../middleware/validation-middleware.js';
 import { userSchemas } from '../api/v1/schemas/user.schemas.js';
 import { authenticate, authorizeSelf } from '../middleware/auth-middleware.js';
@@ -57,7 +56,8 @@ export function createUserRoutes(userController) {
    *       403:
    *         description: Forbidden
    */
-  router.get('/',
+  router.get(
+    '/',
     validateQuery(userSchemas.getUsers),
     userController.getUsers.bind(userController)
   );
@@ -78,9 +78,7 @@ export function createUserRoutes(userController) {
    *       403:
    *         description: Forbidden - Admin only
    */
-  router.get('/stats',
-    userController.getUserStats.bind(userController)
-  );
+  router.get('/stats', userController.getUserStats.bind(userController));
 
   /**
    * @swagger
@@ -126,7 +124,8 @@ export function createUserRoutes(userController) {
    *       403:
    *         description: Forbidden - Admin only
    */
-  router.post('/',
+  router.post(
+    '/',
     validateRequest(userSchemas.createUser),
     userController.createUser.bind(userController)
   );
@@ -155,10 +154,7 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.get('/:id',
-    authorizeSelf,
-    userController.getUser.bind(userController)
-  );
+  router.get('/:id', authorizeSelf, userController.getUser.bind(userController));
 
   /**
    * @swagger
@@ -202,7 +198,8 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.put('/:id',
+  router.put(
+    '/:id',
     authorizeSelf,
     validateRequest(userSchemas.updateUser),
     userController.updateUser.bind(userController)
@@ -232,10 +229,7 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.delete('/:id',
-    authorizeSelf,
-    userController.deleteUser.bind(userController)
-  );
+  router.delete('/:id', authorizeSelf, userController.deleteUser.bind(userController));
 
   return router;
 }

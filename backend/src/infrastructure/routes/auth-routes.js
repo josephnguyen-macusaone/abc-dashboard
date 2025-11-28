@@ -1,8 +1,6 @@
 import express from 'express';
-import { AuthController } from '../controllers/auth-controller.js';
 import { validateRequest } from '../middleware/validation-middleware.js';
 import { authSchemas } from '../api/v1/schemas/auth.schemas.js';
-import { userSchemas } from '../api/v1/schemas/user.schemas.js';
 import { optionalAuth, authenticate } from '../middleware/auth-middleware.js';
 
 /**
@@ -53,7 +51,8 @@ export function createAuthRoutes(authController) {
    *       400:
    *         description: Validation error
    */
-  router.post('/register',
+  router.post(
+    '/register',
     validateRequest(authSchemas.register),
     authController.register.bind(authController)
   );
@@ -62,33 +61,47 @@ export function createAuthRoutes(authController) {
    * @swagger
    * /auth/verify-email:
    *   post:
-   *     summary: Verify user email with OTP
+   *     summary: Verify or confirm email verification
+   *     description: |
+   *       Handles both registration email verification and authenticated user email confirmation.
+   *
+   *       **Registration Flow**: Provide `token` to verify email and activate new account.
+   *       **Confirmation Flow**: Provide `action: "confirm"` to mark authenticated user's email as verified.
    *     tags: [Authentication]
+   *     security:
+   *       - bearerAuth: []  # Optional - only required for confirmation flow
    *     requestBody:
-   *       required: true
    *       content:
    *         application/json:
    *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *               - token
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 format: email
-   *               token:
-   *                 type: string
-   *                 description: 6-digit verification code
+   *             oneOf:
+   *               - type: object
+   *                 required:
+   *                   - token
+   *                 properties:
+   *                   token:
+   *                     type: string
+   *                     description: Email verification token from registration email
+   *               - type: object
+   *                 required:
+   *                   - action
+   *                 properties:
+   *                   action:
+   *                     type: string
+   *                     enum: [confirm]
+   *                     description: Action to perform (currently only 'confirm' supported)
    *     responses:
    *       200:
    *         description: Email verified successfully
    *       400:
-   *         description: Invalid token or validation error
+   *         description: Invalid token, missing action, or validation error
+   *       401:
+   *         description: Authentication required for confirmation action
    *       404:
    *         description: User not found
    */
-  router.post('/verify-email',
+  router.post(
+    '/verify-email',
     validateRequest(authSchemas.verifyEmail),
     authController.verifyEmail.bind(authController)
   );
@@ -120,22 +133,24 @@ export function createAuthRoutes(authController) {
    *       401:
    *         description: Invalid credentials
    */
-  router.post('/login',
+  router.post(
+    '/login',
     validateRequest(authSchemas.login),
     authController.login.bind(authController)
   );
 
   /**
    * @swagger
-   * /auth/status:
+   * /auth/profile:
    *   get:
-   *     summary: Get authentication status
+   *     summary: Get user profile and authentication status
+   *     description: Returns user profile if authenticated, or isAuthenticated=false if not. Works with or without a token.
    *     tags: [Authentication]
    *     security:
    *       - bearerAuth: []
    *     responses:
    *       200:
-   *         description: Status retrieved successfully
+   *         description: Profile/status retrieved successfully
    *         content:
    *           application/json:
    *             schema:
@@ -149,27 +164,12 @@ export function createAuthRoutes(authController) {
    *                     user:
    *                       type: object
    *                       nullable: true
+   *                       description: User profile data if authenticated, null otherwise
    *                     isAuthenticated:
    *                       type: boolean
+   *                       description: Whether the user is authenticated
    */
-  router.get('/status', optionalAuth, authController.getStatus.bind(authController));
-
-  /**
-   * @swagger
-   * /auth/profile:
-   *   get:
-   *     summary: Get user profile
-   *     tags: [Authentication]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Profile retrieved successfully
-   *       401:
-   *         description: Unauthorized
-   */
-  router.get('/profile', authenticate, authController.getProfile.bind(authController));
-
+  router.get('/profile', optionalAuth, authController.getProfile.bind(authController));
 
   /**
    * @swagger
@@ -204,7 +204,8 @@ export function createAuthRoutes(authController) {
    *       401:
    *         description: Unauthorized or incorrect current password
    */
-  router.post('/change-password',
+  router.post(
+    '/change-password',
     authenticate,
     validateRequest(authSchemas.changePassword),
     authController.changePassword.bind(authController)
@@ -245,7 +246,8 @@ export function createAuthRoutes(authController) {
    *       401:
    *         description: Invalid or expired refresh token
    */
-  router.post('/refresh',
+  router.post(
+    '/refresh',
     validateRequest(authSchemas.refreshToken),
     authController.refreshToken.bind(authController)
   );
@@ -298,7 +300,8 @@ export function createAuthRoutes(authController) {
    *                   type: string
    *                   example: "Password reset email sent if account exists"
    */
-  router.post('/forgot-password',
+  router.post(
+    '/forgot-password',
     validateRequest(authSchemas.requestPasswordReset),
     authController.requestPasswordReset.bind(authController)
   );
@@ -346,7 +349,8 @@ export function createAuthRoutes(authController) {
    *       400:
    *         description: Invalid or expired token, or validation error
    */
-  router.post('/reset-password',
+  router.post(
+    '/reset-password',
     validateRequest(authSchemas.resetPassword),
     authController.resetPassword.bind(authController)
   );

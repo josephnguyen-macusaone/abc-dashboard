@@ -35,9 +35,9 @@ export class UserRepository extends IUserRepository {
           logger.error('User findById timed out', {
             correlationId: this.correlationId,
             userId: id,
-            timeout: TimeoutPresets.DATABASE
+            timeout: TimeoutPresets.DATABASE,
           });
-        }
+        },
       }
     );
   }
@@ -56,9 +56,9 @@ export class UserRepository extends IUserRepository {
           logger.error('User findByEmail timed out', {
             correlationId: this.correlationId,
             email,
-            timeout: TimeoutPresets.DATABASE
+            timeout: TimeoutPresets.DATABASE,
           });
-        }
+        },
       }
     );
   }
@@ -77,13 +77,12 @@ export class UserRepository extends IUserRepository {
           logger.error('User findByUsername timed out', {
             correlationId: this.correlationId,
             username,
-            timeout: TimeoutPresets.DATABASE
+            timeout: TimeoutPresets.DATABASE,
           });
-        }
+        },
       }
     );
   }
-
 
   async findUsers(options = {}) {
     const {
@@ -91,7 +90,7 @@ export class UserRepository extends IUserRepository {
       limit = 10,
       filters = {},
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = options;
 
     const query = {};
@@ -114,9 +113,11 @@ export class UserRepository extends IUserRepository {
     if (filters.hasBio !== undefined) {
       // Import UserProfileModel for bio filtering
       const { default: UserProfileModel } = await import('../models/user-profile-model.js');
-      const bioQuery = filters.hasBio ? { bio: { $exists: true, $ne: '' } } : { bio: { $exists: false } };
+      const bioQuery = filters.hasBio
+        ? { bio: { $exists: true, $ne: '' } }
+        : { bio: { $exists: false } };
       const bioProfiles = await UserProfileModel.find(bioQuery, { userId: 1 });
-      bioFilterUsers = bioProfiles.map(p => p.userId.toString());
+      bioFilterUsers = bioProfiles.map((p) => p.userId.toString());
     }
 
     // Apply bio filter if set
@@ -129,16 +130,16 @@ export class UserRepository extends IUserRepository {
 
     const [users, total] = await Promise.all([
       this.UserModel.find(query).sort(sort).skip(skip).limit(limit),
-      this.UserModel.countDocuments(query)
+      this.UserModel.countDocuments(query),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      users: users.map(user => this._toEntity(user)),
+      users: users.map((user) => this._toEntity(user)),
       total,
       page,
-      totalPages
+      totalPages,
     };
   }
 
@@ -167,9 +168,9 @@ export class UserRepository extends IUserRepository {
             correlationId: this.correlationId,
             userId: id,
             updateFields: Object.keys(updates),
-            timeout: TimeoutPresets.DATABASE
+            timeout: TimeoutPresets.DATABASE,
           });
-        }
+        },
       }
     );
   }
@@ -192,28 +193,23 @@ export class UserRepository extends IUserRepository {
     // Import UserProfileModel for bio stats
     const { default: UserProfileModel } = await import('../models/user-profile-model.js');
 
-    const [
-      totalUsers,
-      usersWithAvatars,
-      usersWithBio,
-      usersWithPhone,
-      recentRegistrations
-    ] = await Promise.all([
-      this.UserModel.countDocuments(),
-      this.UserModel.countDocuments({ avatarUrl: { $exists: true, $ne: '' } }),
-      UserProfileModel.countDocuments({ bio: { $exists: true, $ne: '' } }),
-      this.UserModel.countDocuments({ phone: { $exists: true, $ne: null } }),
-      this.UserModel.countDocuments({
-        createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
-      })
-    ]);
+    const [totalUsers, usersWithAvatars, usersWithBio, usersWithPhone, recentRegistrations] =
+      await Promise.all([
+        this.UserModel.countDocuments(),
+        this.UserModel.countDocuments({ avatarUrl: { $exists: true, $ne: '' } }),
+        UserProfileModel.countDocuments({ bio: { $exists: true, $ne: '' } }),
+        this.UserModel.countDocuments({ phone: { $exists: true, $ne: null } }),
+        this.UserModel.countDocuments({
+          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Last 30 days
+        }),
+      ]);
 
     return {
       totalUsers,
       usersWithAvatars,
       usersWithBio,
       usersWithPhone,
-      recentRegistrations
+      recentRegistrations,
     };
   }
 
@@ -226,11 +222,10 @@ export class UserRepository extends IUserRepository {
       updateData.isActive = statusData.isActive;
     }
 
-    const userDoc = await this.UserModel.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const userDoc = await this.UserModel.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     return userDoc ? this._toEntity(userDoc) : null;
   }
@@ -251,7 +246,7 @@ export class UserRepository extends IUserRepository {
       createdAt: userDoc.createdAt,
       updatedAt: userDoc.updatedAt,
       createdBy: userDoc.createdBy,
-      lastModifiedBy: userDoc.lastModifiedBy
+      lastModifiedBy: userDoc.lastModifiedBy,
     });
   }
 }

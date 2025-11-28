@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Typography, Input } from '@/presentation/components/atoms';
+import { Typography, Input, Label } from '@/presentation/components/atoms';
 import { cn } from '@/shared/utils';
 
 const Textarea = React.forwardRef<
@@ -11,7 +11,8 @@ const Textarea = React.forwardRef<
   return (
     <textarea
       className={cn(
-        'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        // MAC USA ONE Typography: Body S for textarea (matches input)
+        'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-body-s ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
       ref={ref}
@@ -45,17 +46,10 @@ export function FormField({
   return (
     <div className={cn('space-y-4', className)}>
       {label && (
-        <label htmlFor={fieldId} className="block">
-          <Typography
-            variant="span"
-            size="sm"
-            weight="medium"
-            className="text-foreground"
-          >
-            {label}
-            {required && <span className="text-destructive ml-1">*</span>}
-          </Typography>
-        </label>
+        <Label htmlFor={fieldId} className="block">
+          {label}
+          {required && <span className="text-destructive ml-1">*</span>}
+        </Label>
       )}
 
       <div className="relative">
@@ -68,8 +62,7 @@ export function FormField({
 
       {description && !error && (
         <Typography
-          variant="p"
-          size="sm"
+          variant="caption"
           color="muted"
           className="text-muted-foreground"
           id={`${fieldId}-description`}
@@ -80,10 +73,9 @@ export function FormField({
 
       {error && (
         <Typography
-          variant="p"
-          size="sm"
-          color="destructive"
-          className="text-destructive"
+          variant="body-xs"
+          color="error"
+          className="text-error"
           id={`${fieldId}-error`}
         >
           {error}

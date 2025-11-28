@@ -45,8 +45,8 @@ export function NavigationButton({
             : 'text-muted-foreground group-hover:!text-foreground'
         )}
       />
-      <span className="font-medium text-xs pb-0.5">{name}</span>
+      {/* MAC USA ONE Typography: Label S for navigation items */}
+      <span className="text-label-s pb-0.5">{name}</span>
     </Button>
   );
 }
-

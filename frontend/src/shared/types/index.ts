@@ -1,4 +1,5 @@
 // Shared Types - Common types used across the application
+import { SortOrder } from './enum';
 
 /**
  * Generic API Response wrapper
@@ -26,7 +27,7 @@ export interface PaginationParams {
   page: number;
   limit: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: SortOrder;
 }
 
 /**
@@ -104,3 +105,6 @@ export interface TableFilters {
   };
   [key: string]: any;
 }
+
+// Re-export enum
+export { Role, SortBy, SortOrder } from './enum';

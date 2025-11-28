@@ -14,14 +14,12 @@ export class AuthMiddleware {
   authenticate = async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
-      const token = authHeader && authHeader.startsWith('Bearer ')
-        ? authHeader.substring(7)
-        : null;
+      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
       if (!token) {
         return res.status(401).json({
           success: false,
-          message: 'Access token is required'
+          message: 'Access token is required',
         });
       }
 
@@ -33,7 +31,7 @@ export class AuthMiddleware {
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'User not found'
+          message: 'User not found',
         });
       }
 
@@ -43,7 +41,7 @@ export class AuthMiddleware {
     } catch (error) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid or expired token'
+        message: 'Invalid or expired token',
       });
     }
   };
@@ -59,7 +57,7 @@ export class AuthMiddleware {
     if (!isOwner) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. You can only access your own resources.'
+        message: 'Access denied. You can only access your own resources.',
       });
     }
     next();
@@ -69,32 +67,30 @@ export class AuthMiddleware {
    * Authorize based on user roles and permissions
    * @param {string[]} requiredPermissions - Array of required permissions
    */
-  authorize = (requiredPermissions) => {
-    return (req, res, next) => {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Authentication required'
-        });
-      }
+  authorize = (requiredPermissions) => (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
 
-      // Import here to avoid circular dependencies
-      const { hasPermission } = require('../../shared/constants/roles.js');
+    // Import here to avoid circular dependencies
+    const { hasPermission } = require('../../shared/constants/roles.js');
 
-      // Check if user has any of the required permissions
-      const hasRequiredPermission = requiredPermissions.some(permission =>
-        hasPermission(req.user.role, permission)
-      );
+    // Check if user has any of the required permissions
+    const hasRequiredPermission = requiredPermissions.some((permission) =>
+      hasPermission(req.user.role, permission)
+    );
 
-      if (!hasRequiredPermission) {
-        return res.status(403).json({
-          success: false,
-          message: 'Insufficient permissions'
-        });
-      }
+    if (!hasRequiredPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions',
+      });
+    }
 
-      next();
-    };
+    next();
   };
 
   /**
@@ -104,7 +100,7 @@ export class AuthMiddleware {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Authentication required',
       });
     }
 
@@ -113,7 +109,7 @@ export class AuthMiddleware {
     if (req.user.role !== ROLES.ADMIN) {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: 'Admin access required',
       });
     }
 
@@ -126,9 +122,7 @@ export class AuthMiddleware {
   optionalAuth = async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization || req.headers.Authorization;
-      const token = authHeader && authHeader.startsWith('Bearer ')
-        ? authHeader.substring(7)
-        : null;
+      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
       if (token) {
         try {
@@ -137,10 +131,10 @@ export class AuthMiddleware {
 
           // Find user
           if (decoded && decoded.userId) {
-        const user = await this.userRepository.findById(decoded.userId);
+            const user = await this.userRepository.findById(decoded.userId);
 
-        if (user) {
-          req.user = user;
+            if (user) {
+              req.user = user;
             } else {
               req.user = null;
             }

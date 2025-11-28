@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import { ROLES } from "../../shared/constants/roles.js";
+import mongoose from 'mongoose';
+import { ROLES } from '../../shared/constants/roles.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -67,10 +67,21 @@ const userSchema = new mongoose.Schema(
 
 // Indexes for performance
 // Note: email and username indexes are automatically created by unique: true
+
+// Single field indexes
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 userSchema.index({ createdAt: -1 });
 
-const User = mongoose.model("User", userSchema);
+// Compound indexes for common query patterns
+userSchema.index({ role: 1, isActive: 1 }); // Admin user listings
+userSchema.index({ email: 1, isActive: 1 }); // Login queries
+userSchema.index({ role: 1, createdAt: -1 }); // Role-based user listings sorted by date
+userSchema.index({ isActive: 1, createdAt: -1 }); // Active users sorted by date
+
+// Text index for search functionality
+userSchema.index({ displayName: 'text', username: 'text', email: 'text' });
+
+const User = mongoose.model('User', userSchema);
 
 export default User;

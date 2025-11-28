@@ -67,7 +67,7 @@ export async function retryAsync<T>(
     try {
       const result = await fn();
       if (attempt > 1) {
-        logger.info(`Retry operation succeeded on attempt ${attempt}`, {
+        logger.debug(`Retry operation succeeded on attempt ${attempt}`, {
           correlationId,
           context,
           attempt,
@@ -131,7 +131,7 @@ export function retrySync<T>(
     try {
       const result = fn();
       if (attempt > 1) {
-        logger.info(`Synchronous retry operation succeeded on attempt ${attempt}`, {
+        logger.debug(`Synchronous retry operation succeeded on attempt ${attempt}`, {
           correlationId,
           context,
           attempt,

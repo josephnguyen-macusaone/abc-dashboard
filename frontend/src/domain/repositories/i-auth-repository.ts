@@ -21,11 +21,6 @@ export interface IAuthRepository {
   logout(): Promise<void>;
 
   /**
-   * Get current authentication status
-   */
-  getAuthStatus(): Promise<AuthResult>;
-
-  /**
    * Refresh authentication tokens
    */
   refreshToken(): Promise<AuthTokens>;
@@ -56,41 +51,5 @@ export interface IAuthRepository {
   /**
    * Get complete user profile
    */
-  getProfile(): Promise<any>;
-}
-
-/**
- * Domain Repository Interface: User Management
- * Defines the contract for user data operations
- */
-export interface IUserRepository {
-  /**
-   * Get user by ID
-   */
-  getUserById(id: string): Promise<User | null>;
-
-  /**
-   * Get current authenticated user
-   */
-  getCurrentUser(): Promise<User | null>;
-
-  /**
-   * Update user information
-   */
-  updateUser(user: User): Promise<User>;
-
-  /**
-   * Delete user account
-   */
-  deleteUser(id: string): Promise<void>;
-
-  /**
-   * Get users by role
-   */
-  getUsersByRole(role: string): Promise<User[]>;
-
-  /**
-   * Search users
-   */
-  searchUsers(query: string): Promise<User[]>;
+  getProfile(): Promise<User>;
 }

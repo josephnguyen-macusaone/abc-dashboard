@@ -9,10 +9,10 @@ interface LoadingOverlayProps {
   fullScreen?: boolean;
 }
 
-export function LoadingOverlay({ 
-  className, 
+export function LoadingOverlay({
+  className,
   text = 'Loading...',
-  fullScreen = true 
+  fullScreen = true
 }: LoadingOverlayProps) {
   return (
     <div

@@ -6,7 +6,7 @@ import {
   runMigrations,
   rollbackMigrations,
   runSeeds,
-  showMigrationStatus
+  showMigrationStatus,
 } from '../../shared/utils/migrations.js';
 
 // Load environment variables
@@ -29,12 +29,13 @@ async function main() {
         console.log('Migrations completed successfully');
         break;
 
-      case 'rollback':
+      case 'rollback': {
         const steps = argument ? parseInt(argument) : 1;
         console.log(`Rolling back ${steps} migration(s)...`);
         await rollbackMigrations(steps);
         console.log('Rollback completed successfully');
         break;
+      }
 
       case 'seed':
         if (argument) {
@@ -67,7 +68,6 @@ async function main() {
     // Close database connection and exit successfully
     await closeDB();
     process.exit(0);
-
   } catch (error) {
     console.error('Command failed:', error.message);
     await closeDB();

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { redirect } from 'next/navigation';
 import { ProtectedRoute } from '@/presentation/components/routes/protected-route';
-import { DashboardPage } from '@/presentation/components/pages/dashboard-page';
+import { DashboardPage } from '@/presentation/components/pages';
 
 interface RoleDashboardClientProps {
   role: string;

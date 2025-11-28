@@ -112,14 +112,17 @@ export function VerifyEmailForm({ email, username, onSuccess, onBackToLogin }: V
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
         <div className="space-y-2">
-          <Typography variant="h3" size="xl" weight="semibold" className="text-green-600">
+          {/* MAC USA ONE Typography: Title L for success title */}
+          <Typography variant="title-l" className="text-success">
             Email Verified!
           </Typography>
-          <Typography variant="p" color="muted">
+          {/* MAC USA ONE Typography: Body M for success message */}
+          <Typography variant="body-m" color="muted">
             Your email has been successfully verified.
           </Typography>
         </div>
-        <Typography variant="p" size="sm" color="muted">
+        {/* MAC USA ONE Typography: Body S for redirect message */}
+        <Typography variant="body-s" color="muted">
           Redirecting to login page...
         </Typography>
       </div>
@@ -130,14 +133,16 @@ export function VerifyEmailForm({ email, username, onSuccess, onBackToLogin }: V
     <div className="space-y-6">
       {/* Email Info */}
       <div className="text-center space-y-2">
-        <Typography variant="p" size="sm" color="muted">
+        {/* MAC USA ONE Typography: Body S for info text */}
+        <Typography variant="body-s" color="muted">
           Code sent to:
         </Typography>
-        <Typography variant="p" weight="medium">
+        {/* MAC USA ONE Typography: Body M for email */}
+        <Typography variant="body-m" className="font-medium">
           {email}
         </Typography>
         {username && (
-          <Typography variant="p" size="xs" color="muted">
+          <Typography variant="body-xs" color="muted">
             Username: {username}
           </Typography>
         )}
@@ -158,7 +163,8 @@ export function VerifyEmailForm({ email, username, onSuccess, onBackToLogin }: V
             value={digit}
             onChange={(e) => handleOtpChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            className="w-12 h-12 text-center text-lg font-semibold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors"
+            // MAC USA ONE Typography: Title M for OTP digits
+            className="w-12 h-12 text-center text-title-m font-semibold border-2 border-input rounded-lg focus:border-primary focus:outline-none transition-colors"
             disabled={isVerifying}
           />
         ))}
@@ -190,7 +196,8 @@ export function VerifyEmailForm({ email, username, onSuccess, onBackToLogin }: V
 
       {/* Reset Section */}
       <div className="text-center">
-        <Typography variant="p" size="sm" color="muted" className="text-muted-foreground">
+        {/* MAC USA ONE Typography: Body S for resend text */}
+        <Typography variant="body-s" color="muted" as="p">
           Didn't receive the code?{' '}
           {isResending ? (
             <span className="text-blue-600">
@@ -198,14 +205,14 @@ export function VerifyEmailForm({ email, username, onSuccess, onBackToLogin }: V
               Sending...
             </span>
           ) : countdown > 0 ? (
-            <span className="text-gray-400">
+            <span className="text-muted-foreground">
               Resend in {countdown}s
             </span>
           ) : (
             <Button
               type="button"
               variant="link"
-              className="p-0 h-auto text-sm text-primary hover:text-primary/80"
+              className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
               onClick={handleResendOtp}
               disabled={isResending}
             >
@@ -214,7 +221,7 @@ export function VerifyEmailForm({ email, username, onSuccess, onBackToLogin }: V
           )}
         </Typography>
         {countdown > 0 && (
-          <Typography variant="p" size="xs" color="muted" className="text-muted-foreground mt-1">
+          <Typography variant="body-xs" color="muted" className="mt-1">
             Next resend available in {countdown} seconds.
           </Typography>
         )}

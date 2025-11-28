@@ -29,14 +29,13 @@ const handleDuplicateFieldsDB = (err) => {
 
 // Handle MongoDB Validation Errors
 const handleValidationErrorDB = (err) => {
-  const errors = Object.values(err.errors).map(val => val.message);
+  const errors = Object.values(err.errors).map((val) => val.message);
   const message = `Invalid input data. ${errors.join('. ')}`;
   return new AppError(message, 400);
 };
 
 // Handle JWT Errors
-const handleJWTError = () =>
-  new AppError('Invalid token. Please log in again!', 401);
+const handleJWTError = () => new AppError('Invalid token. Please log in again!', 401);
 
 const handleJWTExpiredError = () =>
   new AppError('Your token has expired! Please log in again.', 401);
@@ -59,7 +58,7 @@ const sendErrorDev = (err, req, res) => {
     error: err,
     message: err.message,
     stack: err.stack,
-    correlationId: req.correlationId
+    correlationId: req.correlationId,
   });
 };
 
@@ -81,7 +80,7 @@ const sendErrorProd = (err, req, res) => {
     res.status(err.statusCode).json({
       success: false,
       message: err.message,
-      correlationId
+      correlationId,
     });
   } else {
     // Programming or other unknown error: don't leak error details
@@ -98,13 +97,14 @@ const sendErrorProd = (err, req, res) => {
     res.status(500).json({
       success: false,
       message: 'Something went wrong!',
-      correlationId
+      correlationId,
     });
   }
 };
 
 // Global error handler
-export const errorHandler = (err, req, res, next) => {
+// Note: next is required in Express error handler signature but not used
+export const errorHandler = (err, req, res, _next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
@@ -121,15 +121,25 @@ export const errorHandler = (err, req, res, next) => {
     error.correlationId = req.correlationId;
 
     // MongoDB CastError
-    if (err.name === 'CastError') error = handleCastErrorDB(error);
+    if (err.name === 'CastError') {
+      error = handleCastErrorDB(error);
+    }
     // MongoDB Duplicate Key Error
-    if (err.code === 11000) error = handleDuplicateFieldsDB(error);
+    if (err.code === 11000) {
+      error = handleDuplicateFieldsDB(error);
+    }
     // MongoDB Validation Error
-    if (err.name === 'ValidationError') error = handleValidationErrorDB(error);
+    if (err.name === 'ValidationError') {
+      error = handleValidationErrorDB(error);
+    }
     // JWT Error
-    if (err.name === 'JsonWebTokenError') error = handleJWTError();
+    if (err.name === 'JsonWebTokenError') {
+      error = handleJWTError();
+    }
     // JWT Expired Error
-    if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
+    if (err.name === 'TokenExpiredError') {
+      error = handleJWTExpiredError();
+    }
 
     sendErrorProd(error, req, res);
   }

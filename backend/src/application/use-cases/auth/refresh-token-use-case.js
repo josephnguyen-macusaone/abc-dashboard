@@ -4,8 +4,9 @@
  */
 import {
   ValidationException,
-  InvalidCredentialsException
+  InvalidCredentialsException,
 } from '../../../domain/exceptions/domain.exception.js';
+import { TokensDto } from '../../dto/auth/index.js';
 
 export class RefreshTokenUseCase {
   constructor(userRepository, tokenService) {
@@ -13,6 +14,11 @@ export class RefreshTokenUseCase {
     this.tokenService = tokenService;
   }
 
+  /**
+   * Execute refresh token use case
+   * @param {{ refreshToken: string }} input - Refresh token
+   * @returns {Promise<{ tokens: TokensDto }>} New tokens
+   */
   async execute({ refreshToken }) {
     try {
       // Validate input
@@ -24,7 +30,7 @@ export class RefreshTokenUseCase {
       let decoded;
       try {
         decoded = this.tokenService.verifyToken(refreshToken);
-      } catch (error) {
+      } catch (_error) {
         throw new InvalidCredentialsException('Invalid or expired refresh token');
       }
 
@@ -37,25 +43,21 @@ export class RefreshTokenUseCase {
       // Generate new access token
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
-        email: user.email
+        email: user.email,
       });
 
       // Optionally generate a new refresh token (rotate refresh tokens)
       const newRefreshToken = this.tokenService.generateRefreshToken({
-        userId: user.id
+        userId: user.id,
       });
 
-      // Return new tokens
+      // Return new tokens as DTO
       return {
-        tokens: {
-          accessToken,
-          refreshToken: newRefreshToken
-        }
+        tokens: new TokensDto({ accessToken, refreshToken: newRefreshToken }),
       };
     } catch (error) {
       // Re-throw domain exceptions as-is
-      if (error instanceof ValidationException ||
-          error instanceof InvalidCredentialsException) {
+      if (error instanceof ValidationException || error instanceof InvalidCredentialsException) {
         throw error;
       }
       // Wrap unexpected errors
@@ -63,4 +65,3 @@ export class RefreshTokenUseCase {
     }
   }
 }
-

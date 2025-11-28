@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate:assets": "node scripts/generate-assets.js",
+    "generate:assets:watch": "node scripts/generate-assets.js --watch"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

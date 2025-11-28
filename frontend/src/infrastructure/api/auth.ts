@@ -1,17 +1,19 @@
 import { httpClient } from '@/infrastructure/api/client';
 import {
-  LoginRequest,
-  LoginResponse,
-  RegisterRequest,
-  RegisterResponse,
-  AuthStatusResponse,
+  LoginRequestDto,
+  LoginResponseDto,
+  RegisterRequestDto,
+  RegisterResponseDto,
+  AuthStatusResponseDto,
   ApiResponse,
-  AuthTokens,
-  ProfileUpdateResponse,
-  ChangePasswordRequest,
-  ChangePasswordResponse,
-  User
-} from '@/infrastructure/api/types';
+  AuthTokensDto,
+  ProfileUpdateRequestDto,
+  ProfileUpdateResponseDto,
+  ChangePasswordRequestDto,
+  ChangePasswordResponseDto,
+  UserDto,
+  UserProfileDto
+} from '@/application/dto/api-dto';
 import logger from '@/shared/utils/logger';
 
 /**
@@ -21,24 +23,24 @@ export class AuthApiService {
   /**
    * Login user
    */
-  static async login(credentials: LoginRequest): Promise<LoginResponse> {
+  static async login(credentials: LoginRequestDto): Promise<LoginResponseDto> {
     try {
-      const response = await httpClient.post<ApiResponse<LoginResponse>>('/auth/login', credentials);
+      const response = await httpClient.post<ApiResponse<LoginResponseDto>>('/auth/login', credentials);
       if (!response.data) {
         throw new Error('Login response missing data');
       }
       return response.data;
     } catch (error) {
-      throw error; // Error handling is done in the HTTP client
+      throw error;
     }
   }
 
   /**
    * Register new user
    */
-  static async register(userData: RegisterRequest): Promise<RegisterResponse> {
+  static async register(userData: RegisterRequestDto): Promise<RegisterResponseDto> {
     try {
-      const response = await httpClient.post<ApiResponse<RegisterResponse>>('/auth/register', userData);
+      const response = await httpClient.post<ApiResponse<RegisterResponseDto>>('/auth/register', userData);
       if (!response.data) {
         throw new Error('Register response missing data');
       }
@@ -51,9 +53,9 @@ export class AuthApiService {
   /**
    * Get current user status
    */
-  static async getStatus(): Promise<AuthStatusResponse> {
+  static async getStatus(): Promise<AuthStatusResponseDto> {
     try {
-      const response = await httpClient.get<ApiResponse<AuthStatusResponse>>('/auth/status');
+      const response = await httpClient.get<ApiResponse<AuthStatusResponseDto>>('/auth/status');
       if (!response.data) {
         throw new Error('Auth status response missing data');
       }
@@ -66,9 +68,9 @@ export class AuthApiService {
   /**
    * Refresh authentication token
    */
-  static async refreshToken(): Promise<{ tokens: AuthTokens }> {
+  static async refreshToken(): Promise<{ tokens: AuthTokensDto }> {
     try {
-      const response = await httpClient.post<ApiResponse<{ tokens: AuthTokens }>>('/auth/refresh');
+      const response = await httpClient.post<ApiResponse<{ tokens: AuthTokensDto }>>('/auth/refresh');
       if (!response.data) {
         throw new Error('Refresh token response missing data');
       }
@@ -96,9 +98,9 @@ export class AuthApiService {
   /**
    * Verify email with JWT token
    */
-  static async verifyEmail(token: string): Promise<{ user: User; message: string }> {
+  static async verifyEmail(token: string): Promise<{ user: UserDto; message: string }> {
     try {
-      const response = await httpClient.post<ApiResponse<{ user: User; message: string }>>('/auth/verify-email', { token });
+      const response = await httpClient.post<ApiResponse<{ user: UserDto; message: string }>>('/auth/verify-email', { token });
       if (!response.data) {
         throw new Error('Email verification response missing data');
       }
@@ -124,7 +126,7 @@ export class AuthApiService {
   /**
    * Get user profile (complete profile data from auth endpoint)
    */
-  static async getProfile(): Promise<any> {
+  static async getProfile(): Promise<UserProfileDto> {
     try {
       const response = await httpClient.get<ApiResponse<any>>('/auth/profile');
       if (!response.data) {
@@ -139,19 +141,14 @@ export class AuthApiService {
   /**
    * Update user profile
    */
-  static async updateProfile(updates: Partial<{
-    firstName: string;
-    lastName: string;
-    displayName: string;
-    bio: string;
-    phone: string;
-    avatarUrl: string;
-  }>): Promise<ProfileUpdateResponse> {
+  static async updateProfile(updates: ProfileUpdateRequestDto): Promise<ProfileUpdateResponseDto> {
     try {
-      const response = await httpClient.put<ApiResponse<ProfileUpdateResponse>>('/profile', updates);
+      const response = await httpClient.put<ApiResponse<ProfileUpdateResponseDto>>('/auth/profile', updates);
+
       if (!response.data) {
         throw new Error('Update profile response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -161,9 +158,9 @@ export class AuthApiService {
   /**
    * Change user password
    */
-  static async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+  static async changePassword(data: ChangePasswordRequestDto): Promise<ChangePasswordResponseDto> {
     try {
-      const response = await httpClient.post<ApiResponse<ChangePasswordResponse>>('/auth/change-password', data);
+      const response = await httpClient.post<ApiResponse<ChangePasswordResponseDto>>('/auth/change-password', data);
       if (!response.data) {
         throw new Error('Change password response missing data');
       }

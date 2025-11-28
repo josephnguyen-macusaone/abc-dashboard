@@ -12,7 +12,7 @@ export class UserProfile {
     lastActivityAt,
     emailVerifiedAt,
     createdAt,
-    updatedAt
+    updatedAt,
   }) {
     this.id = id;
     this.userId = userId;
@@ -63,13 +63,13 @@ export class UserProfile {
       lastActivityAt: this.lastActivityAt,
       emailVerifiedAt: this.emailVerifiedAt,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 
   updateProfile(updates) {
     const allowedFields = ['bio'];
-    allowedFields.forEach(field => {
+    allowedFields.forEach((field) => {
       if (updates[field] !== undefined) {
         this[field] = updates[field];
       }
@@ -87,7 +87,7 @@ export class UserProfile {
         }
         return acc;
       }, {}),
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 
@@ -100,7 +100,7 @@ export class UserProfile {
       userId: this.userId,
       profileId: this.id,
       loginAt: this.lastLoginAt,
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 
@@ -112,7 +112,7 @@ export class UserProfile {
       userId: this.userId,
       profileId: this.id,
       activityAt: this.lastActivityAt,
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 
@@ -129,7 +129,7 @@ export class UserProfile {
       userId: this.userId,
       profileId: this.id,
       verifiedAt: this.emailVerifiedAt,
-      occurredAt: new Date()
+      occurredAt: new Date(),
     };
   }
 }

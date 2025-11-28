@@ -2,10 +2,7 @@
  * Request Password Reset Use Case
  * Handles password reset request logic
  */
-import {
-  ValidationException,
-  ResourceNotFoundException
-} from '../../../domain/exceptions/domain.exception.js';
+import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
 
 export class RequestPasswordResetUseCase {
@@ -30,7 +27,7 @@ export class RequestPasswordResetUseCase {
         logger.info('Password reset requested for non-existent email', { email });
         return {
           success: true,
-          message: 'Password reset email sent if account exists'
+          message: 'Password reset email sent if account exists',
         };
       }
 
@@ -38,11 +35,11 @@ export class RequestPasswordResetUseCase {
       if (!user.isActive) {
         logger.warn('Password reset requested for inactive user', {
           userId: user.id,
-          email: user.email
+          email: user.email,
         });
         return {
           success: true,
-          message: 'Password reset email sent if account exists'
+          message: 'Password reset email sent if account exists',
         };
       }
 
@@ -74,26 +71,26 @@ Best regards,
 ABC Dashboard Team`,
           {
             displayName: user.displayName,
-            resetUrl
+            resetUrl,
           }
         );
 
         logger.info('Password reset email sent', {
           userId: user.id,
-          email: user.email
+          email: user.email,
         });
       } catch (emailError) {
         logger.error('Failed to send password reset email', {
           userId: user.id,
           email: user.email,
-          error: emailError.message
+          error: emailError.message,
         });
         // Still return success to avoid revealing email existence
       }
 
       return {
         success: true,
-        message: 'Password reset email sent if account exists'
+        message: 'Password reset email sent if account exists',
       };
     } catch (error) {
       // Re-throw domain exceptions
@@ -105,7 +102,7 @@ ABC Dashboard Team`,
       // Return generic success message for security
       return {
         success: true,
-        message: 'Password reset email sent if account exists'
+        message: 'Password reset email sent if account exists',
       };
     }
   }

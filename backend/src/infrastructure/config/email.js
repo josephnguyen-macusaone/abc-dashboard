@@ -11,8 +11,8 @@ const createTransporter = () => {
       port: config.EMAIL_PORT,
       secure: false, // MailHog doesn't use TLS
       tls: {
-        rejectUnauthorized: false // Allow self-signed certificates
-      }
+        rejectUnauthorized: false, // Allow self-signed certificates
+      },
     });
   }
 
@@ -32,10 +32,13 @@ const createTransporter = () => {
     host: config.EMAIL_HOST,
     port: config.EMAIL_PORT,
     secure: config.EMAIL_SECURE,
-    auth: config.EMAIL_USER && config.EMAIL_PASS ? {
-      user: config.EMAIL_USER,
-      pass: config.EMAIL_PASS,
-    } : undefined,
+    auth:
+      config.EMAIL_USER && config.EMAIL_PASS
+        ? {
+            user: config.EMAIL_USER,
+            pass: config.EMAIL_PASS,
+          }
+        : undefined,
   };
 
   return nodemailer.createTransporter(transporterConfig);
@@ -109,7 +112,7 @@ const emailTemplates = {
       This link will expire in 24 hours.
 
       If you didn't create an account, please ignore this email.
-    `
+    `,
   }),
 
   // Welcome email after verification
@@ -140,8 +143,8 @@ const emailTemplates = {
       Thank you for joining us!
 
       If you have any questions, feel free to contact our support team.
-    `
-  })
+    `,
+  }),
 };
 
 // Helper function to send templated emails
@@ -154,7 +157,7 @@ const sendTemplatedEmail = async (template, email, data) => {
   const emailContent = templateConfig(data);
   return await sendEmail({
     email,
-    ...emailContent
+    ...emailContent,
   });
 };
 
@@ -162,5 +165,5 @@ export default {
   sendEmail,
   sendTemplatedEmail,
   verifyConnection,
-  emailTemplates
+  emailTemplates,
 };

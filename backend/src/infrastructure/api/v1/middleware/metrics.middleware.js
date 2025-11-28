@@ -1,5 +1,5 @@
-import { cacheMetrics, applicationMetrics } from '../../config/metrics.js';
-import logger from '../../config/logger.js';
+import { cacheMetrics, applicationMetrics } from '../../../config/metrics.js';
+import logger from '../../../config/logger.js';
 
 /**
  * Middleware to track cache operations
@@ -11,7 +11,7 @@ export const cacheTrackingMiddleware = (req, res, next) => {
   const originalDel = req.app.locals?.cache?.del;
 
   if (originalGet) {
-    req.app.locals.cache.get = async function(key) {
+    req.app.locals.cache.get = async function (key) {
       try {
         const result = await originalGet.call(this, key);
         if (result !== null && result !== undefined) {
@@ -28,7 +28,7 @@ export const cacheTrackingMiddleware = (req, res, next) => {
   }
 
   if (originalSet) {
-    req.app.locals.cache.set = async function(key, value, ttl) {
+    req.app.locals.cache.set = async function (key, value, ttl) {
       try {
         const result = await originalSet.call(this, key, value, ttl);
         cacheMetrics.recordSet();
@@ -40,7 +40,7 @@ export const cacheTrackingMiddleware = (req, res, next) => {
   }
 
   if (originalDel) {
-    req.app.locals.cache.del = async function(key) {
+    req.app.locals.cache.del = async function (key) {
       try {
         const result = await originalDel.call(this, key);
         cacheMetrics.recordDelete();
@@ -65,7 +65,8 @@ export const userActivityMiddleware = (req, res, next) => {
       // Note: In a real implementation, you'd decode the JWT to get user ID
       // For now, we'll use a simplified approach
       const token = authHeader.substring(7);
-      if (token && token.length > 10) { // Basic validation
+      if (token && token.length > 10) {
+        // Basic validation
         // In a real app, decode JWT to get user ID
         // For demo purposes, we'll use a hash of the token as user identifier
         const userId = Buffer.from(token.substring(0, 10)).toString('base64');
@@ -98,17 +99,17 @@ export const securityMetricsMiddleware = (req, res, next) => {
     /\.\./, // Directory traversal
     /<script/i, // XSS attempts
     /union.*select/i, // SQL injection attempts
-    /eval\(/i // Code injection
+    /eval\(/i, // Code injection
   ];
 
   const requestData = `${req.url} ${JSON.stringify(req.body || {})} ${JSON.stringify(req.query || {})}`;
-  if (suspiciousPatterns.some(pattern => pattern.test(requestData))) {
+  if (suspiciousPatterns.some((pattern) => pattern.test(requestData))) {
     applicationMetrics.recordSuspiciousActivity();
     logger.warn('Suspicious activity detected', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       url: req.url,
-      correlationId: req.correlationId
+      correlationId: req.correlationId,
     });
   }
 
@@ -132,7 +133,7 @@ export const performanceMiddleware = (req, res, next) => {
         url: req.url,
         duration: `${duration.toFixed(2)}ms`,
         statusCode: res.statusCode,
-        correlationId: req.correlationId
+        correlationId: req.correlationId,
       });
     }
 
@@ -147,5 +148,5 @@ export default {
   cacheTrackingMiddleware,
   userActivityMiddleware,
   securityMetricsMiddleware,
-  performanceMiddleware
+  performanceMiddleware,
 };

@@ -39,7 +39,6 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, className }: Register
 
   const handleInputChange = (field: keyof RegisterFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
@@ -48,7 +47,6 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, className }: Register
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     // Basic validation
     const validationErrors: Partial<Record<keyof RegisterFormData, string | null>> = {};
     if (!formData.firstName.trim()) {
@@ -92,14 +90,11 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, className }: Register
         validationErrors.password = `Password must contain ${passwordErrors.join(', ')}`;
       }
     }
-
     setErrors(validationErrors);
     const hasErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
     if (hasErrors) return;
-
     setIsLoading(true);
     setError(null);
-
     try {
       await register(formData.username, formData.firstName, formData.lastName, formData.email, formData.password);
       onSuccess?.(formData.email, formData.username);
@@ -119,10 +114,12 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, className }: Register
           'flex items-start space-x-3'
         )}>
           <div className="flex-1">
-            <Typography variant="p" size="sm" weight="medium" color="destructive" className="text-destructive">
+            {/* MAC USA ONE Typography: Title S for error title */}
+            <Typography variant="title-s" color="error" className="text-destructive">
               Registration Error
             </Typography>
-            <Typography variant="p" size="sm" color="destructive" className="text-destructive/80 mt-1">
+            {/* MAC USA ONE Typography: Body S for error message */}
+            <Typography variant="body-s" color="error" className="text-destructive/80 mt-1">
               {error}
             </Typography>
           </div>
@@ -245,12 +242,13 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, className }: Register
 
       {/* Footer */}
       <div className="text-center">
-        <Typography variant="p" size="sm" color="muted" className="text-muted-foreground">
+        {/* MAC USA ONE Typography: Body S for footer text */}
+        <Typography variant="body-s" color="muted" as="p">
           Already have an account?{' '}
           <Button
             type="button"
             variant="link"
-            className="p-0 h-auto text-sm text-primary hover:text-primary/80"
+            className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
             onClick={onSwitchToLogin}
             disabled={isLoading}
           >

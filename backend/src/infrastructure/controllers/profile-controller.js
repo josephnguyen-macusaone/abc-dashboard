@@ -3,37 +3,35 @@
  * Handles HTTP requests for user profile management
  */
 import { BaseController } from './base-controller.js';
+import { UpdateProfileRequestDto } from '../../application/dto/profile/index.js';
 
 export class ProfileController extends BaseController {
   constructor(
     getProfileUseCase,
     updateProfileUseCase,
     updateAuthProfileUseCase,
-    recordLoginUseCase,
-    verifyEmailUseCase
+    recordLoginUseCase
   ) {
     super();
     this.getProfileUseCase = getProfileUseCase;
     this.updateProfileUseCase = updateProfileUseCase;
     this.updateAuthProfileUseCase = updateAuthProfileUseCase;
     this.recordLoginUseCase = recordLoginUseCase;
-    this.verifyEmailUseCase = verifyEmailUseCase;
   }
 
   async getProfile(req, res) {
     try {
       const userId = this.getUserId(req);
 
-      const result = await this.executeUseCase(
-        this.getProfileUseCase,
-        [userId],
-        { operation: 'getProfile', userId }
-      );
+      const result = await this.executeUseCase(this.getProfileUseCase, [userId], {
+        operation: 'getProfile',
+        userId,
+      });
 
       res.success(result.profile, 'Profile retrieved successfully');
     } catch (error) {
       return this.handleError(error, req, res, {
-        operation: 'getProfile'
+        operation: 'getProfile',
       });
     }
   }
@@ -43,17 +41,27 @@ export class ProfileController extends BaseController {
       const userId = this.getUserId(req);
       const { displayName, bio, phone, avatarUrl } = req.body;
 
-      // Use the auth update profile use case which handles all profile fields
-      const updates = {};
-      if (displayName !== undefined) updates.displayName = displayName;
-      if (bio !== undefined) updates.bio = bio;
-      if (phone !== undefined) updates.phone = phone;
-      if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+      // Create and validate request DTO
+      const updateRequest = UpdateProfileRequestDto.fromRequest({
+        displayName,
+        bio,
+        phone,
+        avatarUrl,
+      });
 
+      // Check if there are any updates
+      if (!updateRequest.hasUpdates()) {
+        return res.badRequest('No valid fields provided for update');
+      }
+
+      // Use the auth update profile use case which handles all profile fields
       const result = await this.executeUseCase(
         this.updateAuthProfileUseCase,
-        [userId, updates],
-        { operation: 'updateProfile', userId }
+        [userId, updateRequest.getUpdates()],
+        {
+          operation: 'updateProfile',
+          userId,
+        }
       );
 
       // Include warnings in the response meta if any
@@ -62,7 +70,7 @@ export class ProfileController extends BaseController {
     } catch (error) {
       return this.handleError(error, req, res, {
         operation: 'updateProfile',
-        requestBody: req.body
+        requestBody: req.body,
       });
     }
   }
@@ -71,34 +79,15 @@ export class ProfileController extends BaseController {
     try {
       const userId = this.getUserId(req);
 
-      const result = await this.executeUseCase(
-        this.recordLoginUseCase,
-        [userId],
-        { operation: 'recordLogin', userId }
-      );
-
-      res.success(result.profile, result.message);
-    } catch (error) {
-      return this.handleError(error, req, res, {
-        operation: 'recordLogin'
+      const result = await this.executeUseCase(this.recordLoginUseCase, [userId], {
+        operation: 'recordLogin',
+        userId,
       });
-    }
-  }
-
-  async verifyEmail(req, res) {
-    try {
-      const userId = this.getUserId(req);
-
-      const result = await this.executeUseCase(
-        this.verifyEmailUseCase,
-        [userId],
-        { operation: 'verifyEmail', userId }
-      );
 
       res.success(result.profile, result.message);
     } catch (error) {
       return this.handleError(error, req, res, {
-        operation: 'verifyEmail'
+        operation: 'recordLogin',
       });
     }
   }

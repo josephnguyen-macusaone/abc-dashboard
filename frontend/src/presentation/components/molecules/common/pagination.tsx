@@ -89,7 +89,8 @@ export function Pagination({
     <div className={cn('flex items-center justify-between border-t border-border px-6 py-4', className)}>
       {/* Items info */}
       <div>
-        <Typography variant="span" size="sm" color="muted" className="text-muted-foreground">
+        {/* MAC USA ONE Typography: Body S for pagination info */}
+        <Typography variant="body-s" color="muted" as="span">
           Showing {startItem} to {endItem} of {totalItems} results
         </Typography>
       </div>
@@ -114,10 +115,10 @@ export function Pagination({
               return (
                 <Typography
                   key={`ellipsis-${index}`}
-                  variant="span"
-                  size="sm"
+                  variant="body-s"
                   color="muted"
-                  className="text-muted-foreground px-2"
+                  as="span"
+                  className="px-2"
                 >
                   ...
                 </Typography>
@@ -158,4 +159,3 @@ export function Pagination({
     </div>
   );
 }
-
