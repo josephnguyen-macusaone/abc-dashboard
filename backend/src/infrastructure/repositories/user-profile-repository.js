@@ -142,8 +142,8 @@ export class UserProfileRepository extends IUserProfileRepository {
 
   _toEntity(profileDoc) {
     return new UserProfile({
-      id: profileDoc._id.toString(),
-      userId: profileDoc.userId.toString(),
+      id: profileDoc._id?.toString(),
+      userId: profileDoc.userId?.toString(),
       bio: profileDoc.bio,
       emailVerified: profileDoc.emailVerified || false,
       lastLoginAt: profileDoc.lastLoginAt,

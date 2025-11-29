@@ -1,7 +1,8 @@
 import express from 'express';
 import { validateRequest, validateQuery } from '../middleware/validation-middleware.js';
 import { userSchemas } from '../api/v1/schemas/user.schemas.js';
-import { authenticate, authorizeSelf } from '../middleware/auth-middleware.js';
+import { authenticate, authorizeSelf, authorize } from '../middleware/auth-middleware.js';
+import { PERMISSIONS } from '../../shared/constants/roles.js';
 
 /**
  * User Routes
@@ -154,7 +155,7 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.get('/:id', authorizeSelf, userController.getUser.bind(userController));
+  router.get('/:id', authorize([PERMISSIONS.READ_USER]), userController.getUser.bind(userController));
 
   /**
    * @swagger
@@ -200,7 +201,7 @@ export function createUserRoutes(userController) {
    */
   router.put(
     '/:id',
-    authorizeSelf,
+    authorize([PERMISSIONS.UPDATE_USER]),
     validateRequest(userSchemas.updateUser),
     userController.updateUser.bind(userController)
   );
@@ -229,7 +230,7 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.delete('/:id', authorizeSelf, userController.deleteUser.bind(userController));
+  router.delete('/:id', authorize([PERMISSIONS.DELETE_USER]), userController.deleteUser.bind(userController));
 
   return router;
 }

@@ -128,11 +128,40 @@ export class AuthApiService {
    */
   static async getProfile(): Promise<UserProfileDto> {
     try {
-      const response = await httpClient.get<ApiResponse<any>>('/auth/profile');
+      const response = await httpClient.get<ApiResponse<{ user: any; isAuthenticated: boolean }>>('/auth/profile');
       if (!response.data) {
         throw new Error('Get profile response missing data');
       }
-      return response.data;
+
+      // The backend returns a wrapped response: { user: {...}, isAuthenticated: true }
+      // We need to extract the user object and map it to UserProfileDto format
+      const userData = response.data.user;
+
+      // Ensure we have the required id field
+      if (!userData || !userData.id) {
+        throw new Error('Profile response missing user id field');
+      }
+
+      // Map backend fields to UserProfileDto format
+      const userProfile: UserProfileDto = {
+        id: userData.id,
+        username: userData.username,
+        email: userData.email,
+        displayName: userData.displayName,
+        role: userData.role,
+        avatarUrl: userData.avatarUrl,
+        phone: userData.phone,
+        bio: userData.bio,
+        isActive: userData.isActive,
+        isFirstLogin: userData.isFirstLogin !== undefined ? userData.isFirstLogin : false, // Default to false if not provided
+        langKey: userData.langKey || 'en', // Default to 'en' if not provided
+        createdAt: userData.createdAt,
+        updatedAt: userData.updatedAt,
+        createdBy: userData.createdBy,
+        lastModifiedBy: userData.lastModifiedBy,
+      };
+
+      return userProfile;
     } catch (error) {
       throw error;
     }

@@ -130,6 +130,14 @@ export const userSchemas = {
       .messages({
         'string.pattern.base': 'Phone number must be in valid format',
       }),
+
+    role: Joi.string().valid('admin', 'manager', 'staff').messages({
+      'any.only': 'Role must be one of: admin, manager, staff',
+    }),
+
+    isActive: Joi.boolean().messages({
+      'boolean.base': 'isActive must be a boolean',
+    }),
   })
     .min(1)
     .messages({

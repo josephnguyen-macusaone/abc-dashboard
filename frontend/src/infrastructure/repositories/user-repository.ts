@@ -91,12 +91,23 @@ export class UserRepository implements IUserRepository {
    * Maps a UserProfileDto from the API to a User domain entity
    */
   private mapUserProfileToDomain(userProfile: UserProfileDto): User {
+    // Validate that required fields are present
+    if (!userProfile.id) {
+      throw new Error('User profile missing required id field');
+    }
+    if (!userProfile.email) {
+      throw new Error('User profile missing required email field');
+    }
+    if (!userProfile.role) {
+      throw new Error('User profile missing required role field');
+    }
+
     return User.fromObject({
-      id: userProfile.id,
-      name: userProfile.displayName || userProfile.username,
+      id: String(userProfile.id), // Ensure id is always a string
+      name: userProfile.displayName || userProfile.username || '',
       email: userProfile.email,
       role: userProfile.role,
-      isActive: userProfile.isActive,
+      isActive: userProfile.isActive ?? true,
       username: userProfile.username,
       avatar: userProfile.avatarUrl,
       displayName: userProfile.displayName,

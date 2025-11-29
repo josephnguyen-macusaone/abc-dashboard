@@ -9,11 +9,64 @@ export class DeleteUserUseCase {
     this.userRepository = userRepository;
   }
 
+  /**
+   * Check if a user can delete another user based on permissions
+   */
+  canUserDeleteUser(deleter, targetUser) {
+    // Cannot delete yourself
+    if (deleter.id === targetUser.id) {
+      return {
+        allowed: false,
+        reason: 'Users cannot delete their own account'
+      };
+    }
+
+    // Admins can delete anyone except other admins
+    if (deleter.role === 'admin') {
+      if (targetUser.role === 'admin') {
+        return {
+          allowed: false,
+          reason: 'Admin accounts cannot be deleted'
+        };
+      }
+      return { allowed: true };
+    }
+
+    // Managers can delete staff users but not admins or other managers
+    if (deleter.role === 'manager') {
+      if (targetUser.role === 'admin') {
+        return {
+          allowed: false,
+          reason: 'Managers cannot delete admin accounts'
+        };
+      }
+      if (targetUser.role === 'manager') {
+        return {
+          allowed: false,
+          reason: 'Managers cannot delete other managers'
+        };
+      }
+      if (targetUser.role === 'staff') {
+        return { allowed: true };
+      }
+    }
+
+    // Staff and other roles cannot delete anyone
+    return {
+      allowed: false,
+      reason: 'Insufficient permissions to delete users'
+    };
+  }
+
   async execute(userId, currentUser) {
     try {
       // Validate input
       if (!userId) {
         throw new Error('User ID is required');
+      }
+
+      if (!currentUser) {
+        throw new Error('Current user information is required');
       }
 
       // Find the user to delete
@@ -22,9 +75,11 @@ export class DeleteUserUseCase {
         throw new Error('User not found');
       }
 
-      // Check permissions - users can only delete their own account
-      if (currentUser.id !== userId) {
-        throw new Error('Users can only delete their own account');
+      // Check permissions based on user roles
+      const canDelete = this.canUserDeleteUser(currentUser, user);
+
+      if (!canDelete.allowed) {
+        throw new Error(canDelete.reason || 'Insufficient permissions to delete this user');
       }
 
       // Delete the user (hard delete)

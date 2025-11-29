@@ -84,13 +84,13 @@ export const USER_ROLE_LABELS = {
  * User Permissions
  */
 export const USER_PERMISSIONS = {
-  CREATE_USER: 'CREATE_USER',
-  READ_USER: 'READ_USER',
-  UPDATE_USER: 'UPDATE_USER',
-  DELETE_USER: 'DELETE_USER',
-  MANAGE_SYSTEM: 'MANAGE_SYSTEM',
-  VIEW_DASHBOARD: 'VIEW_DASHBOARD',
-  MANAGE_OWN_PROFILE: 'MANAGE_OWN_PROFILE',
+  CREATE_USER: 'create_user',
+  READ_USER: 'read_user',
+  UPDATE_USER: 'update_user',
+  DELETE_USER: 'delete_user',
+  MANAGE_SYSTEM: 'manage_system',
+  VIEW_DASHBOARD: 'view_dashboard',
+  MANAGE_OWN_PROFILE: 'manage_own_profile',
 } as const;
 
 /**

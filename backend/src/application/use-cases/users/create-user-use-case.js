@@ -25,6 +25,11 @@ export class CreateUserUseCase {
       // Request DTO is already validated by controller
       const { username, email, displayName, role, avatarUrl, phone } = createUserRequest;
 
+      // Additional validation
+      if (!username || !email || !displayName) {
+        throw new Error('Missing required fields in create user request');
+      }
+
       // Check if email already exists
       const existingUser = await this.userRepository.findByEmail(email);
       if (existingUser) {
@@ -52,6 +57,7 @@ export class CreateUserUseCase {
         phone,
         isFirstLogin: true,
         langKey: 'en',
+        createdBy,
       });
 
       // Send welcome email with temporary password

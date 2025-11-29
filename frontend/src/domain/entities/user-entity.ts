@@ -110,8 +110,25 @@ export class User {
    * Create a new User instance from plain object
    */
   static fromObject(obj: any): User {
+    // Validate required fields
+    if (!obj.id) {
+      throw new Error('User object missing required id field');
+    }
+    if (!obj.email) {
+      throw new Error('User object missing required email field');
+    }
+    if (!obj.role) {
+      throw new Error('User object missing required role field');
+    }
+    if (!obj.name) {
+      throw new Error('User object missing required name field');
+    }
+
+    // Ensure id is always a string
+    const userId = String(obj.id);
+
     return new User(
-      obj.id,
+      userId,
       obj.name,
       obj.email,
       obj.role,

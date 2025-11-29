@@ -25,14 +25,15 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    displayName: '',
+    firstName: '',
+    lastName: '',
     role: 'staff' as 'admin' | 'manager' | 'staff'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.username || !formData.email || !formData.displayName) {
+    if (!formData.username || !formData.email || !formData.firstName || !formData.lastName) {
       setError('Please fill in all required fields');
       return;
     }
@@ -44,7 +45,7 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       const userData: CreateUserDTO = {
         username: formData.username,
         email: formData.email,
-        displayName: formData.displayName,
+        displayName: `${formData.firstName} ${formData.lastName}`.trim(),
         role: formData.role as UserRole,
       };
 
@@ -115,14 +116,25 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
             required
           />
 
-          <InputField
-            label="Display Name"
-            type="text"
-            placeholder="Enter display name"
-            value={formData.displayName}
-            onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InputField
+              label="First Name"
+              type="text"
+              placeholder="Enter first name"
+              value={formData.firstName}
+              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+              required
+            />
+
+            <InputField
+              label="Last Name"
+              type="text"
+              placeholder="Enter last name"
+              value={formData.lastName}
+              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+              required
+            />
+          </div>
 
           <FormField label="Role">
             <Select

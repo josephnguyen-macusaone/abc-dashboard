@@ -63,7 +63,24 @@ export class AuthRepository implements IAuthRepository {
       const response = await authApi.login({ email, password });
       const duration = Date.now() - startTime;
 
-      const user = User.fromObject(response.user);
+      // Map backend UserAuthDto to frontend User entity format
+      // Backend returns displayName, frontend User entity expects name
+      const userData = {
+        id: response.user.id,
+        name: response.user.displayName || response.user.username || response.user.email,
+        email: response.user.email,
+        role: response.user.role,
+        isActive: response.user.isActive,
+        username: response.user.username,
+        avatar: response.user.avatarUrl,
+        displayName: response.user.displayName,
+        phone: response.user.phone,
+        isFirstLogin: response.user.isFirstLogin,
+        createdAt: new Date(response.user.createdAt),
+        updatedAt: response.user.updatedAt ? new Date(response.user.updatedAt) : undefined,
+      };
+
+      const user = User.fromObject(userData);
       const tokens = new AuthTokens(response.tokens.accessToken, response.tokens.refreshToken);
 
       logger.success(correlationId, duration, { userId: user.id });
@@ -101,7 +118,23 @@ export class AuthRepository implements IAuthRepository {
       });
       const duration = Date.now() - startTime;
 
-      const user = User.fromObject(response.user);
+      // Map backend UserAuthDto to frontend User entity format
+      const userData = {
+        id: response.user.id,
+        name: response.user.displayName || response.user.username || response.user.email,
+        email: response.user.email,
+        role: response.user.role,
+        isActive: response.user.isActive,
+        username: response.user.username,
+        avatar: response.user.avatarUrl,
+        displayName: response.user.displayName,
+        phone: response.user.phone,
+        isFirstLogin: response.user.isFirstLogin,
+        createdAt: new Date(response.user.createdAt),
+        updatedAt: response.user.updatedAt ? new Date(response.user.updatedAt) : undefined,
+      };
+
+      const user = User.fromObject(userData);
       const tokens = new AuthTokens(response.tokens.accessToken, response.tokens.refreshToken);
 
       logger.success(correlationId, duration, { userId: user.id });
@@ -165,7 +198,23 @@ export class AuthRepository implements IAuthRepository {
       const response = await authApi.verifyEmail(token);
       const duration = Date.now() - startTime;
 
-      const user = User.fromObject(response.user);
+      // Map backend UserAuthDto to frontend User entity format
+      const userData = {
+        id: response.user.id,
+        name: response.user.displayName || response.user.username || response.user.email,
+        email: response.user.email,
+        role: response.user.role,
+        isActive: response.user.isActive,
+        username: response.user.username,
+        avatar: response.user.avatarUrl,
+        displayName: response.user.displayName,
+        phone: response.user.phone,
+        isFirstLogin: response.user.isFirstLogin,
+        createdAt: new Date(response.user.createdAt),
+        updatedAt: response.user.updatedAt ? new Date(response.user.updatedAt) : undefined,
+      };
+
+      const user = User.fromObject(userData);
 
       logger.success(correlationId, duration, { userId: user.id });
 
@@ -257,7 +306,22 @@ export class AuthRepository implements IAuthRepository {
       const response = await authApi.updateProfile(updates);
       const duration = Date.now() - startTime;
 
-      const user = User.fromObject(response.user);
+      // Map backend user response to frontend User entity format
+      const userData = {
+        id: response.user.id,
+        name: response.user.displayName || response.user.username || response.user.email,
+        email: response.user.email,
+        role: response.user.role,
+        isActive: response.user.isActive,
+        username: response.user.username,
+        avatar: response.user.avatarUrl,
+        displayName: response.user.displayName,
+        bio: response.user.bio,
+        phone: response.user.phone,
+        updatedAt: new Date(response.user.updatedAt),
+      };
+
+      const user = User.fromObject(userData);
 
       logger.success(correlationId, duration, { userId: user.id, updates: Object.keys(updates) });
 

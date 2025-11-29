@@ -15,13 +15,12 @@ import {
 } from '@/presentation/components/atoms/ui/dialog';
 import { Button } from '@/presentation/components/atoms/ui/button';
 import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
-import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/ui/avatar';
 import { Badge } from '@/presentation/components/atoms/ui/badge';
-import { Input } from '@/presentation/components/atoms/forms/input';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Trash2, AlertTriangle, UserX, Shield, Check } from 'lucide-react';
+import { Trash2, AlertTriangle, UserX, Shield } from 'lucide-react';
+import { toast } from '@/presentation/components/atoms';
 
 interface UserDeleteDialogProps {
   user: User | null;
@@ -39,51 +38,47 @@ export function UserDeleteDialog({
   const userManagementService = useUserManagementService();
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmText, setConfirmText] = useState('');
-  const [success, setSuccess] = useState(false);
 
   const handleDelete = async () => {
     if (!user) return;
 
-    // Check confirmation text
-    const expectedText = `delete-${user.username}`;
-    if (confirmText.toLowerCase() !== expectedText.toLowerCase()) {
-      setError('Please type the confirmation text exactly as shown');
-      return;
-    }
+    // Close dialog immediately
+    onOpenChange(false);
 
     try {
-      setLoading(true);
-      setError(null);
-
+      // Call API after dialog is closed
       await userManagementService.deleteUser(user.id);
 
-      setSuccess(true);
+      // Show success toast
+      toast.success('User deleted successfully');
+
+      // On success, trigger refresh
       onSuccess?.();
 
-      // Close dialog after a short delay
-      setTimeout(() => {
-        onOpenChange(false);
-        setSuccess(false);
-        setConfirmText('');
-      }, 2000);
-
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user');
       console.error('Error deleting user:', err);
-    } finally {
-      setLoading(false);
+
+      // Show error toast since dialog is already closed
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user';
+
+      if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND')) {
+        // Treat "not found" as success - the user is already deleted (idempotent operation)
+        toast.success('User deleted successfully');
+        onSuccess?.();
+      } else if (errorMessage.includes('permission') || errorMessage.includes('Insufficient')) {
+        toast.error('You do not have permission to delete this user.');
+        // Still refresh the list to show current state
+        onSuccess?.();
+      } else {
+        toast.error(`Failed to delete user: ${errorMessage}`);
+        // Still refresh the list to show current state
+        onSuccess?.();
+      }
     }
   };
 
   const handleClose = () => {
-    if (!loading) {
-      onOpenChange(false);
-      setError(null);
-      setConfirmText('');
-      setSuccess(false);
-    }
+    onOpenChange(false);
   };
 
   if (!user) return null;
@@ -159,68 +154,22 @@ export function UserDeleteDialog({
           </Alert>
         )}
 
-        {/* Success Message */}
-        {success && (
-          <Alert className="border-green-200 bg-green-50 text-green-800">
-            <Check className="h-4 w-4" />
-            <AlertDescription>
-              User has been successfully deleted.
-            </AlertDescription>
-          </Alert>
-        )}
 
-        {/* Error Message */}
-        {error && !success && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Confirmation Input */}
-        {!success && (
-          <div className="space-y-2">
-            {/* MAC USA ONE Typography: Label S for label */}
-            <Typography variant="label-s" as="label">
-              Type <code className="bg-muted px-1 py-0.5 rounded text-label-s">delete-{user.username}</code> to confirm:
-            </Typography>
-            <Input
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={`delete-${user.username}`}
-              disabled={loading}
-            />
-          </div>
-        )}
 
         <DialogFooter className="gap-2">
           <Button
             variant="outline"
             onClick={handleClose}
-            disabled={loading}
           >
-            {success ? 'Close' : 'Cancel'}
+            Cancel
           </Button>
-          {!success && (
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={loading || confirmText !== `delete-${user.username}`}
-            >
-              {loading ? (
-                <>
-                  <Loading className="h-4 w-4 mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <UserX className="h-4 w-4 mr-2" />
-                  Delete User
-                </>
-              )}
-            </Button>
-          )}
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+          >
+            <UserX className="h-4 w-4 mr-2" />
+            Confirm
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

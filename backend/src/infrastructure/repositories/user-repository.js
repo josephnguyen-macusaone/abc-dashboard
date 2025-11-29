@@ -43,6 +43,10 @@ export class UserRepository extends IUserRepository {
   }
 
   async findByEmail(email) {
+    if (!email) {
+      throw new Error('Email is required for findByEmail');
+    }
+
     return withTimeout(
       async () => {
         const userDoc = await this.UserModel.findOne({ email: email.toLowerCase() });
@@ -64,6 +68,10 @@ export class UserRepository extends IUserRepository {
   }
 
   async findByUsername(username) {
+    if (!username) {
+      throw new Error('Username is required for findByUsername');
+    }
+
     return withTimeout(
       async () => {
         const userDoc = await this.UserModel.findOne({ username: username.toLowerCase() });
@@ -117,7 +125,7 @@ export class UserRepository extends IUserRepository {
         ? { bio: { $exists: true, $ne: '' } }
         : { bio: { $exists: false } };
       const bioProfiles = await UserProfileModel.find(bioQuery, { userId: 1 });
-      bioFilterUsers = bioProfiles.map((p) => p.userId.toString());
+      bioFilterUsers = bioProfiles.map((p) => p.userId?.toString()).filter(Boolean);
     }
 
     // Apply bio filter if set
@@ -144,6 +152,11 @@ export class UserRepository extends IUserRepository {
   }
 
   async save(userData) {
+    // Validate required fields
+    if (!userData.username || !userData.email || !userData.displayName) {
+      throw new Error('Missing required user data fields');
+    }
+
     const userDoc = new this.UserModel(userData);
     const savedDoc = await userDoc.save();
     return this._toEntity(savedDoc);
@@ -231,8 +244,12 @@ export class UserRepository extends IUserRepository {
   }
 
   _toEntity(userDoc) {
+    if (!userDoc) {
+      throw new Error('User document is null or undefined');
+    }
+
     return new User({
-      id: userDoc._id.toString(),
+      id: userDoc._id?.toString(),
       username: userDoc.username,
       hashedPassword: userDoc.hashedPassword,
       email: userDoc.email,

@@ -137,6 +137,9 @@ class APIMonitor {
 // Create singleton instance
 const apiMonitor = new APIMonitor();
 
+// Export apiMonitor for use in other modules
+export { apiMonitor };
+
 // Middleware to monitor API requests
 export const monitorMiddleware = (req, res, next) => {
   const startTime = Date.now();

@@ -11,6 +11,52 @@ export class UpdateUserUseCase {
   }
 
   /**
+   * Check if a user can update another user based on permissions
+   */
+  canUserUpdateUser(updater, targetUser) {
+    // Users can always update their own profile
+    if (updater.id === targetUser.id) {
+      return { allowed: true };
+    }
+
+    // Admins can update anyone except other admins
+    if (updater.role === 'admin') {
+      if (targetUser.role === 'admin') {
+        return {
+          allowed: false,
+          reason: 'Admins cannot update other admin accounts'
+        };
+      }
+      return { allowed: true };
+    }
+
+    // Managers can update staff users but not admins or other managers
+    if (updater.role === 'manager') {
+      if (targetUser.role === 'admin') {
+        return {
+          allowed: false,
+          reason: 'Managers cannot update admin accounts'
+        };
+      }
+      if (targetUser.role === 'manager') {
+        return {
+          allowed: false,
+          reason: 'Managers cannot update other managers'
+        };
+      }
+      if (targetUser.role === 'staff') {
+        return { allowed: true };
+      }
+    }
+
+    // Staff and other roles can only update themselves (already handled above)
+    return {
+      allowed: false,
+      reason: 'Insufficient permissions to update users'
+    };
+  }
+
+  /**
    * Execute update user use case
    * @param {string} userId - User ID to update
    * @param {Object} updates - Update data
@@ -28,15 +74,21 @@ export class UpdateUserUseCase {
         throw new Error('No updates provided');
       }
 
+      if (!currentUser) {
+        throw new Error('Current user information is required');
+      }
+
       // Find the user to update
       const user = await this.userRepository.findById(userId);
       if (!user) {
         throw new Error('User not found');
       }
 
-      // Check permissions - users can only update their own profile
-      if (currentUser.id !== userId) {
-        throw new Error('Users can only update their own profile');
+      // Check permissions based on user roles
+      const canUpdate = this.canUserUpdateUser(currentUser, user);
+
+      if (!canUpdate.allowed) {
+        throw new Error(canUpdate.reason || 'Insufficient permissions to update this user');
       }
 
       // Validate username uniqueness if being updated

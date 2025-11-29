@@ -109,7 +109,28 @@ After running `npm run seed`, these accounts are available:
 
 ## Deployment
 
-### Docker Compose (Recommended)
+### Local Testing (Recommended for Development)
+
+For local testing and development, use the dedicated development configuration:
+
+```bash
+# Start all services
+docker-compose -f docker-compose.dev.yml up -d --build
+
+# Run database migrations
+docker-compose -f docker-compose.dev.yml exec api npm run migrate
+
+# Optional: Seed test data
+docker-compose -f docker-compose.dev.yml exec api npm run seed
+```
+
+This will start:
+- MongoDB, Redis, MailHog, and the API
+- Development environment with debug logging
+
+See [LOCAL-DEPLOYMENT.md](./LOCAL-DEPLOYMENT.md) for detailed instructions.
+
+### Docker Compose (Production)
 
 All services are configured in `docker-compose.yml`:
 
@@ -130,6 +151,11 @@ docker-compose down
 
 # Rebuild and restart
 docker-compose up -d --build
+```
+
+**For local testing, use `docker-compose.dev.yml` instead:**
+```bash
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 ### Single Container

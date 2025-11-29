@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUserManagementService } from '@/presentation/hooks/use-user-management-service';
 import { User, UserListParams } from '@/application/dto/user-dto';
 import { USER_ROLE_LABELS } from '@/shared/constants';
-import { CanManageUsers } from '@/presentation/components/atoms/permission-guard';
+import { CanManageUsers, CanUpdateUsers, CanDeleteUsers } from '@/presentation/components/atoms/permission-guard';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
 import { Button } from '@/presentation/components/atoms/ui/button';
@@ -17,15 +17,19 @@ import { Skeleton } from '@/presentation/components/atoms/ui/skeleton';
 import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Users, UserPlus } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2 } from 'lucide-react';
 
 interface UsersListProps {
   onCreateUser?: () => void;
+  onEditUser?: (user: User) => void;
+  onDeleteUser?: (user: User) => void;
   refreshTrigger?: number;
 }
 
 export function UsersList({
   onCreateUser,
+  onEditUser,
+  onDeleteUser,
   refreshTrigger
 }: UsersListProps) {
   const userManagementService = useUserManagementService();
@@ -268,6 +272,9 @@ export function UsersList({
                     <th className="text-left px-4 py-3">
                       <Typography variant="label-s" as="span">Created</Typography>
                     </th>
+                    <th className="text-left px-4 py-3">
+                      <Typography variant="label-s" as="span">Actions</Typography>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -314,6 +321,32 @@ export function UsersList({
                         <Typography variant="body-s" color="muted" as="span">
                           {user.createdAt ? formatDate(user.createdAt.toISOString()) : 'N/A'}
                         </Typography>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <CanUpdateUsers>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onEditUser?.(user)}
+                              className="h-8 w-8 p-0"
+                              title="Edit user"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </CanUpdateUsers>
+                          <CanDeleteUsers>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDeleteUser?.(user)}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              title="Delete user"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </CanDeleteUsers>
+                        </div>
                       </td>
                     </tr>
                   ))}

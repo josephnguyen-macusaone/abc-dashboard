@@ -93,6 +93,16 @@ export class UserApiService {
         throw new Error('Create user response missing data');
       }
 
+      // Ensure the response has the expected structure
+      if (!response.data.user) {
+        throw new Error('Create user response missing user data');
+      }
+
+      // Ensure user has required fields
+      if (!response.data.user.id) {
+        throw new Error('Create user response: user missing id field');
+      }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -121,13 +131,29 @@ export class UserApiService {
    */
   static async deleteUser(id: string): Promise<{ message: string }> {
     try {
-      const response = await httpClient.delete<ApiResponse<{ message: string }>>(`/users/${id}`);
+      const response = await httpClient.delete<ApiResponse<any>>(`/users/${id}`);
 
-      if (!response.data) {
-        throw new Error('Delete user response missing data');
+      // For delete operations, the message might be in data or at the top level
+      if (response.data) {
+        // If data is a string, wrap it in an object
+        if (typeof response.data === 'string') {
+          return { message: response.data };
+        }
+        // If data has a message property
+        if (response.data.message) {
+          return { message: response.data.message };
+        }
+        // If data is an object with message
+        return response.data as { message: string };
       }
 
-      return response.data;
+      // Fallback to top-level message
+      if (response.message) {
+        return { message: response.message };
+      }
+
+      // Default message
+      return { message: 'User deleted successfully' };
     } catch (error) {
       throw error;
     }

@@ -1,29 +1,6 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: abc-dashboard-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password}
-      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-abc_dashboard}
-    volumes:
-      - mongodb_data:/data/db
-      - ./backend/mongo-init:/docker-entrypoint-initdb.d
-    networks:
-      - abc-dashboard-network
-    ports:
-      - "27017:27017"
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-
   # Backend API
   backend:
     image: ${DOCKER_REGISTRY:+${DOCKER_REGISTRY}/}abc-dashboard-backend:latest
@@ -43,9 +20,6 @@ services:
       - ./backend/public:/app/public
     networks:
       - abc-dashboard-network
-    depends_on:
-      mongodb:
-        condition: service_healthy
     ports:
       - "5000:5000"
     healthcheck:
@@ -136,8 +110,6 @@ services:
       - prometheus
 
 volumes:
-  mongodb_data:
-    driver: local
   redis_data:
     driver: local
   prometheus_data:

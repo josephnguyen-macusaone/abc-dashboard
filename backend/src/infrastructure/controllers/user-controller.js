@@ -88,7 +88,7 @@ export class UserController {
 
       // Permission check: Users can view their own profile, admins/managers can view any profile
       if (
-        currentUser._id.toString() !== id &&
+        currentUser.id !== id &&
         !hasPermission(currentUser.role, PERMISSIONS.READ_USER)
       ) {
         return res.error('Access denied', 403);
@@ -123,7 +123,13 @@ export class UserController {
       }
 
       const { username, email, displayName, role, avatarUrl, phone } = req.body;
-      const createdBy = req.user._id.toString();
+
+      // Validate required fields are present
+      if (!username || !email || !displayName) {
+        return res.error('Missing required fields: username, email, displayName', 400);
+      }
+
+      const createdBy = req.user.id;
 
       // Create and validate request DTO
       const createUserRequest = CreateUserRequestDto.fromRequest({
@@ -168,40 +174,17 @@ export class UserController {
       const updates = req.body;
       const currentUser = req.user;
 
-      // Permission checks based on roles
-      const isUpdatingSelf = currentUser._id.toString() === id;
-
-      if (!isUpdatingSelf && !hasPermission(currentUser.role, PERMISSIONS.UPDATE_USER)) {
-        throw new InsufficientPermissionsException(
-          'You do not have permission to update other users'
-        );
-      }
-
-      // Additional check: Managers cannot update admins or other managers
-      if (!isUpdatingSelf && currentUser.role === 'manager') {
-        // Get the target user to check their role
-        const options = { page: 1, limit: 1, filters: { id } };
-        const targetUserResult = await this.getUsersUseCase.execute(options);
-
-        if (targetUserResult.users.length > 0) {
-          const targetUser = targetUserResult.users[0];
-          if (targetUser.role === 'admin' || targetUser.role === 'manager') {
-            throw new InsufficientPermissionsException(
-              'Managers cannot update admins or other managers'
-            );
-          }
-        }
+      // Basic permission check - ensure user has update permission
+      if (!hasPermission(currentUser.role, PERMISSIONS.UPDATE_USER)) {
+        throw new InsufficientPermissionsException('You do not have permission to update users');
       }
 
       // Use comprehensive UserValidator for update validation
       UserValidator.validateUpdateUser(updates);
 
-      const result = await this.updateUserUseCase.execute(id, updates, {
-        id: currentUser._id.toString(),
-        role: currentUser.role,
-      });
+      const result = await this.updateUserUseCase.execute(id, updates, currentUser);
 
-      return res.success(result.user, result.message);
+      return res.success({ user: result.user, message: result.message });
     } catch (error) {
       // Handle domain exceptions
       if (
@@ -220,47 +203,14 @@ export class UserController {
       const { id } = req.params;
       const currentUser = req.user;
 
-      // Permission checks based on roles
-      const isDeletingSelf = currentUser._id.toString() === id;
-
-      if (!isDeletingSelf && !hasPermission(currentUser.role, PERMISSIONS.DELETE_USER)) {
+      // Basic permission check - ensure user has delete permission
+      if (!hasPermission(currentUser.role, PERMISSIONS.DELETE_USER)) {
         throw new InsufficientPermissionsException('You do not have permission to delete users');
       }
 
-      // Users cannot delete admin accounts
-      if (!isDeletingSelf) {
-        const options = { page: 1, limit: 1, filters: { id } };
-        const targetUserResult = await this.getUsersUseCase.execute(options);
+      const result = await this.deleteUserUseCase.execute(id, currentUser);
 
-        if (targetUserResult.users.length > 0) {
-          const targetUser = targetUserResult.users[0];
-          if (targetUser.role === 'admin') {
-            throw new InsufficientPermissionsException('Admin accounts cannot be deleted');
-          }
-        }
-      }
-
-      // Managers cannot delete other managers or admins
-      if (!isDeletingSelf && currentUser.role === 'manager') {
-        const options = { page: 1, limit: 1, filters: { id } };
-        const targetUserResult = await this.getUsersUseCase.execute(options);
-
-        if (targetUserResult.users.length > 0) {
-          const targetUser = targetUserResult.users[0];
-          if (targetUser.role === 'admin' || targetUser.role === 'manager') {
-            throw new InsufficientPermissionsException(
-              'Managers cannot delete admins or other managers'
-            );
-          }
-        }
-      }
-
-      const result = await this.deleteUserUseCase.execute(id, {
-        id: currentUser._id.toString(),
-        role: currentUser.role,
-      });
-
-      return res.success(null, result.message);
+      return res.success({ message: result.message });
     } catch (error) {
       // Handle domain exceptions
       if (

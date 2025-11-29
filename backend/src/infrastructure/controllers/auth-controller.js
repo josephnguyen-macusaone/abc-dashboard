@@ -245,7 +245,7 @@ export class AuthController extends BaseController {
         return res.error('User authentication required', 401);
       }
 
-      userId = req.user.id || (req.user._id ? req.user._id.toString() : null);
+      userId = req.user.id || (req.user._id ? req.user._id?.toString() : null);
       if (!userId) {
         return res.error('User authentication failed', 401);
       }

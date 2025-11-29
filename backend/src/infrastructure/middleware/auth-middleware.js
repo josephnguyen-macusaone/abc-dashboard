@@ -2,6 +2,7 @@
  * Authentication Middleware
  * Handles JWT token verification and user authentication
  */
+import { ROLES, hasPermission } from '../../shared/constants/roles.js';
 export class AuthMiddleware {
   constructor(tokenService, userRepository) {
     this.tokenService = tokenService;
@@ -75,9 +76,6 @@ export class AuthMiddleware {
       });
     }
 
-    // Import here to avoid circular dependencies
-    const { hasPermission } = require('../../shared/constants/roles.js');
-
     // Check if user has any of the required permissions
     const hasRequiredPermission = requiredPermissions.some((permission) =>
       hasPermission(req.user.role, permission)
@@ -103,8 +101,6 @@ export class AuthMiddleware {
         message: 'Authentication required',
       });
     }
-
-    const { ROLES } = require('../../shared/constants/roles.js');
 
     if (req.user.role !== ROLES.ADMIN) {
       return res.status(403).json({

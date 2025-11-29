@@ -95,6 +95,28 @@ export function CanManageUsers({ children, fallback = null }: { children: ReactN
 }
 
 /**
+ * User update permission guard
+ */
+export function CanUpdateUsers({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission={USER_PERMISSIONS.UPDATE_USER} fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+/**
+ * User delete permission guard
+ */
+export function CanDeleteUsers({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission={USER_PERMISSIONS.DELETE_USER} fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+/**
  * System management permission guard
  */
 export function CanManageSystem({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
