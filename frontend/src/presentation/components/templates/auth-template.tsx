@@ -3,7 +3,7 @@
 import { cn } from '@/shared/utils';
 import { ReactNode } from 'react';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { Logo } from '@/presentation/components/atoms/display/logo';
+import { Logo } from '@/presentation/components/atoms/ui/logo';
 
 interface AuthTemplateProps {
   children: ReactNode;

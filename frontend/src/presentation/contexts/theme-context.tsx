@@ -1,13 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { useThemeStore } from '@/infrastructure/stores/theme-store';
-import { APP_CONFIG, THEMES } from '@/shared/constants';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { THEMES } from '@/shared/constants';
 
 interface ThemeContextType {
   theme: (typeof THEMES)[keyof typeof THEMES];
   setTheme: (theme: (typeof THEMES)[keyof typeof THEMES]) => void;
-  actualTheme: 'dark' | 'light' | 'system';
+  actualTheme: 'dark' | 'light';
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,19 +21,80 @@ export const useTheme = () => {
 
 interface ThemeProviderProps {
   children: ReactNode;
-  defaultTheme?: (typeof THEMES)[keyof typeof THEMES];
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
-  defaultTheme = APP_CONFIG.DEFAULT_THEME,
 }) => {
-  const { theme, actualTheme, setTheme, initialize } = useThemeStore();
+  const [theme, setThemeState] = useState<(typeof THEMES)[keyof typeof THEMES]>(THEMES.LIGHT);
+  const [actualTheme, setActualTheme] = useState<'dark' | 'light'>('light');
 
-  // Initialize theme on mount
+  // Initialize theme from localStorage or set default to light
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    let initialTheme = THEMES.LIGHT; // Default to light theme
+    let initialActualTheme: 'light' | 'dark' = 'light';
+
+    const stored = localStorage.getItem('theme-storage');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const storedTheme = parsed.state?.theme;
+        if (storedTheme && Object.values(THEMES).includes(storedTheme)) {
+          initialTheme = storedTheme;
+          initialActualTheme = storedTheme === THEMES.DARK ? 'dark' : 'light';
+        }
+      } catch (error) {
+        console.warn('Failed to parse theme from localStorage:', error);
+        // Clear corrupted data and use default
+        localStorage.removeItem('theme-storage');
+      }
+    }
+
+    // If no valid stored theme, ensure light theme is stored for future visits
+    if (initialTheme === THEMES.LIGHT && !stored) {
+      localStorage.setItem('theme-storage', JSON.stringify({
+        state: { theme: THEMES.LIGHT },
+        version: 0
+      }));
+    }
+
+    // Set the initial state
+    setThemeState(initialTheme);
+    setActualTheme(initialActualTheme);
+
+    // Apply initial theme to document
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    if (initialActualTheme === 'dark') {
+      root.classList.add('dark');
+    }
+  }, []);
+
+  // Update actual theme when theme changes
+  useEffect(() => {
+    const resolvedTheme = theme === THEMES.SYSTEM
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : (theme as 'light' | 'dark');
+
+    setActualTheme(resolvedTheme);
+
+    // Apply theme to document
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    if (resolvedTheme === 'dark') {
+      root.classList.add('dark');
+    }
+
+    // Store in localStorage
+    localStorage.setItem('theme-storage', JSON.stringify({
+      state: { theme },
+      version: 0
+    }));
+  }, [theme]);
+
+  const setTheme = (newTheme: (typeof THEMES)[keyof typeof THEMES]) => {
+    setThemeState(newTheme);
+  };
 
   const value: ThemeContextType = {
     theme,

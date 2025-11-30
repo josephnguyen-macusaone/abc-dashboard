@@ -1,6 +1,7 @@
 'use client';
 
 import { Loading } from './loading';
+import { Typography } from '@/presentation/components/atoms';
 import { cn } from '@/shared/utils';
 
 interface LoadingOverlayProps {
@@ -24,7 +25,9 @@ export function LoadingOverlay({
     >
       <div className="flex flex-col items-center justify-center space-y-4">
         <Loading size="lg" variant="spinner" />
-        <p className="text-sm font-medium text-foreground">{text}</p>
+        <Typography variant="body-s" weight="medium">
+          {text}
+        </Typography>
       </div>
     </div>
   );

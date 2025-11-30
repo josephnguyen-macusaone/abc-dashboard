@@ -32,7 +32,8 @@ src/
 - **TypeScript 5** - Type-safe JavaScript
 
 ### State Management & Data
-- **Zustand** - Lightweight state management
+- **Custom React Contexts** - Theme and error handling contexts
+- **Zustand** - Authentication state management
 - **Axios** - HTTP client for API communication
 - **React Hook Form** - Form state management
 - **Zod** - Schema validation
@@ -182,9 +183,9 @@ src/
 ├── presentation/             # Presentation Layer (UI)
 │   ├── components/           # React components (Atomic Design)
 │   │   ├── atoms/            # Basic UI components
-│   │   │   ├── display/      # Display components (Loading, Logo, etc.)
-│   │   │   ├── forms/        # Form elements (Input, Label, etc.)
-│   │   │   └── ui/           # Shadcn-UI components (Button, Card, etc.)
+│   │   │   ├── forms/        # Form elements (Input, Label, Select)
+│   │   │   ├── ui/           # All UI components (Shadcn-UI + Display components)
+│   │   │   └── permission-guard.tsx # Route protection components
 │   │   ├── molecules/        # Composite components
 │   │   │   ├── common/       # Common molecules (Breadcrumb, Search, etc.)
 │   │   │   ├── dashboard/    # Dashboard-specific molecules
@@ -199,9 +200,9 @@ src/
 │   ├── contexts/             # React contexts (Auth, Theme)
 │   └── hooks/                # Custom React hooks
 └── shared/                   # Shared Utilities
-    ├── constants/            # Application constants
+    ├── constants/            # Application constants (API, Auth, Dashboard, Security, UI)
     ├── types/                # TypeScript type definitions
-    └── utils/                # Utility functions (logger, etc.)
+    └── utils/                # Utility functions (logger, retry, tracing)
 ```
 
 ## 🔧 Available Scripts
@@ -303,9 +304,11 @@ This application implements several security measures:
 - **Clean Architecture**: Separation of business logic from framework concerns
 
 ### State Management
-- **Zustand**: For global application state (auth, theme)
-- **React Context**: For UI state (theme context, auth context)
-- **React Hook Form**: For form state management with Zod validation
+- **Custom React Contexts**: Theme management with localStorage persistence
+- **Error Context**: Comprehensive error handling with recovery mechanisms
+- **Toast Context**: Notification system with positioning and actions
+- **Zustand**: Authentication state with persist middleware
+- **React Hook Form**: Form state management with Zod validation
 
 ### Commit Convention
 ```
@@ -334,6 +337,26 @@ hotfix/critical-fix
 5. Ensure all tests pass
 6. Submit a pull request
 
+## 🆕 Recent Improvements
+
+### Code Quality & Architecture
+- **Atoms Reorganization**: Merged display/ui components into unified ui folder
+- **Constants Cleanup**: Removed unused constants files (app.ts, errors.ts, routes.ts, validation.ts)
+- **Context Optimization**: Improved useCallback dependencies for better performance
+- **Theme System**: Custom theme context with localStorage persistence (removed next-themes)
+- **Error Handling**: Enhanced error context with comprehensive recovery mechanisms
+
+### Component Library
+- **Typography System**: Complete design system with variants and composition utilities
+- **Form Components**: Enhanced input styling with better focus states
+- **Toast Notifications**: Bottom-right positioning with action support
+- **Button Alignment**: Improved icon-text alignment in button components
+
+### Developer Experience
+- **Type Safety**: Fixed UserRole enum type issues in user management
+- **Build Optimization**: Removed unused dependencies and dead code
+- **Documentation**: Updated project structure and architecture details
+
 ## 📄 License
 
 This project is licensed under the MIT License.
@@ -344,4 +367,4 @@ For support, please contact the development team or create an issue in the repos
 
 ---
 
-Built with ❤️ using [Next.js 16](https://nextjs.org), [React 19](https://reactjs.org), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS v4](https://tailwindcss.com), [Shadcn-UI](https://ui.shadcn.com), and [Zustand](https://zustand-demo.pmnd.rs)
+Built with ❤️ using [Next.js 16](https://nextjs.org), [React 19](https://reactjs.org), [TypeScript](https://www.typescriptlang.org), [Tailwind CSS v4](https://tailwindcss.com), [Shadcn-UI](https://ui.shadcn.com), and modern React patterns

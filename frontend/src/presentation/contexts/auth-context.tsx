@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
-import { toast } from '@/presentation/components/atoms';
+import { useToast } from './toast-context';
 import { useErrorHandler } from '@/presentation/contexts/error-context';
 import { User } from '@/domain/entities/user-entity';
 
@@ -53,9 +53,9 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
+  const toast = useToast();
   const { handleAuthError } = useErrorHandler();
 
-  // Use Zustand store
   const {
     user,
     token,
@@ -79,12 +79,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await login(email, password);
     } catch (error: unknown) {
-      // Don't handle email verification errors as auth errors
       const errorMessage = (error as Error)?.message || '';
       if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
         handleAuthError(error);
       }
-      throw error; // Re-throw for component-level handling if needed
+      throw error;
     }
   };
 
@@ -93,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await register(username, firstName, lastName, email, password, role);
     } catch (error: any) {
       handleAuthError(error);
-      throw error; // Re-throw for component-level handling if needed
+      throw error;
     }
   };
 
@@ -101,13 +100,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = async () => {
     try {
       await logout();
-
-      // Show success toast
       toast.success("Logged out successfully");
-
       router.push('/login');
     } catch (error) {
-      // Logout should not fail navigation
       router.push('/login');
     }
   };
@@ -117,7 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return await verifyEmail(email, token);
     } catch (error: any) {
       handleAuthError(error);
-      throw error; // Re-throw for component-level handling if needed
+      throw error;
     }
   };
 

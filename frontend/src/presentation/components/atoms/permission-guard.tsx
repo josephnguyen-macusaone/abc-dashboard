@@ -106,6 +106,17 @@ export function CanUpdateUsers({ children, fallback = null }: { children: ReactN
 }
 
 /**
+ * User update permission guard with hierarchical restrictions
+ */
+export function CanUpdateUser({ children, targetUserRole, fallback = null }: { children: ReactNode; targetUserRole?: string; fallback?: ReactNode }) {
+  return (
+    <PermissionGuard permission={USER_PERMISSIONS.UPDATE_USER} targetUserRole={targetUserRole} fallback={fallback}>
+      {children}
+    </PermissionGuard>
+  );
+}
+
+/**
  * User delete permission guard
  */
 export function CanDeleteUsers({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {

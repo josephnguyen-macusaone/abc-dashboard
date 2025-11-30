@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
-import { toast } from '@/presentation/components/atoms';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { cn } from '@/shared/utils';
 import { Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 
@@ -22,6 +22,7 @@ interface PasswordFormData {
 
 export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePasswordFormProps) {
   const { handleChangePassword } = useAuth();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<PasswordFormData>({

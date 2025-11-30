@@ -1,70 +1,82 @@
 'use client';
 
-import { ScrollArea, toast } from '@/presentation/components/atoms';
+import { ScrollArea } from '@/presentation/components/atoms';
 import { DashboardHeader, MobileOverlay, NavigationItem} from '@/presentation/components/molecules';
 import { Sidebar } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { useRouter, usePathname } from 'next/navigation';
-import { ReactNode, useMemo, useCallback, useState, Fragment } from 'react';
-import { Home, Loader2, Users, Shield, FileText, TrendingUp, Activity, Settings, UserCheck, X } from 'lucide-react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { ReactNode, useMemo, useCallback, useState } from 'react';
+import { Home, Loader2, Users, UserCheck, X } from 'lucide-react';
 import { useAuth } from '@/presentation/contexts/auth-context';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { PermissionUtils } from '@/shared/constants';
 
 interface DashboardTemplateProps {
   children: ReactNode;
 }
 
-// Role-based navigation items based on enterprise permission system
+// Permission-based navigation items based on enterprise permission system
 const getNavigationItems = (userRole?: string): NavigationItem[] => {
+  console.log('getNavigationItems called with role:', userRole);
+
   const baseItems: NavigationItem[] = [
-    { name: 'Dashboard', href: `/dashboard/${userRole || ''}`, icon: Home },
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
   ];
 
   // Admin navigation (full system access)
-  if (PermissionUtils.isAdmin(userRole)) {
+  if (PermissionUtils.canManageSystem(userRole)) {
+    console.log('User has admin permissions, showing user management');
     return [
       ...baseItems,
-      { name: 'User Management', href: `/dashboard/admin?section=users`, icon: Users },
-      { name: 'System Settings', href: `/dashboard/admin?section=settings`, icon: Settings },
-      { name: 'Analytics', href: `/dashboard/admin?section=analytics`, icon: TrendingUp },
-      { name: 'Security Logs', href: `/dashboard/admin?section=security`, icon: Shield },
-      { name: 'Activity Logs', href: `/dashboard/admin?section=activity`, icon: Activity },
+      { name: 'User Management', href: '/dashboard?section=users', icon: Users },
     ];
   }
 
-  // Manager navigation (team management with restrictions)
-  if (PermissionUtils.isManager(userRole)) {
+  // Manager navigation (user management with restrictions)
+  if (PermissionUtils.canReadUser(userRole)) {
+    console.log('User has manager permissions, showing user management');
     return [
       ...baseItems,
-      { name: 'Team Management', href: `/dashboard/manager?section=team`, icon: Users },
-      { name: 'Reports', href: `/dashboard/manager?section=reports`, icon: FileText },
-      { name: 'User Approvals', href: `/dashboard/manager?section=approvals`, icon: UserCheck },
-      { name: 'Analytics', href: `/dashboard/manager?section=analytics`, icon: TrendingUp },
+      { name: 'User Management', href: '/dashboard?section=users', icon: Users },
     ];
   }
 
   // Staff navigation (limited access)
   if (PermissionUtils.isStaff(userRole)) {
+    console.log('User has staff role, showing limited navigation');
     return [
       ...baseItems,
-      { name: 'My Tasks', href: `/dashboard/staff?section=tasks`, icon: FileText },
-      { name: 'Reports', href: `/dashboard/staff?section=reports`, icon: TrendingUp },
-      { name: 'Profile', href: `/dashboard/staff?section=profile`, icon: UserCheck },
+      { name: 'Profile', href: '/dashboard?section=profile', icon: UserCheck },
     ];
   }
 
   // Default/unknown role
+  console.log('User has unknown role, showing base navigation');
   return baseItems;
 };
 
 export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // Get navigation items based on user role
-  const navigationItems = useMemo(() => getNavigationItems(user?.role), [user?.role]);
+  const navigationItems = useMemo(() => {
+    const items = getNavigationItems(user?.role);
+    console.log('Navigation items for role', user?.role, ':', items.map(item => item.name));
+    return items;
+  }, [user?.role]);
+
+  // Get current path including search params for active navigation highlighting
+  const currentPath = useMemo(() => {
+    const search = searchParams.toString();
+    const fullPath = search ? `${pathname}?${search}` : pathname;
+    console.log('Current path:', fullPath);
+    return fullPath;
+  }, [pathname, searchParams]);
 
   // ALL hooks must be called before any conditional returns
   const handleLogout = useCallback(async () => {
@@ -82,7 +94,6 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
         duration: 5000,
         position: 'top-right',
         className: 'bg-destructive text-destructive-foreground',
-        icon: <X className="h-4 w-4" />,
       });
     }
   }, [logout, router]);
@@ -139,8 +150,8 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
       <Sidebar
         isOpen={sidebarOpen}
         navigationItems={navigationItems}
-        currentPath={pathname}
-        isAdmin={PermissionUtils.isAdmin(user?.role)}
+        currentPath={currentPath}
+        isAdmin={PermissionUtils.canManageSystem(user?.role)}
         userInitials={userInitials}
         userDisplayName={user?.displayName || user?.name || ''}
         userRole={user?.role || 'user'}

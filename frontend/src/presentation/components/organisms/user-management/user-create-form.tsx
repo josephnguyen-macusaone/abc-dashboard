@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUserManagementService } from '@/presentation/hooks/use-user-management-service';
+import { useUser } from '@/presentation/contexts/user-context';
 import { CreateUserDTO, User } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
 import { Typography } from '@/presentation/components/atoms';
@@ -9,7 +9,7 @@ import { InputField, FormField } from '@/presentation/components/molecules';
 import { Button } from '@/presentation/components/atoms/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
 import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
 
 interface UserCreateFormProps {
   onSuccess?: (user: User) => void;
@@ -17,10 +17,8 @@ interface UserCreateFormProps {
 }
 
 export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
-  const userManagementService = useUserManagementService();
+  const { createUser, loading: { createUser: isCreating }, error: { createUser: createError } } = useUser();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -34,14 +32,10 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
     e.preventDefault();
 
     if (!formData.username || !formData.email || !formData.firstName || !formData.lastName) {
-      setError('Please fill in all required fields');
-      return;
+      return; // Error will be shown by validation
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
       const userData: CreateUserDTO = {
         username: formData.username,
         email: formData.email,
@@ -49,14 +43,12 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
         role: formData.role as UserRole,
       };
 
-      const user = await userManagementService.createUser(userData);
+      const user = await createUser(userData);
       setSuccess(true);
       onSuccess?.(user);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
-    } finally {
-      setLoading(false);
+      // Error is handled by the UserContext
     }
   };
 
@@ -91,9 +83,9 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
         <CardTitle>Create New User</CardTitle>
       </CardHeader>
       <CardContent>
-        {error && (
+        {createError && (
           <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{createError}</AlertDescription>
           </Alert>
         )}
 
@@ -157,7 +149,7 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
               type="button"
               variant="outline"
               onClick={onCancel}
-              disabled={loading}
+              disabled={isCreating}
               className="flex-1"
             >
               Cancel
@@ -165,10 +157,10 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
             <Button
               type="submit"
               variant="default"
-              disabled={loading}
+              disabled={isCreating}
               className="flex-1"
             >
-              {loading ? 'Creating...' : 'Create User'}
+              {isCreating ? 'Creating...' : 'Create User'}
             </Button>
           </div>
         </form>

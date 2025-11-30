@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { cn } from '@/shared/utils';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { toast } from '@/presentation/components/atoms';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -21,6 +21,7 @@ interface LoginFormData {
 
 export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const { login } = useAuth();
+  const toast = useToast();
   const { emailVerificationRequired, emailVerificationMessage, clearEmailVerificationState } = useAuthStore();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -143,10 +144,10 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           {isLoading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span className="text-button-m">Signing in...</span>
+              <Typography variant="button-m" className="pt-0.5">Signing in...</Typography>
             </div>
           ) : (
-            'Sign In'
+            <Typography variant="button-l" className="pt-0.5">Sign In</Typography>
           )}
         </Button>
       </form>
@@ -155,13 +156,13 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
       <div className="text-center space-y-2">
         <Button
           type="button"
-          variant="link"
-          className="text-muted-foreground hover:text-primary p-0 h-auto"
+          variant="ghost"
+          className="p-0 h-auto"
           onClick={() => {
             toast.info('Password reset functionality will be available soon.');
           }}
         >
-          Forgot your password?
+          <Typography variant="button-m" color="muted" className="hover:text-primary">Forgot your password?</Typography>
         </Button>
       </div>
     </div>

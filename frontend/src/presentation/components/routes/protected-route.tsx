@@ -37,7 +37,7 @@ export function ProtectedRoute({
 
     if (!requireAuth && isAuthenticated && canAccessProtectedRoutes()) {
       // Redirect authenticated users away from auth pages
-      router.push(`/dashboard/${user?.role}`);
+      router.push('/dashboard');
     }
   }, [isAuthenticated, isAdmin, isLoading, requireAuth, requireAdmin, redirectTo, router, user, canAccessProtectedRoutes]);
 

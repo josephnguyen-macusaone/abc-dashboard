@@ -5,7 +5,7 @@ import { Button } from '@/presentation/components/atoms';
 import { InputField, TextAreaField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useErrorHandler } from '@/presentation/contexts/error-context';
-import { toast } from '@/presentation/components/atoms';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { cn } from '@/shared/utils';
 import { Save, X, Loader2 } from 'lucide-react';
 
@@ -29,6 +29,7 @@ interface ProfileFormData {
 export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className }: ProfileUpdateFormProps) {
   const { user, handleUpdateProfile } = useAuth();
   const { handleApiError } = useErrorHandler();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<ProfileFormData>(() => {

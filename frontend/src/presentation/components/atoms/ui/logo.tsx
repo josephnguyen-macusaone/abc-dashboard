@@ -2,6 +2,7 @@
 
 import { cn } from '@/shared/utils';
 import Image from 'next/image';
+import { Typography } from '@/presentation/components/atoms';
 import LogoDark from '@assets/svgs/common/logo_dark.svg';
 import LogoLight from '@assets/svgs/common/logo_light.svg';
 
@@ -49,12 +50,18 @@ export function Logo({
     <div className={cn('flex items-center space-x-3', className)}>
       {/* Logo icon */}
       <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-        <span className="text-primary-foreground font-bold text-sm">{iconText}</span>
+        <Typography variant="label-s" weight="bold" color="primary">
+          {iconText}
+        </Typography>
       </div>
       {/* Brand name */}
       <div className="mb-1 space-y-1">
-        <h1 className="text-md font-bold text-foreground">{primaryText}</h1>
-        <p className="text-xs text-muted-foreground -mt-1">{secondaryText}</p>
+        <Typography variant="title-s" weight="bold">
+          {primaryText}
+        </Typography>
+        <Typography variant="body-xs" color="muted" className="-mt-1">
+          {secondaryText}
+        </Typography>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
 export * from './input';
-export * from './select';
 export * from './label';
+export * from './select';
+export * from './text-area';

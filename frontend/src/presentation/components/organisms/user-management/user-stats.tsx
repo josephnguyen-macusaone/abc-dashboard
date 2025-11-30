@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUserManagementService } from '@/presentation/hooks/use-user-management-service';
+import { useUser } from '@/presentation/contexts/user-context';
 import type { UserStats } from '@/application/dto/user-dto';
 import { USER_ROLE_LABELS } from '@/shared/constants';
 
@@ -27,32 +27,25 @@ interface UserStatsProps {
 }
 
 export function UserStats({ refreshTrigger }: UserStatsProps) {
-  const userManagementService = useUserManagementService();
+  const { getUserStats, loading: { getUserStats: isLoadingStats }, error: { getUserStats: getStatsError } } = useUser();
 
   const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-
-      const statsData = await userManagementService.getUserStats();
+      const statsData = await getUserStats();
       setStats(statsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load user statistics');
       console.error('Error loading user stats:', err);
-    } finally {
-      setLoading(false);
+      // Error is handled by the UserContext
     }
-  }, [userManagementService]);
+  }, [getUserStats]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats, refreshTrigger]);
 
-  if (loading) {
+  if (isLoadingStats) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -71,11 +64,11 @@ export function UserStats({ refreshTrigger }: UserStatsProps) {
     );
   }
 
-  if (error) {
+  if (getStatsError) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{getStatsError}</AlertDescription>
       </Alert>
     );
   }

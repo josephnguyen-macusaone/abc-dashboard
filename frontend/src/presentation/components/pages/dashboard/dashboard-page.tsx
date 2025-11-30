@@ -1,52 +1,49 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
 import { Badge } from '@/presentation/components/atoms/ui/badge';
 import { Button } from '@/presentation/components/atoms/ui/button';
-import { Users, UserPlus, DollarSign, MessageSquare, Home, Building2, AlertTriangle, TrendingUp, Calendar, FileText, CreditCard, Activity, Mail, Wallet, UserCircle, Shield, Settings, UserCheck } from 'lucide-react';
-import { PermissionUtils, USER_ROLES } from '@/shared/constants';
-import { CanCreateUser, AdminOnly, ManagerOrHigher } from '@/presentation/components/atoms';
+import { Users, UserPlus, DollarSign, MessageSquare, Home, Building2, AlertTriangle, Calendar, CreditCard, Mail, Wallet, Settings, FileText } from 'lucide-react';
+import { PermissionUtils, USER_ROLES, getDashboardRoleConfig } from '@/shared/constants';
+import { AdminOnly } from '@/presentation/components/atoms';
 import { UserManagementPage } from './user-management-page';
 import { Typography } from '@/presentation/components/atoms';
 
-interface DashboardPageProps {
-  role?: string;
-  showRoleSpecificContent?: boolean;
-}
+interface DashboardPageProps {}
 
-export function DashboardPage({ role, showRoleSpecificContent = false }: DashboardPageProps = {}) {
+export function DashboardPage({}: DashboardPageProps = {}) {
   const { user } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<string>('overview');
 
   // Get section from URL query params
   useEffect(() => {
     const section = searchParams.get('section') || 'overview';
+    console.log('DashboardPage - active section:', section, 'user:', user);
     setActiveSection(section);
-  }, [searchParams]);
+  }, [searchParams, user]);
 
-  // If this is the general dashboard and we have a user with a role, redirect to role-specific dashboard
-  useEffect(() => {
-    if (!role && user?.role && ['admin', 'manager', 'staff'].includes(user.role)) {
-      console.log('Redirecting to role-specific dashboard:', `/dashboard/${user.role}`);
-      router.replace(`/dashboard/${user.role}`);
-    }
-  }, [user, role, router]);
 
   // Render section-specific content
   const renderSectionContent = () => {
-    const config = role ? roleConfigs[role as keyof typeof roleConfigs] : null;
+    const config = getDashboardRoleConfig(user?.role);
+    console.log('renderSectionContent - activeSection:', activeSection, 'user role:', user?.role, 'can read user:', PermissionUtils.canReadUser(user?.role));
 
     switch (activeSection) {
       case 'users':
+        console.log('Rendering UserManagementPage for users section');
         return PermissionUtils.canReadUser(user?.role) ? (
           <UserManagementPage />
-        ) : null;
+        ) : (
+          <div className="text-center py-8">
+            <p>You don't have permission to access user management.</p>
+            <p>Your role: {user?.role || 'none'}</p>
+          </div>
+        );
 
       case 'settings':
         return PermissionUtils.canManageSystem(user?.role) ? (
@@ -71,28 +68,6 @@ export function DashboardPage({ role, showRoleSpecificContent = false }: Dashboa
               </Card>
             </div>
           </AdminOnly>
-        ) : null;
-
-      case 'team':
-        return PermissionUtils.isManager(user?.role) ? (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Team Management
-                </CardTitle>
-                <CardDescription>
-                  Manage your team members and permissions (cannot modify admins or other managers)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Typography variant="body-s" color="muted">
-                  Team management functionality will be implemented here.
-                </Typography>
-              </CardContent>
-            </Card>
-          </div>
         ) : null;
 
       case 'tasks':
@@ -155,44 +130,7 @@ export function DashboardPage({ role, showRoleSpecificContent = false }: Dashboa
     }
   };
 
-  // Role configurations for role-specific content
-  const roleConfigs = {
-    admin: {
-      title: 'Admin Dashboard',
-      description: 'Full system administration and management',
-      icon: Shield,
-      color: 'destructive' as const,
-      features: [
-        { title: 'User Management', description: 'Manage all system users', icon: Users },
-        { title: 'System Settings', description: 'Configure system-wide settings', icon: Activity },
-        { title: 'Analytics', description: 'View system analytics and reports', icon: TrendingUp },
-        { title: 'Security Logs', description: 'Monitor security events', icon: FileText },
-      ]
-    },
-    manager: {
-      title: 'Manager Dashboard',
-      description: 'Team management and oversight',
-      icon: Users,
-      color: 'secondary' as const,
-      features: [
-        { title: 'Team Management', description: 'Manage your team members', icon: Users },
-        { title: 'Reports', description: 'View team performance reports', icon: FileText },
-        { title: 'Settings', description: 'Team-specific settings', icon: Activity },
-      ]
-    },
-    staff: {
-      title: 'Staff Dashboard',
-      description: 'Your personal workspace and tasks',
-      icon: UserCircle,
-      color: 'default' as const,
-      features: [
-        { title: 'My Tasks', description: 'View and manage your tasks', icon: FileText },
-        { title: 'Profile', description: 'Manage your profile settings', icon: UserCircle },
-      ]
-    }
-  };
-
-  const config = role ? roleConfigs[role as keyof typeof roleConfigs] : null;
+  const config = getDashboardRoleConfig(user?.role);
 
   return (
     <DashboardTemplate>
@@ -201,12 +139,12 @@ export function DashboardPage({ role, showRoleSpecificContent = false }: Dashboa
         <div className="flex flex-col space-y-2">
           {/* MAC USA ONE Typography: Display XL for main heading */}
           <Typography variant="display-xl" className="font-bold tracking-tight">
-            {role ? `${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard` : 'Dashboard'}
+            {user?.role ? `${user.role.charAt(0).toUpperCase() + user.role.slice(1)} Dashboard` : 'Dashboard'}
             {activeSection !== 'overview' && ` - ${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}`}
           </Typography>
           {/* MAC USA ONE Typography: Body M for description */}
           <Typography variant="body-m" color="muted">
-            {role
+            {user?.role
               ? `${config?.description || 'Manage your role-specific features and access.'}`
               : `Welcome back, ${user?.displayName || user?.name || 'User'}! Here's what's happening with your account.`
             }

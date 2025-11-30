@@ -1,6 +1,5 @@
-export { UserCreateForm } from './user-create-form';
-export { UserDeleteDialog } from './user-delete-dialog';
-export { UserEditForm } from './user-edit-form';
+export { UserManagement } from './user-management';
 export { UserStats } from './user-stats';
-export { UsersList } from './users-list';
-
+export { UserCreateForm } from './user-create-form';
+export { UserEditForm } from './user-edit-form';
+export { UserDeleteDialog } from './user-delete-dialog';

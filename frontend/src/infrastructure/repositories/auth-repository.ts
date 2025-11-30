@@ -63,21 +63,15 @@ export class AuthRepository implements IAuthRepository {
       const response = await authApi.login({ email, password });
       const duration = Date.now() - startTime;
 
-      // Map backend UserAuthDto to frontend User entity format
-      // Backend returns displayName, frontend User entity expects name
+      // Map backend UserDto to frontend User entity format
+      // Handle missing name field by using email as fallback
       const userData = {
         id: response.user.id,
-        name: response.user.displayName || response.user.username || response.user.email,
+        name: response.user.name || response.user.email.split('@')[0] || 'User',
         email: response.user.email,
         role: response.user.role,
         isActive: response.user.isActive,
-        username: response.user.username,
-        avatar: response.user.avatarUrl,
-        displayName: response.user.displayName,
-        phone: response.user.phone,
-        isFirstLogin: response.user.isFirstLogin,
         createdAt: new Date(response.user.createdAt),
-        updatedAt: response.user.updatedAt ? new Date(response.user.updatedAt) : undefined,
       };
 
       const user = User.fromObject(userData);
@@ -118,20 +112,15 @@ export class AuthRepository implements IAuthRepository {
       });
       const duration = Date.now() - startTime;
 
-      // Map backend UserAuthDto to frontend User entity format
+      // Map backend UserDto to frontend User entity format
+      // Handle missing name field by using email as fallback
       const userData = {
         id: response.user.id,
-        name: response.user.displayName || response.user.username || response.user.email,
+        name: response.user.name || response.user.email.split('@')[0] || 'User',
         email: response.user.email,
         role: response.user.role,
         isActive: response.user.isActive,
-        username: response.user.username,
-        avatar: response.user.avatarUrl,
-        displayName: response.user.displayName,
-        phone: response.user.phone,
-        isFirstLogin: response.user.isFirstLogin,
         createdAt: new Date(response.user.createdAt),
-        updatedAt: response.user.updatedAt ? new Date(response.user.updatedAt) : undefined,
       };
 
       const user = User.fromObject(userData);
@@ -198,20 +187,15 @@ export class AuthRepository implements IAuthRepository {
       const response = await authApi.verifyEmail(token);
       const duration = Date.now() - startTime;
 
-      // Map backend UserAuthDto to frontend User entity format
+      // Map backend UserDto to frontend User entity format
+      // Handle missing name field by using email as fallback
       const userData = {
         id: response.user.id,
-        name: response.user.displayName || response.user.username || response.user.email,
+        name: response.user.name || response.user.email.split('@')[0] || 'User',
         email: response.user.email,
         role: response.user.role,
         isActive: response.user.isActive,
-        username: response.user.username,
-        avatar: response.user.avatarUrl,
-        displayName: response.user.displayName,
-        phone: response.user.phone,
-        isFirstLogin: response.user.isFirstLogin,
         createdAt: new Date(response.user.createdAt),
-        updatedAt: response.user.updatedAt ? new Date(response.user.updatedAt) : undefined,
       };
 
       const user = User.fromObject(userData);
@@ -307,18 +291,14 @@ export class AuthRepository implements IAuthRepository {
       const duration = Date.now() - startTime;
 
       // Map backend user response to frontend User entity format
+      // Handle missing name field by using email as fallback
       const userData = {
         id: response.user.id,
-        name: response.user.displayName || response.user.username || response.user.email,
+        name: response.user.name || response.user.email.split('@')[0] || 'User',
         email: response.user.email,
         role: response.user.role,
         isActive: response.user.isActive,
-        username: response.user.username,
-        avatar: response.user.avatarUrl,
-        displayName: response.user.displayName,
-        bio: response.user.bio,
-        phone: response.user.phone,
-        updatedAt: new Date(response.user.updatedAt),
+        createdAt: new Date(response.user.createdAt),
       };
 
       const user = User.fromObject(userData);

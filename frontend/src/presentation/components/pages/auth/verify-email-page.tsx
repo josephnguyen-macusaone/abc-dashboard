@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { AuthTemplate } from '@/presentation/components/templates/auth-template';
 import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { toast } from '@/presentation/components/atoms';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { Typography } from '@/presentation/components/atoms';
 import { Button } from '@/presentation/components/atoms/ui/button';
 
@@ -17,6 +17,7 @@ interface VerifyEmailPageProps {
 function VerifyEmailPage({ token, email }: VerifyEmailPageProps) {
   const router = useRouter();
   const { verifyEmail } = useAuthStore();
+  const toast = useToast();
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {

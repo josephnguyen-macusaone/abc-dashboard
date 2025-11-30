@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUserManagementService } from '@/presentation/hooks/use-user-management-service';
+import { useUser } from '@/presentation/contexts/user-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
 import { USER_ROLE_LABELS } from '@/shared/constants';
@@ -12,10 +12,10 @@ import { USER_ROLE_LABELS } from '@/shared/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
 import { Button } from '@/presentation/components/atoms/ui/button';
 import { Input } from '@/presentation/components/atoms/forms/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
 import { FormField } from '@/presentation/components/molecules/form/form-field';
 import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
-import { Loading } from '@/presentation/components/atoms/display/loading';
+import { Loading } from '@/presentation/components/atoms/ui/loading';
 import { Typography } from '@/presentation/components/atoms';
 
 import { Edit, X, Check, AlertCircle } from 'lucide-react';
@@ -51,10 +51,7 @@ interface UserEditFormProps {
 }
 
 export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
-  const userManagementService = useUserManagementService();
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { updateUser, loading: { updateUser: isUpdating }, error: { updateUser: updateError } } = useUser();
   const [success, setSuccess] = useState(false);
   const [updatedUser, setUpdatedUser] = useState<User | null>(null);
 
@@ -79,9 +76,6 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
 
   const onSubmit = async (data: UpdateUserFormData) => {
     try {
-      setLoading(true);
-      setError(null);
-
       // Only include fields that have changed
       const updates: UpdateUserDTO = {};
 
@@ -103,11 +97,11 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
 
       // Only proceed if there are actual changes
       if (Object.keys(updates).length === 0) {
-        setError('No changes detected');
+        // No changes detected - this will be handled by the validation schema
         return;
       }
 
-      const updatedUser = await userManagementService.updateUser(user.id, updates);
+      const updatedUser = await updateUser(user.id, updates);
 
       setUpdatedUser(updatedUser);
       setSuccess(true);
@@ -116,10 +110,8 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
       onSuccess?.(updatedUser);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user');
+      // Error is handled by the UserContext
       console.error('Error updating user:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -212,10 +204,10 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {error && (
+          {updateError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{updateError}</AlertDescription>
             </Alert>
           )}
 
@@ -303,13 +295,13 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
               type="button"
               variant="outline"
               onClick={onCancel}
-              disabled={loading}
+              disabled={isUpdating}
             >
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
+            <Button type="submit" disabled={isUpdating}>
+              {isUpdating ? (
                 <>
                   <Loading className="h-4 w-4 mr-2" />
                   Updating...

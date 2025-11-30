@@ -1,19 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useCallback, useEffect, useState, useMemo } from 'react';
-import { toast } from '@/presentation/components/atoms';
+import React, { createContext, useContext, ReactNode, useCallback, useEffect, useState } from 'react';
+import { useToast } from './toast-context';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
 import logger from '@/shared/utils/logger';
 import { RetryUtils } from '@/shared/utils/retry';
 
 interface ErrorContextType {
-  handleError: (error: any, context?: string) => void;
-  handleApiError: (error: any, context?: string) => void;
-  handleAuthError: (error: any) => void;
-  handleNetworkError: (error: any) => void;
+  handleError: (error: unknown, context?: string) => void;
+  handleApiError: (error: unknown, context?: string) => void;
+  handleAuthError: (error: unknown) => void;
+  handleNetworkError: (error: unknown) => void;
   clearErrors: () => void;
-  // Recovery mechanisms
-  attemptRecovery: (error: any, recoveryFn: () => Promise<any>, context?: string) => Promise<boolean>;
+  attemptRecovery: (error: unknown, recoveryFn: () => Promise<unknown>, context?: string) => Promise<boolean>;
   isRecovering: boolean;
   recoveryAttempts: number;
 }
@@ -33,19 +32,19 @@ interface ErrorProviderProps {
 }
 
 export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
+  const toast = useToast();
   const [isRecovering, setIsRecovering] = useState(false);
   const [recoveryAttempts, setRecoveryAttempts] = useState(0);
 
-  // Global error handlers
+  // Global error event handlers
   useEffect(() => {
-    // Handle unhandled promise rejections
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       logger.error('Unhandled promise rejection', { error: event.reason });
-      event.preventDefault(); // Prevent the default browser behavior
+      event.preventDefault();
 
-      // Show error toast for unhandled rejections
       const error = event.reason;
       const errorMessage = (error as Error)?.message || '';
+
       if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
         toast.error('Network Error', {
           description: 'Please check your connection and try again.'
@@ -57,7 +56,6 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
       }
     };
 
-    // Handle uncaught errors (though React should handle most of these)
     const handleUncaughtError = (event: ErrorEvent) => {
       logger.error('Uncaught error', { error: event.error, message: event.message });
       event.preventDefault();
@@ -67,12 +65,6 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
       });
     };
 
-    // Handle network status changes
-    const handleOnline = () => {
-      logger.info('Network connection restored');
-      // Could show a success toast here if needed
-    };
-
     const handleOffline = () => {
       logger.warn('Network connection lost');
       toast.error('Connection Lost', {
@@ -80,112 +72,125 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
       });
     };
 
-    // Add event listeners
+    // Register global error handlers
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
     window.addEventListener('error', handleUncaughtError);
-    window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Cleanup
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('error', handleUncaughtError);
-      window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, [toast]);
+
+  // ============================================================================
+  // Error Handling Utilities
+  // ============================================================================
+
+  const getUserFriendlyMessage = useCallback((error: any): string => {
+    const errorMessage = (
+      error?.message ||
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.data?.message ||
+      error?.data?.error ||
+      String(error)
+    ).toLowerCase();
+
+    // Comprehensive error message mapping
+    const ERROR_MESSAGE_MAP: Record<string, string> = {
+      // Network errors
+      'network error': 'Connection lost. Please check your internet connection and try again.',
+      'failed to fetch': 'Unable to connect to our servers. Please check your connection.',
+      'load failed': 'Failed to load content. Please refresh the page.',
+      'timeout': 'Request timed out. Please try again.',
+
+      // Authentication errors
+      'invalid credentials': 'The email or password you entered is incorrect. Please check and try again.',
+      'invalid email or password': 'The email or password you entered is incorrect. Please check and try again.',
+      'account is deactivated': 'Your account has been deactivated. Please contact support for assistance.',
+      'account temporarily locked': 'Your account is temporarily locked due to too many failed attempts. Please try again later.',
+      'your session has expired': 'Your session has expired for security reasons. Please sign in again.',
+      'invalid authentication token': 'Your session is invalid. Please sign in again.',
+      'authentication token is required': 'You need to be signed in to access this feature.',
+      'please verify your email': 'Please verify your email address before continuing.',
+      'email not verified': 'Please verify your email address before continuing.',
+
+      // Authorization errors
+      'you do not have permission': 'You don\'t have permission to perform this action.',
+      'insufficient permissions': 'You don\'t have the required permissions for this action.',
+      'access denied': 'Access denied. You don\'t have permission to view this content.',
+      'forbidden': 'You don\'t have permission to access this resource.',
+
+      // Validation errors
+      'required field is missing': 'Please fill in all required fields.',
+      'invalid input provided': 'Please check your input and try again.',
+      'please provide a valid email': 'Please enter a valid email address.',
+      'password must be at least': 'Password must be at least 8 characters long with uppercase, lowercase, and numbers.',
+      'passwords do not match': 'The passwords you entered don\'t match. Please try again.',
+      'invalid email format': 'Please enter a valid email address.',
+      'first name and last name': 'Please provide both first and last names.',
+      'invalid field value': 'Please check the entered information and try again.',
+
+      // Resource errors
+      'user not found': 'The requested user could not be found.',
+      'resource not found': 'The requested item could not be found.',
+      'page not found': 'The page you\'re looking for doesn\'t exist.',
+      'endpoint not found': 'The requested feature is not available.',
+
+      // Business logic errors
+      'email already exists': 'An account with this email address already exists.',
+      'an account with this email': 'An account with this email address already exists.',
+      'business rule violation': 'This action cannot be completed due to business rules.',
+
+      // Server errors
+      'internal server error': 'Something went wrong on our end. Please try again later.',
+      'an unexpected error occurred': 'An unexpected error occurred. Please try again.',
+      'server error': 'Our servers are experiencing issues. Please try again later.',
+      'service unavailable': 'Service is temporarily unavailable. Please try again later.',
+      'database error': 'We\'re experiencing technical difficulties. Please try again later.',
+
+      // Rate limiting
+      'too many requests': 'Too many requests. Please wait a moment before trying again.',
+      'rate limit exceeded': 'You\'ve made too many requests. Please wait before trying again.',
+
+      // File operations
+      'file size exceeds': 'The file you selected is too large. Please choose a smaller file.',
+      'file type not allowed': 'This file type is not supported. Please choose a different file.',
+      'upload failed': 'Failed to upload file. Please try again.',
+
+      // Generic fallbacks
+      'bad request': 'The request was invalid. Please check your input.',
+      'unauthorized': 'You need to be signed in to access this feature.',
+      'payment required': 'Payment is required to access this feature.',
+      'method not allowed': 'This action is not allowed.',
+      'not acceptable': 'The request format is not acceptable.',
+      'proxy authentication required': 'Proxy authentication is required.',
+      'request timeout': 'The request timed out. Please try again.',
+      'conflict': 'There was a conflict with your request. Please try again.',
+      'gone': 'This resource is no longer available.',
+      'length required': 'Request length is required.',
+      'precondition failed': 'Request preconditions failed.',
+      'payload too large': 'The request data is too large.',
+      'uri too long': 'The request URL is too long.',
+      'unsupported media type': 'The request format is not supported.',
+      'range not satisfiable': 'The requested range is not available.',
+      'expectation failed': 'Request expectations failed.',
+      'i\'m a teapot': 'I\'m a teapot.', // Easter egg for 418
+      'misdirected request': 'Request was misdirected.',
+      'unprocessable entity': 'The request data is invalid.',
+      'locked': 'Resource is locked.',
+      'failed dependency': 'Request failed due to dependency.',
+      'too early': 'Request was sent too early.',
+      'upgrade required': 'Protocol upgrade is required.',
+      'precondition required': 'Request preconditions are required.',
+      'request header fields too large': 'Request headers are too large.',
+      'unavailable for legal reasons': 'Resource unavailable for legal reasons.',
+    };
+
+    return ERROR_MESSAGE_MAP[errorMessage] || 'An unexpected error occurred. Please try again.';
   }, []);
-
-  // Comprehensive error message mapping
-  const ERROR_MESSAGE_MAP: Record<string, string> = useMemo(() => ({
-    // Network errors
-    'Network Error': 'Connection lost. Please check your internet connection and try again.',
-    'Failed to fetch': 'Unable to connect to our servers. Please check your connection.',
-    'Load failed': 'Failed to load content. Please refresh the page.',
-    'Timeout': 'Request timed out. Please try again.',
-
-    // Authentication errors
-    'Invalid credentials': 'The email or password you entered is incorrect. Please check and try again.',
-    'Invalid email or password': 'The email or password you entered is incorrect. Please check and try again.',
-    'Account is deactivated': 'Your account has been deactivated. Please contact support for assistance.',
-    'Account temporarily locked': 'Your account is temporarily locked due to too many failed attempts. Please try again later.',
-    'Your session has expired': 'Your session has expired for security reasons. Please sign in again.',
-    'Invalid authentication token': 'Your session is invalid. Please sign in again.',
-    'Authentication token is required': 'You need to be signed in to access this feature.',
-    'Please verify your email': 'Please verify your email address before continuing.',
-    'Email not verified': 'Please verify your email address before continuing.',
-
-    // Authorization errors
-    'You do not have permission': 'You don\'t have permission to perform this action.',
-    'Insufficient permissions': 'You don\'t have the required permissions for this action.',
-    'Access denied': 'Access denied. You don\'t have permission to view this content.',
-    'Forbidden': 'You don\'t have permission to access this resource.',
-
-    // Validation errors
-    'Required field is missing': 'Please fill in all required fields.',
-    'Invalid input provided': 'Please check your input and try again.',
-    'Please provide a valid email': 'Please enter a valid email address.',
-    'Password must be at least': 'Password must be at least 8 characters long with uppercase, lowercase, and numbers.',
-    'Passwords do not match': 'The passwords you entered don\'t match. Please try again.',
-    'Invalid email format': 'Please enter a valid email address.',
-    'First name and last name': 'Please provide both first and last names.',
-    'Invalid field value': 'Please check the entered information and try again.',
-
-    // Resource errors
-    'User not found': 'The requested user could not be found.',
-    'Resource not found': 'The requested item could not be found.',
-    'Page not found': 'The page you\'re looking for doesn\'t exist.',
-    'Endpoint not found': 'The requested feature is not available.',
-
-    // Business logic errors
-    'Email already exists': 'An account with this email address already exists.',
-    'An account with this email': 'An account with this email address already exists.',
-    'Business rule violation': 'This action cannot be completed due to business rules.',
-
-    // Server errors
-    'Internal server error': 'Something went wrong on our end. Please try again later.',
-    'An unexpected error occurred': 'An unexpected error occurred. Please try again.',
-    'Server error': 'Our servers are experiencing issues. Please try again later.',
-    'Service unavailable': 'Service is temporarily unavailable. Please try again later.',
-    'Database error': 'We\'re experiencing technical difficulties. Please try again later.',
-
-    // Rate limiting
-    'Too many requests': 'Too many requests. Please wait a moment before trying again.',
-    'Rate limit exceeded': 'You\'ve made too many requests. Please wait before trying again.',
-
-    // File operations
-    'File size exceeds': 'The file you selected is too large. Please choose a smaller file.',
-    'File type not allowed': 'This file type is not supported. Please choose a different file.',
-    'Upload failed': 'Failed to upload file. Please try again.',
-
-    // Generic fallbacks
-    'Bad Request': 'The request was invalid. Please check your input.',
-    'Unauthorized': 'You need to be signed in to access this feature.',
-    'Payment Required': 'Payment is required to access this feature.',
-    'Method Not Allowed': 'This action is not allowed.',
-    'Not Acceptable': 'The request format is not acceptable.',
-    'Proxy Authentication Required': 'Proxy authentication is required.',
-    'Request Timeout': 'The request timed out. Please try again.',
-    'Conflict': 'There was a conflict with your request. Please try again.',
-    'Gone': 'This resource is no longer available.',
-    'Length Required': 'Request length is required.',
-    'Precondition Failed': 'Request preconditions failed.',
-    'Payload Too Large': 'The request data is too large.',
-    'URI Too Long': 'The request URL is too long.',
-    'Unsupported Media Type': 'The request format is not supported.',
-    'Range Not Satisfiable': 'The requested range is not available.',
-    'Expectation Failed': 'Request expectations failed.',
-    'I\'m a teapot': 'I\'m a teapot.', // Easter egg for 418
-    'Misdirected Request': 'Request was misdirected.',
-    'Unprocessable Entity': 'The request data is invalid.',
-    'Locked': 'Resource is locked.',
-    'Failed Dependency': 'Request failed due to dependency.',
-    'Too Early': 'Request was sent too early.',
-    'Upgrade Required': 'Protocol upgrade is required.',
-    'Precondition Required': 'Request preconditions are required.',
-    'Too Many Requests': 'Too many requests. Please wait.',
-    'Request Header Fields Too Large': 'Request headers are too large.',
-    'Unavailable For Legal Reasons': 'Resource unavailable for legal reasons.',
-  }), []);
 
   // Error categorization for better handling
   const getErrorCategory = useCallback((error: any): string => {
@@ -213,49 +218,11 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     return 'unknown';
   }, []);
 
-  // Get user-friendly error message
-  const getUserFriendlyMessage = useCallback((error: any): string => {
-    const originalMessage = error.message || error.response?.data?.message || '';
 
-    // Try exact matches first
-    if (ERROR_MESSAGE_MAP[originalMessage]) {
-      return ERROR_MESSAGE_MAP[originalMessage];
-    }
+  // ============================================================================
+  // Error Recovery
+  // ============================================================================
 
-    // Try partial matches
-    for (const [pattern, friendlyMessage] of Object.entries(ERROR_MESSAGE_MAP)) {
-      if (originalMessage.toLowerCase().includes(pattern.toLowerCase())) {
-        return friendlyMessage as string;
-      }
-    }
-
-    // Category-based fallbacks
-    const category = getErrorCategory(error);
-    switch (category) {
-      case 'network':
-        return 'Connection issue. Please check your internet and try again.';
-      case 'auth':
-        return 'Authentication required. Please sign in and try again.';
-      case 'validation':
-        return 'Please check your input and try again.';
-      case 'not_found':
-        return 'The requested item could not be found.';
-      case 'rate_limit':
-        return 'Too many requests. Please wait a moment and try again.';
-      case 'server_error':
-        return 'Server error. Our team has been notified. Please try again later.';
-      case 'timeout':
-        return 'Request timed out. Please try again.';
-      default:
-        // For unknown errors, provide a generic but helpful message
-        if (process.env.NODE_ENV === 'development') {
-          return `An error occurred: ${originalMessage}`;
-        }
-        return 'Something went wrong. Please try again or contact support if the problem persists.';
-    }
-  }, [ERROR_MESSAGE_MAP, getErrorCategory]);
-
-  // Helper function to determine if an error is recoverable
   const isRecoverableError = useCallback((error: any): boolean => {
     // Network errors are usually recoverable
     if (!error.response) return true;
@@ -269,6 +236,10 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
 
     return recoverableStatuses.includes(status) || recoverableCategories.includes(category);
   }, [getErrorCategory]);
+
+  // ============================================================================
+  // Public API Methods
+  // ============================================================================
 
   const handleApiError = useCallback((error: any, context: string = 'API Error') => {
     logger.error(`API Error in ${context}:`, { error, context });
@@ -383,21 +354,10 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     const correlationId = `recovery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     try {
-      logger.info('Attempting automatic error recovery', {
-        correlationId,
-        context,
-        recoveryAttempt: recoveryAttempts + 1,
-      });
-
       // Determine if error is recoverable
       const isRecoverable = isRecoverableError(error);
 
       if (!isRecoverable) {
-        logger.info('Error is not recoverable, skipping recovery attempt', {
-          correlationId,
-          context,
-          error: error?.message,
-        });
         return false;
       }
 
@@ -423,12 +383,6 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
         },
         `${context}_recovery`
       );
-
-      logger.info('Error recovery successful', {
-        correlationId,
-        context,
-        recoveryAttempt: recoveryAttempts + 1,
-      });
 
       // Show success message
       toast.success('Connection restored', {

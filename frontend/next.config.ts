@@ -1,26 +1,37 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable static export for traditional web server deployment
-  output: 'export',
-  trailingSlash: true,
-
-  // Note: Rewrites are not supported in static export mode
-  // API calls should be made directly to your backend server
-
-  // Note: Headers are not supported in static export mode
-  // CORS and authentication headers should be handled by your backend API server
-
-  // Environment variables for client-side
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  // Proxy configuration for API routes
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*', // Keep local API routes as-is
+      },
+    ];
   },
 
-  // Turbopack configuration (Next.js 16+ uses Turbopack by default)
-  turbopack: {
-    resolveAlias: {
-      '@assets': './assets',
-    },
+  // Add headers for CORS and authentication
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+        ],
+      },
+    ];
   },
 };
 

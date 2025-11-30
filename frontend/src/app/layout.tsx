@@ -2,12 +2,9 @@ import React from 'react';
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
 
-import { AuthProvider } from '@/presentation/contexts/auth-context';
-import { ThemeProvider } from '@/presentation/contexts/theme-context';
-import { ErrorProvider } from '@/presentation/contexts/error-context';
+import { AuthProvider, UserProvider, ToastProvider, ThemeProvider, ErrorProvider } from '@/presentation/contexts';
 import { Toaster } from '@/presentation/components/atoms';
 import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { APP_CONFIG } from '@/shared/constants';
 
 import "./globals.css";
 
@@ -40,13 +37,17 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${inter.variable}`}>
       <body className={inter.className}>
         <ErrorBoundary>
-          <ThemeProvider defaultTheme={APP_CONFIG.DEFAULT_THEME}>
-            <ErrorProvider>
-              <AuthProvider>
-                {children}
-                <Toaster />
-              </AuthProvider>
-            </ErrorProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <ErrorProvider>
+                <AuthProvider>
+                  <UserProvider>
+                    {children}
+                    <Toaster />
+                  </UserProvider>
+                </AuthProvider>
+              </ErrorProvider>
+            </ToastProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </body>

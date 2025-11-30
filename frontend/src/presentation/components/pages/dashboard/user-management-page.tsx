@@ -1,109 +1,133 @@
 'use client';
 
-import { useState } from 'react';
-import { UsersList, UserCreateForm, UserEditForm } from '@/presentation/components/organisms';
-import { UserDeleteDialog } from '@/presentation/components/organisms/user-management/user-delete-dialog';
-import { User } from '@/application/dto/user-dto';
-import { Button } from '@/presentation/components/atoms/ui/button';
-import { Typography } from '@/presentation/components/atoms';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/presentation/contexts/auth-context';
+import { useUser } from '@/presentation/contexts/user-context';
+import { useToast } from '@/presentation/contexts/toast-context';
+import { UserManagement } from '@/presentation/components/organisms/user-management';
+import { User, UserRole } from '@/domain/entities/user-entity';
+import { UserListParams } from '@/application/dto/user-dto';
+import { DashboardTemplate } from '../../templates/dashboard-template';
 
-interface UserManagementPageProps {
-  initialView?: 'list' | 'create' | 'edit' | 'delete';
-}
+export function UserManagementPage() {
+  console.log('UserManagementPage rendering');
 
-export function UserManagementPage({ initialView = 'list' }: UserManagementPageProps) {
-  const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete'>(initialView);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { user: currentUser } = useAuth();
+  const { getUsers, createUser, updateUser, deleteUser, loading } = useUser();
+  const { success: showSuccess, error: showError } = useToast();
 
-  const handleCreateUser = () => {
-    setCurrentView('create');
+  console.log('Current user:', currentUser);
+  console.log('Loading state:', loading);
+
+  const [users, setUsers] = useState<User[]>([]);
+
+  // Load users on mount and when needed
+  const loadUsers = useCallback(async (filters?: { search?: string; role?: string }) => {
+    try {
+      const params: UserListParams = {
+        page: 1,
+        limit: 100, // Get all users for now
+        email: filters?.search, // Use email for search as per UserListParams
+        role: filters?.role as UserRole | undefined, // Cast to UserRole enum
   };
 
-  const handleSuccess = () => {
-    // Refresh the data and go back to list view
-    setRefreshTrigger(prev => prev + 1);
-    setCurrentView('list');
-  };
+      const result = await getUsers(params);
+      setUsers(result.users || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      showError?.('Failed to load users');
+    }
+  }, [getUsers, showError]);
 
-  const handleCancel = () => {
-    setCurrentView('list');
-    setSelectedUser(null);
-  };
+  // Load users on mount
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user);
-    setCurrentView('edit');
-  };
+  // Handle user creation
+  const handleCreateUser = useCallback(async (userData: { username: string; role: string; password?: string }) => {
+    try {
+      await createUser({
+        username: userData.username,
+        email: `${userData.username}@example.com`, // Generate email from username
+        displayName: userData.username, // Use username as display name for now
+        role: userData.role as UserRole,
+      });
 
-  const handleDeleteUser = (user: User) => {
-    setSelectedUser(user);
-    setCurrentView('delete');
-  };
+      // Reload users
+      await loadUsers();
 
-  if (currentView === 'create') {
+      showSuccess?.(`User "${userData.username}" created successfully`);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      showError?.('Failed to create user');
+      throw error;
+    }
+  }, [createUser, loadUsers, showSuccess, showError]);
+
+  // Handle user password update (Note: password updates may not be implemented yet)
+  const handleUpdateUserPassword = useCallback(async (
+    userId: string,
+    passwordData: { oldPassword: string; newPassword: string; confirmPassword: string }
+  ) => {
+    try {
+      // For now, password updates are not implemented in the current architecture
+      // This would need a separate use case and service method
+      console.warn('Password update not implemented yet');
+
+      // For demo purposes, show success
+      showSuccess?.('Password update feature not implemented yet');
+
+      // Uncomment when password update is implemented:
+      // await updateUser(userId, {
+      //   // password fields would go here
+      // });
+    } catch (error) {
+      console.error('Error updating user password:', error);
+      showError?.('Failed to update user password');
+      throw error;
+    }
+  }, [showSuccess, showError]);
+
+  // Handle user deletion
+  const handleDeleteUser = useCallback(async (userId: string) => {
+    try {
+      await deleteUser(userId);
+
+      // Reload users
+      await loadUsers();
+
+      showSuccess?.('User deleted successfully');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showError?.('Failed to delete user');
+      throw error;
+    }
+  }, [deleteUser, loadUsers]);
+
+  if (!currentUser) {
     return (
-      <div className="space-y-4">
-        <Button
-          variant="link"
-          onClick={handleCancel}
-          className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
-        >
-          ← Back to User List
-        </Button>
-        <UserCreateForm
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-        />
-      </div>
-    );
-  }
-
-  if (currentView === 'edit' && selectedUser) {
-    return (
-      <div className="space-y-4">
-        <Button
-          variant="link"
-          onClick={handleCancel}
-          className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
-        >
-          ← Back to User List
-        </Button>
-        <UserEditForm
-          user={selectedUser}
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-        />
-      </div>
-    );
-  }
-
-  if (currentView === 'delete' && selectedUser) {
-    return (
-      <UserDeleteDialog
-        user={selectedUser}
-        open={true}
-        onOpenChange={(open) => {
-          if (!open) {
-            setCurrentView('list');
-            setSelectedUser(null);
-          }
-        }}
-        onSuccess={() => {
-          setRefreshTrigger(prev => prev + 1);
-          setCurrentView('list');
-          setSelectedUser(null);
-        }}
-      />
+      <DashboardTemplate>
+        <div className="text-center py-8">
+          <p>Please log in to access user management.</p>
+        </div>
+      </DashboardTemplate>
     );
   }
 
   return (
-    <UsersList
-      onCreateUser={handleCreateUser}
-      onEditUser={handleEditUser}
-      onDeleteUser={handleDeleteUser}
-      refreshTrigger={refreshTrigger}
-    />
+    <div className="space-y-8">
+      <UserManagement
+        currentUser={currentUser}
+        users={users}
+        isLoading={loading.getUsers}
+        onLoadUsers={loadUsers}
+        onCreateUser={handleCreateUser}
+        onUpdateUserPassword={handleUpdateUserPassword}
+        onDeleteUser={handleDeleteUser}
+        onSuccess={showSuccess}
+        onError={showError}
+      />
+    </div>
   );
 }
