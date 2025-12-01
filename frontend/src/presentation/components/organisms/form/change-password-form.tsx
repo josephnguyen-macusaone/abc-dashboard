@@ -243,6 +243,17 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-end gap-3">
           <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
+            <KeyRound className="w-4 h-4" />
+            <span className='text-button-s pb-0.5'>Cancel</span>
+          </Button>
+
+          <Button
             type="submit"
             disabled={isLoading}
             className="w-full sm:w-auto"
@@ -259,17 +270,6 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
                 <span className='text-button-s pb-0.5'>Change Password</span>
               </>
             )}
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="w-full sm:w-auto"
-          >
-            <KeyRound className="w-4 h-4" />
-            <span className='text-button-s pb-0.5'>Cancel</span>
           </Button>
         </div>
       </form>

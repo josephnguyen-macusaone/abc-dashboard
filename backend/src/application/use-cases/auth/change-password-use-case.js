@@ -15,7 +15,10 @@ export class ChangePasswordUseCase {
     this.emailService = emailService;
   }
 
-  async execute(userId, { currentPassword, newPassword, isFirstLoginChange = false }) {
+  async execute(
+    userId,
+    { currentPassword, newPassword, isFirstLoginChange = false, skipCurrentPasswordCheck = false }
+  ) {
     try {
       // Validate input
       if (!userId) {
@@ -26,8 +29,9 @@ export class ChangePasswordUseCase {
         throw new ValidationException('New password is required');
       }
 
-      // For first login changes, currentPassword is not required
-      if (!isFirstLoginChange && !currentPassword) {
+      // For first login changes or forced password changes, currentPassword is not required
+      const requiresCurrentPassword = !isFirstLoginChange && !skipCurrentPasswordCheck;
+      if (requiresCurrentPassword && !currentPassword) {
         throw new ValidationException('Current password is required');
       }
 
@@ -42,8 +46,8 @@ export class ChangePasswordUseCase {
         throw new ResourceNotFoundException('User');
       }
 
-      // Verify current password (skip for first login changes)
-      if (!isFirstLoginChange) {
+      // Verify current password (skip for first login changes or forced password changes)
+      if (requiresCurrentPassword) {
         const isCurrentPasswordValid = await this.authService.verifyPassword(
           currentPassword,
           user.hashedPassword
@@ -66,6 +70,11 @@ export class ChangePasswordUseCase {
         updateData.isFirstLogin = false;
       }
 
+      // Clear forced password change flag if it was set
+      if (user.requiresPasswordChange) {
+        updateData.requiresPasswordChange = false;
+      }
+
       // Update user password and first login status
       const updatedUser = await this.userRepository.update(userId, updateData);
 
@@ -76,13 +85,37 @@ export class ChangePasswordUseCase {
       // Send appropriate notification email
       try {
         if (this.emailService) {
-          const emailSubject = isFirstLoginChange
-            ? 'Welcome - Password Set Successfully'
-            : 'Password Changed Successfully';
+          let emailSubject;
+          let emailTemplate;
 
-          const emailTemplate = isFirstLoginChange
-            ? 'Hi {{displayName}}! Welcome to ABC Dashboard. Your password has been successfully set. You can now access all features.'
-            : 'Hi {{displayName}}! Your password has been successfully changed. If you did not make this change, please contact support immediately.';
+          if (skipCurrentPasswordCheck && user.requiresPasswordChange) {
+            // This was a forced password change after password reset
+            emailSubject = 'Password Reset Completed - ABC Dashboard';
+            emailTemplate = `Hi {{displayName}}!
+
+Your password has been successfully reset and changed. You can now access your ABC Dashboard account with your new password.
+
+If you did not request this password reset, please contact support immediately.
+
+Best regards,
+ABC Dashboard Team`;
+          } else if (isFirstLoginChange) {
+            emailSubject = 'Welcome - Password Set Successfully';
+            emailTemplate = `Hi {{displayName}}!
+
+Welcome to ABC Dashboard. Your password has been successfully set. You can now access all features.
+
+Best regards,
+ABC Dashboard Team`;
+          } else {
+            emailSubject = 'Password Changed Successfully';
+            emailTemplate = `Hi {{displayName}}!
+
+Your password has been successfully changed. If you did not make this change, please contact support immediately.
+
+Best regards,
+ABC Dashboard Team`;
+          }
 
           await this.emailService.sendEmail(user.email, emailSubject, emailTemplate, {
             displayName: user.displayName,
@@ -90,27 +123,42 @@ export class ChangePasswordUseCase {
         }
 
         // Log security event
-        const eventType = isFirstLoginChange ? 'First login password set' : 'Password changed';
+        let eventType;
+        if (skipCurrentPasswordCheck && user.requiresPasswordChange) {
+          eventType = 'Forced password change completed';
+        } else if (isFirstLoginChange) {
+          eventType = 'First login password set';
+        } else {
+          eventType = 'Password changed';
+        }
+
         logger.security(eventType, {
           userId,
           email: user.email,
           changedAt: new Date().toISOString(),
           isFirstLoginChange,
+          wasForcedChange: skipCurrentPasswordCheck && user.requiresPasswordChange,
         });
 
         logger.info(`${eventType} successfully`, {
           userId,
           email: user.email,
           isFirstLoginChange,
+          wasForcedChange: skipCurrentPasswordCheck && user.requiresPasswordChange,
         });
       } catch (error) {
         logger.error('Failed to send password change notification:', error);
         // Don't fail the password change if email fails
       }
 
-      const message = isFirstLoginChange
-        ? 'Welcome! Your password has been set successfully.'
-        : 'Password changed successfully';
+      let message;
+      if (skipCurrentPasswordCheck && user.requiresPasswordChange) {
+        message = 'Password reset completed successfully. You can now access your account.';
+      } else if (isFirstLoginChange) {
+        message = 'Welcome! Your password has been set successfully.';
+      } else {
+        message = 'Password changed successfully';
+      }
 
       return {
         message,

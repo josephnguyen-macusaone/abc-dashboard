@@ -28,7 +28,6 @@ export function ProfilePage() {
   }
 
   const userInitials = useMemo(() => {
-    console.log('user', user);
     if (user.displayName) {
       return user.displayName.slice(0, 2).toUpperCase();
     }
@@ -74,7 +73,7 @@ export function ProfilePage() {
             className="inline-flex items-center gap-2"
           >
             <Edit3 className="w-4 h-4" />
-            Edit Profile
+            <span className="text-button-s">Edit Profile</span>
           </Button>
           <Button
             variant="outline"
@@ -82,7 +81,7 @@ export function ProfilePage() {
             className="inline-flex items-center gap-2"
           >
             <Key className="w-4 h-4" />
-            Change Password
+            <span className="text-button-s">Change Password</span>
           </Button>
         </div>
         {/* Hero & Profile Section */}
@@ -110,7 +109,7 @@ export function ProfilePage() {
                 <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     {/* MAC USA ONE Typography: Title XL for user name */}
-                    <Typography variant="title-xl" className="font-bold text-foreground">
+                    <Typography variant="title-l" className="font-bold text-foreground">
                       {displayName}
                     </Typography>
                     <Badge variant="secondary" className="text-xs w-fit ">
@@ -118,7 +117,7 @@ export function ProfilePage() {
                     </Badge>
                   </div>
                   {user.bio && (
-                    <Typography variant="body-m" color="muted" className="max-w-2xl">
+                    <Typography variant="body-s" color="muted" className="max-w-2xl">
                       {user.bio}
                     </Typography>
                   )}
@@ -134,7 +133,7 @@ export function ProfilePage() {
                     </div>
                     <div className="flex-1">
                       {/* MAC USA ONE Typography: Body M for contact info */}
-                      <Typography variant="body-m" className="text-foreground pb-1">
+                      <Typography variant="body-s" className="text-foreground pb-1">
                         {user.email || 'demo@example.com'}
                       </Typography>
                     </div>
@@ -147,7 +146,7 @@ export function ProfilePage() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <Typography variant="body-m" className="text-foreground pb-1">
+                      <Typography variant="body-s" className="text-foreground pb-1">
                         {user.phone || 'Not set'}
                       </Typography>
                     </div>

@@ -79,19 +79,19 @@ export const ROLE_DEFINITIONS = {
     name: 'admin' as UserRoleType,
     displayName: 'Administrator',
     description: 'Full system access and management',
-    color: 'destructive' as const,
+    color: 'admin' as const,
   },
   [USER_ROLES.MANAGER]: {
     name: 'manager' as UserRoleType,
     displayName: 'Manager',
     description: 'User management and oversight',
-    color: 'secondary' as const,
+    color: 'manager' as const,
   },
   [USER_ROLES.STAFF]: {
     name: 'staff' as UserRoleType,
     displayName: 'Staff',
     description: 'Basic user access',
-    color: 'default' as const,
+    color: 'staff' as const,
   },
 } as const;
 

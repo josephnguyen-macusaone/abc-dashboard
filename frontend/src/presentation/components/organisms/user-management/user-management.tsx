@@ -15,6 +15,7 @@ import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
 import { canManageRole } from '@/shared/constants';
 import { UserPlus } from 'lucide-react';
+import { useToast } from '@/presentation/contexts/toast-context';
 
 interface UserManagementProps {
   currentUser: User;
@@ -51,8 +52,7 @@ export function UserManagement({
   const [roleFilter, setRoleFilter] = useState<'admin' | 'manager' | 'staff' | 'all'>('all');
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete' | 'changePassword'>('list');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
-
+  const toast = useToast();
   // Load users with filters
   const handleLoadUsers = useCallback(async () => {
     try {
@@ -129,13 +129,11 @@ export function UserManagement({
 
   const canEditUser = (user: User) => {
     const canEdit = currentUser.role === 'admin' && canManageRole(currentUser.role, user.role);
-    console.log('canEditUser:', user.username, 'canEdit:', canEdit, 'currentUserRole:', currentUser.role);
     return canEdit;
   };
 
   const canDeleteUser = (user: User) => {
     const canDelete = currentUser.role === 'admin' && canManageRole(currentUser.role, user.role);
-    console.log('canDeleteUser:', user.username, 'canDelete:', canDelete, 'currentUserRole:', currentUser.role);
     return canDelete;
   };
 
@@ -220,7 +218,7 @@ export function UserManagement({
             handleFormSuccess();
           }}
           onClose={handleFormCancel}
-          loading={loading}
+          loading={isLoading}
           open={true}
         />
       </div>
@@ -231,10 +229,9 @@ export function UserManagement({
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm', className)}>
       {/* Header */}
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between p-6">
           <div>
-            <Typography variant="title-xl" className="text-foreground">
+            <Typography variant="title-l" className="text-foreground">
               User Management
             </Typography>
             <Typography variant="body-s" color="muted" className="text-muted-foreground mt-0.5">
@@ -244,15 +241,14 @@ export function UserManagement({
 
           {currentUser.role === 'admin' && (
             <Button onClick={handleCreateUser}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add User
+              <UserPlus className="h-4 w-4" />
+              <Typography variant="button-m">Add User</Typography>
             </Button>
           )}
         </div>
 
         {/* Statistics */}
         <UserStatsCards users={users} isLoading={isLoading} />
-      </div>
 
       {/* Filters */}
       <UserFilters
@@ -268,8 +264,8 @@ export function UserManagement({
             await onLoadUsers?.({});
           } catch (err) {
             const error = err as Error;
-            console.error('Error loading users after clearing filters:', error);
             onError?.(error.message || 'Failed to clear filters');
+            toast.error('Failed to clear filters');
           }
         }}
       />

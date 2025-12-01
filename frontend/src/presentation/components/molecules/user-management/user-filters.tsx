@@ -24,7 +24,7 @@ export function UserFilters({
   className,
 }: UserFiltersProps) {
   return (
-    <div className={`p-4 border-b border-border bg-muted/20 ${className || ''}`}>
+    <div className={`p-6 border-b border-border/50 ${className || ''}`}>
       <div className="flex flex-col md:flex-row gap-3">
         <SearchBar
           placeholder="Search users..."

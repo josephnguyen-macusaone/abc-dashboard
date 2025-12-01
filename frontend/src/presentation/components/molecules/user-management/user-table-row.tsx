@@ -1,7 +1,6 @@
 'use client';
 
-import { Button, RoleBadge, Typography } from '@/presentation/components/atoms';
-import { Badge } from '@/presentation/components/atoms/ui/badge';
+import { Button, RoleBadge, StatusBadge, Typography } from '@/presentation/components/atoms';
 import { type User } from '@/domain/entities/user-entity';
 import { Edit, Trash2, Lock, User2 } from 'lucide-react';
 import { cn } from '@/shared/utils';
@@ -27,8 +26,6 @@ export function UserTableRow({
   onChangePassword,
   className,
 }: UserTableRowProps) {
-  console.log('UserTableRow rendering for user:', user.username || user.id, 'canEdit:', canEdit, 'canDelete:', canDelete);
-
   // Get display name - use displayName, then name, then id
   const displayName = user.displayName || user.name || user.username || user.id;
 
@@ -37,8 +34,8 @@ export function UserTableRow({
       <td className="p-4">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all">
-              <User2 className="h-5 w-5 text-primary" />
+            <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all">
+              <User2 className="h-4 w-4 text-primary" />
             </div>
           </div>
           <div className="min-w-0 flex-1">
@@ -54,17 +51,7 @@ export function UserTableRow({
         </div>
       </td>
       <td className="p-4">
-        <Badge
-          variant={user.isActive ? 'default' : 'secondary'}
-          className={cn(
-            'px-2 py-1',
-            user.isActive
-              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
-              : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
-          )}
-        >
-          {user.isActive ? 'Active' : 'Inactive'}
-        </Badge>
+        <StatusBadge isActive={user.isActive} />
       </td>
       <td className="p-4">
         <div className="flex items-center justify-end space-x-1.5">

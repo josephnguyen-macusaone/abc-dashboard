@@ -44,7 +44,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
           initialActualTheme = storedTheme === THEMES.DARK ? 'dark' : 'light';
         }
       } catch (error) {
-        console.warn('Failed to parse theme from localStorage:', error);
         // Clear corrupted data and use default
         localStorage.removeItem('theme-storage');
       }

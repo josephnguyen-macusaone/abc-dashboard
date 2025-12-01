@@ -6,7 +6,16 @@ import { BaseDto } from '../common/base.dto.js';
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 
 export class CreateUserRequestDto extends BaseDto {
-  constructor({ username, email, displayName, role = 'staff', avatarUrl = null, phone = null }) {
+  constructor({
+    username,
+    email,
+    displayName,
+    role = 'staff',
+    avatarUrl = null,
+    phone = null,
+    managedBy = null,
+    createdBy = null,
+  }) {
     super();
     this.username = username;
     this.email = email;
@@ -14,6 +23,8 @@ export class CreateUserRequestDto extends BaseDto {
     this.role = role;
     this.avatarUrl = avatarUrl;
     this.phone = phone;
+    this.managedBy = managedBy;
+    this.createdBy = createdBy;
   }
 
   /**
@@ -29,6 +40,8 @@ export class CreateUserRequestDto extends BaseDto {
       role: body.role,
       avatarUrl: body.avatarUrl,
       phone: body.phone,
+      managedBy: body.managedBy,
+      createdBy: body.createdBy,
     });
   }
 

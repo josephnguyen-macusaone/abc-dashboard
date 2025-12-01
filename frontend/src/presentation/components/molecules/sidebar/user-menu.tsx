@@ -20,7 +20,7 @@ export interface UserMenuProps {
   className?: string;
 }
 
-export function UserMenu({
+export function   UserMenu({
   initials,
   displayName,
   role,
@@ -44,16 +44,16 @@ export function UserMenu({
           side="right"
           sideOffset={8}
           align="end"
-          className="w-56 mb-2 border-border z-[60]"
+          className="w-56 mb-2 border-border z-[60] p-2"
         >
           <DropdownMenuItem onClick={onProfileClick} className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
+            <span className="text-caption font-normal">Profile</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Logout</span>
+            <span className="text-caption font-normal">Logout</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

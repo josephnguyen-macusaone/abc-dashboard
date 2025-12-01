@@ -16,10 +16,12 @@ export class User {
     phone,
     isActive,
     isFirstLogin,
+    requiresPasswordChange,
     langKey,
+    managedBy,
+    createdBy,
     createdAt,
     updatedAt,
-    createdBy,
     lastModifiedBy,
   }) {
     this.id = id;
@@ -32,10 +34,12 @@ export class User {
     this.phone = phone;
     this.isActive = isActive || false;
     this.isFirstLogin = isFirstLogin ?? true;
+    this.requiresPasswordChange = requiresPasswordChange || false;
     this.langKey = langKey || 'en';
+    this.managedBy = managedBy;
+    this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
-    this.createdBy = createdBy;
     this.lastModifiedBy = lastModifiedBy;
 
     this.validate();
@@ -91,10 +95,12 @@ export class User {
       phone: this.phone || null,
       isActive: this.isActive,
       isFirstLogin: this.isFirstLogin,
+      requiresPasswordChange: this.requiresPasswordChange,
       langKey: this.langKey,
+      managedBy: this.managedBy,
+      createdBy: this.createdBy,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      createdBy: this.createdBy,
       lastModifiedBy: this.lastModifiedBy,
     };
   }

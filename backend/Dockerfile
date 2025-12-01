@@ -1,8 +1,8 @@
-# Use Node.js 18 Alpine for smaller image size
-FROM node:18-alpine
+# Use Node.js 20 Alpine for better security and performance (Active LTS)
+FROM node:20-alpine
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Update Alpine packages and install curl for health checks
+RUN apk update && apk upgrade && apk add --no-cache curl
 
 # Set working directory
 WORKDIR /app
@@ -10,8 +10,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies based on NODE_ENV
+ARG NODE_ENV=production
+RUN if [ "$NODE_ENV" = "production" ]; then \
+      npm ci --only=production; \
+    else \
+      npm ci; \
+    fi && npm cache clean --force
 
 # Copy source code
 COPY . .

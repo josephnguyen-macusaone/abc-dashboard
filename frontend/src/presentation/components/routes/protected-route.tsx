@@ -23,6 +23,9 @@ export function ProtectedRoute({
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
+    // Don't redirect while auth is still loading
+    if (isLoading) return;
+
     if (requireAuth && !isAuthenticated) {
       router.push(redirectTo);
       return;

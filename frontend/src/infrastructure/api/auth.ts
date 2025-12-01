@@ -172,7 +172,7 @@ export class AuthApiService {
    */
   static async updateProfile(updates: ProfileUpdateRequestDto): Promise<ProfileUpdateResponseDto> {
     try {
-      const response = await httpClient.put<ApiResponse<ProfileUpdateResponseDto>>('/auth/profile', updates);
+      const response = await httpClient.put<ApiResponse<ProfileUpdateResponseDto>>('/profile', updates);
 
       if (!response.data) {
         throw new Error('Update profile response missing data');

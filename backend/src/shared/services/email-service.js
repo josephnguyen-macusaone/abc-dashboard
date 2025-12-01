@@ -100,9 +100,9 @@ export class EmailService {
   }
 
   /**
-   * Send welcome email with temporary password and graceful degradation
+   * Send welcome email with temporary password and role-based content
    * @param {string} to - Recipient email
-   * @param {Object} data - Template data
+   * @param {Object} data - Template data including role and manager info
    */
   async sendWelcomeWithPassword(to, data) {
     const subject = 'Welcome to ABC Dashboard - Your Account Details';
@@ -110,12 +110,16 @@ export class EmailService {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Welcome to ABC Dashboard!</h2>
         <p>Hello {{displayName}},</p>
-        <p>An account has been created for you on ABC Dashboard. Here are your login credentials:</p>
 
-        <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #007bff;">
-          <p><strong>Username:</strong> {{username}}</p>
+        <p>An account has been created for you with the role of <strong>{{role}}</strong>.</p>
+
+        <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;">
+          <p><strong>Email:</strong> {{username}}</p>
           <p><strong>Temporary Password:</strong> <span style="font-family: monospace; background-color: #e9ecef; padding: 2px 6px; border-radius: 3px;">{{password}}</span></p>
-          <p><strong>Login URL:</strong> {{loginUrl}}</p>
+          <p><strong>Role:</strong> {{role}}</p>
+          {{#if managerName}}
+          <p><strong>Manager:</strong> {{managerName}}</p>
+          {{/if}}
         </div>
 
         <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 4px;">
@@ -128,16 +132,21 @@ export class EmailService {
 
         <h3>Getting Started:</h3>
         <ol>
-          <li>Click the login button above or visit {{loginUrl}}</li>
-          <li>Use your username and temporary password to log in</li>
+          <li>Click the login button above</li>
+          <li>Use your email and temporary password to log in</li>
           <li>You will be prompted to change your password immediately</li>
           <li>Choose a strong, memorable password</li>
         </ol>
 
-        <p>If you have any questions or need assistance, please contact your administrator.</p>
+        {{#if managerName}}
+        <h3>Your Manager:</h3>
+        <p>You are managed by: <strong>{{managerName}}</strong></p>
+        <p>Contact your manager for any account-related questions.</p>
+        {{/if}}
 
+        <p>If you have any questions, please contact your administrator.</p>
         <p>Welcome to the team!</p>
-        <p>Best regards,<br>The ABC Dashboard Team</p>
+        <p>Best regards,<br />ABC Dashboard Team</p>
 
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
         <p style="font-size: 12px; color: #666;">

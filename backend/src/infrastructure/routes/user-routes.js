@@ -3,6 +3,11 @@ import { validateRequest, validateQuery } from '../middleware/validation-middlew
 import { userSchemas } from '../api/v1/schemas/user.schemas.js';
 import { authenticate, authorizeSelf, authorize } from '../middleware/auth-middleware.js';
 import { PERMISSIONS } from '../../shared/constants/roles.js';
+import {
+  checkUserCreationPermission,
+  checkUserAccessPermission,
+  checkStaffReassignmentPermission,
+} from '../middleware/user-management.middleware.js';
 
 /**
  * User Routes
@@ -59,6 +64,7 @@ export function createUserRoutes(userController) {
    */
   router.get(
     '/',
+    checkUserAccessPermission('list'),
     validateQuery(userSchemas.getUsers),
     userController.getUsers.bind(userController)
   );
@@ -127,6 +133,7 @@ export function createUserRoutes(userController) {
    */
   router.post(
     '/',
+    checkUserCreationPermission(),
     validateRequest(userSchemas.createUser),
     userController.createUser.bind(userController)
   );
@@ -155,7 +162,11 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.get('/:id', authorize([PERMISSIONS.READ_USER]), userController.getUser.bind(userController));
+  router.get(
+    '/:id',
+    checkUserAccessPermission('read'),
+    userController.getUser.bind(userController)
+  );
 
   /**
    * @swagger
@@ -201,7 +212,7 @@ export function createUserRoutes(userController) {
    */
   router.put(
     '/:id',
-    authorize([PERMISSIONS.UPDATE_USER]),
+    checkUserAccessPermission('update'),
     validateRequest(userSchemas.updateUser),
     userController.updateUser.bind(userController)
   );
@@ -230,7 +241,56 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.delete('/:id', authorize([PERMISSIONS.DELETE_USER]), userController.deleteUser.bind(userController));
+  router.delete(
+    '/:id',
+    checkUserAccessPermission('delete'),
+    userController.deleteUser.bind(userController)
+  );
+
+  /**
+   * @swagger
+   * /users/{id}/reassign:
+   *   patch:
+   *     summary: Reassign staff member to different manager
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Staff user ID to reassign
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - newManagerId
+   *             properties:
+   *               newManagerId:
+   *                 type: string
+   *                 description: New manager ID to assign the staff member to
+   *     responses:
+   *       200:
+   *         description: Staff member reassigned successfully
+   *       400:
+   *         description: Validation error
+   *       401:
+   *         description: Unauthorized
+   *       403:
+   *         description: Forbidden - Admin only
+   *       404:
+   *         description: User not found
+   */
+  router.patch(
+    '/:id/reassign',
+    checkStaffReassignmentPermission,
+    userController.reassignStaff.bind(userController)
+  );
 
   return router;
 }

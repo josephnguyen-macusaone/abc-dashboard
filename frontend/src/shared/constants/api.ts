@@ -7,7 +7,7 @@
  * Ensures the URL has a valid http:// or https:// scheme for CORS requests
  */
 const validateAndNormalizeBaseURL = (url: string | undefined): string => {
-  const DEFAULT_URL = 'http://localhost:5000/api';
+  const DEFAULT_URL = 'http://localhost:5000/api/v1';
 
   // If URL is empty, undefined, or null, use default
   if (!url || url.trim() === '') {

@@ -27,11 +27,13 @@ src/
 ## 🛠️ Technology Stack
 
 ### Core Framework
+
 - **Next.js 16.0.1** - React framework with App Router
 - **React 19.2.0** - UI library with concurrent features
 - **TypeScript 5** - Type-safe JavaScript
 
 ### State Management & Data
+
 - **Custom React Contexts** - Theme and error handling contexts
 - **Zustand** - Authentication state management
 - **Axios** - HTTP client for API communication
@@ -40,6 +42,7 @@ src/
 - **JWT** - Token handling
 
 ### UI & Styling
+
 - **Tailwind CSS v4** - Utility-first CSS framework
 - **Shadcn-UI** - Modern component library built on Radix UI
 - **Radix UI** - Accessible component primitives
@@ -48,6 +51,7 @@ src/
 - **Recharts** - Data visualization
 
 ### Development Tools
+
 - **ESLint 9** - Code linting with Next.js config
 - **TypeScript** - Type checking
 - **Shadcn-UI + CVA** - Component library with variant system
@@ -56,6 +60,7 @@ src/
 ### Installation
 
 1. **Clone and install dependencies:**
+
 ```bash
 npm install
 # or
@@ -65,6 +70,7 @@ pnpm install
 ```
 
 2. **Set up environment variables:**
+
 ```bash
 # Copy the environment example
 cp env.example .env.local
@@ -79,6 +85,7 @@ cp env.example .env.production  # For production
 ```
 
 3. **Start the development server:**
+
 ```bash
 npm run dev
 # or
@@ -109,7 +116,7 @@ The application supports multiple environment configurations:
 
 ```bash
 # Backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 ```
 
 #### Optional Variables
@@ -126,13 +133,15 @@ NEXT_PUBLIC_SENTRY_DSN=
 ### Environment-Specific Configurations
 
 #### Development (`.env.development`)
+
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=true
 NEXT_PUBLIC_ENABLE_ANALYTICS=false
 ```
 
 #### Staging (`.env.staging`)
+
 ```bash
 NEXT_PUBLIC_API_URL=https://api-staging.yourdomain.com/api
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
@@ -140,6 +149,7 @@ NEXT_PUBLIC_ENABLE_ANALYTICS=true
 ```
 
 #### Production (`.env.production`)
+
 ```bash
 NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
@@ -208,6 +218,7 @@ src/
 ## 🔧 Available Scripts
 
 ### Development
+
 ```bash
 npm run dev        # Start development server on http://localhost:3000
 npm run build      # Build for production
@@ -216,6 +227,7 @@ npm run lint       # Run ESLint code analysis
 ```
 
 ### Production Build
+
 ```bash
 npm run build      # Create optimized production build
 npm run start      # Serve production build
@@ -240,11 +252,13 @@ npm run test:e2e
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
+
 1. Connect your GitHub repository to Vercel
 2. Set environment variables in Vercel dashboard
 3. Deploy automatically on push
 
 ### Manual Deployment
+
 ```bash
 # Build the application
 npm run build
@@ -254,6 +268,7 @@ npm run start
 ```
 
 ### Environment Variables for Deployment
+
 Make sure to set these in your deployment platform:
 
 - `NEXT_PUBLIC_API_URL` - Your backend API URL
@@ -263,18 +278,21 @@ Make sure to set these in your deployment platform:
 ## 🔐 Authentication & Authorization
 
 ### Authentication Flow
+
 - **JWT-based authentication** with access and refresh tokens
 - **Email verification** for account activation
 - **Secure token storage** using HTTP-only cookies and localStorage
 - **Automatic token refresh** for seamless user experience
 
 ### Route Protection
+
 - **Protected Routes**: Dashboard and profile routes require authentication
 - **Role-based Access**: Dynamic routes based on user roles (`/dashboard/[role]`)
 - **Route Groups**: Authentication routes organized under `(auth)` group
 - **Middleware Protection**: Server-side route protection
 
 ### User Management
+
 - **Registration**: New user signup with email verification
 - **Login/Logout**: Secure authentication with session management
 - **Profile Management**: User profile updates and password changes
@@ -294,16 +312,19 @@ This application implements several security measures:
 ## 🛠️ Development Guidelines
 
 ### Architecture Principles
+
 - **Clean Architecture**: Domain → Application → Infrastructure → Presentation layers
 - **Atomic Design**: Atoms → Molecules → Organisms → Pages → Templates
 - **Component Composition**: Favor composition over inheritance
 
 ### Code Quality
+
 - **TypeScript**: Strict type checking enabled for all new code
 - **ESLint**: Modern flat config with Next.js rules
 - **Clean Architecture**: Separation of business logic from framework concerns
 
 ### State Management
+
 - **Custom React Contexts**: Theme management with localStorage persistence
 - **Error Context**: Comprehensive error handling with recovery mechanisms
 - **Toast Context**: Notification system with positioning and actions
@@ -311,6 +332,7 @@ This application implements several security measures:
 - **React Hook Form**: Form state management with Zod validation
 
 ### Commit Convention
+
 ```
 feat: add new feature
 fix: bug fix
@@ -322,6 +344,7 @@ chore: maintenance tasks
 ```
 
 ### Branch Naming
+
 ```
 feature/feature-name
 bugfix/bug-description
@@ -340,6 +363,7 @@ hotfix/critical-fix
 ## 🆕 Recent Improvements
 
 ### Code Quality & Architecture
+
 - **Atoms Reorganization**: Merged display/ui components into unified ui folder
 - **Constants Cleanup**: Removed unused constants files (app.ts, errors.ts, routes.ts, validation.ts)
 - **Context Optimization**: Improved useCallback dependencies for better performance
@@ -347,12 +371,14 @@ hotfix/critical-fix
 - **Error Handling**: Enhanced error context with comprehensive recovery mechanisms
 
 ### Component Library
+
 - **Typography System**: Complete design system with variants and composition utilities
 - **Form Components**: Enhanced input styling with better focus states
 - **Toast Notifications**: Bottom-right positioning with action support
 - **Button Alignment**: Improved icon-text alignment in button components
 
 ### Developer Experience
+
 - **Type Safety**: Fixed UserRole enum type issues in user management
 - **Build Optimization**: Removed unused dependencies and dead code
 - **Documentation**: Updated project structure and architecture details

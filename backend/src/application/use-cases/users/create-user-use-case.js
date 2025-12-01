@@ -17,13 +17,14 @@ export class CreateUserUseCase {
   /**
    * Execute create user use case
    * @param {CreateUserRequestDto} createUserRequest - Validated request data
-   * @param {string} createdBy - User ID who created this user
+   * @param {Object} creatorUser - User who is creating this account
    * @returns {Promise<Object>} Created user data
    */
-  async execute(createUserRequest, createdBy) {
+  async execute(createUserRequest, creatorUser) {
     try {
       // Request DTO is already validated by controller
-      const { username, email, displayName, role, avatarUrl, phone } = createUserRequest;
+      const { username, email, displayName, role, avatarUrl, phone, managedBy, createdBy } =
+        createUserRequest;
 
       // Additional validation
       if (!username || !email || !displayName) {
@@ -56,9 +57,28 @@ export class CreateUserUseCase {
         avatarUrl,
         phone,
         isFirstLogin: true,
+        requiresPasswordChange: true,
         langKey: 'en',
-        createdBy,
+        managedBy,
+        createdBy: createdBy || creatorUser.id,
       });
+
+      // Get manager information for email
+      let managerName = null;
+      if (managedBy) {
+        try {
+          const manager = await this.userRepository.findById(managedBy);
+          if (manager) {
+            managerName = manager.displayName;
+          }
+        } catch (error) {
+          logger.warn('Could not fetch manager information for email', {
+            userId: user.id,
+            managedBy,
+            error: error.message,
+          });
+        }
+      }
 
       // Send welcome email with temporary password
       try {
@@ -66,12 +86,16 @@ export class CreateUserUseCase {
           displayName: user.displayName,
           username: user.username,
           password: temporaryPassword,
+          role: user.role,
           loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000/login',
+          managerName,
         });
 
         logger.info('Welcome email sent', {
           userId: user.id,
           email: user.email,
+          role: user.role,
+          managedBy,
         });
       } catch (emailError) {
         logger.error('Failed to send welcome email', {
@@ -83,12 +107,26 @@ export class CreateUserUseCase {
         // Admin can manually resend or user can request password reset
       }
 
-      // Log the creation
+      // Log the creation with audit information
+      logger.security('USER_CREATED', {
+        action: 'create_user',
+        actorId: creatorUser.id,
+        actorRole: creatorUser.role,
+        targetId: user.id,
+        targetRole: user.role,
+        targetEmail: user.email,
+        managedBy,
+        createdAt: new Date().toISOString(),
+      });
+
       logger.info('User created', {
         userId: user.id,
-        createdBy,
+        createdBy: creatorUser.id,
+        creatorRole: creatorUser.role,
         email: user.email,
         username: user.username,
+        role: user.role,
+        managedBy,
         temporaryPasswordSent: true,
       });
 

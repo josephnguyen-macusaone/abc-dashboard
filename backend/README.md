@@ -47,7 +47,7 @@ src/
 
 ## Quick Start
 
-**Prerequisites**: Node.js 18+, MongoDB 6+, npm 8+
+**Prerequisites**: Node.js 20+, MongoDB 6+, npm 8+
 
 ```bash
 npm install
@@ -125,6 +125,7 @@ docker-compose -f docker-compose.dev.yml exec api npm run seed
 ```
 
 This will start:
+
 - MongoDB, Redis, MailHog, and the API
 - Development environment with debug logging
 
@@ -154,6 +155,7 @@ docker-compose up -d --build
 ```
 
 **For local testing, use `docker-compose.dev.yml` instead:**
+
 ```bash
 docker-compose -f docker-compose.dev.yml up -d
 ```

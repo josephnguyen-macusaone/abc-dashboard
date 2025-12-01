@@ -1,14 +1,15 @@
 /**
  * Request Password Reset Use Case
- * Handles password reset request logic
+ * Handles password reset request logic - generates temporary password and sends via email
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
+import { generateTemporaryPassword } from '../../../shared/utils/crypto.js';
 
 export class RequestPasswordResetUseCase {
-  constructor(userRepository, tokenService, emailService) {
+  constructor(userRepository, authService, emailService) {
     this.userRepository = userRepository;
-    this.tokenService = tokenService;
+    this.authService = authService;
     this.emailService = emailService;
   }
 
@@ -43,12 +44,26 @@ export class RequestPasswordResetUseCase {
         };
       }
 
-      // Generate password reset token
-      const resetToken = this.tokenService.generatePasswordResetToken(user.id, user.email);
+      // Generate secure temporary password
+      const temporaryPassword = generateTemporaryPassword(12);
 
-      // Send password reset email
+      // Hash the temporary password
+      const hashedPassword = await this.authService.hashPassword(temporaryPassword);
+
+      // Update user with temporary password and force password change
+      const updateData = {
+        hashedPassword,
+        requiresPasswordChange: true,
+      };
+
+      const updatedUser = await this.userRepository.update(user.id, updateData);
+      if (!updatedUser) {
+        throw new Error('Failed to update user password');
+      }
+
+      // Send email with temporary password
       try {
-        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+        const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3000/login';
 
         await this.emailService.sendEmail(
           user.email,
@@ -57,25 +72,33 @@ export class RequestPasswordResetUseCase {
 
 You requested a password reset for your ABC Dashboard account.
 
-Click the link below to reset your password:
-<a href="{{resetUrl}}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 16px 0;">Reset Password</a>
+Here is your temporary password: <strong>{{temporaryPassword}}</strong>
 
-If the button doesn't work, copy and paste this link into your browser:
-{{resetUrl}}
+Please use this password to log in to your account immediately. You will be required to change your password after logging in.
 
-This link will expire in 10 minutes for security reasons.
+<strong>⚠️ Security Notice:</strong> This is a temporary password that will expire once you change it. Keep this email secure and change your password as soon as possible.
 
-If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+Login URL: <a href="{{loginUrl}}" style="color: #007bff;">{{loginUrl}}</a>
+
+<strong>Steps to complete your password reset:</strong>
+1. Click the login URL above or go to your ABC Dashboard login page
+2. Enter your email address and the temporary password shown above
+3. You will be automatically redirected to change your password
+4. Choose a strong, memorable password
+5. Click "Change Password" to complete the process
+
+If you didn't request this password reset, please contact support immediately.
 
 Best regards,
 ABC Dashboard Team`,
           {
             displayName: user.displayName,
-            resetUrl,
+            temporaryPassword,
+            loginUrl,
           }
         );
 
-        logger.info('Password reset email sent', {
+        logger.info('Password reset email sent with temporary password', {
           userId: user.id,
           email: user.email,
         });

@@ -38,7 +38,7 @@ export function SidebarNavigation({
 
   return (
     <ScrollArea className={`flex-1 overflow-hidden ${className || ''}`}>
-      <nav className="space-y-0.5 py-4 px-2" role="navigation" aria-label="Main navigation">
+      <nav className="space-y-0.5 py-4" role="navigation" aria-label="Main navigation">
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.href;

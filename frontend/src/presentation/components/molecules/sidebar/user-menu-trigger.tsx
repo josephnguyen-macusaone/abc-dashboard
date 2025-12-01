@@ -22,7 +22,7 @@ export const UserMenuTrigger = React.forwardRef<HTMLButtonElement, UserMenuTrigg
         ref={ref}
         type="button"
         className={cn(
-          'w-full flex items-center justify-between p-4 transition-all duration-200',
+          'w-full flex items-center justify-between p-3 transition-all duration-200',
           'hover:bg-accent hover:text-accent-foreground',
           'group rounded-none focus:outline-none focus-visible:ring-0',
           className

@@ -33,7 +33,6 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<ProfileFormData>(() => {
-    console.log('initialData', initialData);
     return {
       displayName: initialData?.displayName ?? '',
       bio: initialData?.bio ?? '',
@@ -152,25 +151,6 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-end gap-3">
           <Button
-            type="submit"
-            disabled={isLoading}
-            className="w-full sm:w-auto"
-            variant="default"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className='text-button-s pb-0.5'>Updating...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span className='text-button-s pb-0.5'>Save Changes</span>
-              </>
-            )}
-          </Button>
-
-          <Button
             type="button"
             variant="outline"
             onClick={onCancel}
@@ -178,7 +158,26 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
             className="w-full sm:w-auto"
           >
             <X className="w-4 h-4" />
-            <span className='text-button-s pb-0.5'>Cancel</span>
+            <span className='text-button-s'>Cancel</span>
+          </Button>
+
+          <Button
+            type="submit"
+            variant="default"
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className='text-button-s'>Updating...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span className='text-button-s'>Save Changes</span>
+              </>
+            )}
           </Button>
         </div>
       </form>

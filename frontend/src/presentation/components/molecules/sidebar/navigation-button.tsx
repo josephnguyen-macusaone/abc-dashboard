@@ -25,28 +25,34 @@ export function NavigationButton({
     <Button
       variant="ghost"
       className={cn(
-        'w-full justify-start rounded-md transition-all duration-200 ease-in-out',
+        'w-full justify-start transition-all duration-200 ease-in-out',
         'group relative',
-        'px- py-2.5 h-auto',
+        'py-2.5 h-auto',
         isActive
-          ? 'bg-primary text-primary-foreground shadow-sm font-semibold hover:bg-muted/50 hover:!text-foreground'
-          : 'text-foreground/70 hover:bg-primary hover:!text-foreground',
+          ? 'text-primary'
+          : 'text-muted-foreground group-hover:text-primary',
         className
       )}
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
     >
-      <Icon
+      <span
         className={cn(
-          'mr-3 h-3 w-3 transition-all duration-200 shrink-0',
-          'group-hover:scale-110',
+          'flex items-center justify-start gap-3 transition-all duration-200 w-full text-left',
           isActive
-            ? 'text-primary-foreground group-hover:!text-foreground'
-            : 'text-muted-foreground group-hover:!text-foreground'
+            ? 'text-primary'
+            : 'text-muted-foreground group-hover:text-primary'
         )}
-      />
-      {/* MAC USA ONE Typography: Label S for navigation items */}
-      <span className="text-label-s pb-0.5">{name}</span>
+      >
+        <Icon
+          className={cn(
+            'h-4 w-4 shrink-0',
+            'group-hover:scale-110'
+          )}
+        />
+        {/* MAC USA ONE Typography: Label S for navigation items */}
+        <span className="text-label-m">{name}</span>
+      </span>
     </Button>
   );
 }

@@ -10,14 +10,9 @@ import { UserListParams } from '@/application/dto/user-dto';
 import { DashboardTemplate } from '../../templates/dashboard-template';
 
 export function UserManagementPage() {
-  console.log('UserManagementPage rendering');
-
   const { user: currentUser } = useAuth();
   const { getUsers, createUser, updateUser, deleteUser, loading } = useUser();
   const { success: showSuccess, error: showError } = useToast();
-
-  console.log('Current user:', currentUser);
-  console.log('Loading state:', loading);
 
   const [users, setUsers] = useState<User[]>([]);
 

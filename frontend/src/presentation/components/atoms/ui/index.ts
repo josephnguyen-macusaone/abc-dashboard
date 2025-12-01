@@ -14,6 +14,7 @@ export { Logo } from './logo';
 export { Loading, LoadingSpinner, LoadingCard, LoadingTable } from './loading';
 export { LoadingOverlay } from './loading-overlay';
 export { RoleBadge } from './role-badge';
+export { StatusBadge } from './status-badge';
 export { Toaster } from './toaster';
 
 // Typography System - MAC USA ONE Design System

@@ -6,7 +6,7 @@ import { Sidebar } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useState } from 'react';
-import { Home, Loader2, Users, UserCheck, X } from 'lucide-react';
+import { Home, Loader2, Users, UserCheck } from 'lucide-react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { PermissionUtils } from '@/shared/constants';
@@ -17,15 +17,12 @@ interface DashboardTemplateProps {
 
 // Permission-based navigation items based on enterprise permission system
 const getNavigationItems = (userRole?: string): NavigationItem[] => {
-  console.log('getNavigationItems called with role:', userRole);
-
   const baseItems: NavigationItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
   ];
 
   // Admin navigation (full system access)
   if (PermissionUtils.canManageSystem(userRole)) {
-    console.log('User has admin permissions, showing user management');
     return [
       ...baseItems,
       { name: 'User Management', href: '/dashboard?section=users', icon: Users },
@@ -34,7 +31,6 @@ const getNavigationItems = (userRole?: string): NavigationItem[] => {
 
   // Manager navigation (user management with restrictions)
   if (PermissionUtils.canReadUser(userRole)) {
-    console.log('User has manager permissions, showing user management');
     return [
       ...baseItems,
       { name: 'User Management', href: '/dashboard?section=users', icon: Users },
@@ -43,7 +39,6 @@ const getNavigationItems = (userRole?: string): NavigationItem[] => {
 
   // Staff navigation (limited access)
   if (PermissionUtils.isStaff(userRole)) {
-    console.log('User has staff role, showing limited navigation');
     return [
       ...baseItems,
       { name: 'Profile', href: '/dashboard?section=profile', icon: UserCheck },
@@ -51,7 +46,6 @@ const getNavigationItems = (userRole?: string): NavigationItem[] => {
   }
 
   // Default/unknown role
-  console.log('User has unknown role, showing base navigation');
   return baseItems;
 };
 
@@ -66,7 +60,6 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   // Get navigation items based on user role
   const navigationItems = useMemo(() => {
     const items = getNavigationItems(user?.role);
-    console.log('Navigation items for role', user?.role, ':', items.map(item => item.name));
     return items;
   }, [user?.role]);
 
@@ -74,7 +67,6 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const currentPath = useMemo(() => {
     const search = searchParams.toString();
     const fullPath = search ? `${pathname}?${search}` : pathname;
-    console.log('Current path:', fullPath);
     return fullPath;
   }, [pathname, searchParams]);
 

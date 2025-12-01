@@ -52,8 +52,9 @@ export class LoginUseCase {
         throw new InvalidCredentialsException();
       }
 
-      // Check if this is first login and password change is required
-      const requiresPasswordChange = user.isFirstLogin === true;
+      // Check if password change is required (first login or password reset)
+      const requiresPasswordChange =
+        user.isFirstLogin === true || user.requiresPasswordChange === true;
 
       // Generate tokens
       const accessToken = this.tokenService.generateAccessToken({

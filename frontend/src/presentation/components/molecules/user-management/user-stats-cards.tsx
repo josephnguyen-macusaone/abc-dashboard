@@ -17,10 +17,10 @@ export function UserStatsCards({ users, isLoading = false, className }: UserStat
   const staff = users.filter(u => u.role === 'staff').length;
 
   return (
-    <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${className || ''}`}>
+    <div className={`grid grid-cols-2 md:grid-cols-4 gap-6 px-6 ${className || ''}`}>
       <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg p-4 border border-border/50">
         <div className="flex items-center justify-between mb-2">
-          <Typography variant="body-s" color="muted" className="text-muted-foreground">
+          <Typography variant="label-s" color="muted" className="text-muted-foreground">
             Total Users
           </Typography>
           <Users className="h-4 w-4 text-muted-foreground" />
@@ -29,9 +29,10 @@ export function UserStatsCards({ users, isLoading = false, className }: UserStat
           {isLoading ? '...' : totalUsers}
         </Typography>
       </div>
+
       <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg p-4 border border-border/50">
         <div className="flex items-center justify-between mb-2">
-          <Typography variant="body-s" color="muted" className="text-muted-foreground">
+          <Typography variant="label-s" color="muted" className="text-muted-foreground">
             Admins
           </Typography>
           <Crown className="h-4 w-4 text-muted-foreground" />
@@ -40,9 +41,10 @@ export function UserStatsCards({ users, isLoading = false, className }: UserStat
           {isLoading ? '...' : admins}
         </Typography>
       </div>
+
       <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg p-4 border border-border/50">
         <div className="flex items-center justify-between mb-2">
-          <Typography variant="body-s" color="muted" className="text-muted-foreground">
+          <Typography variant="label-s" color="muted" className="text-muted-foreground">
             Managers
           </Typography>
           <Shield className="h-4 w-4 text-muted-foreground" />
@@ -51,9 +53,10 @@ export function UserStatsCards({ users, isLoading = false, className }: UserStat
           {isLoading ? '...' : managers}
         </Typography>
       </div>
+
       <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg p-4 border border-border/50">
         <div className="flex items-center justify-between mb-2">
-          <Typography variant="body-s" color="muted" className="text-muted-foreground">
+          <Typography variant="label-s" color="muted" className="text-muted-foreground">
             Staff
           </Typography>
           <Shield className="h-4 w-4 text-muted-foreground" />

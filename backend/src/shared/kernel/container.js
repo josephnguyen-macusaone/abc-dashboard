@@ -155,7 +155,7 @@ class Container {
   getRequestPasswordResetUseCase() {
     return new RequestPasswordResetUseCase(
       this.getUserRepository(),
-      this.getTokenService(),
+      this.getAuthService(),
       this.getEmailService()
     );
   }

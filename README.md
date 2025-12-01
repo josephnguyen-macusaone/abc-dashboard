@@ -2,78 +2,84 @@
 
 A full-stack dashboard application with modern frontend and enterprise-grade backend API.
 
-## 📁 Project Structure
-
-```txt
-abc-dashboard/
-├── backend/              # Node.js/Express API with Clean Architecture
-├── frontend/             # Next.js React app with TypeScript
-├── deployment/           # Production deployment configurations
-│   ├── docker/          # Docker container deployment
-│   ├── openlitespeed/   # Traditional OpenLiteSpeed deployment
-│   └── shared/          # Shared configuration files
-└── README.md            # This file
-```
-
 ## 🚀 Quick Start
 
-### Development Setup
+### Option 1: OpenLiteSpeed Deployment (Recommended)
 
-**Prerequisites:** Node.js 18+, MongoDB, Redis (optional)
+**Single-command deployment to OpenLiteSpeed:**
+
+```bash
+# Prerequisites: Node.js, Docker, OpenLiteSpeed installed on Linux server
+
+# 1. Configure environment
+cp .env.example .env
+nano .env  # Edit with your production values
+
+# 3. Deploy everything automatically
+./deploy/deploy.sh
+```
+
+**That's it!** The script will:
+
+- ✅ Build frontend locally (static files)
+- 🔨 Build backend Docker container
+- ⚙️ Configure OpenLiteSpeed virtual host
+- 📋 Copy static files to OpenLiteSpeed document root
+- 🐳 Start backend services (MongoDB, Redis, API)
+- 🌐 Set up API proxy routing
+- 💚 Run comprehensive health checks
+
+**Fully automated - no user interaction required!** 🚀
+
+### Option 2: Docker Development
+
+**Prerequisites:** Node.js 20+, Docker, Docker Compose
 
 ```bash
 # Clone repository
 git clone <repository-url>
 cd abc-dashboard
 
-# Start backend (detailed setup in backend/README.md)
+# Configure environment
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+
+# Build and deploy
+docker-compose up -d
+```
+
+### Option 3: Local Development
+
+**Prerequisites:** Node.js 20+, MongoDB, Redis (optional)
+
+```bash
+# Backend setup (detailed in backend/README.md)
 cd backend
 npm install
+cp env/development.env .env  # Configure database connection
 npm run dev
 
-# Start frontend (detailed setup in frontend/README.md)
-cd frontend
+# Frontend setup (in another terminal)
+cd ../frontend
 npm install
+cp .env.example .env  # Configure API URL
 npm run dev
 ```
-
-### Production Deployment
-
-Choose your preferred deployment method:
-
-#### 🐳 Docker Deployment (Recommended)
-
-**Best for:** Production, scaling, modern DevOps
-
-```bash
-cd deployment/docker
-chmod +x docker-deploy.sh
-./docker-deploy.sh
-```
-
-#### 🏗️ OpenLiteSpeed Deployment
-
-**Best for:** Existing OpenLiteSpeed servers, manual control
-
-```bash
-cd deployment/openlitespeed
-chmod +x deploy.sh
-./deploy.sh
-```
-
-## 🌐 Production URLs
-
-After deployment, your application will be available at:
-
-- **Frontend:** <https://portal.abcsalon.us>
-- **API:** <https://portal.abcsalon.us/api/v1>
-- **API Docs:** <https://portal.abcsalon.us/api-docs>
-- **Health Check:** <https://portal.abcsalon.us/api/v1/health>
 
 ## 📚 Documentation Links
 
 - **[📚 Backend API](./backend/README.md)** - Complete API documentation and architecture
 - **[🎨 Frontend App](./frontend/README.md)** - React application guide and development
+- **[🚀 Deployment Guide](./deploy/README.md)** - Complete deployment documentation with architecture diagrams
+
+## 🌐 Production URLs
+
+After deployment, your application will be available at:
+
+- **Frontend:** `http://your-server`
+- **API:** `http://your-server/api/v1`
+- **API Docs:** `http://your-server/api-docs`
+- **Health Check:** `http://your-server/api/v1/health`
 
 ## 🏗️ Architecture Overview
 
@@ -117,13 +123,3 @@ After deployment, your application will be available at:
 This project is licensed under the ISC License - see the LICENSE file for details.
 
 ---
-
-## 🎯 Recent Updates
-
-- **Frontend Architecture**: Complete Clean Architecture implementation with atomic design
-- **Component Library**: Enhanced Shadcn-UI components with custom typography system
-- **State Management**: Optimized contexts for theme, error handling, and authentication
-- **Code Quality**: Comprehensive cleanup removing unused constants and dependencies
-- **Developer Experience**: Improved TypeScript safety and performance optimizations
-
-**🎯 Ready to get started? Check out the deployment guides for production setup!**

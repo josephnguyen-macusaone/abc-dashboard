@@ -114,7 +114,7 @@ NEXT_PUBLIC_SW_PATH=/sw.js
 
 ```bash
 # Development environment settings
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 NEXT_PUBLIC_APP_ENV=development
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=true
 NEXT_PUBLIC_ENABLE_ANALYTICS=false

@@ -374,13 +374,6 @@ class AuthApi {
     await apiClient.post('/auth/verify-email', { token });
   }
 
-  async requestPasswordReset(email: string): Promise<void> {
-    await apiClient.post('/auth/forgot-password', { email });
-  }
-
-  async resetPassword(data: ResetPasswordData): Promise<void> {
-    await apiClient.post('/auth/reset-password', data);
-  }
 }
 
 export const authApi = new AuthApi();
@@ -484,7 +477,7 @@ export const usersApi = new UsersApi();
 export class AuthRepository implements IAuthRepository {
   async login(email: string, password: string): Promise<AuthResult> {
     try {
-      const response = await authApi.login({ email, password });
+      const response = await authApi.login(email, password);
 
       const user = UserMapper.toDomain(response.user);
       const tokens = new AuthTokens(
@@ -809,10 +802,7 @@ describe('AuthApi', () => {
         data: mockResponse,
       });
 
-      const result = await authApi.login({
-        email: 'john@example.com',
-        password: 'password',
-      });
+      const result = await authApi.login('john@example.com', 'password');
 
       expect(apiClient.post).toHaveBeenCalledWith('/auth/login', {
         email: 'john@example.com',
@@ -828,10 +818,7 @@ describe('AuthApi', () => {
 
       (apiClient.post as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(authApi.login({
-        email: 'wrong@example.com',
-        password: 'wrong',
-      })).rejects.toEqual(mockError);
+      await expect(authApi.login('wrong@example.com', 'wrong')).rejects.toEqual(mockError);
     });
   });
 });
