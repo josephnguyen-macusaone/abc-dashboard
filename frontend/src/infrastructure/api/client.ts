@@ -119,22 +119,24 @@ class HttpClient {
         }
 
         // Log outgoing request with trace information
-        logWithTrace('info', `API Request: ${config.method?.toUpperCase()} ${config.url}`, {
+        logger.api(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
           correlationId,
           url: config.url,
           method: config.method,
           traceId: trace.traceId,
           spanId: trace.spanId,
+          category: 'api-details',
         });
 
         return config;
       },
       (error: AxiosError) => {
         const correlationId = (error.config as any)?.correlationId || generateCorrelationId();
-        logger.error('Request failed', {
+        logger.api('Request failed', {
           correlationId,
           error: error.message,
           url: error.config?.url,
+          category: 'api-error',
         });
         return Promise.reject(handleApiError(error));
       }
@@ -147,13 +149,14 @@ class HttpClient {
         const trace = (response.config as any)?.trace;
 
         // Log successful response with trace information
-        logWithTrace('info', `API Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+        logger.api(`Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
           correlationId,
           status: response.status,
           duration: Date.now() - (response.config as any)?.startTime,
           url: response.config.url,
           traceId: trace?.traceId,
           spanId: trace?.spanId,
+          category: 'api-details',
         });
 
         return response;
@@ -163,11 +166,12 @@ class HttpClient {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
 
         // Log failed response
-        logger.error(`← ${error.response?.status || 'NETWORK'} ${error.config?.method?.toUpperCase()} ${error.config?.url}`, {
+        logger.api(`Response failed: ${error.response?.status || 'NETWORK'} ${error.config?.method?.toUpperCase()} ${error.config?.url}`, {
           correlationId,
           status: error.response?.status,
           error: error.message,
           url: error.config?.url,
+          category: 'api-error',
         });
 
         // Handle 401 Unauthorized - attempt token refresh
@@ -194,9 +198,10 @@ class HttpClient {
           originalRequest._retry = true;
           this.isRefreshing = true;
 
-          logger.warn('Token expired, attempting refresh', {
+          logger.security('Token expired, attempting refresh', {
             correlationId,
             url: originalRequest.url,
+            category: 'auth',
           });
 
           return new Promise((resolve, reject) => {

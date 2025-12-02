@@ -3,10 +3,26 @@
  * Handles JWT token verification and user authentication
  */
 import { ROLES, hasPermission } from '../../shared/constants/roles.js';
+import logger from '../config/logger.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 export class AuthMiddleware {
   constructor(tokenService, userRepository) {
     this.tokenService = tokenService;
     this.userRepository = userRepository;
+  }
+
+  /**
+   * Set correlation ID for request tracking (used by DI container)
+   * @param {string} correlationId - Request correlation ID
+   */
+  setCorrelationId(correlationId) {
+    // Set correlation ID on the services this middleware depends on
+    if (this.tokenService && typeof this.tokenService.setCorrelationId === 'function') {
+      this.tokenService.setCorrelationId(correlationId);
+    }
+    if (this.userRepository && typeof this.userRepository.setCorrelationId === 'function') {
+      this.userRepository.setCorrelationId(correlationId);
+    }
   }
 
   /**
@@ -18,10 +34,7 @@ export class AuthMiddleware {
       const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
       if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Access token is required',
-        });
+        return sendErrorResponse(res, 'TOKEN_MISSING');
       }
 
       // Verify token
@@ -30,20 +43,14 @@ export class AuthMiddleware {
       // Find user
       const user = await this.userRepository.findById(decoded.userId);
       if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found',
-        });
+        return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
 
       // Attach user to request
       req.user = user;
       next();
     } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid or expired token',
-      });
+      return sendErrorResponse(res, 'INVALID_TOKEN');
     }
   };
 
@@ -56,10 +63,7 @@ export class AuthMiddleware {
     const isOwner = req.user.id === resourceId || req.user._id?.toString() === resourceId;
 
     if (!isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only access your own resources.',
-      });
+      return sendErrorResponse(res, 'INSUFFICIENT_PERMISSIONS');
     }
     next();
   };
@@ -70,10 +74,7 @@ export class AuthMiddleware {
    */
   authorize = (requiredPermissions) => (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required',
-      });
+      return sendErrorResponse(res, 'TOKEN_MISSING');
     }
 
     // Check if user has any of the required permissions
@@ -82,10 +83,7 @@ export class AuthMiddleware {
     );
 
     if (!hasRequiredPermission) {
-      return res.status(403).json({
-        success: false,
-        message: 'Insufficient permissions',
-      });
+      return sendErrorResponse(res, 'INSUFFICIENT_PERMISSIONS');
     }
 
     next();
@@ -103,10 +101,7 @@ export class AuthMiddleware {
     }
 
     if (req.user.role !== ROLES.ADMIN) {
-      return res.status(403).json({
-        success: false,
-        message: 'Admin access required',
-      });
+      return sendErrorResponse(res, 'INSUFFICIENT_PERMISSIONS');
     }
 
     next();
@@ -146,7 +141,11 @@ export class AuthMiddleware {
         req.user = null;
       }
     } catch (error) {
-      // Silently ignore auth errors for optional auth
+      // Log unexpected errors but don't fail the request for optional auth
+      logger.error('Optional auth middleware error:', {
+        error: error.message,
+        correlationId: req.correlationId,
+      });
       req.user = null;
     }
 
@@ -154,16 +153,16 @@ export class AuthMiddleware {
   };
 }
 
-// Export middleware functions from container
-import { container } from '../../shared/kernel/container.js';
+// Export middleware functions that resolve from Awilix container
+// Using lazy resolution to avoid circular dependencies
+const getAuthMiddleware = async () => {
+  const { awilixContainer } = await import('../../shared/kernel/container.js');
+  return awilixContainer.getAuthMiddleware();
+};
 
-const authMiddleware = new AuthMiddleware(
-  container.getTokenService(),
-  container.getUserRepository()
-);
-
-export const authenticate = authMiddleware.authenticate;
-export const authorizeSelf = authMiddleware.authorizeSelf;
-export const authorize = authMiddleware.authorize;
-export const requireAdmin = authMiddleware.requireAdmin;
-export const optionalAuth = authMiddleware.optionalAuth;
+export const authenticate = async (req, res, next) => (await getAuthMiddleware()).authenticate(req, res, next);
+export const authorizeSelf = async (req, res, next) => (await getAuthMiddleware()).authorizeSelf(req, res, next);
+export const authorize = (permissions) => async (req, res, next) =>
+  (await getAuthMiddleware()).authorize(permissions)(req, res, next);
+export const requireAdmin = async (req, res, next) => (await getAuthMiddleware()).requireAdmin(req, res, next);
+export const optionalAuth = async (req, res, next) => (await getAuthMiddleware()).optionalAuth(req, res, next);

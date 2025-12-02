@@ -33,10 +33,20 @@ export class CreateUserRequestDto extends BaseDto {
    * @returns {CreateUserRequestDto}
    */
   static fromRequest(body) {
+    // Handle displayName construction from firstName + lastName if displayName is not provided
+    let displayName = body.displayName;
+    if (!displayName && (body.firstName || body.lastName)) {
+      displayName = [body.firstName, body.lastName].filter(Boolean).join(' ').trim();
+    }
+
+
+    // Username is now required, no auto-generation
+    let username = body.username;
+
     return new CreateUserRequestDto({
-      username: body.username,
+      username: username,
       email: body.email,
-      displayName: body.displayName,
+      displayName: displayName,
       role: body.role,
       avatarUrl: body.avatarUrl,
       phone: body.phone,

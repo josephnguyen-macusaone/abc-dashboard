@@ -6,7 +6,7 @@
 // TODO: Replace with proper logger after initialization
 const logger = console;
 
-import { NetworkTimeoutException } from '../../domain/exceptions/domain.exception.js';
+import { NetworkTimeoutException } from '../../../domain/exceptions/domain.exception.js';
 
 /**
  * Default retry configuration

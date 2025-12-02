@@ -1,6 +1,6 @@
 import { User } from '../../domain/entities/user-entity.js';
 import { IUserRepository } from '../../domain/repositories/interfaces/i-user-repository.js';
-import { withTimeout, TimeoutPresets } from '../../shared/utils/retry.js';
+import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
 import logger from '../config/logger.js';
 
 /**
@@ -47,24 +47,17 @@ export class UserRepository extends IUserRepository {
       throw new Error('Email is required for findByEmail');
     }
 
-    return withTimeout(
-      async () => {
-        const userDoc = await this.UserModel.findOne({ email: email.toLowerCase() });
-        return userDoc ? this._toEntity(userDoc) : null;
-      },
-      TimeoutPresets.DATABASE,
-      'user_findByEmail',
-      {
+    try {
+      const userDoc = await this.UserModel.findOne({ email: email.toLowerCase() });
+      return userDoc ? this._toEntity(userDoc) : null;
+    } catch (error) {
+      logger.error('User findByEmail error', {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
-          logger.error('User findByEmail timed out', {
-            correlationId: this.correlationId,
-            email,
-            timeout: TimeoutPresets.DATABASE,
-          });
-        },
-      }
-    );
+        email,
+        error: error.message,
+      });
+      throw error;
+    }
   }
 
   async findByUsername(username) {

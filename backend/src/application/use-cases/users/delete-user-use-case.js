@@ -3,6 +3,11 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../infrastructure/config/logger.js';
+import {
+  ValidationException,
+  ResourceNotFoundException,
+  InsufficientPermissionsException,
+} from '../../../domain/exceptions/domain.exception.js';
 
 export class DeleteUserUseCase {
   constructor(userRepository) {
@@ -62,31 +67,37 @@ export class DeleteUserUseCase {
     try {
       // Validate input
       if (!userId) {
-        throw new Error('User ID is required');
+        throw new ValidationException('User ID is required');
       }
 
       if (!currentUser) {
-        throw new Error('Current user information is required');
+        throw new ValidationException('Current user information is required');
       }
 
       // Find the user to delete
       const user = await this.userRepository.findById(userId);
       if (!user) {
-        throw new Error('User not found');
+        throw new ResourceNotFoundException('User');
       }
+
+      // Debug logging
+      logger.info('Delete user use case - checking permissions', {
+        deleter: { id: currentUser.id, role: currentUser.role, email: currentUser.email },
+        target: { id: user.id, role: user.role, email: user.email }
+      });
 
       // Check permissions based on user roles
       const canDelete = this.canUserDeleteUser(currentUser, user);
 
       if (!canDelete.allowed) {
-        throw new Error(canDelete.reason || 'Insufficient permissions to delete this user');
+        throw new InsufficientPermissionsException(canDelete.reason || 'delete this user');
       }
 
       // Delete the user (hard delete)
       const deleted = await this.userRepository.delete(userId);
 
       if (!deleted) {
-        throw new Error('Failed to delete user');
+        throw new ValidationException('Failed to delete user');
       }
 
       // Log the deletion

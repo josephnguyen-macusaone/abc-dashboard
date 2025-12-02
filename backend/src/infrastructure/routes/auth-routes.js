@@ -308,6 +308,46 @@ export function createAuthRoutes(authController) {
 
   /**
    * @swagger
+   * /auth/forgot-password-generated:
+   *   post:
+   *     summary: Request password reset with generated temporary password
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: User email address
+   *     responses:
+   *       200:
+   *         description: Temporary password sent via email if account exists
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "Password reset email sent if account exists"
+   */
+  router.post(
+    '/forgot-password-generated',
+    validateRequest(authSchemas.requestPasswordReset),
+    authController.requestPasswordResetWithGeneratedPassword.bind(authController)
+  );
+
+  /**
+   * @swagger
    * /auth/reset-password:
    *   post:
    *     summary: Reset password with token

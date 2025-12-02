@@ -1,8 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Home, ChevronRight, LucideIcon } from 'lucide-react';
+import { Home, ChevronRight, LucideIcon, Users } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Typography } from '@/presentation/components/atoms';
 
@@ -14,16 +14,15 @@ interface BreadcrumbItem {
 
 export function Breadcrumb() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // Generate breadcrumb items from pathname
+  // Generate breadcrumb items from pathname and query params
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const paths = pathname.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Home', href: '/dashboard', icon: Home }];
+    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Dashboard', href: '/dashboard', icon: Home }];
 
     // Map path names to display names
     const pathNameMap: Record<string, string> = {
-      'transaction': 'Fraud Detection',
-      'transactions': 'Transactions',
       'user-management': 'User Management',
       'admin': 'Admin',
       'score': 'Score',
@@ -38,7 +37,7 @@ export function Breadcrumb() {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-      // Skip if it's the dashboard (already added as Home)
+      // Skip if it's the dashboard (already added as Dashboard)
       if (currentPath !== '/dashboard') {
         breadcrumbs.push({
           name: displayName,
@@ -47,12 +46,25 @@ export function Breadcrumb() {
       }
     });
 
+    // Handle dashboard sections (query parameters)
+    if (pathname === '/dashboard') {
+      const section = searchParams.get('section');
+      if (section === 'users') {
+        breadcrumbs.push({
+          name: 'User Management',
+          href: '/dashboard?section=users',
+          icon: Users,
+        });
+      }
+      // Add more sections as needed
+    }
+
     return breadcrumbs;
   };
 
   const breadcrumbs = generateBreadcrumbs();
 
-  // Always show breadcrumb, even if it's just "Home" on dashboard
+  // Always show breadcrumb
   if (breadcrumbs.length === 0) {
     return null;
   }
@@ -73,7 +85,7 @@ export function Breadcrumb() {
                 variant="body-s"
                 className="font-medium text-foreground flex items-center space-x-1"
               >
-                {Icon && <Icon className="h-4 w-4" />}
+                {Icon && <Icon className="h-4 w-4 mr-2" />}
                 <span>{crumb.name}</span>
               </Typography>
             ) : (
@@ -84,7 +96,7 @@ export function Breadcrumb() {
                   crumb.icon && "font-medium"
                 )}
               >
-                {crumb.icon && <crumb.icon className="h-4 w-4" />}
+                {crumb.icon && <crumb.icon className="h-4 w-4 mr-2" />}
                 {/* MAC USA ONE Typography: Body S for breadcrumb links */}
                 <Typography variant="body-s" as="span">
                   {crumb.name}

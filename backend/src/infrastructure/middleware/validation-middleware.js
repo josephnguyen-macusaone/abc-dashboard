@@ -2,6 +2,7 @@
  * Validation Middleware
  * Express middleware for request validation using Joi
  */
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 export const validateRequest = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, {
     abortEarly: false,
@@ -15,11 +16,7 @@ export const validateRequest = (schema) => (req, res, next) => {
       message: detail.message,
     }));
 
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors,
-    });
+    return sendErrorResponse(res, 'VALIDATION_FAILED', { details: errors });
   }
 
   // Replace req.body with validated and sanitized data
@@ -43,11 +40,7 @@ export const validateQuery = (schema) => (req, res, next) => {
       message: detail.message,
     }));
 
-    return res.status(400).json({
-      success: false,
-      message: 'Query validation failed',
-      errors,
-    });
+    return sendErrorResponse(res, 'INVALID_INPUT', { details: errors });
   }
 
   // Replace req.query with validated data
@@ -70,11 +63,7 @@ export const validateParams = (schema) => (req, res, next) => {
       message: detail.message,
     }));
 
-    return res.status(400).json({
-      success: false,
-      message: 'Parameter validation failed',
-      errors,
-    });
+    return sendErrorResponse(res, 'INVALID_INPUT', { details: errors });
   }
 
   // Replace req.params with validated data

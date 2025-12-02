@@ -7,7 +7,7 @@ import {
   AccountDeactivatedException,
   ValidationException,
 } from '../../../domain/exceptions/domain.exception.js';
-import { withTimeout, TimeoutPresets } from '../../../shared/utils/retry.js';
+import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
 import { LoginResponseDto, UserAuthDto, TokensDto } from '../../dto/auth/index.js';
 
 export class LoginUseCase {

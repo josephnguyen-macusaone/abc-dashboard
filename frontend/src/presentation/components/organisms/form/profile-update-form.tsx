@@ -94,9 +94,18 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
         onSuccess?.();
         return;
       }
-      await handleUpdateProfile(profileData);
-      toast.success('Profile updated successfully!');
-      onSuccess?.();
+
+      await toast.promise(
+        handleUpdateProfile(profileData),
+        {
+          loading: 'Updating your profile...',
+          success: () => {
+            onSuccess?.();
+            return 'Profile updated successfully!';
+          },
+          error: 'Failed to update profile'
+        }
+      );
     } catch (error) {
       handleApiError(error, 'Failed to update profile');
     } finally {

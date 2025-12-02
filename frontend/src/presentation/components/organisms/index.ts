@@ -9,3 +9,6 @@ export * from './form';
 
 // User management components
 export * from './user-management';
+
+// Dashboard components
+export * from './dashboard';

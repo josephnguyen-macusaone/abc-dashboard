@@ -3,7 +3,7 @@ import { ProtectedRoute } from '@/presentation/components/routes';
 
 export default function Login() {
   return (
-    <ProtectedRoute requireAuth={false} redirectTo="/dashboard">
+    <ProtectedRoute>
       <LoginPage />
     </ProtectedRoute>
   );

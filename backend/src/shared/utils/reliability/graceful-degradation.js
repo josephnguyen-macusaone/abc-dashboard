@@ -3,7 +3,7 @@
  * Provides strategies for handling non-critical failures while maintaining core functionality
  */
 
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../../../infrastructure/config/logger.js';
 
 /**
  * Degradation level definitions
@@ -162,10 +162,6 @@ export class GracefulDegradationManager {
     feature.status = FeatureStatus.AVAILABLE;
     feature.lastChecked = Date.now();
 
-    logger.info(`Feature recovered: ${featureName}`, {
-      timestamp: new Date().toISOString(),
-    });
-
     this.updateDegradationLevel();
   }
 
@@ -253,10 +249,6 @@ export class GracefulDegradationManager {
 
       // Try fallback if available
       if (fallbackFn) {
-        logger.info(`Using fallback for ${featureName}`, {
-          originalError: error.message,
-          context,
-        });
         return fallbackFn(error);
       }
 
@@ -278,10 +270,7 @@ export class GracefulDegradationManager {
     const feature = this.features.get(featureName);
     const fallbackStrategy = feature.config.fallback;
 
-    logger.info(`Executing fallback strategy for ${featureName}: ${fallbackStrategy}`, {
-      originalError: originalError.message,
-      context,
-    });
+    // Execute fallback strategy silently
 
     switch (fallbackStrategy) {
       case 'log_to_database':

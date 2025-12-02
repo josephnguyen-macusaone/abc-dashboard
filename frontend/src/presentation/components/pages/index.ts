@@ -9,3 +9,6 @@ export * from './dashboard';
 
 // Home page
 export * from './home';
+
+// Error pages
+export * from './errors';

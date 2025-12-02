@@ -72,8 +72,12 @@ export class CreateUserUseCase {
       throw new Error('Email is required');
     }
 
-    if (!userData.displayName?.trim()) {
-      throw new Error('Display name is required');
+    if (!userData.firstName?.trim()) {
+      throw new Error('First name is required');
+    }
+
+    if (!userData.lastName?.trim()) {
+      throw new Error('Last name is required');
     }
 
     // Validate data consistency using domain service

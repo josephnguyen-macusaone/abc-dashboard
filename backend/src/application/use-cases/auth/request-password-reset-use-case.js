@@ -1,15 +1,14 @@
 /**
  * Request Password Reset Use Case
- * Handles password reset request logic - generates temporary password and sends via email
+ * Handles password reset request logic - generates reset token and sends via email
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
-import { generateTemporaryPassword } from '../../../shared/utils/crypto.js';
 
 export class RequestPasswordResetUseCase {
-  constructor(userRepository, authService, emailService) {
+  constructor(userRepository, tokenService, emailService) {
     this.userRepository = userRepository;
-    this.authService = authService;
+    this.tokenService = tokenService;
     this.emailService = emailService;
   }
 
@@ -44,61 +43,19 @@ export class RequestPasswordResetUseCase {
         };
       }
 
-      // Generate secure temporary password
-      const temporaryPassword = generateTemporaryPassword(12);
+      // Generate password reset token
+      const resetToken = this.tokenService.generatePasswordResetToken(user.id, user.email);
 
-      // Hash the temporary password
-      const hashedPassword = await this.authService.hashPassword(temporaryPassword);
-
-      // Update user with temporary password and force password change
-      const updateData = {
-        hashedPassword,
-        requiresPasswordChange: true,
-      };
-
-      const updatedUser = await this.userRepository.update(user.id, updateData);
-      if (!updatedUser) {
-        throw new Error('Failed to update user password');
-      }
-
-      // Send email with temporary password
+      // Send email with reset link
       try {
-        const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3000/login';
+        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
-        await this.emailService.sendEmail(
-          user.email,
-          'Password Reset - ABC Dashboard',
-          `Hi {{displayName}}!
+        await this.emailService.sendPasswordResetEmail(user.email, {
+          displayName: user.displayName || user.email.split('@')[0],
+          resetUrl,
+        });
 
-You requested a password reset for your ABC Dashboard account.
-
-Here is your temporary password: <strong>{{temporaryPassword}}</strong>
-
-Please use this password to log in to your account immediately. You will be required to change your password after logging in.
-
-<strong>⚠️ Security Notice:</strong> This is a temporary password that will expire once you change it. Keep this email secure and change your password as soon as possible.
-
-Login URL: <a href="{{loginUrl}}" style="color: #007bff;">{{loginUrl}}</a>
-
-<strong>Steps to complete your password reset:</strong>
-1. Click the login URL above or go to your ABC Dashboard login page
-2. Enter your email address and the temporary password shown above
-3. You will be automatically redirected to change your password
-4. Choose a strong, memorable password
-5. Click "Change Password" to complete the process
-
-If you didn't request this password reset, please contact support immediately.
-
-Best regards,
-ABC Dashboard Team`,
-          {
-            displayName: user.displayName,
-            temporaryPassword,
-            loginUrl,
-          }
-        );
-
-        logger.info('Password reset email sent with temporary password', {
+        logger.info('Password reset email sent successfully', {
           userId: user.id,
           email: user.email,
         });
@@ -107,6 +64,7 @@ ABC Dashboard Team`,
           userId: user.id,
           email: user.email,
           error: emailError.message,
+          errorStack: emailError.stack,
         });
         // Still return success to avoid revealing email existence
       }
@@ -121,7 +79,11 @@ ABC Dashboard Team`,
         throw error;
       }
 
-      logger.error('Password reset request failed:', error);
+      logger.error('Password reset request failed:', {
+        error: error.message,
+        stack: error.stack,
+        email,
+      });
       // Return generic success message for security
       return {
         success: true,

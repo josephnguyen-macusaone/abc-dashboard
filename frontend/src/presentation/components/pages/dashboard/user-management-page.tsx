@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useUser } from '@/presentation/contexts/user-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User, UserRole } from '@/domain/entities/user-entity';
 import { UserListParams } from '@/application/dto/user-dto';
-import { DashboardTemplate } from '../../templates/dashboard-template';
+import { DashboardTemplate } from '@/presentation/components/templates';
 
 export function UserManagementPage() {
   const { user: currentUser } = useAuth();
@@ -22,9 +22,9 @@ export function UserManagementPage() {
       const params: UserListParams = {
         page: 1,
         limit: 100, // Get all users for now
-        email: filters?.search, // Use email for search as per UserListParams
+        email: filters?.search, // Search by email (supports partial matches via backend regex)
         role: filters?.role as UserRole | undefined, // Cast to UserRole enum
-  };
+      };
 
       const result = await getUsers(params);
       setUsers(result.users || []);
@@ -40,12 +40,13 @@ export function UserManagementPage() {
   }, [loadUsers]);
 
   // Handle user creation
-  const handleCreateUser = useCallback(async (userData: { username: string; role: string; password?: string }) => {
+  const handleCreateUser = useCallback(async (userData: { username: string; role: string; password?: string; firstName?: string; lastName?: string }) => {
     try {
       await createUser({
         username: userData.username,
         email: `${userData.username}@example.com`, // Generate email from username
-        displayName: userData.username, // Use username as display name for now
+        firstName: userData.firstName || userData.username,
+        lastName: userData.lastName || '',
         role: userData.role as UserRole,
       });
 

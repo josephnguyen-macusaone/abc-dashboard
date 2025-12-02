@@ -152,6 +152,16 @@ export const responseHelpers = {
   },
 
   /**
+   * Send a bad request response (400)
+   * @param {string} message - Error message
+   * @param {object} errors - Optional error details
+   */
+  badRequest(message = 'Bad request', errors = {}) {
+    const response = ResponseTransformer.error(message, errors);
+    return this.status(400).json(response);
+  },
+
+  /**
    * Send an error response
    * @param {string} message - Error message
    * @param {number} statusCode - HTTP status code (default: 500)

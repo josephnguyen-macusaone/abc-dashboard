@@ -252,9 +252,12 @@ export class AuthRepository implements IAuthRepository {
    * Maps a UserProfileDto from the API to a User domain entity
    */
   private mapUserProfileToDomain(userProfile: UserProfileDto): User {
+    // Ensure we have a valid name field - use displayName, then username, then email prefix as fallback
+    const name = userProfile.displayName || userProfile.username || userProfile.email.split('@')[0] || 'User';
+
     return User.fromObject({
       id: userProfile.id,
-      name: userProfile.displayName || userProfile.username,
+      name: name,
       email: userProfile.email,
       role: userProfile.role,
       isActive: userProfile.isActive,

@@ -76,18 +76,12 @@ export class ResetPasswordUseCase {
       // Send confirmation email
       try {
         if (this.emailService) {
-          await this.emailService.sendEmail(
+          await this.emailService.sendPasswordResetConfirmationEmail(
             user.email,
-            'Password Reset Successful - ABC Dashboard',
-            `Hi {{displayName}}!
-
-Your password has been successfully reset.
-
-If you did not request this password reset, please contact support immediately.
-
-Best regards,
-ABC Dashboard Team`,
-            { displayName: user.displayName }
+            {
+              displayName: user.displayName,
+              loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+            }
           );
         }
 

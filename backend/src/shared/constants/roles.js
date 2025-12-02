@@ -47,9 +47,16 @@ export const ROLE_PERMISSIONS = {
   ],
   [ROLES.STAFF]: [
     PERMISSIONS.READ_USER,
-    PERMISSIONS.UPDATE_USER, // Can update own profile
+    PERMISSIONS.UPDATE_USER,
     PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
+};
+
+// Role creation permissions - which roles can create which other roles
+export const ROLE_CREATION_PERMISSIONS = {
+  [ROLES.ADMIN]: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF],
+  [ROLES.MANAGER]: [ROLES.STAFF],
+  [ROLES.STAFF]: [],
 };
 
 /**
@@ -95,6 +102,7 @@ export default {
   ROLES,
   PERMISSIONS,
   ROLE_PERMISSIONS,
+  ROLE_CREATION_PERMISSIONS,
   hasPermission,
   hasAnyPermission,
   hasAllPermissions,

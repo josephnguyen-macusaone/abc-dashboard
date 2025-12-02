@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useUser } from '@/presentation/contexts/user-context';
+import { useAuth } from '@/presentation/contexts/auth-context';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { CreateUserDTO, User } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
-import { Typography } from '@/presentation/components/atoms';
+import { PermissionUtils } from '@/shared/constants';
+import { Typography, Button } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
-import { Button } from '@/presentation/components/atoms/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
-import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
+import { UserPlus, Loader2, X, ArrowLeft, Edit } from 'lucide-react';
 
 interface UserCreateFormProps {
   onSuccess?: (user: User) => void;
@@ -18,14 +20,41 @@ interface UserCreateFormProps {
 
 export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   const { createUser, loading: { createUser: isCreating }, error: { createUser: createError } } = useUser();
+  const { user: currentUser } = useAuth();
+  const { success: showSuccess } = useToast();
 
-  const [success, setSuccess] = useState(false);
-  const [formData, setFormData] = useState({
+  // Get available roles for the current user
+  const getAvailableRoles = () => {
+    const roles: { value: 'admin' | 'manager' | 'staff'; label: string }[] = [];
+
+    if (PermissionUtils.canCreateUser(currentUser?.role)) {
+      // Check each role individually since PermissionUtils.canCreateUser only checks if user can create users in general
+      if (currentUser?.role === 'admin') {
+        roles.push({ value: 'admin', label: 'Admin' });
+        roles.push({ value: 'manager', label: 'Manager' });
+      } else if (currentUser?.role === 'manager') {
+        roles.push({ value: 'manager', label: 'Manager' });
+      }
+      // Staff role is always available for users who can create users
+      roles.push({ value: 'staff', label: 'Staff' });
+    }
+
+    return roles;
+  };
+
+  const availableRoles = getAvailableRoles();
+  const [formData, setFormData] = useState<{
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: 'admin' | 'manager' | 'staff'
+  }>({
     username: '',
     email: '',
     firstName: '',
     lastName: '',
-    role: 'staff' as 'admin' | 'manager' | 'staff'
+    role: availableRoles[0]?.value || 'staff'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,12 +68,13 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       const userData: CreateUserDTO = {
         username: formData.username,
         email: formData.email,
-        displayName: `${formData.firstName} ${formData.lastName}`.trim(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         role: formData.role as UserRole,
       };
 
       const user = await createUser(userData);
-      setSuccess(true);
+      showSuccess?.('User created successfully!');
       onSuccess?.(user);
 
     } catch (err) {
@@ -52,60 +82,41 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
     }
   };
 
-  if (success) {
-    return (
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-success">
-            User Created Successfully!
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* MAC USA ONE Typography: Body M for success message */}
-          <Typography variant="body-m" color="muted">
-            The user has been added to the system.
-          </Typography>
-          <Button
-            onClick={onCancel}
-            variant="default"
-          >
-            Back to Users
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="max-w-md mx-auto">
+    <Card className="max-w mx-auto">
       <CardHeader>
-        {/* MAC USA ONE Typography: Title M for form title */}
-        <CardTitle>Create New User</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <UserPlus className="h-5 w-5" />
+          <Typography variant="title-s">Create New User</Typography>
+        </CardTitle>
+        <CardDescription>
+          Create a new user account and assign them a role.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        {createError && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{createError}</AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <InputField
             label="Username"
             type="text"
             placeholder="Enter username"
             value={formData.username}
-            onChange={(e) => setFormData({...formData, username: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
             required
+            disabled={isCreating}
+            inputClassName="h-11"
+            className="space-y-3"
           />
 
           <InputField
             label="Email"
             type="email"
-            placeholder="Enter email"
+            placeholder="Enter email address"
             value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
+            disabled={isCreating}
+            inputClassName="h-11"
+            className="space-y-3"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,8 +125,11 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
               type="text"
               placeholder="Enter first name"
               value={formData.firstName}
-              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
               required
+              disabled={isCreating}
+              inputClassName="h-11"
+              className="space-y-3"
             />
 
             <InputField
@@ -123,44 +137,61 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
               type="text"
               placeholder="Enter last name"
               value={formData.lastName}
-              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
               required
+              disabled={isCreating}
+              inputClassName="h-11"
+              className="space-y-3"
             />
           </div>
 
-          <FormField label="Role">
+          <FormField label="Role" className="space-y-3">
             <Select
               value={formData.role}
-              onValueChange={(value: 'admin' | 'manager' | 'staff') => setFormData({...formData, role: value})}
+              onValueChange={(value: 'admin' | 'manager' | 'staff') => setFormData({ ...formData, role: value })}
+              disabled={isCreating}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                {availableRoles.map(role => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormField>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={onCancel}
               disabled={isCreating}
-              className="flex-1"
+              className="w-full sm:w-auto"
             >
-              Cancel
+              <X className="w-4 h-4" />
+              <span className='text-button-s'>Cancel</span>
             </Button>
             <Button
               type="submit"
               variant="default"
               disabled={isCreating}
-              className="flex-1"
+              className="w-full sm:w-auto"
             >
-              {isCreating ? 'Creating...' : 'Create User'}
+              {isCreating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className='text-button-s'>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  <span className='text-button-s'>Create User</span>
+                </>
+              )}
             </Button>
           </div>
         </form>

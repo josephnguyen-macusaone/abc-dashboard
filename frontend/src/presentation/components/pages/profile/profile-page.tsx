@@ -85,48 +85,46 @@ export function ProfilePage() {
           </Button>
         </div>
         {/* Hero & Profile Section */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px] opacity-5" />
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-linear-to-br from-card via-card to-muted/20">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[24px_24px] opacity-5" />
           <div className="relative p-8 md:p-12">
             {/* Header Section with Avatar and Basic Info */}
             <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
               {/* Large Avatar */}
-              <div className="relative flex-shrink-0">
+              <div className="relative shrink-0">
                 <Avatar className="w-32 h-32 md:w-40 md:h-40">
                   <AvatarImage
                     src={user.avatar}
                     alt={`${displayName}'s avatar`}
                     className="object-cover rounded-2xl"
                   />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-4xl md:text-5xl font-bold text-primary-foreground rounded-2xl">
+                  <AvatarFallback className="bg-linear-to-br from-primary to-primary/80 text-4xl md:text-5xl font-bold text-primary-foreground rounded-2xl">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
               </div>
 
               {/* User Info & Actions */}
-              <div className="flex-1 space-y-4">
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    {/* MAC USA ONE Typography: Title XL for user name */}
-                    <Typography variant="title-l" className="font-bold text-foreground">
-                      {displayName}
-                    </Typography>
-                    <Badge variant="secondary" className="text-xs w-fit ">
-                      {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                    </Badge>
-                  </div>
-                  {user.bio && (
-                    <Typography variant="body-s" color="muted" className="max-w-2xl">
-                      {user.bio}
-                    </Typography>
-                  )}
+              <div className="flex-1 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  {/* MAC USA ONE Typography: Title XL for user name */}
+                  <Typography variant="title-m" className="font-bold text-foreground">
+                    {displayName}
+                  </Typography>
+                  <Badge variant="secondary" className="text-xs w-fit mt-1">
+                    {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                  </Badge>
                 </div>
+                {user.bio && (
+                  <Typography variant="body-s" color="muted" className="max-w-2xl">
+                    {user.bio}
+                  </Typography>
+                )}
 
                 {/* Contact Information */}
-                <div className="space-y-4 mt-6">
+                <div className="space-y-3 mt-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
+                    <div className="bg-linear-to-br">
                       <div className="rounded-lg bg-primary/10 p-2">
                         <Mail className="h-4 w-4 text-primary" />
                       </div>
@@ -140,7 +138,7 @@ export function ProfilePage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
+                    <div className="bg-linear-to-br">
                       <div className="rounded-lg bg-primary/10 p-2">
                         <Phone className="h-4 w-4 text-primary" />
                       </div>

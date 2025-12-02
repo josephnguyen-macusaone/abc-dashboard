@@ -1,8 +1,9 @@
 'use client';
 
 import { Button, RoleBadge, StatusBadge, Typography } from '@/presentation/components/atoms';
+import { TableCell, TableRow } from '@/presentation/components/atoms/ui/table';
 import { type User } from '@/domain/entities/user-entity';
-import { Edit, Trash2, Lock, User2 } from 'lucide-react';
+import { Edit, Trash2, User2 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 
 export interface UserTableRowProps {
@@ -12,7 +13,6 @@ export interface UserTableRowProps {
   canDelete: boolean;
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
-  onChangePassword?: (user: User) => void;
   className?: string;
 }
 
@@ -23,18 +23,17 @@ export function UserTableRow({
   canDelete,
   onEdit,
   onDelete,
-  onChangePassword,
   className,
 }: UserTableRowProps) {
   // Get display name - use displayName, then name, then id
   const displayName = user.displayName || user.name || user.username || user.id;
 
   return (
-    <tr className={cn('transition-colors duration-150 hover:bg-muted/50 group', className)}>
-      <td className="p-4">
+    <TableRow className={cn('group', className)}>
+      <TableCell>
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all">
+            <div className="w-8 h-8 bg-linear-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/10 group-hover:ring-primary/20 transition-all">
               <User2 className="h-4 w-4 text-primary" />
             </div>
           </div>
@@ -44,16 +43,26 @@ export function UserTableRow({
             </Typography>
           </div>
         </div>
-      </td>
-      <td className="p-4">
+      </TableCell>
+      <TableCell>
+        <Typography variant="body-s" className="text-muted-foreground truncate">
+          {user.email}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Typography variant="body-s" className="text-muted-foreground">
+          {user.phone || '-'}
+        </Typography>
+      </TableCell>
+      <TableCell>
         <div className="flex items-center space-x-2">
           <RoleBadge role={user.role} />
         </div>
-      </td>
-      <td className="p-4">
+      </TableCell>
+      <TableCell className="text-center">
         <StatusBadge isActive={user.isActive} />
-      </td>
-      <td className="p-4">
+      </TableCell>
+      <TableCell className="text-right">
         <div className="flex items-center justify-end space-x-1.5">
           {canEdit && (
             <Button
@@ -64,18 +73,6 @@ export function UserTableRow({
               title="Edit user"
             >
               <Edit className="h-4 w-4" />
-            </Button>
-          )}
-
-          {onChangePassword && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onChangePassword(user)}
-              className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 transition-colors"
-              title="Change password"
-            >
-              <Lock className="h-4 w-4" />
             </Button>
           )}
 
@@ -91,7 +88,7 @@ export function UserTableRow({
             </Button>
           )}
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

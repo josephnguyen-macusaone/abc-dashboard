@@ -13,6 +13,7 @@ import { responseHelpersMiddleware } from '../../shared/http/response-transforme
 import { cacheTrackingMiddleware, userActivityMiddleware, securityMetricsMiddleware, performanceMiddleware } from '../api/v1/middleware/metrics.middleware.js';
 import swaggerSpec from '../config/swagger.js';
 import logger from '../config/logger.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import { getHealthWithMetrics } from '../config/monitoring.js';
 
 // Create Express app
@@ -24,12 +25,6 @@ app.use(helmet());
 app.use(securityHeaders);
 app.use(requestSizeLimiter);
 app.use(injectionProtection);
-
-// CORS for testing
-app.use(cors({
-  origin: true, // Allow all origins for testing
-  credentials: true
-}));
 
 // Rate limiting (reduced for testing)
 const generalLimiter = createRateLimit(
@@ -85,27 +80,11 @@ app.get('/api/v1/metrics', async (req, res) => {
     await getDetailedMetrics(req, res);
   } catch (error) {
     logger.error('Error in metrics endpoint:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve metrics',
-      error: error.message,
-      correlationId: req.correlationId
-    });
+    return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
   }
 });
 
-// Prometheus metrics endpoint (for scraping)
-app.get('/metrics', async (req, res) => {
-  try {
-    const { getPrometheusMetrics } = await import('../config/prometheus-metrics.js');
-    const metrics = await getPrometheusMetrics();
-    res.set('Content-Type', 'text/plain; version=0.0.4');
-    res.send(metrics);
-  } catch (error) {
-    logger.error('Error generating Prometheus metrics:', error);
-    res.status(500).send('# Error generating metrics\n');
-  }
-});
+// Prometheus metrics removed - not in use
 
 // API Routes
 app.use('/api/v1', v1Routes);

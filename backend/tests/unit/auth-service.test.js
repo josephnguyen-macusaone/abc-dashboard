@@ -154,7 +154,8 @@ describe('AuthService', () => {
 
   describe('constructor', () => {
     it('should accept optional correlationId', () => {
-      const serviceWithCorrelation = new AuthService('test-correlation-id');
+      const serviceWithCorrelation = new AuthService();
+      serviceWithCorrelation.setCorrelationId('test-correlation-id');
 
       expect(serviceWithCorrelation.correlationId).toBe('test-correlation-id');
     });

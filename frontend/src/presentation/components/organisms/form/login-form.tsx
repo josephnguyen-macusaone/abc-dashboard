@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
@@ -22,6 +23,7 @@ interface LoginFormData {
 export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const { login } = useAuth();
   const toast = useToast();
+  const router = useRouter();
   const { emailVerificationRequired, emailVerificationMessage, clearEmailVerificationState } = useAuthStore();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -63,24 +65,32 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
     setErrors(validationErrors);
     const hasErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
     if (hasErrors) return;
-    setIsLoading(true);
+
     try {
-      await login(formData.email, formData.password);
+      await toast.promise(
+        login(formData.email, formData.password),
+        {
+          loading: 'Signing you in...',
+          success: 'Welcome back!',
+          error: (error: any) => {
+            const errorMessage = error?.message || 'Login failed';
+            // Email verification errors are handled by the auth context's useEffect
+            if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
+              return errorMessage;
+            }
+            // For email verification errors, don't show error toast as it's handled elsewhere
+            throw error; // Re-throw to prevent success toast
+          }
+        }
+      );
       onSuccess?.();
-    } catch (error: unknown) {
-      // Only show error for non-email-verification errors
-      const errorMessage = (error as Error)?.message || 'Login failed';
-      if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
-        toast.error(errorMessage);
-      }
-      // Email verification errors are handled by the useEffect above
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      // Email verification errors are handled by the useEffect above, so we don't show error toasts here
     }
   };
 
   return (
-    <div className={cn('w-full max-w-md space-y-6', className)}>
+    <div className={cn('w-full max-w-md space-y-6 mt-6', className)}>
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Field */}
@@ -158,9 +168,7 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           type="button"
           variant="ghost"
           className="p-0 h-auto"
-          onClick={() => {
-            toast.info('Password reset functionality will be available soon.');
-          }}
+          onClick={() => router.push('/forgot-password')}
         >
           <Typography variant="button-m" color="muted" className="hover:text-primary">Forgot your password?</Typography>
         </Button>

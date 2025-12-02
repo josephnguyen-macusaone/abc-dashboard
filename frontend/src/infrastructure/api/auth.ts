@@ -55,7 +55,7 @@ export class AuthApiService {
    */
   static async getStatus(): Promise<AuthStatusResponseDto> {
     try {
-      const response = await httpClient.get<ApiResponse<AuthStatusResponseDto>>('/auth/status');
+      const response = await httpClient.get<ApiResponse<AuthStatusResponseDto>>('/auth/profile');
       if (!response.data) {
         throw new Error('Auth status response missing data');
       }
@@ -110,6 +110,17 @@ export class AuthApiService {
     }
   }
 
+
+  /**
+   * Request password reset
+   */
+  static async forgotPassword(email: string): Promise<void> {
+    try {
+      await httpClient.post('/auth/forgot-password', { email });
+    } catch (error) {
+      throw error;
+    }
+  }
 
   /**
    * Reset password
@@ -208,6 +219,7 @@ export const authApi = {
   refreshToken: AuthApiService.refreshToken,
   logout: AuthApiService.logout,
   verifyEmail: AuthApiService.verifyEmail,
+  forgotPassword: AuthApiService.forgotPassword,
   resetPassword: AuthApiService.resetPassword,
   changePassword: AuthApiService.changePassword,
   getProfile: AuthApiService.getProfile,

@@ -100,6 +100,7 @@ services:
     build:
       context: ../../frontend
       dockerfile: Dockerfile
+      target: development
     container_name: abc-dashboard-frontend-dev
     restart: unless-stopped
     environment:
@@ -115,13 +116,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    command: ["npm", "run", "dev"]
 
   # Database Seeding Service (runs once and exits)
   seed:

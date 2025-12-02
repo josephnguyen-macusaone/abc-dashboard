@@ -45,7 +45,6 @@ const performStartupChecks = async () => {
     logger.startup('Checking MongoDB connection...');
     await connectDB();
     checks.database = true;
-    logger.startup('MongoDB connection check passed');
   } catch (error) {
     logger.error('MongoDB connection check failed', {
       error: error.message,

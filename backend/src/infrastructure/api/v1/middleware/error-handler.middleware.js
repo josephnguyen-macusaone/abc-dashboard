@@ -1,4 +1,5 @@
 import logger from '../../../config/logger.js';
+import { sendErrorResponse } from '../../../../shared/http/error-responses.js';
 
 // Custom error class
 export class AppError extends Error {
@@ -77,11 +78,17 @@ const sendErrorProd = (err, req, res) => {
       userId: req.user ? req.user._id : null,
     });
 
-    res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-      correlationId,
-    });
+    // Map operational errors to centralized error system
+    let errorKey = 'INTERNAL_SERVER_ERROR';
+    if (err.statusCode === 401) {
+      errorKey = 'INVALID_TOKEN';
+    } else if (err.statusCode === 400) {
+      errorKey = 'INVALID_INPUT';
+    } else if (err.statusCode === 409) {
+      errorKey = 'EMAIL_ALREADY_EXISTS'; // For duplicate key errors
+    }
+
+    return sendErrorResponse(res, errorKey);
   } else {
     // Programming or other unknown error: don't leak error details
     logger.error('Programming Error Response', {
@@ -94,11 +101,8 @@ const sendErrorProd = (err, req, res) => {
       userId: req.user ? req.user._id : null,
     });
 
-    res.status(500).json({
-      success: false,
-      message: 'Something went wrong!',
-      correlationId,
-    });
+    // Use centralized error system for programming errors
+    return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
   }
 };
 

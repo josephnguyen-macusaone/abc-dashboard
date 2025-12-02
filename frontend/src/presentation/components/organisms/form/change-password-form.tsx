@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField } from '@/presentation/components/molecules';
-import { useAuth } from '@/presentation/contexts/auth-context';
-import { useToast } from '@/presentation/contexts/toast-context';
-import { cn } from '@/shared/utils';
+import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { cn, logger } from '@/shared/utils';
 import { Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 
 interface ChangePasswordFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   className?: string;
+  requiresCurrentPassword?: boolean;
+  isForcedChange?: boolean;
 }
 
 interface PasswordFormData {
@@ -20,9 +21,14 @@ interface PasswordFormData {
   confirmPassword: string;
 }
 
-export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePasswordFormProps) {
-  const { handleChangePassword } = useAuth();
-  const toast = useToast();
+export function ChangePasswordForm({
+  onSuccess,
+  onCancel,
+  className,
+  requiresCurrentPassword = true,
+  isForcedChange = false
+}: ChangePasswordFormProps) {
+  const { changePassword } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<PasswordFormData>({
@@ -69,9 +75,12 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
 
   const validateForm = (): boolean => {
     const validationErrors: Partial<Record<keyof PasswordFormData, string | null>> = {};
-    if (!formData.currentPassword.trim()) {
+
+    // Only validate current password if required
+    if (requiresCurrentPassword && !formData.currentPassword.trim()) {
       validationErrors.currentPassword = 'Current password is required';
     }
+
     if (!formData.newPassword.trim()) {
       validationErrors.newPassword = 'New password is required';
     } else {
@@ -80,14 +89,18 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
         validationErrors.newPassword = passwordValidation.errors[0];
       }
     }
+
     if (!formData.confirmPassword.trim()) {
       validationErrors.confirmPassword = 'Please confirm your new password';
     } else if (formData.newPassword !== formData.confirmPassword) {
       validationErrors.confirmPassword = 'Passwords do not match';
     }
-    if (formData.currentPassword === formData.newPassword) {
+
+    // Only check if new password differs from current if current password was provided
+    if (requiresCurrentPassword && formData.currentPassword && formData.currentPassword === formData.newPassword) {
       validationErrors.newPassword = 'New password must be different from current password';
     }
+
     setErrors(validationErrors);
     return Object.values(validationErrors).every(error => !error);
   };
@@ -97,16 +110,18 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
     if (!validateForm()) return;
     setIsLoading(true);
     try {
-      await handleChangePassword(formData.currentPassword, formData.newPassword);
+      await changePassword(formData.currentPassword || '', formData.newPassword);
       setFormData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
-      toast.success('Password changed successfully!');
+
+      // Success toast will be handled by the page component
       onSuccess?.();
-    } catch {
-      toast.error('Failed to change password');
+    } catch (error: any) {
+      // Error toast will be handled by the auth store
+      logger.error('Password change form error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -116,41 +131,43 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
     <div className={cn('w-full space-y-6', className)}>
       {/* Password Change Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Current Password */}
-        <FormField
-          label="Current Password"
-          error={errors.currentPassword}
-          className="space-y-3"
-        >
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type={showCurrentPassword ? 'text' : 'password'}
-              placeholder="Enter your current password"
-              value={formData.currentPassword}
-              onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-              disabled={isLoading}
-              className={cn(
-                'pl-10 pr-10 h-11',
-                errors.currentPassword && 'border-destructive focus:border-destructive'
-              )}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
-              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              disabled={isLoading}
-            >
-              {showCurrentPassword ? (
-                <EyeOff className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <Eye className="h-4 w-4 text-muted-foreground" />
-              )}
-            </Button>
-          </div>
-        </FormField>
+        {/* Current Password - Only show if required */}
+        {requiresCurrentPassword && (
+          <FormField
+            label="Current Password"
+            error={errors.currentPassword}
+            className="space-y-3"
+          >
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type={showCurrentPassword ? 'text' : 'password'}
+                placeholder="Enter your current password"
+                value={formData.currentPassword}
+                onChange={(e) => handleInputChange('currentPassword', e.target.value)}
+                disabled={isLoading}
+                className={cn(
+                  'pl-10 pr-10 h-11',
+                  errors.currentPassword && 'border-destructive focus:border-destructive'
+                )}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                disabled={isLoading}
+              >
+                {showCurrentPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+          </FormField>
+        )}
 
         {/* New Password */}
         <FormField
@@ -242,16 +259,18 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="w-full sm:w-auto"
-          >
-            <KeyRound className="w-4 h-4" />
-            <span className='text-button-s pb-0.5'>Cancel</span>
-          </Button>
+          {!isForcedChange && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span className='text-button-s pb-0.5'>Cancel</span>
+            </Button>
+          )}
 
           <Button
             type="submit"
@@ -262,12 +281,16 @@ export function ChangePasswordForm({ onSuccess, onCancel, className }: ChangePas
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className='text-button-s pb-0.5'>Changing...</span>
+                <span className='text-button-s pb-0.5'>
+                  {isForcedChange ? 'Setting...' : 'Changing...'}
+                </span>
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4" />
-                <span className='text-button-s pb-0.5'>Change Password</span>
+                <span className='text-button-s pb-0.5'>
+                  {isForcedChange ? 'Set Password' : 'Change Password'}
+                </span>
               </>
             )}
           </Button>

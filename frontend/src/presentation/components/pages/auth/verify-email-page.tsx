@@ -29,28 +29,40 @@ function VerifyEmailPage({ token, email }: VerifyEmailPageProps) {
       }
 
       try {
-        const response = await verifyEmail(email || '', token || '');
-        toast.success(response.message || 'Email verified successfully!');
-        router.push('/login?verified=true');
-      } catch (error) {
-        console.error('Email verification error:', error);
+        await toast.promise(
+          verifyEmail(email || '', token || ''),
+          {
+            loading: 'Verifying your email address...',
+            success: (response: any) => {
+              router.push('/login?verified=true');
+              return response.message || 'Email verified successfully!';
+            },
+            error: (error: any) => {
+              console.error('Email verification error:', error);
 
-        let errorMessage = 'Verification failed. Please try again or contact support.';
-        let redirectTo = '/login';
+              let errorMessage = 'Verification failed. Please try again or contact support.';
+              let redirectTo = '/login';
 
-        if (error instanceof Error) {
-          if (error.message.includes('expired')) {
-            errorMessage = 'Verification link has expired. Please register again.';
-            redirectTo = '/register';
-          } else if (error.message.includes('already activated')) {
-            errorMessage = 'Account already verified! Please login.';
-          } else if (error.message.includes('Invalid')) {
-            errorMessage = 'Invalid verification link. Please check your email for the correct link.';
+              if (error instanceof Error) {
+                if (error.message.includes('expired')) {
+                  errorMessage = 'Verification link has expired. Please register again.';
+                  redirectTo = '/register';
+                } else if (error.message.includes('already activated')) {
+                  errorMessage = 'Account already verified! Please login.';
+                } else if (error.message.includes('Invalid')) {
+                  errorMessage = 'Invalid verification link. Please check your email for the correct link.';
+                }
+              }
+
+              // Handle redirect after error toast
+              setTimeout(() => router.push(redirectTo), 100);
+
+              return errorMessage;
+            }
           }
-        }
-
-        toast.error(errorMessage);
-        router.push('/login');
+        );
+      } catch (error) {
+        // Error already handled by toast.promise
       } finally {
         setIsVerifying(false);
       }

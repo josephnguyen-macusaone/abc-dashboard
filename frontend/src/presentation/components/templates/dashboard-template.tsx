@@ -1,12 +1,12 @@
 'use client';
 
-import { ScrollArea } from '@/presentation/components/atoms';
-import { DashboardHeader, MobileOverlay, NavigationItem} from '@/presentation/components/molecules';
+import { ScrollArea, LoadingOverlay } from '@/presentation/components/atoms';
+import { DashboardHeader, MobileOverlay, NavigationItem } from '@/presentation/components/molecules';
 import { Sidebar } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useState } from 'react';
-import { Home, Loader2, Users, UserCheck } from 'lucide-react';
+import { Home, Users } from 'lucide-react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { PermissionUtils } from '@/shared/constants';
@@ -39,10 +39,7 @@ const getNavigationItems = (userRole?: string): NavigationItem[] => {
 
   // Staff navigation (limited access)
   if (PermissionUtils.isStaff(userRole)) {
-    return [
-      ...baseItems,
-      { name: 'Profile', href: '/dashboard?section=profile', icon: UserCheck },
-    ];
+    return baseItems;
   }
 
   // Default/unknown role
@@ -73,20 +70,21 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   // ALL hooks must be called before any conditional returns
   const handleLogout = useCallback(async () => {
     try {
-      await logout();
-    } catch (error) {
-      toast.error('Failed to logout', {
-        description: 'Please try again later',
-        action: {
-          label: 'Try again',
-          onClick: () => {
-            handleLogout();
+      await toast.promise(
+        logout(),
+        {
+          loading: 'Logging out...',
+          success: () => {
+            router.replace('/login');
+            return 'Logged out successfully!';
           },
-        },
-        duration: 5000,
-        position: 'top-right',
-        className: 'bg-destructive text-destructive-foreground',
-      });
+          error: (error: any) => {
+            return error.message || 'Failed to logout';
+          }
+        }
+      );
+    } catch (error) {
+      // Error already handled by toast.promise
     }
   }, [logout, router]);
 
@@ -123,17 +121,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   }, [user]);
 
   if (isLoading || !isAuthenticated) {
-    return (
-      <div className="flex h-screen bg-background">
-        <div className="flex flex-1 flex-col lg:pl-0">
-          <div className="p-4 lg:p-6">
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingOverlay text="Loading dashboard..." />;
   }
 
   return (

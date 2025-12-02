@@ -18,6 +18,8 @@ export interface UserDto {
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
+  requiresPasswordChange?: boolean;
+  managedBy?: string;
 }
 
 export interface AuthTokensDto {
@@ -76,10 +78,12 @@ export interface UserProfileDto {
 export interface CreateUserRequestDto {
   username: string;
   email: string;
-  displayName: string;
+  firstName: string;
+  lastName: string;
   role?: UserRole;
   avatarUrl?: string;
   phone?: string;
+  managerId?: string;
 }
 
 export interface CreateUserResponseDto {
@@ -94,6 +98,7 @@ export interface UpdateUserRequestDto {
   phone?: string;
   role?: UserRole;
   isActive?: boolean;
+  managerId?: string;
 }
 
 export interface UpdateUserResponseDto {

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Disable trailing slashes to prevent routing issues
+  trailingSlash: false,
+
   // Proxy configuration for API routes
   async rewrites() {
     return [

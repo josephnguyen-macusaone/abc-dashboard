@@ -101,6 +101,12 @@ export class CookieService {
       if (!userData) return null;
 
       const userObj = JSON.parse(userData);
+
+      // Ensure name field exists - provide fallback if missing
+      if (!userObj.name) {
+        userObj.name = userObj.displayName || userObj.username || userObj.email?.split('@')[0] || 'User';
+      }
+
       return User.fromObject(userObj);
     } catch (error) {
       CookieService.logger.warn('Failed to parse user from cookie', {

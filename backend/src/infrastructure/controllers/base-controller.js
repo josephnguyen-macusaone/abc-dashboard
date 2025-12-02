@@ -3,7 +3,8 @@
  * Provides standardized error handling and common controller functionality
  */
 import logger from '../config/logger.js';
-import { errorMonitor } from '../../shared/utils/error-monitor.js';
+import { errorMonitor } from '../../shared/utils/monitoring/error-monitor.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import {
   ValidationException,
   ResourceNotFoundException,
@@ -30,24 +31,8 @@ export class BaseController {
     const correlationId = req.correlationId || this.generateCorrelationId();
     const operation = context.operation || 'unknown_operation';
 
-    // Set correlation ID on container for this request (fire and forget)
-    import('../../shared/kernel/container.js')
-      .then(({ container }) => {
-        try {
-          container.setCorrelationId(correlationId);
-        } catch (containerError) {
-          logger.warn('Could not set correlation ID on container', {
-            correlationId,
-            error: containerError.message,
-          });
-        }
-      })
-      .catch((containerError) => {
-        logger.warn('Could not import container for correlation ID setting', {
-          correlationId,
-          error: containerError.message,
-        });
-      });
+    // Note: Correlation ID is now handled by correlation middleware
+    // No need to manually set it on container here
 
     // Record error with monitoring system
     errorMonitor.recordError(error, {
@@ -179,151 +164,49 @@ export class BaseController {
   // Private error handling methods for different error types
 
   _handleValidationError(error, res) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 400,
-        type: 'VALIDATION_ERROR',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'VALIDATION_FAILED', { details: error.message });
   }
 
   _handleResourceNotFoundError(error, res) {
-    return res.status(error.statusCode || 404).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 404,
-        type: 'RESOURCE_NOT_FOUND',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'USER_NOT_FOUND', { details: error.message });
   }
 
   _handlePermissionError(error, res) {
-    return res.status(error.statusCode || 403).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 403,
-        type: 'PERMISSION_DENIED',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'INSUFFICIENT_PERMISSIONS');
   }
 
   _handleAuthError(error, res) {
-    return res.status(error.statusCode || 401).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 401,
-        type: 'AUTHENTICATION_ERROR',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'INVALID_CREDENTIALS');
   }
 
   _handleAccountError(error, res) {
-    return res.status(error.statusCode || 401).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 401,
-        type: 'ACCOUNT_ERROR',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'ACCOUNT_DEACTIVATED');
   }
 
   _handleNetworkTimeoutError(error, res) {
-    return res.status(error.statusCode || 408).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 408,
-        type: 'NETWORK_TIMEOUT',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'NETWORK_TIMEOUT', { operation: 'Operation' });
   }
 
   _handleExternalServiceUnavailableError(error, res) {
-    return res.status(error.statusCode || 503).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 503,
-        type: 'EXTERNAL_SERVICE_UNAVAILABLE',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'EXTERNAL_SERVICE_UNAVAILABLE', { service: 'External service' });
   }
 
   _handleConcurrentModificationError(error, res) {
-    return res.status(error.statusCode || 409).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 409,
-        type: 'CONCURRENT_MODIFICATION',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'CONCURRENT_MODIFICATION', { resource: 'Resource' });
   }
 
   _handleSecurityViolationError(error, res) {
-    return res.status(error.statusCode || 400).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 400,
-        type: 'SECURITY_VIOLATION',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'SECURITY_VIOLATION');
   }
 
   _handleRateLimitError(error, res) {
     const retryAfter = error.additionalData?.retryAfter || 60;
     res.set('Retry-After', retryAfter);
-
-    return res.status(error.statusCode || 429).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 429,
-        type: 'RATE_LIMIT_EXCEEDED',
-        category: error.category,
-        details: error.message,
-        retryAfter,
-        retryAfterMinutes: Math.ceil(retryAfter / 60),
-      },
-    });
+    return sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', { retryAfter });
   }
 
   _handleDataIntegrityError(error, res) {
-    return res.status(error.statusCode || 422).json({
-      success: false,
-      message: error.message,
-      error: {
-        code: error.statusCode || 422,
-        type: 'DATA_INTEGRITY_VIOLATION',
-        category: error.category,
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'DATA_INTEGRITY_VIOLATION');
   }
 
   _handleDatabaseError(error, res) {
@@ -335,82 +218,27 @@ export class BaseController {
     });
 
     if (error.code === 11000) {
-      // Duplicate key error
-      return res.status(409).json({
-        success: false,
-        message: 'A field value conflicts with existing data.',
-        error: {
-          code: 409,
-          type: 'DUPLICATE_ERROR',
-          category: 'database',
-          details: 'Duplicate key constraint violation',
-        },
-      });
+      // Duplicate key error - map to existing EMAIL_ALREADY_EXISTS or create a new generic one
+      return sendErrorResponse(res, 'EMAIL_ALREADY_EXISTS');
     }
 
-    return res.status(500).json({
-      success: false,
-      message: 'Database error occurred. Please try again.',
-      error: {
-        code: 500,
-        type: 'DATABASE_ERROR',
-        category: 'database',
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'DATABASE_ERROR');
   }
 
   _handleNetworkError(error, res) {
-    return res.status(503).json({
-      success: false,
-      message: 'Network connection error. Please try again later.',
-      error: {
-        code: 503,
-        type: 'NETWORK_ERROR',
-        category: 'network',
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'EXTERNAL_SERVICE_UNAVAILABLE', { service: 'Network service' });
   }
 
   _handleExternalServiceError(error, res) {
-    return res.status(502).json({
-      success: false,
-      message: 'External service is temporarily unavailable. Please try again later.',
-      error: {
-        code: 502,
-        type: 'EXTERNAL_SERVICE_ERROR',
-        category: 'external_service',
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'EXTERNAL_SERVICE_UNAVAILABLE', { service: 'External service' });
   }
 
   _handleTimeoutError(error, res) {
-    return res.status(408).json({
-      success: false,
-      message: 'Request timed out. Please try again.',
-      error: {
-        code: 408,
-        type: 'TIMEOUT_ERROR',
-        category: 'timeout',
-        details: error.message,
-      },
-    });
+    return sendErrorResponse(res, 'NETWORK_TIMEOUT', { operation: 'Request' });
   }
 
   _handleGenericError(error, res, correlationId, operation) {
-    return res.status(500).json({
-      success: false,
-      message: 'An unexpected error occurred. Please try again.',
-      error: {
-        code: 500,
-        type: 'INTERNAL_ERROR',
-        category: 'server',
-        correlationId,
-        operation,
-      },
-    });
+    return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
   }
 
   // Error type detection methods

@@ -3,7 +3,7 @@
  * Provides comprehensive error tracking, metrics, and alerting capabilities
  */
 
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../../../infrastructure/config/logger.js';
 
 /**
  * Error severity levels

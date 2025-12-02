@@ -7,11 +7,14 @@
  * Run this script to verify your email setup is working correctly.
  *
  * Usage:
- *   node test-email.js [recipient@email.com]
+ *   node tests/test-email.js [recipient@email.com]
  */
 
-import { config } from './src/infrastructure/config/config.js';
-import { EmailService } from './src/shared/services/email-service.js';
+// Load environment configuration (this will load the appropriate .env file)
+import '../src/infrastructure/config/env.js';
+
+import { config } from '../src/infrastructure/config/config.js';
+import { EmailService } from '../src/shared/services/email-service.js';
 
 async function testEmail() {
   console.log('🚀 Testing Email Configuration...\n');

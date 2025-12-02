@@ -13,7 +13,7 @@ export default function VerifyEmail({ searchParams }: VerifyEmailProps) {
   const email = searchParams.email;
 
   return (
-    <ProtectedRoute requireAuth={false} redirectTo="/dashboard">
+    <ProtectedRoute>
       <VerifyEmailPage token={token} email={email} />
     </ProtectedRoute>
   );

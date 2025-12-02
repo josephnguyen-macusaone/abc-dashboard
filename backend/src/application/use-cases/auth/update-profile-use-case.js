@@ -6,13 +6,14 @@ import {
   ValidationException,
   ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
-import { executeWithDegradation } from '../../../shared/utils/graceful-degradation.js';
-import { withTimeout, TimeoutPresets } from '../../../shared/utils/retry.js';
+import { executeWithDegradation } from '../../../shared/utils/reliability/graceful-degradation.js';
+import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
 import logger from '../../../infrastructure/config/logger.js';
 
 export class UpdateProfileUseCase {
-  constructor(userRepository) {
+  constructor(userRepository, userProfileRepository) {
     this.userRepository = userRepository;
+    this.userProfileRepository = userProfileRepository;
   }
 
   async execute(userId, updates) {
@@ -107,15 +108,12 @@ export class UpdateProfileUseCase {
       }
 
       // Always ensure a profile record exists, even if no profile fields are updated
-      const { container } = await import('../../../shared/kernel/container.js');
-      const userProfileRepository = container.getUserProfileRepository();
-
       // Update profile with timeout handling
       await withTimeout(
         async () => {
           if (Object.keys(profileUpdates).length > 0) {
             // Update profile with provided data
-            await userProfileRepository.updateByUserId(userId, profileUpdates);
+            await this.userProfileRepository.updateByUserId(userId, profileUpdates);
           } else {
             // Ensure profile record exists with default values
             await userProfileRepository.updateByUserId(userId, {
@@ -154,9 +152,7 @@ export class UpdateProfileUseCase {
       if (Object.keys(profileUpdates).length > 0) {
         await withTimeout(
           async () => {
-            const { container } = await import('../../../shared/kernel/container.js');
-            const userProfileRepository = container.getUserProfileRepository();
-            const updatedProfile = await userProfileRepository.findByUserId(userId);
+            const updatedProfile = await this.userProfileRepository.findByUserId(userId);
             finalBio = updatedProfile?.bio || null;
           },
           TimeoutPresets.DATABASE,

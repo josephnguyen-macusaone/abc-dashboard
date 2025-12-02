@@ -1,22 +1,12 @@
 import swaggerJSDoc from 'swagger-jsdoc';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { config } from './config.js';
-import { generateSchemasFromDTOs } from '../../shared/utils/dto-to-openapi.js';
-import {
-  LoginRequestDto,
-  RegisterRequestDto,
-  ChangePasswordRequestDto,
-  RefreshTokenRequestDto,
-  LoginResponseDto,
-  RegisterResponseDto,
-  TokensDto,
-  UserAuthDto,
-  CreateUserRequestDto,
-  UserResponseDto,
-  UserListResponseDto,
-  UpdateProfileRequestDto,
-} from '../../application/dto/index.js'; // eslint-disable-line no-unused-vars
 
-// Swagger definition
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Swagger definition (OpenAPI 3.0)
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
@@ -24,23 +14,11 @@ const swaggerDefinition = {
     version: '1.0.0',
     description:
       'A comprehensive dashboard API with authentication and user management built with Node.js, Express, and MongoDB',
-    contact: {
-      name: 'API Support',
-      email: 'support@abc-dashboard.com',
-    },
-    license: {
-      name: 'ISC',
-      url: 'https://opensource.org/licenses/ISC',
-    },
   },
   servers: [
     {
       url: `http://localhost:${config.PORT}/api/v1`,
-      description: 'Development server (v1)',
-    },
-    {
-      url: `${config.CLIENT_URL}/api/v1`,
-      description: 'Production server (v1)',
+      description: 'Development server',
     },
   ],
   components: {
@@ -52,58 +30,81 @@ const swaggerDefinition = {
         description:
           'JWT Authorization header using the Bearer scheme. Example: "Authorization: Bearer {token}"',
       },
-      apiKeyAuth: {
-        type: 'apiKey',
-        in: 'header',
-        name: 'x-api-key',
-        description: 'API Key for external integrations',
-      },
     },
     schemas: {
-      // Manual schemas for complex DTOs that auto-generation struggles with
-      UserListResponse: {
+      User: {
         type: 'object',
         properties: {
-          users: {
-            type: 'array',
-            items: {
-              $ref: '#/components/schemas/UserResponse',
-            },
+          id: {
+            type: 'string',
+            description: 'User ID',
+            example: '507f1f77bcf86cd799439011'
           },
-          pagination: {
-            $ref: '#/components/schemas/Pagination',
+          username: {
+            type: 'string',
+            description: 'Username',
+            example: 'johndoe'
           },
-        },
-        required: ['users', 'pagination'],
+          email: {
+            type: 'string',
+            format: 'email',
+            description: 'User email',
+            example: 'john.doe@example.com'
+          },
+          displayName: {
+            type: 'string',
+            description: 'Display name',
+            example: 'John Doe'
+          },
+          role: {
+            type: 'string',
+            enum: ['admin', 'manager', 'staff'],
+            description: 'User role',
+            example: 'staff'
+          },
+          avatarUrl: {
+            type: 'string',
+            format: 'uri',
+            description: 'Avatar URL',
+            nullable: true
+          },
+          phone: {
+            type: 'string',
+            description: 'Phone number',
+            nullable: true
+          },
+          isActive: {
+            type: 'boolean',
+            description: 'Whether the user account is active',
+            example: true
+          },
+          isFirstLogin: {
+            type: 'boolean',
+            description: 'Whether this is the user\'s first login',
+            example: false
+          },
+          createdAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Account creation timestamp'
+          },
+          updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Last update timestamp'
+          }
+        }
       },
-
-      // Auto-generated schemas from simpler DTOs
-      ...generateSchemasFromDTOs({
-        LoginRequest: LoginRequestDto,
-        RegisterRequest: RegisterRequestDto,
-        ChangePasswordRequest: ChangePasswordRequestDto,
-        RefreshTokenRequest: RefreshTokenRequestDto,
-        LoginResponse: LoginResponseDto,
-        RegisterResponse: RegisterResponseDto,
-        Tokens: TokensDto,
-        UserAuth: UserAuthDto,
-        CreateUserRequest: CreateUserRequestDto,
-        UserResponse: UserResponseDto,
-        UpdateProfileRequest: UpdateProfileRequestDto,
-      }),
-      // Note: DTOs are used dynamically in generateSchemasFromDTOs function
-
-      // Custom schemas that don't have DTOs
       Error: {
         type: 'object',
         properties: {
           success: {
             type: 'boolean',
-            example: false,
+            example: false
           },
           message: {
             type: 'string',
-            description: 'Error message',
+            description: 'Error message'
           },
           errors: {
             type: 'array',
@@ -112,98 +113,32 @@ const swaggerDefinition = {
               properties: {
                 field: {
                   type: 'string',
-                  description: 'Field name that caused the error',
+                  description: 'Field name that failed validation'
                 },
                 message: {
                   type: 'string',
-                  description: 'Validation error message',
-                },
-              },
-            },
+                  description: 'Validation error message'
+                }
+              }
+            }
           },
-        },
-        required: ['success', 'message'],
-      },
-      UserStats: {
-        type: 'object',
-        properties: {
-          totalUsers: {
-            type: 'integer',
-            description: 'Total number of users',
-          },
-          activeUsers: {
-            type: 'integer',
-            description: 'Number of active users',
-          },
-          verifiedUsers: {
-            type: 'integer',
-            description: 'Number of email-verified users',
-          },
-          usersByRole: {
-            type: 'object',
-            description: 'Users grouped by role',
-          },
-          recentRegistrations: {
-            type: 'integer',
-            description: 'Recent registrations (last 30 days)',
-          },
-          verificationRate: {
-            type: 'number',
-            description: 'Email verification rate percentage',
-          },
-        },
-      },
-      Pagination: {
-        type: 'object',
-        properties: {
-          page: {
-            type: 'integer',
-            description: 'Current page number',
-          },
-          limit: {
-            type: 'integer',
-            description: 'Items per page',
-          },
-          total: {
-            type: 'integer',
-            description: 'Total number of items',
-          },
-          totalPages: {
-            type: 'integer',
-            description: 'Total number of pages',
-          },
-        },
-      },
-    },
-  },
-  tags: [
-    {
-      name: 'Authentication',
-      description: 'User authentication and authorization endpoints',
-    },
-    {
-      name: 'Users',
-      description: 'User management and profile operations',
-    },
-    {
-      name: 'Profile',
-      description: 'User profile management operations',
-    },
-  ],
-  externalDocs: {
-    description: 'Find out more about ABC Dashboard',
-    url: 'https://github.com/your-org/abc-dashboard',
+          timestamp: {
+            type: 'string',
+            format: 'date-time'
+          }
+        }
+      }
+    }
   },
 };
 
-// Swagger options
+// Swagger options with absolute paths
 const options = {
   swaggerDefinition,
   apis: [
-    './src/infrastructure/routes/auth-routes.js',
-    './src/infrastructure/routes/user-routes.js',
-    './src/infrastructure/routes/profile-routes.js',
-    './src/infrastructure/controllers/*.js',
+    path.join(__dirname, '../routes/auth-routes.js'),
+    path.join(__dirname, '../routes/user-routes.js'),
+    path.join(__dirname, '../routes/profile-routes.js'),
   ],
 };
 

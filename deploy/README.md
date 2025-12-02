@@ -22,14 +22,24 @@ cd frontend && cp .env.example .env && cd ..
 
 ### Option 2: Docker Only
 
-**Run with Docker Compose:**
+**Development Environment:**
 
 ```bash
-# Build and run services
-docker-compose up -d
-
-# Or for development (from project root)
+# Run development environment with hot reload (from project root)
 docker-compose -f deploy/docker/docker-compose.dev.yml up -d
+
+# View logs
+docker-compose -f deploy/docker/docker-compose.dev.yml logs -f
+```
+
+**Production Environment:**
+
+```bash
+# Build and run production services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or build and run main services (backend + database only)
+docker-compose up -d
 ```
 
 ## 🏗️ System Architecture
@@ -69,12 +79,13 @@ graph TB
 
 ```txt
 abc-dashboard/
-├── docker-compose.yml             Main Docker deployment
+├── docker-compose.yml             Main Docker deployment (backend + db)
+├── docker-compose.prod.yml        Full production deployment (frontend + backend + db)
 ├── deploy/
 │   ├── README.md                  This deployment guide
 │   ├── deploy.sh                  OpenLiteSpeed deployment script
 │   └── docker/                    Docker configurations
-│       └── docker-compose.dev.yml
+│       └── docker-compose.dev.yml Development environment
 ├── .env                           Environment variables
 ├── .env.example                   Environment template
 └── infrastructure/                Infrastructure configs
@@ -141,12 +152,12 @@ graph TD
 
 ## 🐳 Docker Services
 
-| Service | Image | Port | Purpose |
-|---------|-------|------|---------|
-| **MongoDB** | `mongo:6` | 27017 | Database |
-| **Redis** | `redis:7-alpine` | 6379 | Cache |
-| **Backend** | Custom build | 5000 | API Server |
-| **OpenLiteSpeed** | N/A | 80/443 | Web Server |
+| Service | Development | Production | Port | Purpose |
+|---------|-------------|------------|------|---------|
+| **MongoDB** | `mongo:6` | `mongo:6` | 27017 | Database |
+| **Redis** | `redis:7-alpine` | `redis:7-alpine` | 6379 | Cache |
+| **Backend** | Custom Node.js | Custom Node.js | 5000 | API Server |
+| **Frontend** | Custom Node.js + Next.js | Nginx + Static Files | 3000/80 | Web App |
 
 ## 🔄 Handling Existing Deployments
 
@@ -155,12 +166,13 @@ graph TD
 The deployment script handles existing installations automatically:
 
 **Automatic Behavior:**
+
 - ✅ **Detects existing directory** and warns about overwrites
 - 🛑 **Automatically stops** any running Docker services
 - 🔄 **Overwrites files** without user interaction
 - 🚀 **Continues deployment** seamlessly
 
-### Re-deployment Process:
+### Re-deployment Process
 
 ```bash
 # Simply run the deployment script again

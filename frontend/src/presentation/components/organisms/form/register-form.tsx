@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { cn } from '@/shared/utils';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 
@@ -23,8 +24,8 @@ interface RegisterFormData {
 
 export function RegisterForm({ onSuccess, onSwitchToLogin, className }: RegisterFormProps) {
   const { register } = useAuth();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
@@ -93,39 +94,33 @@ export function RegisterForm({ onSuccess, onSwitchToLogin, className }: Register
     setErrors(validationErrors);
     const hasErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
     if (hasErrors) return;
-    setIsLoading(true);
-    setError(null);
+
     try {
-      await register(formData.username, formData.firstName, formData.lastName, formData.email, formData.password);
-      onSuccess?.(formData.email, formData.username);
+      await toast.promise(
+        register(formData.username, formData.firstName, formData.lastName, formData.email, formData.password),
+        {
+          loading: 'Creating your account...',
+          success: () => {
+            toast.successWithDescription(
+              'Account created successfully!',
+              'Please check your email to verify your account before signing in.'
+            );
+            onSuccess?.(formData.email, formData.username);
+            return 'Account created!';
+          },
+          error: (error: any) => {
+            // The error context will handle showing the error toast
+            return error?.message || 'Failed to create account';
+          }
+        }
+      );
     } catch (error) {
-      // Error toast is now handled by the auth context
-    } finally {
-      setIsLoading(false);
+      // Error already handled by promise toast
     }
   };
 
   return (
-    <div className={cn('w-full max-w-md space-y-6', className)}>
-      {/* Error Alert */}
-      {error && (
-        <div className={cn(
-          'p-4 rounded-lg border border-destructive/20 bg-destructive/10',
-          'flex items-start space-x-3'
-        )}>
-          <div className="flex-1">
-            {/* MAC USA ONE Typography: Title S for error title */}
-            <Typography variant="title-s" color="error" className="text-destructive">
-              Registration Error
-            </Typography>
-            {/* MAC USA ONE Typography: Body S for error message */}
-            <Typography variant="body-s" color="error" className="text-destructive/80 mt-1">
-              {error}
-            </Typography>
-          </div>
-        </div>
-      )}
-
+    <div className={cn('w-full max-w-md space-y-6 mt-6', className)}>
       {/* Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Name Fields - First and Last Name in same row */}

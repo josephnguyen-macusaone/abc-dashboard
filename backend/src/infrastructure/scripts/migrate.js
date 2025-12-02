@@ -7,7 +7,7 @@ import {
   rollbackMigrations,
   runSeeds,
   showMigrationStatus,
-} from '../../shared/utils/migrations.js';
+} from '../../shared/utils/database/migrations.js';
 
 // Load environment variables
 dotenv.config();

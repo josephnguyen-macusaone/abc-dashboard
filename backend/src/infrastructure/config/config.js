@@ -22,7 +22,9 @@ export const config = {
     process.env.EMAIL_HOST ||
     (process.env.NODE_ENV === 'development' ? 'localhost' : 'smtp.gmail.com'),
   EMAIL_PORT:
-    parseInt(process.env.EMAIL_PORT) || (process.env.NODE_ENV === 'development' ? 1025 : 587),
+    process.env.EMAIL_SERVICE === 'mailhog'
+      ? 1025  // MailHog SMTP port
+      : (parseInt(process.env.EMAIL_PORT) || (process.env.NODE_ENV === 'development' ? 1025 : 587)),
   EMAIL_SECURE: process.env.EMAIL_SECURE === 'true' || false,
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS,

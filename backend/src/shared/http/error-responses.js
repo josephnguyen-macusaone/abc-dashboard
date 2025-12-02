@@ -62,6 +62,18 @@ export const ERROR_LIST = {
     category: 'user_management',
   },
 
+  RESOURCE_ALREADY_EXISTS: {
+    statusCode: 409,
+    message: 'Resource already exists',
+    category: 'resource_management',
+  },
+
+  BUSINESS_RULE_VIOLATION: {
+    statusCode: 400,
+    message: 'Business rule violation',
+    category: 'business_logic',
+  },
+
   INVALID_EMAIL_FORMAT: {
     statusCode: 400,
     message: 'Please provide a valid email address',
@@ -117,6 +129,12 @@ export const ERROR_LIST = {
   MISSING_REQUIRED_FIELD: {
     statusCode: 400,
     message: 'Required field is missing',
+    category: 'validation',
+  },
+
+  INVALID_FIELD_VALUE: {
+    statusCode: 400,
+    message: 'Invalid field value',
     category: 'validation',
   },
 
@@ -334,6 +352,9 @@ export class ErrorResponse {
     // Handle template messages
     if (errorDefinition.template) {
       this.message = this.interpolateTemplate(errorDefinition.message, templateData);
+    } else if (additionalData.customMessage) {
+      // Use custom message if provided (for ValidationException)
+      this.message = additionalData.customMessage;
     } else {
       this.message = errorDefinition.message;
     }

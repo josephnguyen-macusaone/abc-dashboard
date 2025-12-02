@@ -5,6 +5,7 @@
 import { BaseController } from './base-controller.js';
 import logger from '../config/logger.js';
 import { AuthValidator } from '../../application/validators/index.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import {
   InvalidCredentialsException,
   ValidationException,
@@ -20,8 +21,10 @@ export class AuthController extends BaseController {
     markEmailVerifiedUseCase,
     changePasswordUseCase,
     requestPasswordResetUseCase,
+    requestPasswordResetWithGeneratedPasswordUseCase,
     resetPasswordUseCase,
-    tokenService
+    tokenService,
+    userProfileRepository
   ) {
     super();
     this.loginUseCase = loginUseCase;
@@ -31,8 +34,10 @@ export class AuthController extends BaseController {
     this.markEmailVerifiedUseCase = markEmailVerifiedUseCase;
     this.changePasswordUseCase = changePasswordUseCase;
     this.requestPasswordResetUseCase = requestPasswordResetUseCase;
+    this.requestPasswordResetWithGeneratedPasswordUseCase = requestPasswordResetWithGeneratedPasswordUseCase;
     this.resetPasswordUseCase = resetPasswordUseCase;
     this.tokenService = tokenService;
+    this.userProfileRepository = userProfileRepository;
   }
 
   async register(req, res) {
@@ -138,10 +143,24 @@ export class AuthController extends BaseController {
       // User is authenticated - return full profile
       const user = req.user;
 
+      // Validate user object
+      if (!user.id && !user._id) {
+        return sendErrorResponse(res, 'INVALID_TOKEN');
+      }
+
       // Get user profile for additional data
-      const { container } = await import('../../shared/kernel/container.js');
-      const userProfileRepository = container.getUserProfileRepository();
-      const profile = await userProfileRepository.findByUserId(user.id);
+      let profile = null;
+      try {
+        if (!this.userProfileRepository) {
+          return sendErrorResponse(res, 'SERVICE_UNAVAILABLE');
+        }
+
+        const userId = user.id || user._id?.toString();
+        profile = await this.userProfileRepository.findByUserId(userId);
+      } catch (profileError) {
+        // Continue without profile - it's optional
+        profile = null;
+      }
 
       return res.success(
         {
@@ -164,12 +183,12 @@ export class AuthController extends BaseController {
         'Profile retrieved successfully'
       );
     } catch (error) {
-      logger.error('Get profile error:', error);
-      return res.error(
-        'Failed to get profile',
-        500,
-        process.env.NODE_ENV === 'development' ? { details: error.message } : {}
-      );
+      logger.error('Get profile error: Unexpected error', {
+        error: error.message,
+        userId: req.user?.id || req.user?._id?.toString(),
+        correlationId: req.correlationId,
+      });
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -191,7 +210,7 @@ export class AuthController extends BaseController {
 
       // Handle unexpected errors
       logger.error('Refresh token error:', error);
-      return res.error('An unexpected error occurred during token refresh', 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -208,12 +227,12 @@ export class AuthController extends BaseController {
       } else if (action === 'confirm') {
         // Authenticated user confirmation flow - requires authentication
         if (!req.user) {
-          return res.error('Authentication required for email confirmation', 401);
+          return sendErrorResponse(res, 'TOKEN_MISSING');
         }
 
         const userId = req.user.id || req.user._id?.toString();
         if (!userId) {
-          return res.error('User authentication failed', 401);
+          return sendErrorResponse(res, 'INVALID_TOKEN');
         }
 
         // Use the mark email verified use case
@@ -221,10 +240,9 @@ export class AuthController extends BaseController {
 
         return res.success({ profile: result.profile }, result.message);
       } else {
-        return res.error(
-          'Either token (for verification) or action (for confirmation) must be provided',
-          400
-        );
+        return sendErrorResponse(res, 'MISSING_REQUIRED_FIELD', {
+          fieldName: 'token or action',
+        });
       }
     } catch (error) {
       // Handle domain exceptions
@@ -234,7 +252,7 @@ export class AuthController extends BaseController {
 
       // Handle unexpected errors
       logger.error('Email verification/confirmation error:', error);
-      return res.error('An unexpected error occurred during email verification', 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -242,12 +260,12 @@ export class AuthController extends BaseController {
     let userId;
     try {
       if (!req.user) {
-        return res.error('User authentication required', 401);
+        return sendErrorResponse(res, 'TOKEN_MISSING');
       }
 
       userId = req.user.id || (req.user._id ? req.user._id?.toString() : null);
       if (!userId) {
-        return res.error('User authentication failed', 401);
+        return sendErrorResponse(res, 'INVALID_TOKEN');
       }
       const { currentPassword, newPassword } = req.body;
 
@@ -272,12 +290,10 @@ export class AuthController extends BaseController {
       // Handle unexpected errors
       logger.error('Password change error:', {
         error: error.message,
-        stack: error.stack,
         userId: userId || 'undefined',
-        hasUser: !!req.user,
-        email: req.user?.email,
+        correlationId: req.correlationId,
       });
-      return res.error('An unexpected error occurred during password change', 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -287,7 +303,7 @@ export class AuthController extends BaseController {
       // by removing the token. We could implement token blacklisting here.
       return res.success(null, 'Logout successful');
     } catch (error) {
-      return res.error('Logout failed', 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -305,18 +321,37 @@ export class AuthController extends BaseController {
       }
 
       // Don't reveal if email exists or not for security
-      logger.error('Password reset request error:', error);
+      logger.error('Password reset request failed:', error);
+      return res.success(null, 'Password reset email sent if account exists');
+    }
+  }
+
+  async requestPasswordResetWithGeneratedPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      const result = await this.requestPasswordResetWithGeneratedPasswordUseCase.execute({ email });
+
+      return res.success(null, result.message);
+    } catch (error) {
+      // Handle domain exceptions
+      if (error instanceof ValidationException) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      // Don't reveal if email exists or not for security
+      logger.error('Password reset with generated password request failed:', error);
       return res.success(null, 'Password reset email sent if account exists');
     }
   }
 
   async resetPassword(req, res) {
     try {
-      const { token, newPassword } = req.body;
+      const { token, password } = req.body;
 
       const result = await this.resetPasswordUseCase.execute({
         token,
-        newPassword,
+        newPassword: password,
       });
 
       return res.success(result.user, result.message);
@@ -327,7 +362,7 @@ export class AuthController extends BaseController {
       }
 
       logger.error('Password reset error:', error);
-      return res.error('Invalid or expired reset token', 400);
+      return sendErrorResponse(res, 'INVALID_RESET_TOKEN');
     }
   }
 }

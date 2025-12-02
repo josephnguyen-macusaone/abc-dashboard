@@ -90,6 +90,7 @@ export interface InputFieldProps extends Omit<FormFieldProps, 'children'> {
   placeholder?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   disabled?: boolean;
   icon?: React.ReactNode;
   inputClassName?: string;
@@ -105,6 +106,7 @@ export function InputField({
   placeholder,
   value,
   onChange,
+  onBlur,
   disabled,
   icon,
   inputClassName,
@@ -134,6 +136,7 @@ export function InputField({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           disabled={disabled}
           maxLength={maxLength}
           className={cn(

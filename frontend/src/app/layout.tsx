@@ -5,6 +5,7 @@ import { Archivo, Inter } from "next/font/google";
 import { AuthProvider, UserProvider, ToastProvider, ThemeProvider, ErrorProvider } from '@/presentation/contexts';
 import { Toaster } from '@/presentation/components/atoms';
 import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
+import { RouteSuspense } from '@/presentation/components/routes/route-suspense';
 
 import "./globals.css";
 
@@ -42,7 +43,9 @@ export default function RootLayout({
               <ErrorProvider>
                 <AuthProvider>
                   <UserProvider>
+                    <RouteSuspense message="Initializing application...">
                     {children}
+                    </RouteSuspense>
                     <Toaster />
                   </UserProvider>
                 </AuthProvider>

@@ -10,11 +10,11 @@ import {
 } from '@/presentation/components/molecules/user-management';
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
-import { UserDeleteDialog } from './user-delete-dialog';
+import { UserDeleteForm } from './user-delete-form';
 import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
 import { canManageRole } from '@/shared/constants';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/presentation/contexts/toast-context';
 
 interface UserManagementProps {
@@ -53,7 +53,7 @@ export function UserManagement({
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete' | 'changePassword'>('list');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const toast = useToast();
-  // Load users with filters
+  // Load users with filters (debounced)
   const handleLoadUsers = useCallback(async () => {
     try {
       await onLoadUsers?.({
@@ -62,7 +62,6 @@ export function UserManagement({
       });
     } catch (err) {
       const error = err as Error;
-      console.error('Error loading users:', error);
       onError?.(error.message || 'Failed to load users');
     }
   }, [searchTerm, roleFilter, onLoadUsers, onError]);
@@ -72,11 +71,11 @@ export function UserManagement({
     onLoadUsers?.({}); // Load all users initially
   }, [onLoadUsers]); // Only on mount or when onLoadUsers changes
 
-  // Update filters and reload when search or role changes
+  // Update filters and reload when search or role changes (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
       handleLoadUsers();
-    }, 300); // Debounce search
+    }, 500); // 500ms debounce delay
 
     return () => clearTimeout(timer);
   }, [searchTerm, roleFilter, handleLoadUsers]);
@@ -109,11 +108,6 @@ export function UserManagement({
     setCurrentView('delete');
   };
 
-  const handleChangePassword = (user: User) => {
-    setSelectedUser(user);
-    setCurrentView('changePassword');
-  };
-
   // Form success/cancel handlers
   const handleFormSuccess = () => {
     // Refresh the data and go back to list view
@@ -140,44 +134,26 @@ export function UserManagement({
   // Render different views
   if (currentView === 'create') {
     return (
-      <div className="space-y-4">
-        <Button
-          variant="link"
-          onClick={handleFormCancel}
-          className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
-        >
-          ← Back to User List
-        </Button>
-        <UserCreateForm
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      </div>
+      <UserCreateForm
+        onSuccess={handleFormSuccess}
+        onCancel={handleFormCancel}
+      />
     );
   }
 
   if (currentView === 'edit' && selectedUser) {
     return (
-      <div className="space-y-4">
-        <Button
-          variant="link"
-          onClick={handleFormCancel}
-          className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
-        >
-          ← Back to User List
-        </Button>
-        <UserEditForm
-          user={selectedUser}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      </div>
+      <UserEditForm
+        user={selectedUser}
+        onSuccess={handleFormSuccess}
+        onCancel={handleFormCancel}
+      />
     );
   }
 
   if (currentView === 'delete' && selectedUser) {
     return (
-      <UserDeleteDialog
+      <UserDeleteForm
         user={selectedUser}
         open={true}
         onOpenChange={(open) => {
@@ -194,13 +170,6 @@ export function UserManagement({
   if (currentView === 'changePassword' && selectedUser) {
     return (
       <div className="space-y-4">
-        <Button
-          variant="link"
-          onClick={handleFormCancel}
-          className="p-0 h-auto text-body-s text-primary hover:text-primary/80"
-        >
-          ← Back to User List
-        </Button>
         <UserFormModal
           title={`Change Password for ${selectedUser.displayName || selectedUser.username}`}
           user={selectedUser}
@@ -229,26 +198,30 @@ export function UserManagement({
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm', className)}>
       {/* Header */}
-        <div className="flex items-center justify-between p-6">
-          <div>
-            <Typography variant="title-l" className="text-foreground">
-              User Management
-            </Typography>
-            <Typography variant="body-s" color="muted" className="text-muted-foreground mt-0.5">
-              Manage user accounts and roles
-            </Typography>
-          </div>
-
-          {currentUser.role === 'admin' && (
-            <Button onClick={handleCreateUser}>
-              <UserPlus className="h-4 w-4" />
-              <Typography variant="button-m">Add User</Typography>
-            </Button>
-          )}
+      <div className="flex items-center justify-between p-6">
+        <div>
+          <Typography variant="title-l" className="text-foreground">
+            User Management
+          </Typography>
+          <Typography variant="body-s" color="muted" className="text-muted-foreground mt-0.5">
+            Manage user accounts and roles
+          </Typography>
         </div>
 
-        {/* Statistics */}
-        <UserStatsCards users={users} isLoading={isLoading} />
+        {currentUser.role === 'admin' && (
+          <Button onClick={handleCreateUser}>
+            <UserPlus className="h-4 w-4" />
+            <Typography variant="button-s">Add User</Typography>
+          </Button>
+        )}
+      </div>
+
+      {/* Statistics */}
+      <UserStatsCards
+        users={users}
+        isLoading={isLoading}
+        className="px-6"
+      />
 
       {/* Filters */}
       <UserFilters
@@ -259,14 +232,17 @@ export function UserManagement({
         onClearFilters={async () => {
           setSearchTerm('');
           setRoleFilter('all');
-          // Explicitly refetch users with cleared filters
-          try {
-            await onLoadUsers?.({});
-          } catch (err) {
-            const error = err as Error;
-            onError?.(error.message || 'Failed to clear filters');
-            toast.error('Failed to clear filters');
-          }
+          await toast.promise(
+            onLoadUsers?.({}) || Promise.resolve(),
+            {
+              loading: 'Refreshing user list...',
+              success: 'Filters cleared successfully',
+              error: (error: any) => {
+                onError?.(error.message || 'Failed to clear filters');
+                return 'Failed to clear filters';
+              }
+            }
+          );
         }}
       />
 
@@ -278,7 +254,6 @@ export function UserManagement({
         canDelete={canDeleteUser}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
-        onChangePassword={handleChangePassword}
         onCreateFirst={handleCreateUser}
         isLoading={isLoading}
       />

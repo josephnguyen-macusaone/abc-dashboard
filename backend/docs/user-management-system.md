@@ -233,7 +233,7 @@ Query: {
 #### Update User
 
 ```txt
-PUT /api/v1/users/:id
+PATCH /api/v1/users/:id
 Authorization: Bearer <token>
 Body: {
   "firstName": "string",

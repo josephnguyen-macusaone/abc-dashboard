@@ -1,6 +1,7 @@
 import logger from '../../../config/logger.js';
 import { config } from '../../../config/config.js';
 import { cache } from '../../../config/redis.js';
+import { sendErrorResponse } from '../../../../shared/http/error-responses.js';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -34,12 +35,7 @@ export const accountLockout = async (req, res, next) => {
           remainingTime: `${remainingTime} minutes`,
         });
 
-        return res.status(429).json({
-          success: false,
-          message: `Account temporarily locked due to too many failed attempts. Try again in ${remainingTime} minutes.`,
-          correlationId: req.correlationId,
-          retryAfter: remainingTime * 60, // seconds
-        });
+        return sendErrorResponse(res, 'ACCOUNT_LOCKED', { retryAfter: remainingTime * 60 });
       } else {
         // Reset lockout after duration
         if (cache) {
@@ -165,11 +161,7 @@ export const requestSizeLimiter = (req, res, next) => {
       method: req.method,
     });
 
-    return res.status(413).json({
-      success: false,
-      message: 'Request entity too large',
-      correlationId: req.correlationId,
-    });
+    return sendErrorResponse(res, 'FILE_TOO_LARGE');
   }
 
   next();
@@ -197,11 +189,7 @@ export const injectionProtection = (req, res, next) => {
               value: value.substring(0, 100) + (value.length > 100 ? '...' : ''),
             });
 
-            return res.status(400).json({
-              success: false,
-              message: 'Invalid input detected',
-              correlationId: req.correlationId,
-            });
+            return sendErrorResponse(res, 'INVALID_INPUT');
           }
         }
       } else if (typeof value === 'object' && value !== null) {
@@ -263,12 +251,7 @@ export const createRateLimit = (windowMs, maxRequests, message) => {
         maxRequests,
       });
 
-      return res.status(429).json({
-        success: false,
-        message: message || 'Too many requests, please try again later',
-        correlationId: req.correlationId,
-        retryAfter: Math.ceil(windowMs / 1000),
-      });
+      return sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', { retryAfter: Math.ceil(windowMs / 1000) });
     }
 
     // Add current request

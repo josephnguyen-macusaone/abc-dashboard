@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useUser } from '@/presentation/contexts/user-context';
 import { useToast } from '@/presentation/contexts/toast-context';
+import { useAuth } from '@/presentation/contexts/auth-context';
 import { User } from '@/application/dto/user-dto';
 import { USER_ROLE_LABELS } from '@/shared/constants';
 
@@ -20,27 +21,34 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/a
 import { Badge } from '@/presentation/components/atoms/ui/badge';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Trash2, AlertTriangle, UserX, Shield, Clock, Calendar, Mail } from 'lucide-react';
+import { Trash2, AlertTriangle, UserX, Shield, Clock, Calendar, Mail, ArrowLeft, Loader2 } from 'lucide-react';
 
-interface UserDeleteDialogProps {
+interface UserDeleteFormProps {
   user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export function UserDeleteDialog({
+export function UserDeleteForm({
   user,
   open,
   onOpenChange,
   onSuccess
-}: UserDeleteDialogProps) {
+}: UserDeleteFormProps) {
   const { deleteUser, loading: { deleteUser: isDeleting } } = useUser();
   const { success, error } = useToast();
+  const { user: currentUser } = useAuth();
   const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const handleDelete = async () => {
     if (!user) return;
+
+    // Debug: Show current user and target user info
+    console.log('Attempting to delete user:', {
+      targetUser: { id: user.id, email: user.email, role: user.role, displayName: user.displayName },
+      currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, role: currentUser.role } : 'No current user'
+    });
 
     setIsDeletingUser(true);
 
@@ -66,16 +74,33 @@ export function UserDeleteDialog({
       // Reset loading state
       setIsDeletingUser(false);
 
-      // Show error toast
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user';
+      // Extract error details more thoroughly
+      let errorMessage = 'Failed to delete user';
+      let errorDetails = '';
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        errorDetails = err.stack || '';
+      } else if (typeof err === 'object' && err !== null) {
+        // Try to extract meaningful error information
+        const errorObj = err as any;
+        if (errorObj.message) errorMessage = errorObj.message;
+        if (errorObj.error && typeof errorObj.error === 'string') errorMessage = errorObj.error;
+        if (errorObj.details) errorDetails = JSON.stringify(errorObj.details);
+        if (errorObj.response?.data?.message) errorMessage = errorObj.response.data.message;
+        if (errorObj.response?.data?.error) errorMessage = errorObj.response.data.error;
+      }
+
+      console.error('Detailed error info:', { errorMessage, errorDetails, fullError: err });
 
       if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND')) {
         // Treat "not found" as success - the user is already deleted (idempotent operation)
         onOpenChange(false);
         success?.('User deleted successfully');
         onSuccess?.();
-      } else if (errorMessage.includes('permission') || errorMessage.includes('Insufficient')) {
-        error?.('You do not have permission to delete this user.');
+      } else if (errorMessage.includes('permission') || errorMessage.includes('Insufficient') ||
+        errorMessage.includes('cannot delete')) {
+        error?.(`Permission denied: ${errorMessage}`);
         // Still refresh the list to show current state
         onSuccess?.();
       } else {
@@ -111,23 +136,26 @@ export function UserDeleteDialog({
         {/* Header with destructive styling */}
         <DialogHeader className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br from-red-100 to-red-200 dark:from-red-900/20 dark:to-red-800/20">
               <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-semibold text-destructive">
-                Delete User Account
+              <DialogTitle className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                <Typography variant="body-m">Delete User Account</Typography>
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                This action is permanent and cannot be undone.
+              <DialogDescription>
+                <Typography variant="label-m" color="muted">
+                  This action is permanent and cannot be undone.
+                </Typography>
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         {/* User Information Card */}
-        <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-gradient-to-r from-muted/30 to-muted/10 p-4">
+        <div className="space-y-6">
+          <div className="rounded-lg border border-border bg-linear-to-br from-muted/30 to-muted/10 p-6">
             <div className="flex items-start gap-4">
               <Avatar className="h-16 w-16 ring-2 ring-primary/20">
                 <AvatarImage src={user.avatar} alt={user.displayName} />
@@ -138,48 +166,49 @@ export function UserDeleteDialog({
 
               <div className="flex-1 space-y-2">
                 <div>
-                  <Typography variant="title-s" className="font-semibold text-foreground" as="h3">
-                    {user.displayName}
-                  </Typography>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Mail className="h-3 w-3" />
-                    <Typography variant="body-s" color="muted" as="span">
-                      {user.email}
+                  <div className="flex items-center gap-3">
+                    <Typography variant="title-s" className="font-semibold text-foreground" as="h3">
+                      {user.displayName}
                     </Typography>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          user.role === 'admin' ? 'destructive' :
+                            user.role === 'manager' ? 'secondary' : 'default'
+                        }
+                        className="px-2 py-1"
+                      >
+                        {USER_ROLE_LABELS[user.role as keyof typeof USER_ROLE_LABELS] || user.role}
+                      </Badge>
+
+                      {user.role === 'admin' && (
+                        <Badge variant="outline" className="px-2 py-1 border-red-200 text-red-700 dark:border-red-800 dark:text-red-400">
+                          <Shield className="h-3 w-3" />
+                          Protected Admin
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      user.role === 'admin' ? 'destructive' :
-                      user.role === 'manager' ? 'secondary' : 'default'
-                    }
-                    className="px-2 py-1"
-                  >
-                    {USER_ROLE_LABELS[user.role as keyof typeof USER_ROLE_LABELS] || user.role}
-                  </Badge>
-
-                  {user.role === 'admin' && (
-                    <Badge variant="outline" className="px-2 py-1 border-red-200 text-red-700 dark:border-red-800 dark:text-red-400">
-                      <Shield className="h-3 w-3 mr-1" />
-                      Protected Admin
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Mail className="h-4 w-4 mr-1" />
+                    <span className="text-body-s text-muted-foreground">
+                      {user.email}
+                    </span>
+                  </div>
                 </div>
 
                 {/* User stats */}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   {user.createdAt && (
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Created {new Date(user.createdAt).toLocaleDateString()}</span>
+                      <Calendar className="h-4 w-4 mr-1" />
+                      <span className="text-body-s text-muted-foreground">Created {new Date(user.createdAt).toLocaleDateString()}</span>
                     </div>
                   )}
                   {user.lastLogin && (
                     <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>Last login {new Date(user.lastLogin).toLocaleDateString()}</span>
+                      <Clock className="h-4 w-4 mr-1" />
+                      <span className="text-body-s text-muted-foreground">Last login {new Date(user.lastLogin).toLocaleDateString()}</span>
                     </div>
                   )}
                 </div>
@@ -188,22 +217,12 @@ export function UserDeleteDialog({
           </div>
 
           {/* Critical Warnings */}
-          <div className="space-y-3">
-            {isAdmin && (
-              <Alert variant="destructive" className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/10">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="text-red-800 dark:text-red-200">
-                  <strong>Critical Warning:</strong> This user has administrator privileges.
-                  Deleting this account may affect system functionality and data access.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <Alert variant="destructive" className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/10">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-orange-800 dark:text-orange-200">
-                <strong>Irreversible Action:</strong> All user data, settings, and associated content will be permanently removed.
-                This includes profile information, preferences, and any linked resources.
+          <div className="space-y-4">
+            <Alert variant="warning">
+              <AlertTriangle className="h-5 w-5" />
+              <AlertDescription>
+                <strong>Permanent Deletion:</strong> This action cannot be undone.
+                All associated data, preferences, and user content will be completely removed.
               </AlertDescription>
             </Alert>
           </div>
@@ -211,30 +230,30 @@ export function UserDeleteDialog({
         </div>
 
         {/* Footer with enhanced styling */}
-        <DialogFooter className="gap-3 pt-4 border-t">
+        <DialogFooter className="gap-3 pt-2">
           <Button
             variant="outline"
             onClick={handleClose}
             disabled={isDeletingUser}
             className="flex-1"
           >
-            Cancel
+            <span className="text-button-s">Cancel</span>
           </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
             disabled={isDeletingUser}
-            className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-red-400 disabled:to-red-500"
+            className="flex-1"
           >
             {isDeletingUser ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                Deleting...
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-button-s">Deleting...</span>
               </>
             ) : (
               <>
-                <UserX className="h-4 w-4 mr-2" />
-                Delete User
+                <UserX className="h-4 w-4" />
+                <span className="text-button-s">Delete User</span>
               </>
             )}
           </Button>

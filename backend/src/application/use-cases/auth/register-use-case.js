@@ -10,8 +10,9 @@ import logger from '../../../infrastructure/config/logger.js';
 import { RegisterResponseDto, UserAuthDto } from '../../dto/auth/index.js';
 
 export class RegisterUseCase {
-  constructor(userRepository, authService, tokenService, emailService = null) {
+  constructor(userRepository, userProfileRepository, authService, tokenService, emailService = null) {
     this.userRepository = userRepository;
+    this.userProfileRepository = userProfileRepository;
     this.authService = authService;
     this.tokenService = tokenService;
     this.emailService = emailService;
@@ -79,10 +80,7 @@ export class RegisterUseCase {
 
       // Create user profile if bio is provided
       if (bio) {
-        const { container } = await import('../../../shared/kernel/container.js');
-        const userProfileRepository = container.getUserProfileRepository();
-
-        await userProfileRepository.save({
+        await this.userProfileRepository.save({
           userId: user.id,
           bio,
           emailVerified: false,

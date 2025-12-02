@@ -26,9 +26,11 @@ export const userSchemas = {
     }),
 
     email: Joi.string()
-      .email({ tlds: { allow: false } })
+      .min(1)
+      .max(254)
       .messages({
-        'string.email': 'Please provide a valid email address',
+        'string.min': 'Email search must contain at least 1 character',
+        'string.max': 'Email search cannot exceed 254 characters',
       }),
 
     username: Joi.string()
@@ -92,11 +94,24 @@ export const userSchemas = {
         'string.empty': 'Email cannot be empty',
       }),
 
-    displayName: Joi.string().trim().min(1).max(100).required().messages({
+    displayName: Joi.string().trim().min(1).max(100).messages({
       'string.min': 'Display name cannot be empty',
       'string.max': 'Display name cannot exceed 100 characters',
-      'any.required': 'Display name is required',
       'string.empty': 'Display name cannot be empty',
+    }),
+
+    firstName: Joi.string().trim().min(1).max(50).required().messages({
+      'string.min': 'First name cannot be empty',
+      'string.max': 'First name cannot exceed 50 characters',
+      'any.required': 'First name is required',
+      'string.empty': 'First name cannot be empty',
+    }),
+
+    lastName: Joi.string().trim().min(1).max(50).required().messages({
+      'string.min': 'Last name cannot be empty',
+      'string.max': 'Last name cannot exceed 50 characters',
+      'any.required': 'Last name is required',
+      'string.empty': 'Last name cannot be empty',
     }),
 
     avatarUrl: Joi.string().uri().messages({
@@ -108,6 +123,11 @@ export const userSchemas = {
       .allow('')
       .messages({
         'string.pattern.base': 'Phone number must be in valid format',
+      }),
+
+    role: Joi.string().valid('admin', 'manager', 'staff').default('staff').messages({
+      'any.only': 'Role must be one of: admin, manager, staff',
+      'string.base': 'Role must be a string',
       }),
   }),
 

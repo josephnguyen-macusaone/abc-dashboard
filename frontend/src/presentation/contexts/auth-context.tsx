@@ -13,7 +13,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
-  verifyEmail: (email: string,  token: string) => Promise<{ user: User; message: string }>;
+  verifyEmail: (email: string, token: string) => Promise<{ user: User; message: string }>;
   updateProfile: (updates: Partial<{
     firstName: string;
     lastName: string;
@@ -78,6 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogin = async (email: string, password: string) => {
     try {
       await login(email, password);
+      // Success toast is now handled by the login form component
     } catch (error: unknown) {
       const errorMessage = (error as Error)?.message || '';
       if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
@@ -100,10 +101,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = async () => {
     try {
       await logout();
-      toast.success("Logged out successfully");
-      router.push('/login');
+      // Success toast is now handled by the component using toast.promise
     } catch (error) {
-      router.push('/login');
+      handleAuthError(error);
+      throw error;
     }
   };
 

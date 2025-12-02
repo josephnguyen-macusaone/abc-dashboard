@@ -7,10 +7,10 @@ import { ValidationException } from '../../domain/exceptions/domain.exception.js
  * Handles password hashing and verification with error handling
  */
 export class AuthService {
-  constructor(correlationId = null) {
+  constructor() {
     this.saltRounds = 12;
-    this.correlationId = correlationId;
-    this.operationId = correlationId ? `${correlationId}_auth` : null;
+    this.correlationId = null;
+    this.operationId = null;
   }
 
   /**
@@ -30,11 +30,6 @@ export class AuthService {
       }
 
       const hashedPassword = await bcrypt.hash(password, this.saltRounds);
-
-      logger.debug('Password hashed successfully', {
-        correlationId: this.correlationId,
-        passwordLength: password.length,
-      });
 
       return hashedPassword;
     } catch (error) {
@@ -71,11 +66,6 @@ export class AuthService {
 
       const isValid = await bcrypt.compare(plainPassword, hashedPassword);
 
-      logger.debug('Password verification completed', {
-        correlationId: this.correlationId,
-        isValid,
-      });
-
       return isValid;
     } catch (error) {
       if (error instanceof ValidationException) {
@@ -89,6 +79,50 @@ export class AuthService {
       });
 
       throw new Error(`Password verification failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate a secure temporary password
+   * @returns {string} Generated temporary password
+   */
+  generateTemporaryPassword() {
+    try {
+      // Generate a 12-character password with mixed case, numbers, and special characters
+      const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const numbers = '0123456789';
+      const special = '!@#$%^&*';
+
+      let password = '';
+
+      // Ensure at least one character from each category
+      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+      password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+      password += special.charAt(Math.floor(Math.random() * special.length));
+
+      // Fill remaining characters randomly
+      const allChars = lowercase + uppercase + numbers + special;
+      for (let i = 4; i < 12; i++) {
+        password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+      }
+
+      // Shuffle the password
+      password = password.split('').sort(() => Math.random() - 0.5).join('');
+
+      return password;
+    } catch (error) {
+      logger.error('Temporary password generation failed', {
+        correlationId: this.correlationId,
+        error: error.message,
+        errorType: error.constructor.name,
+      });
+
+      // Fallback: generate a simple but secure password
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 8);
+      return `Temp${timestamp}${random}!`;
     }
   }
 
@@ -152,5 +186,14 @@ export class AuthService {
       score: Math.min(score, 100),
       feedback,
     };
+  }
+
+  /**
+   * Set correlation ID for request tracking (used by DI container)
+   * @param {string} correlationId - Request correlation ID
+   */
+  setCorrelationId(correlationId) {
+    this.correlationId = correlationId;
+    this.operationId = correlationId ? `${correlationId}_auth` : null;
   }
 }

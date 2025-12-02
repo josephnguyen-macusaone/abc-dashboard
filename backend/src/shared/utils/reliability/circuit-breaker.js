@@ -3,8 +3,8 @@
  * Prevents cascade failures by temporarily stopping calls to failing services
  */
 
-import logger from '../../infrastructure/config/logger.js';
-import { ExternalServiceUnavailableException } from '../../domain/exceptions/domain.exception.js';
+import logger from '../../../infrastructure/config/logger.js';
+import { ExternalServiceUnavailableException } from '../../../domain/exceptions/domain.exception.js';
 
 /**
  * Circuit Breaker States
@@ -180,15 +180,6 @@ export class CircuitBreaker {
       from: oldState,
       to: newState,
     });
-
-    logger.info('Circuit breaker state changed', {
-      correlationId: this.correlationId,
-      serviceName: this.config.name,
-      fromState: oldState,
-      toState: newState,
-      failureCount: this.failureCount,
-      recoveryTimeout: this.config.recoveryTimeout,
-    });
   }
 
   /**
@@ -234,7 +225,7 @@ export class CircuitBreaker {
    */
   reset() {
     this._transitionTo(CircuitState.CLOSED);
-    logger.info('Circuit breaker manually reset', {
+    logger.debug('Circuit breaker manually reset', {
       correlationId: this.correlationId,
       serviceName: this.config.name,
     });

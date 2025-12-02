@@ -92,6 +92,10 @@ export function createUserRoutes(userController) {
    * /users:
    *   post:
    *     summary: Create a new user
+   *     description: |
+   *       Create a new user account with required username, email, firstName, and lastName.
+   *       DisplayName will be auto-generated from firstName + lastName.
+   *       Role defaults to 'staff' if not specified.
    *     tags: [Users]
    *     security:
    *       - bearerAuth: []
@@ -102,34 +106,108 @@ export function createUserRoutes(userController) {
    *           schema:
    *             type: object
    *             required:
+   *               - username
    *               - email
-   *               - password
    *               - firstName
    *               - lastName
    *             properties:
+   *               username:
+   *                 type: string
+   *                 minLength: 3
+   *                 maxLength: 30
+   *                 pattern: '^[a-zA-Z0-9_]+$'
+   *                 description: Required username
+   *                 example: "johndoe"
    *               email:
    *                 type: string
    *                 format: email
-   *               password:
-   *                 type: string
-   *                 minLength: 8
+   *                 description: User's email address
+   *                 example: "john.doe@example.com"
    *               firstName:
    *                 type: string
+   *                 minLength: 1
+   *                 maxLength: 50
+   *                 description: Required first name
+   *                 example: "John"
    *               lastName:
    *                 type: string
+   *                 minLength: 1
+   *                 maxLength: 50
+   *                 description: Required last name
+   *                 example: "Doe"
+   *               displayName:
+   *                 type: string
+   *                 minLength: 1
+   *                 maxLength: 100
+   *                 description: Optional display name. Auto-generated from firstName + lastName if not provided
+   *                 example: "John Doe"
    *               role:
    *                 type: string
    *                 enum: [admin, manager, staff]
    *                 default: staff
+   *                 description: User role. Defaults to 'staff'
+   *                 example: "admin"
+   *               avatarUrl:
+   *                 type: string
+   *                 format: uri
+   *                 description: Optional avatar URL
+   *               phone:
+   *                 type: string
+   *                 pattern: '^[+]?[1-9][\d]{0,15}$'
+   *                 description: Optional phone number
+   *               managerId:
+   *                 type: string
+   *                 description: Optional manager ID for staff assignments
    *     responses:
    *       201:
    *         description: User created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "User created successfully. Welcome email sent with temporary password."
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     user:
+   *                       $ref: '#/components/schemas/User'
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
    *       400:
    *         description: Validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: false
+   *                 message:
+   *                   type: string
+   *                   example: "Validation failed"
+   *                 errors:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       field:
+   *                         type: string
+   *                         example: "username"
+   *                       message:
+   *                         type: string
+   *                         example: "Username is required"
    *       401:
-   *         description: Unauthorized
+   *         description: Unauthorized - Authentication required
    *       403:
-   *         description: Forbidden - Admin only
+   *         description: Forbidden - Insufficient permissions to create users with specified role
    */
   router.post(
     '/',
@@ -171,7 +249,7 @@ export function createUserRoutes(userController) {
   /**
    * @swagger
    * /users/{id}:
-   *   put:
+   *   patch:
    *     summary: Update user by ID
    *     tags: [Users]
    *     security:
@@ -210,7 +288,7 @@ export function createUserRoutes(userController) {
    *       404:
    *         description: User not found
    */
-  router.put(
+  router.patch(
     '/:id',
     checkUserAccessPermission('update'),
     validateRequest(userSchemas.updateUser),

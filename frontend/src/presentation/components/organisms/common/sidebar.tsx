@@ -37,6 +37,10 @@ export function Sidebar({
   onLogout,
   className,
 }: SidebarProps) {
+  const handleBrandClick = () => {
+    onNavigate('/dashboard');
+  };
+
   return (
     <aside
       className={cn(
@@ -47,7 +51,9 @@ export function Sidebar({
     >
       <div className="flex h-screen flex-col overflow-hidden">
         {/* Logo/Brand */}
-        <SidebarBrand />
+        <SidebarBrand
+          onClick={handleBrandClick}
+        />
 
         {/* Navigation */}
         <SidebarNavigation

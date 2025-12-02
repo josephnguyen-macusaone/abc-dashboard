@@ -188,7 +188,7 @@ docker run -p 5000:5000 \
 
 ## Support
 
-- [API Documentation](http://localhost:5000/api-docs)
+- [API Documentation](http://localhost:5000/api-docs) (Swagger UI)
 - Server logs with correlation IDs
 
 ---

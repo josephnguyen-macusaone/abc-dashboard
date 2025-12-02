@@ -189,7 +189,7 @@ export const cacheTTL = {
 
 // Stub functions for Redis compatibility (always return false/disabled)
 export const initRedis = async () => {
-  logger.info('Redis caching is disabled, using in-memory cache only');
+  logger.debug('Redis caching disabled, using in-memory cache');
   return false;
 };
 

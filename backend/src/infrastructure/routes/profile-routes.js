@@ -62,7 +62,7 @@ export function createProfileRoutes(profileController) {
   /**
    * @swagger
    * /profile:
-   *   put:
+   *   patch:
    *     summary: Update current user profile
    *     tags: [Profile]
    *     security:
@@ -105,7 +105,7 @@ export function createProfileRoutes(profileController) {
    *                   type: object
    *                   description: Updated profile data
    */
-  router.put('/profile', validateRequest(profileSchemas.updateProfile), (req, res) =>
+  router.patch('/profile', validateRequest(profileSchemas.updateProfile), (req, res) =>
     profileController.updateProfile(req, res)
   );
 

@@ -1,8 +1,9 @@
 import { cache, cacheKeys } from './redis.js';
 import logger from './logger.js';
 import { getComprehensiveMetrics, applicationMetrics } from './metrics.js';
-import { errorMonitor } from '../../shared/utils/error-monitor.js';
-import { gracefulDegradationManager } from '../../shared/utils/graceful-degradation.js';
+import { errorMonitor } from '../../shared/utils/monitoring/error-monitor.js';
+import { gracefulDegradationManager } from '../../shared/utils/reliability/graceful-degradation.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 class APIMonitor {
   constructor() {
@@ -93,7 +94,7 @@ class APIMonitor {
 
   // Reset metrics (in-memory only - no persistence)
   resetMetrics() {
-    logger.info('Resetting API monitoring metrics (in-memory only)');
+    logger.debug('Resetting API monitoring metrics');
 
     // No persistence - data will be lost
 
@@ -110,7 +111,7 @@ class APIMonitor {
   // Load persisted metrics (disabled - Redis removed)
   async loadPersistedMetrics() {
     // Metrics persistence disabled - using in-memory only
-    logger.info('Metrics persistence disabled - using in-memory storage only');
+    logger.debug('Metrics persistence disabled');
   }
 
   // Persist current metrics (disabled - Redis removed)
@@ -416,12 +417,7 @@ export const getDetailedMetrics = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error getting detailed metrics:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to collect metrics',
-      error: error.message,
-      correlationId: req.correlationId,
-    });
+    return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
   }
 };
 

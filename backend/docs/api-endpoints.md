@@ -28,14 +28,14 @@ graph TD
         GetUsers[GET /users]
         CreateUser[POST /users]
         GetUser[GET /users/:id]
-        UpdateUser[PUT /users/:id]
+        UpdateUser[PATCH /users/:id]
         DeleteUser[DELETE /users/:id]
         GetStats[GET /users/stats]
     end
 
     subgraph "Profile Endpoints"
         GetProfile[GET /profile]
-        UpdateProfile[PUT /profile]
+        UpdateProfile[PATCH /profile]
     end
 
     Base --> Auth
@@ -424,7 +424,7 @@ Get current user's profile information.
 }
 ```
 
-#### PUT /api/v1/profile
+#### PATCH /api/v1/profile
 
 Update current user's profile.
 

@@ -27,13 +27,14 @@
     "test:coverage": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:unit": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest tests/unit",
     "test:integration": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest tests/integration",
-    "test:email": "node test-email.js",
+    "test:email": "node tests/test-email.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\""
   },
   "dependencies": {
+    "awilix": "^12.0.5",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

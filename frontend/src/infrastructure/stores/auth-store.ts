@@ -1,10 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { User } from '@/domain/entities/user-entity';
-import { AuthService } from '@/application/services/auth-service';
-import { LoginUseCase, RegisterUseCase, LogoutUseCase, UpdateProfileUseCase, GetProfileUseCase } from '@/application/use-cases';
-import { AuthRepository } from '@/infrastructure/repositories/auth-repository';
-import { UserRepository } from '@/infrastructure/repositories/user-repository';
+import { User, UserRole } from '@/domain/entities/user-entity';
+import { authApi } from '@/infrastructure/api/auth';
 import { httpClient } from '@/infrastructure/api/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
@@ -19,6 +16,10 @@ interface AuthState {
   isAuthenticated: boolean;
   emailVerificationRequired: boolean;
   emailVerificationMessage: string | null;
+
+  // Password reset state
+  passwordResetSent: boolean;
+  passwordResetEmail: string | null;
 
   // Actions
   initialize: () => Promise<void>;
@@ -38,32 +39,19 @@ interface AuthState {
   }>) => Promise<User>;
   refreshCurrentUser: () => Promise<User | null>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   clearEmailVerificationState: () => void;
+  clearPasswordResetState: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   devtools(
     persist(
       (set, get) => {
-        // Initialize Clean Architecture services
-        const authRepository = new AuthRepository();
-        const loginUseCase = new LoginUseCase(authRepository);
-        const registerUseCase = new RegisterUseCase(authRepository);
-        const logoutUseCase = new LogoutUseCase(authRepository);
-        const updateProfileUseCase = new UpdateProfileUseCase(authRepository);
-        const getProfileUseCase = new GetProfileUseCase(authRepository);
-        const authService = new AuthService(
-          authRepository,
-          loginUseCase,
-          registerUseCase,
-          logoutUseCase,
-          updateProfileUseCase,
-          getProfileUseCase
-        );
-
         // Initialize logger
         const storeLogger = logger.createChild({
           component: 'AuthStore',
@@ -77,6 +65,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           emailVerificationRequired: false,
           emailVerificationMessage: null,
+          passwordResetSent: false,
+          passwordResetEmail: null,
 
           // Initialize auth state from storage
           initialize: async () => {
@@ -96,9 +86,6 @@ export const useAuthStore = create<AuthState>()(
                 set({ user: storedUser });
               }
 
-              // Note: getCurrentUser() is no longer available since backend removed auth status endpoint
-              // Authentication state is now managed locally with stored tokens and user data
-
               set({ isAuthenticated: !!(get().user && get().token) });
             } catch (error) {
               storeLogger.error('Error initializing auth', { error: error instanceof Error ? error.message : String(error) });
@@ -111,14 +98,27 @@ export const useAuthStore = create<AuthState>()(
             try {
               set({ isLoading: true });
 
-              const authResult = await authService.login(email, password);
+              const authResult = await authApi.login({ email, password });
 
-              // Check if user is active (verified)
-              if (!authResult.user.isActive) {
+              // Check if user requires password change
+              if (authResult.user?.requiresPasswordChange) {
+                // Store user data but don't authenticate yet
+                const user = User.fromObject(authResult.user);
+                set({ user });
+                CookieService.setUser(user);
+                LocalStorageService.setUser(user);
+                set({ isAuthenticated: false });
+                return;
+              }
+
+              // Check if user is active
+              if (!authResult.user?.isActive) {
                 throw new Error('Please verify your email before logging in. Check your email for the verification link.');
               }
 
+              // Store token
               set({ token: authResult.tokens.accessToken });
+              httpClient.setAuthToken(authResult.tokens.accessToken);
 
               // Store tokens
               CookieService.setToken(authResult.tokens.accessToken);
@@ -128,50 +128,28 @@ export const useAuthStore = create<AuthState>()(
                 LocalStorageService.setRefreshToken(authResult.tokens.refreshToken);
               }
 
-              // Fetch complete profile data after login to get merged user + profile data
-              let userId = authResult.user.id;
+              // Fetch complete profile data
               try {
-                const profileData = await authService.getCompleteProfile();
-                if (profileData) {
-                  userId = profileData.id; // Update with profile data ID if different
-
-                  // Since profileData is already a User entity, just update the lastLogin and return it
-                  const completeUser = User.fromObject({
-                    ...profileData.toObject(),
-                    lastLogin: new Date(),
-                    updatedAt: new Date()
-                  });
-
-                  set({ user: completeUser });
-                  CookieService.setUser(completeUser);
-                  LocalStorageService.setUser(completeUser);
-                  set({ isAuthenticated: true });
-
-                  storeLogger.info('Profile data loaded after login', {
-                    userId: completeUser.id,
-                    hasAvatar: !!profileData.avatar,
-                    phone: profileData.phone
-                  });
-                } else {
-                  // Profile response invalid, create basic user from login data
-                  throw new Error('Invalid profile response');
-                }
-              } catch (profileError) {
-                // Profile fetch failed, create basic user from login data
-                storeLogger.warn('Failed to fetch complete profile after login, using basic login data', {
-                  userId,
-                  error: profileError instanceof Error ? profileError.message : String(profileError)
+                const profileData = await authApi.getProfile();
+                const completeUser = User.fromObject({
+                  ...profileData,
+                  lastLogin: new Date(),
+                  updatedAt: new Date()
                 });
 
+                set({ user: completeUser });
+                CookieService.setUser(completeUser);
+                LocalStorageService.setUser(completeUser);
+                set({ isAuthenticated: true });
+
+                storeLogger.info('Login successful', {
+                  userId: completeUser.id,
+                  role: completeUser.role
+                });
+              } catch (profileError) {
+                // Fallback to login response data
                 const basicUser = User.fromObject({
-                  id: authResult.user.id,
-                  name: authResult.user.displayName || authResult.user.name,
-                  email: authResult.user.email,
-                  role: authResult.user.role,
-                  isActive: authResult.user.isActive,
-                  avatar: authResult.user.avatar,
-                  displayName: authResult.user.displayName,
-                  phone: authResult.user.phone,
+                  ...authResult.user,
                   lastLogin: new Date(),
                   updatedAt: new Date()
                 });
@@ -180,6 +158,10 @@ export const useAuthStore = create<AuthState>()(
                 CookieService.setUser(basicUser);
                 LocalStorageService.setUser(basicUser);
                 set({ isAuthenticated: true });
+
+                storeLogger.warn('Profile fetch failed, using basic login data', {
+                  error: profileError instanceof Error ? profileError.message : String(profileError)
+                });
               }
             } catch (error: any) {
               const errorMessage = getErrorMessage(error);
@@ -190,7 +172,7 @@ export const useAuthStore = create<AuthState>()(
                   emailVerificationRequired: true,
                   emailVerificationMessage: errorMessage
                 });
-                return; // Don't throw error for email verification
+                return;
               }
 
               throw new Error(errorMessage);
@@ -203,16 +185,18 @@ export const useAuthStore = create<AuthState>()(
             try {
               set({ isLoading: true });
 
-              const registerResult = await authService.register(username, firstName, lastName, email, password, role);
+              const registerResult = await authApi.register({
+                username,
+                firstName,
+                lastName,
+                email,
+                password,
+                role: role as UserRole
+              });
 
-              // Store user data (no tokens since user is not active yet)
               const registeredUser = User.fromObject({
-                id: registerResult.user.id,
-                name: registerResult.user.name,
-                email: registerResult.user.email,
-                role: registerResult.user.role,
-                isActive: registerResult.user.isActive || false,
-                avatar: registerResult.user.avatar,
+                ...registerResult.user,
+                isActive: false, // New users are not active until email verification
                 lastLogin: new Date(),
                 updatedAt: new Date()
               });
@@ -220,14 +204,11 @@ export const useAuthStore = create<AuthState>()(
               set({ user: registeredUser });
               CookieService.setUser(registeredUser);
               LocalStorageService.setUser(registeredUser);
-
-              // User is registered but not active yet - no authentication
               set({ isAuthenticated: false });
 
-              storeLogger.info('User registered successfully, awaiting email verification', {
+              storeLogger.info('User registered successfully', {
                 userId: registeredUser.id,
-                email: registeredUser.email,
-                isActive: registeredUser.isActive
+                email: registeredUser.email
               });
             } catch (error: any) {
               throw new Error(getErrorMessage(error));
@@ -238,25 +219,21 @@ export const useAuthStore = create<AuthState>()(
 
           refreshToken: async (): Promise<boolean> => {
             try {
-              // Check if we have a refresh token
               const refreshToken = LocalStorageService.getRefreshToken();
               if (!refreshToken) {
-                storeLogger.warn('No refresh token available');
                 return false;
               }
 
-              const newTokens = await authService.refreshToken();
+              const newTokens = await authApi.refreshToken();
 
-              // Update token in store and http client
-              set({ token: newTokens.accessToken });
-              httpClient.setAuthToken(newTokens.accessToken);
+              set({ token: newTokens.tokens.accessToken });
+              httpClient.setAuthToken(newTokens.tokens.accessToken);
 
-              // Store new tokens
-              CookieService.setToken(newTokens.accessToken);
-              LocalStorageService.setToken(newTokens.accessToken);
+              CookieService.setToken(newTokens.tokens.accessToken);
+              LocalStorageService.setToken(newTokens.tokens.accessToken);
 
-              if (newTokens.refreshToken) {
-                LocalStorageService.setRefreshToken(newTokens.refreshToken);
+              if (newTokens.tokens.refreshToken) {
+                LocalStorageService.setRefreshToken(newTokens.tokens.refreshToken);
               }
 
               storeLogger.info('Token refresh successful');
@@ -266,7 +243,7 @@ export const useAuthStore = create<AuthState>()(
                 error: error instanceof Error ? error.message : String(error)
               });
 
-              // Clear authentication state on refresh failure
+              // Clear authentication state
               set({ user: null, token: null, isAuthenticated: false });
               CookieService.clearAuthCookies();
               LocalStorageService.clearAuthData();
@@ -276,11 +253,17 @@ export const useAuthStore = create<AuthState>()(
             }
           },
 
-          verifyEmail: async (email: string, token: string) => {
+          verifyEmail: async (token: string) => {
             try {
-              const response = await authService.verifyEmail(email, token);
+              const response = await authApi.verifyEmail(token);
+              const user = User.fromObject(response.user);
+
+              set({ user });
+              CookieService.setUser(user);
+              LocalStorageService.setUser(user);
+
               storeLogger.info('Email verification successful');
-              return response;
+              return { user, message: response.message };
             } catch (error) {
               storeLogger.warn('Email verification failed', {
                 error: error instanceof Error ? error.message : String(error)
@@ -296,9 +279,9 @@ export const useAuthStore = create<AuthState>()(
 
           updateProfile: async (updates) => {
             try {
-              const updatedUser = await authService.updateProfile(updates);
+              const response = await authApi.updateProfile(updates);
+              const updatedUser = User.fromObject(response.user);
 
-              // Update user in store
               set({ user: updatedUser });
               CookieService.setUser(updatedUser);
               LocalStorageService.setUser(updatedUser);
@@ -315,7 +298,10 @@ export const useAuthStore = create<AuthState>()(
 
           changePassword: async (currentPassword: string, newPassword: string) => {
             try {
-              await authService.changePassword(currentPassword, newPassword);
+              await authApi.changePassword({
+                currentPassword,
+                newPassword
+              });
               storeLogger.info('Password change successful');
             } catch (error) {
               storeLogger.warn('Password change failed', {
@@ -325,24 +311,73 @@ export const useAuthStore = create<AuthState>()(
             }
           },
 
+          requestPasswordReset: async (email: string) => {
+            try {
+              set({ isLoading: true });
+              // Note: Backend doesn't return data for security, just success/error
+              await authApi.forgotPassword(email);
+
+              set({
+                passwordResetSent: true,
+                passwordResetEmail: email
+              });
+
+              storeLogger.info('Password reset request successful');
+            } catch (error) {
+              storeLogger.warn('Password reset request failed', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+              throw error;
+            } finally {
+              set({ isLoading: false });
+            }
+          },
+
+          resetPassword: async (token: string, newPassword: string) => {
+            try {
+              set({ isLoading: true });
+              await authApi.resetPassword(token, newPassword);
+
+              // Clear password reset state
+              set({
+                passwordResetSent: false,
+                passwordResetEmail: null
+              });
+
+              storeLogger.info('Password reset successful');
+            } catch (error) {
+              storeLogger.warn('Password reset failed', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+              throw error;
+            } finally {
+              set({ isLoading: false });
+            }
+          },
+
           logout: async () => {
             try {
-              await authService.logout();
+              await authApi.logout();
             } catch (error) {
-              // Logout should not fail the operation
               storeLogger.warn('Logout API call failed', {
                 error: error instanceof Error ? error.message : String(error)
               });
             } finally {
-              // Always clear local state and storage
-              set({ user: null, token: null, isAuthenticated: false });
+              // Always clear local state
+              set({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                passwordResetSent: false,
+                passwordResetEmail: null
+              });
               CookieService.clearAuthCookies();
               LocalStorageService.clearAuthData();
               httpClient.setAuthToken(null);
             }
           },
 
-          // Direct setters for flexibility
+          // Direct setters
           setUser: (user: User | null) => set({ user, isAuthenticated: !!(user && get().token) }),
           setToken: (token: string | null) => {
             set({ token });
@@ -353,21 +388,15 @@ export const useAuthStore = create<AuthState>()(
 
           refreshCurrentUser: async () => {
             try {
-              const userRepository = new UserRepository();
-              const currentUser = await userRepository.getCurrentUser();
+              const profileData = await authApi.getProfile();
+              const user = User.fromObject(profileData);
 
-              if (currentUser) {
-                // Update user in store
-                set({ user: currentUser });
-                CookieService.setUser(currentUser);
-                LocalStorageService.setUser(currentUser);
+              set({ user });
+              CookieService.setUser(user);
+              LocalStorageService.setUser(user);
 
-                storeLogger.info('Current user refreshed successfully', { userId: currentUser.id });
-                return currentUser;
-              }
-
-              storeLogger.warn('Failed to refresh current user - no user returned from repository');
-              return null;
+              storeLogger.info('Current user refreshed successfully', { userId: user.id });
+              return user;
             } catch (error) {
               storeLogger.error('Failed to refresh current user', {
                 error: error instanceof Error ? error.message : String(error)
@@ -379,6 +408,11 @@ export const useAuthStore = create<AuthState>()(
           clearEmailVerificationState: () => set({
             emailVerificationRequired: false,
             emailVerificationMessage: null
+          }),
+
+          clearPasswordResetState: () => set({
+            passwordResetSent: false,
+            passwordResetEmail: null
           }),
         };
       },

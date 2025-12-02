@@ -15,6 +15,7 @@ import {
   checkUserAccessPermission,
   getUserQueryFilters,
 } from '../middleware/user-management.middleware.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 export class UserController {
   constructor(
@@ -77,11 +78,7 @@ export class UserController {
         stack: error.stack,
         error,
       });
-      return res.error(
-        'Failed to retrieve users',
-        500,
-        process.env.NODE_ENV === 'development' ? { details: error.message } : {}
-      );
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -92,7 +89,7 @@ export class UserController {
 
       // Permission check: Users can view their own profile, admins/managers can view any profile
       if (currentUser.id !== id && !hasPermission(currentUser.role, PERMISSIONS.READ_USER)) {
-        return res.error('Access denied', 403);
+        return sendErrorResponse(res, 'INSUFFICIENT_PERMISSIONS');
       }
 
       // For now, reuse getUsers logic but filter for single user
@@ -105,12 +102,12 @@ export class UserController {
       const result = await this.getUsersUseCase.execute(options);
 
       if (result.users.length === 0) {
-        return res.error('User not found', 404);
+        return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
 
       return res.success({ user: result.users[0] }, 'User retrieved successfully');
     } catch (error) {
-      return res.error(error.message, 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -147,7 +144,20 @@ export class UserController {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
-      return res.error(error.message, 400);
+      // Log the actual error for debugging
+      logger.error('Create user error:', {
+        error: error.message,
+        stack: error.stack,
+        errorType: error.constructor.name,
+        fullError: error,
+        correlationId: req.correlationId,
+        // For ValidationException, show additional details
+        ...(error.additionalData && { additionalData: error.additionalData }),
+        ...(error.statusCode && { statusCode: error.statusCode }),
+        ...(error.category && { category: error.category })
+      });
+
+      return sendErrorResponse(res, 'VALIDATION_FAILED');
     }
   }
 
@@ -177,7 +187,7 @@ export class UserController {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
-      return res.error(error.message, 400);
+      return sendErrorResponse(res, 'VALIDATION_FAILED');
     }
   }
 
@@ -186,8 +196,25 @@ export class UserController {
       const { id } = req.params;
       const currentUser = req.user;
 
+      // Debug logging
+      logger.info('Delete user request', {
+        targetUserId: id,
+        currentUser: {
+          id: currentUser.id,
+          email: currentUser.email,
+          role: currentUser.role,
+          displayName: currentUser.displayName
+        },
+        correlationId: req.correlationId
+      });
+
       // Basic permission check - ensure user has delete permission
       if (!hasPermission(currentUser.role, PERMISSIONS.DELETE_USER)) {
+        logger.warn('User lacks basic delete permission', {
+          userId: currentUser.id,
+          role: currentUser.role,
+          correlationId: req.correlationId
+        });
         throw new InsufficientPermissionsException('You do not have permission to delete users');
       }
 
@@ -203,7 +230,7 @@ export class UserController {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
-      return res.error(error.message, 400);
+      return sendErrorResponse(res, 'VALIDATION_FAILED');
     }
   }
 
@@ -213,7 +240,7 @@ export class UserController {
 
       return res.success(result.stats, 'User statistics retrieved successfully');
     } catch (error) {
-      return res.error(error.message, 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -226,17 +253,17 @@ export class UserController {
       // Get the staff user to reassign
       const staffUser = await this.userRepository.findById(id);
       if (!staffUser) {
-        return res.error('Staff member not found', 404);
+        return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
 
       // Get the new manager
       const newManager = await this.userRepository.findById(newManagerId);
       if (!newManager) {
-        return res.error('New manager not found', 404);
+        return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
 
       if (newManager.role !== 'manager') {
-        return res.error('Target user is not a manager', 400);
+        return sendErrorResponse(res, 'VALIDATION_FAILED', { details: 'Target user is not a manager' });
       }
 
       // Update the staff member's manager
@@ -247,7 +274,7 @@ export class UserController {
 
       const updatedUser = await this.userRepository.update(id, updateData);
       if (!updatedUser) {
-        return res.error('Failed to reassign staff member', 500);
+        return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
       }
 
       // Log the reassignment
@@ -289,7 +316,7 @@ export class UserController {
         userId: req.user?.id,
       });
 
-      return res.error('Failed to reassign staff member', 500);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 }

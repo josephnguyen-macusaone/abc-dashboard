@@ -83,7 +83,7 @@ export class InsufficientPermissionsException extends DomainException {
  */
 export class ValidationException extends DomainException {
   constructor(message = 'Validation failed') {
-    super('VALIDATION_FAILED');
+    super('VALIDATION_FAILED', {}, { customMessage: message });
     // Override message for custom validation errors
     this.message = message;
   }

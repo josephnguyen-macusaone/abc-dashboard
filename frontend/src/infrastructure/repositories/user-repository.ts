@@ -152,14 +152,6 @@ export class UserRepository implements IUserRepository {
       throw new Error(`${operation}: Invalid user ID format`);
     }
 
-    // Validate email format if provided
-    if (params.email && typeof params.email === 'string') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(params.email)) {
-        throw new Error(`${operation}: Invalid email format`);
-      }
-    }
-
     // Validate pagination parameters
     if (params.page !== undefined && (typeof params.page !== 'number' || params.page < 1)) {
       throw new Error(`${operation}: Invalid page number`);
@@ -423,10 +415,12 @@ export class UserRepository implements IUserRepository {
       const apiResponse = await userApi.createUser({
         username: userData.username,
         email: userData.email,
-        displayName: userData.displayName,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         role: userData.role,
         avatarUrl: userData.avatarUrl,
         phone: userData.phone,
+        managerId: userData.managerId,
       });
       const response = this.validateApiResponse<CreateUserResponseDto>(apiResponse, 'createUser');
       const duration = Date.now() - startTime;

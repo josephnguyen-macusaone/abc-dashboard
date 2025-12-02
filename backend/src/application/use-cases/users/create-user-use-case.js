@@ -3,9 +3,14 @@
  * Handles user creation by administrators with automatic password generation and email sending
  */
 import logger from '../../../infrastructure/config/logger.js';
-import { generateTemporaryPassword } from '../../../shared/utils/crypto.js';
+import { generateTemporaryPassword } from '../../../shared/utils/security/crypto.js';
 import { CreateUserRequestDto } from '../../dto/user/index.js';
 import { UserResponseDto } from '../../dto/user/index.js';
+import {
+  ValidationException,
+  EmailAlreadyExistsException,
+  ResourceNotFoundException,
+} from '../../../domain/exceptions/domain.exception.js';
 
 export class CreateUserUseCase {
   constructor(userRepository, authService, emailService) {
@@ -28,24 +33,47 @@ export class CreateUserUseCase {
 
       // Additional validation
       if (!username || !email || !displayName) {
-        throw new Error('Missing required fields in create user request');
+        logger.error('Missing required fields', { username, email, displayName });
+        throw new ValidationException('Username, email, and display name are required');
       }
+
+      logger.info('Checking uniqueness for user creation', { username, email });
 
       // Check if email already exists
       const existingUser = await this.userRepository.findByEmail(email);
       if (existingUser) {
-        throw new Error('Email already registered');
+        logger.warn('Email already exists', { email, existingUserId: existingUser.id });
+        throw new EmailAlreadyExistsException();
       }
 
       // Check if username already exists
       const existingUsername = await this.userRepository.findByUsername(username);
       if (existingUsername) {
-        throw new Error('Username already taken');
+        logger.warn('Username already exists', { username, existingUserId: existingUsername.id });
+        throw new ValidationException('Username already taken');
       }
+
+      logger.info('Uniqueness checks passed', { username, email });
 
       // Generate temporary password
       const temporaryPassword = generateTemporaryPassword(12);
       const hashedPassword = await this.authService.hashPassword(temporaryPassword);
+
+      // Validate and set role (default to staff if not provided, but log warning)
+      const validRoles = ['admin', 'manager', 'staff'];
+      let userRole = role;
+
+      if (!userRole) {
+        userRole = 'staff'; // Default role for backward compatibility
+        logger.warn('No role provided in user creation, defaulting to staff', {
+          username,
+          email,
+          creatorUserId: creatorUser.id,
+          creatorUserRole: creatorUser.role,
+        });
+      } else if (!validRoles.includes(userRole)) {
+        throw new ValidationException(`Invalid role '${userRole}'. Must be one of: ${validRoles.join(', ')}`);
+      }
 
       // Create user entity
       const user = await this.userRepository.save({
@@ -53,7 +81,7 @@ export class CreateUserUseCase {
         hashedPassword,
         email,
         displayName,
-        role: role || 'staff',
+        role: userRole,
         avatarUrl,
         phone,
         isFirstLogin: true,
@@ -137,7 +165,21 @@ export class CreateUserUseCase {
         temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined, // Only expose in dev
       };
     } catch (error) {
-      throw new Error(`User creation failed: ${error.message}`);
+      // Re-throw domain exceptions as-is
+      if (error instanceof ValidationException ||
+          error instanceof EmailAlreadyExistsException ||
+          error instanceof ResourceNotFoundException) {
+        throw error;
+      }
+
+      // Log infrastructure errors and throw validation exception
+      logger.error('User creation infrastructure error:', {
+        error: error.message,
+        stack: error.stack,
+        correlationId: this.correlationId,
+      });
+
+      throw new ValidationException(`User creation failed: ${error.message}`);
     }
   }
 }

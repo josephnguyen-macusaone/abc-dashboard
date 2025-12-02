@@ -169,7 +169,7 @@ sequenceDiagram
     participant UpdateProfileUseCase
     participant UserProfileRepository
 
-    Client->>Controller: PUT /profile {displayName, bio, phone}
+    Client->>Controller: PATCH /profile {displayName, bio, phone}
     Controller->>UpdateProfileUseCase: execute(userId, updates)
 
     UpdateProfileUseCase->>UserProfileRepository: updateByUserId(userId, updates)

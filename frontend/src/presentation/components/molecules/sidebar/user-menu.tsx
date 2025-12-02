@@ -44,7 +44,7 @@ export function   UserMenu({
           side="right"
           sideOffset={8}
           align="end"
-          className="w-56 mb-2 border-border z-[60] p-2"
+          className="w-56 mb-2 border-border z-60 p-2"
         >
           <DropdownMenuItem onClick={onProfileClick} className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />

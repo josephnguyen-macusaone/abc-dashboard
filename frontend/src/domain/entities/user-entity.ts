@@ -5,7 +5,7 @@
 export class User {
   constructor(
     public readonly id: string,
-    public readonly name: string,
+    public readonly name: string = 'User', // Provide default value
     public readonly email: string,
     public readonly role: UserRole,
     public readonly isActive: boolean,
@@ -24,7 +24,9 @@ export class User {
     public readonly lastActivity?: Date,
     public readonly createdAt?: Date,
     public readonly createdBy?: string,
-    public readonly lastModifiedBy?: string
+    public readonly lastModifiedBy?: string,
+    public readonly managedBy?: string,
+    public readonly requiresPasswordChange?: boolean
   ) {}
 
   /**
@@ -121,7 +123,8 @@ export class User {
       throw new Error('User object missing required role field');
     }
     if (!obj.name) {
-      throw new Error('User object missing required name field');
+      // Provide fallback for name field
+      obj.name = obj.displayName || obj.username || obj.email?.split('@')[0] || 'User';
     }
 
     // Ensure id is always a string
@@ -148,7 +151,9 @@ export class User {
       obj.lastActivity ? new Date(obj.lastActivity) : undefined,
       obj.createdAt ? new Date(obj.createdAt) : undefined,
       obj.createdBy,
-      obj.lastModifiedBy
+      obj.lastModifiedBy,
+      obj.managedBy,
+      obj.requiresPasswordChange
     );
   }
 
@@ -178,6 +183,8 @@ export class User {
       createdAt: this.createdAt?.toISOString(),
       createdBy: this.createdBy,
       lastModifiedBy: this.lastModifiedBy,
+      managedBy: this.managedBy,
+      requiresPasswordChange: this.requiresPasswordChange,
     };
   }
 }
@@ -237,7 +244,7 @@ export class AuthResult {
    * Create unauthenticated result
    */
   static unauthenticated(): AuthResult {
-    const emptyUser = new User('', '', '', UserRole.STAFF, false);
+    const emptyUser = new User('', 'Guest', '', UserRole.STAFF, false);
     const emptyTokens = new AuthTokens('', '');
     return new AuthResult(emptyUser, emptyTokens, false);
   }

@@ -3,6 +3,7 @@ import {
   ValidationException,
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../config/logger.js';
+import { ROLES, ROLE_PERMISSIONS, ROLE_CREATION_PERMISSIONS } from '../../shared/constants/roles.js';
 
 /**
  * User Management Permission Middleware
@@ -18,14 +19,8 @@ import logger from '../config/logger.js';
 export function canCreateUser(creatorUser, targetRole) {
   const creatorRole = creatorUser.role;
 
-  // Permission matrix
-  const permissions = {
-    admin: ['manager', 'staff'],
-    manager: ['staff'],
-    staff: [],
-  };
-
-  return permissions[creatorRole]?.includes(targetRole) || false;
+  // Use centralized role creation permissions
+  return ROLE_CREATION_PERMISSIONS[creatorRole]?.includes(targetRole) || false;
 }
 
 /**
@@ -36,17 +31,17 @@ export function canCreateUser(creatorUser, targetRole) {
  */
 export function canAccessUser(currentUser, targetUser) {
   // Admin can access all users
-  if (currentUser.role === 'admin') {
+  if (currentUser.role === ROLES.ADMIN) {
     return true;
   }
 
   // Manager can only access their assigned staff
-  if (currentUser.role === 'manager') {
+  if (currentUser.role === ROLES.MANAGER) {
     return targetUser.managedBy === currentUser.id;
   }
 
   // Staff can only access themselves
-  if (currentUser.role === 'staff') {
+  if (currentUser.role === ROLES.STAFF) {
     return targetUser.id === currentUser.id;
   }
 
@@ -62,12 +57,12 @@ export function canAccessUser(currentUser, targetUser) {
  */
 export function canReassignStaff(currentUser, staffUser, newManagerId) {
   // Only admin can reassign staff
-  if (currentUser.role !== 'admin') {
+  if (currentUser.role !== ROLES.ADMIN) {
     return false;
   }
 
   // Staff must be in staff role
-  if (staffUser.role !== 'staff') {
+  if (staffUser.role !== ROLES.STAFF) {
     return false;
   }
 
@@ -108,7 +103,7 @@ export function checkUserCreationPermission(allowedRoles = null) {
       }
 
       // For managers creating staff, auto-assign to themselves
-      if (currentUser.role === 'manager' && targetRole === 'staff') {
+      if (currentUser.role === ROLES.MANAGER && targetRole === ROLES.STAFF) {
         req.body.managedBy = currentUser.id;
       }
 
@@ -140,14 +135,14 @@ export function checkUserAccessPermission(operation = 'read') {
       }
 
       // Admin can access all operations
-      if (currentUser.role === 'admin') {
+      if (currentUser.role === ROLES.ADMIN) {
         return next();
       }
 
       // For user listing operations, check if filtering is applied correctly
       if (!targetUserId && operation === 'list') {
         // Apply managedBy filter for managers
-        if (currentUser.role === 'manager') {
+        if (currentUser.role === ROLES.MANAGER) {
           req.query.managedBy = currentUser.id;
         }
         return next();
@@ -185,7 +180,7 @@ export function checkStaffReassignmentPermission(req, res, next) {
       return res.error('Authentication required', 401);
     }
 
-    if (currentUser.role !== 'admin') {
+    if (currentUser.role !== ROLES.ADMIN) {
       logger.warn('Staff reassignment permission denied', {
         userId: currentUser.id,
         userRole: currentUser.role,
@@ -220,13 +215,7 @@ export function checkStaffReassignmentPermission(req, res, next) {
  * @returns {string[]} - Array of roles the user can create
  */
 export function getAvailableRolesForCreation(userRole) {
-  const roleMap = {
-    admin: ['manager', 'staff'],
-    manager: ['staff'],
-    staff: [],
-  };
-
-  return roleMap[userRole] || [];
+  return ROLE_CREATION_PERMISSIONS[userRole] || [];
 }
 
 /**
@@ -239,18 +228,18 @@ export function getUserQueryFilters(currentUser, queryParams = {}) {
   const filters = { ...queryParams };
 
   // Admin sees all users
-  if (currentUser.role === 'admin') {
+  if (currentUser.role === ROLES.ADMIN) {
     return filters;
   }
 
   // Manager sees only their staff
-  if (currentUser.role === 'manager') {
+  if (currentUser.role === ROLES.MANAGER) {
     filters.managedBy = currentUser.id;
     return filters;
   }
 
   // Staff sees nothing (should not reach user management)
-  if (currentUser.role === 'staff') {
+  if (currentUser.role === ROLES.STAFF) {
     // Return empty result by setting impossible condition
     filters._id = null;
     return filters;

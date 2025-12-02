@@ -1,4 +1,6 @@
-// Frontend Logger - Matching backend format with correlation ID support
+// Enhanced Frontend Logger - Optimized for performance, memory, and reduced noise
+
+import { CircularBuffer } from './buffer';
 
 // Define log levels (matching backend)
 const levels = {
@@ -7,6 +9,7 @@ const levels = {
   info: 2,
   http: 3,
   debug: 4,
+  trace: 5,
 } as const;
 
 type LogLevel = keyof typeof levels;
@@ -18,57 +21,92 @@ const colors = {
   info: '#10b981',  // emerald-500
   http: '#8b5cf6',  // violet-500
   debug: '#3b82f6', // blue-500
+  trace: '#6b7280', // gray-500
 } as const;
 
 // Current environment
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = process.env.NODE_ENV === 'development';
+const isTest = process.env.NODE_ENV === 'test';
+
+// Environment-based configuration
+const LOG_CONFIG = {
+  // Log levels by environment
+  levels: {
+    production: 'warn' as LogLevel,
+    development: 'debug' as LogLevel,
+    test: 'error' as LogLevel,
+  },
+
+  // Sampling rates (percentage of logs to keep)
+  sampling: {
+    http: isProduction ? 0.1 : 0.5,     // 10% in prod, 50% in dev
+    debug: isProduction ? 0.05 : 1.0,   // 5% in prod, 100% in dev
+    trace: isProduction ? 0.01 : 0.1,   // 1% in prod, 10% in dev
+    info: isProduction ? 0.2 : 1.0,     // 20% in prod, 100% in dev
+  },
+
+  // Categories to suppress in production
+  suppressedCategories: isProduction ? [
+    'tracing',
+    'performance',
+    'component-lifecycle',
+    'api-details'
+  ] : [],
+
+  // Maximum logs per minute to prevent spam
+  rateLimit: {
+    enabled: isProduction,
+    maxLogsPerMinute: 60,
+    windowMs: 60000,
+  },
+
+  // Performance monitoring
+  performance: {
+    enabled: !isProduction,
+    slowLogThreshold: 5, // ms
+  },
+
+  // Memory management
+  memory: {
+    maxHistorySize: isProduction ? 20 : 50, // Reduced from 50 to 20 in prod
+    maxPerformanceMetrics: 100,
+    enableMemoryMonitoring: !isProduction,
+  },
+
+  // Batch logging for performance
+  batching: {
+    enabled: isProduction,
+    batchSize: 10,
+    flushInterval: 100, // ms
+  },
+} as const;
+
+// Rate limiting state
+let logCount = 0;
+let rateLimitWindowStart = Date.now();
+
+// Performance monitoring with size limit
+const logPerformanceMetrics = new Map<string, number>();
+
+// Batch logging queue
+interface QueuedLog {
+  level: LogLevel;
+  message: string;
+  meta: any;
+  timestamp: number;
+}
+
+const logQueue: QueuedLog[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Lazy string formatting cache
+const formatCache = new Map<string, string>();
+const CACHE_SIZE_LIMIT = 1000;
 
 // Get current log level based on environment
 const getCurrentLogLevel = (): LogLevel => {
-  return isProduction ? 'info' : 'debug';
-};
-
-// Format timestamp (MM-DD HH:mm:ss format like backend)
-const formatTimestamp = (): string => {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-
-  return `${month}-${day} ${hours}:${minutes}:${seconds}`;
-};
-
-// Format log message (matching backend format)
-const formatMessage = (
-  level: LogLevel,
-  message: string,
-  meta: {
-    correlationId?: string;
-    userId?: string;
-    [key: string]: any;
-  } = {}
-): string => {
-  const timestamp = formatTimestamp();
-  const { correlationId, userId, ...restMeta } = meta;
-
-  let logMessage = `[${timestamp}][${level.toUpperCase()}]`;
-
-  // Add correlation ID only if present
-  if (correlationId) {
-    logMessage += `[${correlationId}]`;
-  }
-
-  // Add user ID only if present
-  if (userId) {
-    logMessage += `[user:${userId}]`;
-  }
-
-  logMessage += ` ${message}`;
-
-  return logMessage;
+  return LOG_CONFIG.levels[process.env.NODE_ENV as keyof typeof LOG_CONFIG.levels] || 'info';
 };
 
 // Check if message should be logged based on current level
@@ -76,22 +114,213 @@ const shouldLog = (level: LogLevel): boolean => {
   return levels[level] <= levels[getCurrentLogLevel()];
 };
 
-// Console logging with colors and structured format
+// Check if message should be sampled
+const shouldSample = (level: LogLevel, category?: string): boolean => {
+  // Always log errors and warnings
+  if (level === 'error' || level === 'warn') return true;
+
+  // Check category suppression
+  if (category && LOG_CONFIG.suppressedCategories.includes(category)) {
+    return false;
+  }
+
+  // Apply sampling
+  const sampleRate = LOG_CONFIG.sampling[level] ?? 1.0;
+  return Math.random() < sampleRate;
+};
+
+// Rate limiting check
+const checkRateLimit = (): boolean => {
+  if (!LOG_CONFIG.rateLimit.enabled) return true;
+
+  const now = Date.now();
+  if (now - rateLimitWindowStart > LOG_CONFIG.rateLimit.windowMs) {
+    logCount = 0;
+    rateLimitWindowStart = now;
+  }
+
+  if (logCount >= LOG_CONFIG.rateLimit.maxLogsPerMinute) {
+    return false;
+  }
+
+  logCount++;
+  return true;
+};
+
+// Format timestamp (MM-DD HH:mm:ss format like backend) with caching
+const formatTimestamp = (): string => {
+  const now = Date.now();
+  const cacheKey = `ts_${Math.floor(now / 1000)}`; // Cache per second
+
+  const cached = formatCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const date = new Date(now);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  const formatted = `${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+  // Cache management
+  if (formatCache.size >= CACHE_SIZE_LIMIT) {
+    const firstKey = formatCache.keys().next().value;
+    if (firstKey) {
+      formatCache.delete(firstKey);
+    }
+  }
+  formatCache.set(cacheKey, formatted);
+
+  return formatted;
+};
+
+// Format log message (optimized format with lazy evaluation)
+const formatMessage = (
+  level: LogLevel,
+  message: string,
+  meta: {
+    correlationId?: string;
+    userId?: string;
+    category?: string;
+    [key: string]: any;
+  } = {}
+): string => {
+  // Create cache key for message formatting
+  const cacheKey = `${level}_${message}_${meta.correlationId || ''}_${meta.userId || ''}_${meta.category || ''}`;
+
+  // Use cached format if available (only for non-error logs to save memory)
+  if (level !== 'error') {
+    const cached = formatCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const timestamp = formatTimestamp();
+  const { correlationId, userId, category, ...restMeta } = meta;
+
+  let logMessage = `[${timestamp}][${level.toUpperCase()}]`;
+
+  // Add correlation ID only if present and not too long
+  if (correlationId && correlationId.length <= 12) {
+    logMessage += `[${correlationId}]`;
+  }
+
+  // Add user ID only if present
+  if (userId && typeof userId === 'string' && userId.length <= 8) {
+    logMessage += `[u:${userId}]`;
+  }
+
+  // Add category if present and relevant
+  if (category && !LOG_CONFIG.suppressedCategories.includes(category)) {
+    logMessage += `[${category}]`;
+  }
+
+  logMessage += ` ${message}`;
+
+  // Cache non-error messages
+  if (level !== 'error' && formatCache.size < CACHE_SIZE_LIMIT) {
+    formatCache.set(cacheKey, logMessage);
+  }
+
+  return logMessage;
+};
+
+// Flush batched logs
+const flushLogQueue = (): void => {
+  if (logQueue.length === 0) return;
+
+  const logsToFlush = logQueue.splice(0, LOG_CONFIG.batching.batchSize);
+
+  // Use requestAnimationFrame for smooth console output
+  if (typeof requestAnimationFrame !== 'undefined') {
+    requestAnimationFrame(() => {
+      logsToFlush.forEach(({ level, message, meta }) => {
+        logToConsoleImmediate(level, message, meta);
+      });
+    });
+  } else {
+    logsToFlush.forEach(({ level, message, meta }) => {
+      logToConsoleImmediate(level, message, meta);
+    });
+  }
+
+  // Schedule next flush if queue has more items
+  if (logQueue.length > 0) {
+    flushTimer = setTimeout(flushLogQueue, LOG_CONFIG.batching.flushInterval);
+  } else {
+    flushTimer = null;
+  }
+};
+
+// Optimized console logging with performance monitoring and batching
 const logToConsole = (
   level: LogLevel,
   message: string,
   meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}
 ): void => {
+  // Early returns for performance
   if (!shouldLog(level)) return;
+  if (!shouldSample(level, meta.category)) return;
+  if (!checkRateLimit()) return;
+
+  // Batch logging in production for better performance
+  if (LOG_CONFIG.batching.enabled && level !== 'error') {
+    logQueue.push({
+      level,
+      message,
+      meta,
+      timestamp: Date.now(),
+    });
+
+    if (!flushTimer) {
+      flushTimer = setTimeout(flushLogQueue, LOG_CONFIG.batching.flushInterval);
+    }
+    return;
+  }
+
+  // Immediate logging for errors or when batching is disabled
+  logToConsoleImmediate(level, message, meta);
+};
+
+// Immediate console logging (used for errors or when batching is disabled)
+const logToConsoleImmediate = (
+  level: LogLevel,
+  message: string,
+  meta: {
+    correlationId?: string;
+    userId?: string;
+    category?: string;
+    [key: string]: any;
+  } = {}
+): void => {
+  const startTime = LOG_CONFIG.performance.enabled ? (typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now()) : 0;
 
   const formattedMessage = formatMessage(level, message, meta);
-  const { correlationId, userId, ...restMeta } = meta;
+  const { correlationId, userId, category, ...restMeta } = meta;
 
-  // Create styled console message
+  // Use appropriate console method
+  const consoleMethod = level === 'error' ? 'error' :
+                       level === 'warn' ? 'warn' :
+                       level === 'trace' ? 'debug' : 'log';
+
+  // Simple logging in production for performance
+  if (isProduction) {
+    console[consoleMethod](formattedMessage);
+    if (Object.keys(restMeta).length > 0 && level === 'error') {
+      console[consoleMethod]('Details:', restMeta);
+    }
+  } else {
+    // Enhanced logging in development
   const styles = [
     `color: ${colors[level]}`,
     'font-weight: bold',
@@ -100,9 +329,11 @@ const logToConsole = (
 
   console.groupCollapsed(`%c${formattedMessage}`, styles);
 
-  // Add metadata if present
-  if (Object.keys(restMeta).length > 0) {
-    console.log('Metadata:', restMeta);
+    // Add metadata if present and not too verbose
+    if (Object.keys(restMeta).length > 0 && Object.keys(restMeta).length <= 10) {
+      console.log('Details:', restMeta);
+    } else if (Object.keys(restMeta).length > 10) {
+      console.log('Details: [Too many fields to display]');
   }
 
   // Add stack trace for errors
@@ -111,40 +342,97 @@ const logToConsole = (
   }
 
   console.groupEnd();
+  }
+
+  // Performance monitoring
+  if (LOG_CONFIG.performance.enabled && startTime) {
+    const endTime = typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now();
+    const duration = endTime - startTime;
+    if (duration > LOG_CONFIG.performance.slowLogThreshold) {
+      // Limit performance metrics size
+      if (logPerformanceMetrics.size >= LOG_CONFIG.memory.maxPerformanceMetrics) {
+        const firstKey = logPerformanceMetrics.keys().next().value;
+        if (firstKey) {
+          logPerformanceMetrics.delete(firstKey);
+        }
+      }
+      logPerformanceMetrics.set(`${level}:${message.substring(0, 50)}`, duration);
+    }
+  }
 };
 
-// Store logs in memory for debugging (only in development)
-const logHistory: Array<{
+// Store logs in memory using circular buffer for efficient memory management
+const logHistory = new CircularBuffer<{
   timestamp: string;
   level: LogLevel;
   message: string;
   meta?: any;
-}> = [];
+  category?: string;
+}>(LOG_CONFIG.memory.maxHistorySize);
 
 const addToHistory = (level: LogLevel, message: string, meta?: any): void => {
-  if (!isDevelopment) return;
+  if (!isDevelopment && !LOG_CONFIG.memory.enableMemoryMonitoring) return;
 
   logHistory.push({
     timestamp: formatTimestamp(),
     level,
     message,
     meta,
+    category: meta?.category,
   });
-
-  // Keep only last 100 logs
-  if (logHistory.length > 100) {
-    logHistory.shift();
-  }
 };
 
 // Export log history for debugging
-export const getLogHistory = (): typeof logHistory => {
-  return [...logHistory];
+export const getLogHistory = (): Array<{
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  meta?: any;
+  category?: string;
+}> => {
+  return logHistory.getAll();
 };
 
 // Clear log history
 export const clearLogHistory = (): void => {
-  logHistory.length = 0;
+  logHistory.clear();
+};
+
+// Get memory usage statistics
+export const getMemoryStats = (): {
+  logHistorySize: number;
+  logHistoryCapacity: number;
+  performanceMetricsSize: number;
+  formatCacheSize: number;
+  queueSize: number;
+} => {
+  return {
+    logHistorySize: logHistory.length,
+    logHistoryCapacity: logHistory.capacity,
+    performanceMetricsSize: logPerformanceMetrics.size,
+    formatCacheSize: formatCache.size,
+    queueSize: logQueue.length,
+  };
+};
+
+// Clear all caches and queues
+export const clearAllCaches = (): void => {
+  formatCache.clear();
+  logQueue.length = 0;
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+};
+
+// Get performance metrics
+export const getLogPerformanceMetrics = (): Record<string, number> => {
+  return Object.fromEntries(logPerformanceMetrics);
+};
+
+// Clear performance metrics
+export const clearLogPerformanceMetrics = (): void => {
+  logPerformanceMetrics.clear();
 };
 
 // Generate correlation ID
@@ -152,12 +440,13 @@ export const generateCorrelationId = (): string => {
   return `fe-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 };
 
-// Enhanced logging methods with correlation ID support
+// Enhanced logging methods with correlation ID and category support
 const enhancedLogger = {
   // Original methods with optional metadata
   error: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     addToHistory('error', message, meta);
@@ -167,6 +456,7 @@ const enhancedLogger = {
   warn: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     addToHistory('warn', message, meta);
@@ -176,6 +466,7 @@ const enhancedLogger = {
   info: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     addToHistory('info', message, meta);
@@ -185,6 +476,7 @@ const enhancedLogger = {
   http: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     addToHistory('http', message, meta);
@@ -194,24 +486,37 @@ const enhancedLogger = {
   debug: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     addToHistory('debug', message, meta);
     logToConsole('debug', message, meta);
   },
 
+  trace: (message: string, meta: {
+    correlationId?: string;
+    userId?: string;
+    category?: string;
+    [key: string]: any;
+  } = {}): void => {
+    addToHistory('trace', message, meta);
+    logToConsole('trace', message, meta);
+  },
+
   // Request-aware logging methods (for API calls)
   withCorrelationId: (correlationId: string) => ({
-    error: (message: string, meta: { userId?: string; [key: string]: any } = {}) =>
+    error: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
       enhancedLogger.error(message, { correlationId, ...meta }),
-    warn: (message: string, meta: { userId?: string; [key: string]: any } = {}) =>
+    warn: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
       enhancedLogger.warn(message, { correlationId, ...meta }),
-    info: (message: string, meta: { userId?: string; [key: string]: any } = {}) =>
+    info: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
       enhancedLogger.info(message, { correlationId, ...meta }),
-    http: (message: string, meta: { userId?: string; [key: string]: any } = {}) =>
+    http: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
       enhancedLogger.http(message, { correlationId, ...meta }),
-    debug: (message: string, meta: { userId?: string; [key: string]: any } = {}) =>
+    debug: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
       enhancedLogger.debug(message, { correlationId, ...meta }),
+    trace: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+      enhancedLogger.trace(message, { correlationId, ...meta }),
   }),
 
   // Context-aware logging for different parts of the application
@@ -219,6 +524,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     component?: string;
+    category?: string;
     [key: string]: any;
   }) => ({
     error: (message: string, meta: { [key: string]: any } = {}) =>
@@ -231,42 +537,64 @@ const enhancedLogger = {
       enhancedLogger.http(message, { ...context, ...meta }),
     debug: (message: string, meta: { [key: string]: any } = {}) =>
       enhancedLogger.debug(message, { ...context, ...meta }),
+    trace: (message: string, meta: { [key: string]: any } = {}) =>
+      enhancedLogger.trace(message, { ...context, ...meta }),
+  }),
+
+  // Category-specific logging methods
+  createCategory: (category: string) => ({
+    error: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+      enhancedLogger.error(message, { category, ...meta }),
+    warn: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+      enhancedLogger.warn(message, { category, ...meta }),
+    info: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+      enhancedLogger.info(message, { category, ...meta }),
+    http: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+      enhancedLogger.http(message, { category, ...meta }),
+    debug: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+      enhancedLogger.debug(message, { category, ...meta }),
+    trace: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+      enhancedLogger.trace(message, { category, ...meta }),
   }),
 
   // Application startup logging
   startup: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
-    enhancedLogger.info(`🚀 ${message}`, meta);
+    enhancedLogger.info(`🚀 ${message}`, { category: 'startup', ...meta });
   },
 
   // Security event logging
   security: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
-    enhancedLogger.warn(`🔒 ${message}`, meta);
+    enhancedLogger.warn(`🔒 ${message}`, { category: 'security', ...meta });
   },
 
   // API operation logging
   api: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
-    enhancedLogger.http(`🌐 ${message}`, meta);
+    enhancedLogger.http(`🌐 ${message}`, { category: 'api', ...meta });
   },
 
   // User action logging
   user: (message: string, meta: {
     correlationId?: string;
     userId?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
-    enhancedLogger.info(`👤 ${message}`, meta);
+    enhancedLogger.info(`👤 ${message}`, { category: 'user-action', ...meta });
   },
 
   // Performance logging
@@ -274,10 +602,49 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     duration?: number;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     const perfMessage = meta.duration ? `${message} (${meta.duration}ms)` : message;
-    enhancedLogger.info(`⚡ ${perfMessage}`, meta);
+    enhancedLogger.info(`⚡ ${perfMessage}`, { category: 'performance', ...meta });
+  },
+
+  // Performance timing utility
+  time: (label: string) => {
+    const start = typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now();
+    return {
+      end: (meta?: { correlationId?: string; userId?: string; [key: string]: any }) => {
+        const end = typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now();
+        const duration = end - start;
+        enhancedLogger.performance(`${label} completed`, {
+          duration: Math.round(duration),
+          category: 'performance',
+          ...meta,
+        });
+        return duration;
+      }
+    };
+  },
+
+  // Tracing logging
+  tracing: (message: string, meta: {
+    correlationId?: string;
+    userId?: string;
+    traceId?: string;
+    spanId?: string;
+    [key: string]: any;
+  } = {}): void => {
+    enhancedLogger.trace(`🔍 ${message}`, { category: 'tracing', ...meta });
+  },
+
+  // Component lifecycle logging
+  component: (message: string, meta: {
+    correlationId?: string;
+    userId?: string;
+    component?: string;
+    [key: string]: any;
+  } = {}): void => {
+    enhancedLogger.debug(`🧩 ${message}`, { category: 'component-lifecycle', ...meta });
   },
 
   // Error boundary logging
@@ -286,12 +653,14 @@ const enhancedLogger = {
     userId?: string;
     error?: Error;
     componentStack?: string;
+    category?: string;
     [key: string]: any;
   } = {}): void => {
     const errorMeta = {
       ...meta,
       stack: meta.error?.stack,
       componentStack: meta.componentStack,
+      category: 'error-boundary',
     };
     enhancedLogger.error(`💥 ${message}`, errorMeta);
   },
@@ -306,12 +675,17 @@ export const {
   info,
   http,
   debug,
+  trace,
   withCorrelationId,
   createChild,
+  createCategory,
   startup,
   security,
   api,
   user,
   performance,
+  time,
+  tracing,
+  component,
   errorBoundary,
 } = enhancedLogger;

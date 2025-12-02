@@ -2,11 +2,15 @@ export * from './alert';
 export * from './avatar';
 export * from './badge';
 export * from './button';
+export * from './calendar';
 export * from './card';
+export * from './date-range-picker';
 export * from './dialog';
 export * from './dropdown-menu';
+export * from './popover';
 export * from './scroll-area';
 export * from './skeleton';
+export * from './table';
 export * from './tabs';
 
 // Display components (moved from display/ folder)

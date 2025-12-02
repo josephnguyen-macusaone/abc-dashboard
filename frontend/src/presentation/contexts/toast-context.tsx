@@ -3,30 +3,31 @@
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { toast as sonnerToast } from 'sonner';
 import { XCircle, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react';
-import logger from '@/shared/utils/logger';
 
 /**
- * Toast Context - Enhanced Toast Management
+ * Toast Context - Enhanced Toast Management with Sonner
  *
  * Provides a centralized, feature-rich toast system with:
  * - Consistent styling and icons
  * - Loading states and promise handling
- * - Error logging and tracking
- * - Toast management (dismiss, update, clear)
+ * - Descriptions and action buttons
+ * - Toast management (dismiss, clear all)
  *
  * Usage:
  * ```tsx
- * const { success, error, loading, promise } = useToast();
+ * const { success, error, loading, promise, successWithDescription } = useToast();
  *
  * // Basic toasts
  * success('Operation completed!');
  * error('Something went wrong!');
  *
- * // Loading toast
- * const loadingId = loading('Saving...');
- * // Later: dismiss(loadingId);
+ * // Toasts with descriptions
+ * successWithDescription('Account created', 'Welcome to our platform!');
  *
- * // Promise toast (auto-handles loading/success/error)
+ * // Loading toasts
+ * const loadingId = loading('Saving...');
+ *
+ * // Promise toasts (handles loading, success, error automatically)
  * await promise(
  *   apiCall(),
  *   {
@@ -35,6 +36,11 @@ import logger from '@/shared/utils/logger';
  *     error: 'Failed!'
  *   }
  * );
+ *
+ * // Toast with action
+ * success('File uploaded', {
+ *   action: { label: 'View', onClick: () => router.push('/files') }
+ * });
  * ```
  */
 
@@ -42,6 +48,10 @@ interface ToastOptions {
   description?: string;
   duration?: number;
   action?: {
+    label: string;
+    onClick: () => void;
+  };
+  cancel?: {
     label: string;
     onClick: () => void;
   };
@@ -58,6 +68,12 @@ interface ToastContextType {
   warning: (message: string, options?: ToastOptions) => string | number;
   info: (message: string, options?: ToastOptions) => string | number;
 
+  // Enhanced toast methods with descriptions
+  successWithDescription: (message: string, description: string, options?: Omit<ToastOptions, 'description'>) => string | number;
+  errorWithDescription: (message: string, description: string, options?: Omit<ToastOptions, 'description'>) => string | number;
+  warningWithDescription: (message: string, description: string, options?: Omit<ToastOptions, 'description'>) => string | number;
+  infoWithDescription: (message: string, description: string, options?: Omit<ToastOptions, 'description'>) => string | number;
+
   // Advanced toast methods
   loading: (message: string, options?: ToastOptions) => string | number;
   promise: <T>(
@@ -72,14 +88,7 @@ interface ToastContextType {
 
   // Management methods
   dismiss: (toastId?: string | number) => void;
-  update: (toastId: string | number, message: string, options?: ToastOptions) => string | number;
-
-  // Utility methods
   clearAll: () => void;
-
-  // Queue management
-  getActiveToasts: () => (string | number)[];
-  isLoading: (toastId: string | number) => boolean;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -115,99 +124,68 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     };
   }, [defaultDuration, defaultPosition]);
 
-  // Track active toasts and loading states
-  const [activeToasts, setActiveToasts] = React.useState<Set<string | number>>(new Set());
-  const [loadingToasts, setLoadingToasts] = React.useState<Set<string | number>>(new Set());
-
-  // Log toast events for debugging
-  const logToast = useCallback((type: string, message: string) => {
-    logger.info('Toast displayed', {
-      component: 'ToastContext',
-      type,
-      message: message.substring(0, 100), // Truncate long messages
-    });
-  }, []);
-
-  // Track toast lifecycle
-  const addActiveToast = useCallback((id: string | number, isLoading = false) => {
-    setActiveToasts(prev => new Set(prev).add(id));
-    if (isLoading) {
-      setLoadingToasts(prev => new Set(prev).add(id));
-    }
-  }, []);
-
-  const removeActiveToast = useCallback((id: string | number) => {
-    setActiveToasts(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    setLoadingToasts(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }, []);
 
   // Basic toast methods with icons and enhanced options
   const success = useCallback((message: string, options?: ToastOptions): string | number => {
-    logToast('success', message);
-    const id = sonnerToast.success(message, {
+    return sonnerToast.success(message, {
       ...createToastOptions(options),
-      icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+      icon: <CheckCircle className="h-5 w-5 text-white drop-shadow-sm" />,
       ...options,
     });
-    addActiveToast(id);
-    return id;
-  }, [createToastOptions, logToast, addActiveToast]);
+  }, [createToastOptions]);
 
   const error = useCallback((message: string, options?: ToastOptions): string | number => {
-    logToast('error', message);
-    const id = sonnerToast.error(message, {
+    return sonnerToast.error(message, {
       ...createToastOptions(options),
-      icon: <XCircle className="h-5 w-5 text-red-500" />,
+      icon: <XCircle className="h-5 w-5 text-white drop-shadow-sm" />,
       ...options,
     });
-    addActiveToast(id);
-    return id;
-  }, [createToastOptions, logToast, addActiveToast]);
+  }, [createToastOptions]);
 
   const warning = useCallback((message: string, options?: ToastOptions): string | number => {
-    logToast('warning', message);
-    const id = sonnerToast.warning(message, {
+    return sonnerToast.warning(message, {
       ...createToastOptions(options),
-      icon: <AlertCircle className="h-5 w-5 text-yellow-500" />,
+      icon: <AlertCircle className="h-5 w-5 text-white drop-shadow-sm" />,
       ...options,
     });
-    addActiveToast(id);
-    return id;
-  }, [createToastOptions, logToast, addActiveToast]);
+  }, [createToastOptions]);
 
   const info = useCallback((message: string, options?: ToastOptions): string | number => {
-    logToast('info', message);
-    const id = sonnerToast.info(message, {
+    return sonnerToast.info(message, {
       ...createToastOptions(options),
-      icon: <Info className="h-5 w-5 text-blue-500" />,
+      icon: <Info className="h-5 w-5 text-white drop-shadow-sm" />,
       ...options,
     });
-    addActiveToast(id);
-    return id;
-  }, [createToastOptions, logToast, addActiveToast]);
+  }, [createToastOptions]);
+
+  // Enhanced toast methods with descriptions
+  const successWithDescription = useCallback((message: string, description: string, options?: Omit<ToastOptions, 'description'>): string | number => {
+    return success(message, { ...options, description });
+  }, [success]);
+
+  const errorWithDescription = useCallback((message: string, description: string, options?: Omit<ToastOptions, 'description'>): string | number => {
+    return error(message, { ...options, description });
+  }, [error]);
+
+  const warningWithDescription = useCallback((message: string, description: string, options?: Omit<ToastOptions, 'description'>): string | number => {
+    return warning(message, { ...options, description });
+  }, [warning]);
+
+  const infoWithDescription = useCallback((message: string, description: string, options?: Omit<ToastOptions, 'description'>): string | number => {
+    return info(message, { ...options, description });
+  }, [info]);
 
   // Loading toast with spinner
   const loading = useCallback((message: string, options?: ToastOptions): string | number => {
-    logToast('loading', message);
-    const id = sonnerToast.loading(message, {
+    return sonnerToast.loading(message, {
       ...createToastOptions({ ...options, duration: Infinity }), // Loading toasts don't auto-dismiss
-      icon: <Loader2 className="h-5 w-5 animate-spin" />,
+      icon: <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />,
       ...options,
     });
-    addActiveToast(id, true); // Mark as loading toast
-    return id;
-  }, [createToastOptions, logToast, addActiveToast]);
+  }, [createToastOptions]);
 
   // Promise toast for async operations
-  const promise = useCallback(async <T,>(
+  const promise = useCallback(<T,>(
     promise: Promise<T>,
     messages: {
       loading: string;
@@ -216,82 +194,36 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     },
     options?: ToastOptions
   ): Promise<T> => {
-    const loadingId = loading(messages.loading, options);
-
-    try {
-      const result = await promise;
-
-      // Dismiss loading toast
-      sonnerToast.dismiss(loadingId);
-      removeActiveToast(loadingId);
-
-      // Show success toast
-      const successMessage = typeof messages.success === 'function'
-        ? messages.success(result)
-        : messages.success;
-
-      success(successMessage, options);
-
-      return result;
-    } catch (err) {
-      // Dismiss loading toast
-      sonnerToast.dismiss(loadingId);
-      removeActiveToast(loadingId);
-
-      // Show error toast
-      const errorMessage = typeof messages.error === 'function'
-        ? messages.error(err)
-        : messages.error;
-
-      error(errorMessage, options);
-
-      throw err;
-    }
-  }, [loading, success, error, removeActiveToast]);
+    return sonnerToast.promise(promise, {
+      loading: messages.loading,
+      success: messages.success,
+      error: messages.error,
+      ...createToastOptions(options),
+    }).unwrap();
+  }, [createToastOptions]);
 
   // Management methods
   const dismiss = useCallback((toastId?: string | number) => {
-    if (toastId) {
-      sonnerToast.dismiss(toastId);
-      removeActiveToast(toastId);
-    } else {
-      sonnerToast.dismiss();
-      setActiveToasts(new Set());
-      setLoadingToasts(new Set());
-    }
-  }, [removeActiveToast]);
-
-  const update = useCallback((toastId: string | number, message: string, options?: ToastOptions) => {
-    // Sonner doesn't support updating existing toasts, so we create a new one
-    // Consider using a different toast library if update functionality is critical
-    removeActiveToast(toastId);
     sonnerToast.dismiss(toastId);
-    return info(message, options);
-  }, [info, removeActiveToast]);
+  }, []);
 
   const clearAll = useCallback(() => {
     sonnerToast.dismiss();
-    setActiveToasts(new Set());
-    setLoadingToasts(new Set());
   }, []);
-
-  // Utility methods for toast management
-  const getActiveToasts = useCallback(() => Array.from(activeToasts), [activeToasts]);
-
-  const isLoading = useCallback((toastId: string | number) => loadingToasts.has(toastId), [loadingToasts]);
 
   const value: ToastContextType = {
     success,
     error,
     warning,
     info,
+    successWithDescription,
+    errorWithDescription,
+    warningWithDescription,
+    infoWithDescription,
     loading,
     promise,
     dismiss,
-    update,
     clearAll,
-    getActiveToasts,
-    isLoading,
   };
 
   return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;

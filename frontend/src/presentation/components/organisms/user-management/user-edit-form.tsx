@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useUser } from '@/presentation/contexts/user-context';
+import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
 import { USER_ROLE_LABELS } from '@/shared/constants';
@@ -13,12 +14,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/pre
 import { Button } from '@/presentation/components/atoms/ui/button';
 import { Input } from '@/presentation/components/atoms/forms/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
-import { FormField } from '@/presentation/components/molecules/form/form-field';
-import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
+import { FormField, InputField } from '@/presentation/components/molecules';
 import { Loading } from '@/presentation/components/atoms/ui/loading';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Edit, X, Check, AlertCircle } from 'lucide-react';
+import { Edit, X, Check, ArrowLeft } from 'lucide-react';
 
 // Validation schema for updates (all fields optional)
 const updateUserSchema = z.object({
@@ -52,8 +52,7 @@ interface UserEditFormProps {
 
 export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
   const { updateUser, loading: { updateUser: isUpdating }, error: { updateUser: updateError } } = useUser();
-  const [success, setSuccess] = useState(false);
-  const [updatedUser, setUpdatedUser] = useState<User | null>(null);
+  const { success: showSuccess } = useToast();
 
   const {
     register,
@@ -103,10 +102,7 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
 
       const updatedUser = await updateUser(user.id, updates);
 
-      setUpdatedUser(updatedUser);
-      setSuccess(true);
-
-      // Call success callback
+      showSuccess?.('User updated successfully!');
       onSuccess?.(updatedUser);
 
     } catch (err) {
@@ -115,62 +111,12 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
     }
   };
 
-  if (success && updatedUser) {
-    return (
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-success">
-            <Check className="h-5 w-5" />
-            User Updated Successfully
-          </CardTitle>
-          <CardDescription>
-            The user&apos;s information has been updated.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-muted p-4 rounded-lg space-y-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                {/* MAC USA ONE Typography: Label S for labels */}
-                <Typography variant="label-s" className="font-medium" as="span">Name:</Typography>
-                {/* MAC USA ONE Typography: Body S for values */}
-                <Typography variant="body-s" as="p">{updatedUser.displayName}</Typography>
-              </div>
-              <div>
-                <Typography variant="label-s" className="font-medium" as="span">Email:</Typography>
-                <Typography variant="body-s" as="p">{updatedUser.email}</Typography>
-              </div>
-              <div>
-                <Typography variant="label-s" className="font-medium" as="span">Role:</Typography>
-                <Typography variant="body-s" as="p" className="capitalize">
-                  {USER_ROLE_LABELS[updatedUser.role as keyof typeof USER_ROLE_LABELS] || updatedUser.role}
-                </Typography>
-              </div>
-              <div>
-                <Typography variant="label-s" className="font-medium" as="span">Status:</Typography>
-                <Typography variant="body-s" as="p">
-                  {updatedUser.isActive ? 'Active' : 'Inactive'}
-                </Typography>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button onClick={onCancel}>
-              Close
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="max-w-2xl mx-auto">
+    <Card className="max-w mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Edit className="h-5 w-5" />
-          Edit User
+          <Typography variant="title-s" className="pb-0.5">Edit User</Typography>
         </CardTitle>
         <CardDescription>
           Update user information and permissions.
@@ -204,55 +150,51 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {updateError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{updateError}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Display Name */}
-            <FormField
+            <InputField
               label="Display Name"
+              type="text"
+              placeholder="Enter display name"
+              value={watch('displayName') || ''}
+              onChange={(e) => setValue('displayName', e.target.value)}
               error={errors.displayName?.message}
-            >
-              <Input
-                {...register('displayName')}
-                placeholder="Enter display name"
-                className={errors.displayName ? 'border-destructive' : ''}
-              />
-            </FormField>
+              disabled={isUpdating}
+              inputClassName="h-11"
+              className="space-y-3"
+            />
 
             {/* Phone */}
-            <FormField
+            <InputField
               label="Phone Number"
+              type="tel"
+              placeholder="Enter phone number"
+              value={watch('phone') || ''}
+              onChange={(e) => setValue('phone', e.target.value)}
               error={errors.phone?.message}
-            >
-              <Input
-                {...register('phone')}
-                placeholder="Enter phone number"
-                className={errors.phone ? 'border-destructive' : ''}
-              />
-            </FormField>
+              disabled={isUpdating}
+              inputClassName="h-11"
+              className="space-y-3"
+            />
 
             {/* Role */}
             <FormField
               label="Role"
               error={errors.role?.message}
+              className="space-y-3"
             >
               <Select
                 value={selectedRole}
                 onValueChange={(value: 'admin' | 'manager' | 'staff') => setValue('role', value)}
+                disabled={isUpdating}
               >
-                <SelectTrigger className={errors.role ? 'border-destructive' : ''}>
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="staff">
                     <div className="flex items-center gap-2">
                       <span>Staff</span>
-                      {/* MAC USA ONE Typography: Body XS for descriptions */}
                       <Typography variant="body-xs" color="muted" as="span">Basic user access</Typography>
                     </div>
                   </SelectItem>
@@ -273,12 +215,13 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
             </FormField>
 
             {/* Status */}
-            <FormField label="Status">
+            <FormField label="Status" className="space-y-3">
               <Select
                 value={isActive ? 'active' : 'inactive'}
                 onValueChange={(value: string) => setValue('isActive', value === 'active')}
+                disabled={isUpdating}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -290,26 +233,31 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
           </div>
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row justify-end gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={onCancel}
               disabled={isUpdating}
+              className="w-full sm:w-auto"
             >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
+              <X className="w-4 h-4" />
+              <span className='text-button-s'>Cancel</span>
             </Button>
-            <Button type="submit" disabled={isUpdating}>
+            <Button
+              type="submit"
+              disabled={isUpdating}
+              className="w-full sm:w-auto"
+            >
               {isUpdating ? (
                 <>
-                  <Loading className="h-4 w-4 mr-2" />
-                  Updating...
+                  <Loading className="w-4 h-4" />
+                  <span className='text-button-s'>Updating...</span>
                 </>
               ) : (
                 <>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Update User
+                  <Edit className="w-4 h-4" />
+                  <span className='text-button-s'>Update User</span>
                 </>
               )}
             </Button>

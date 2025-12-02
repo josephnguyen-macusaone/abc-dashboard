@@ -14,10 +14,12 @@ import { SortBy, SortOrder } from '@/shared/types';
 export interface CreateUserDTO {
   username: string;
   email: string;
-  displayName: string;
+  firstName: string;
+  lastName: string;
   role?: UserRole;
   avatarUrl?: string;
   phone?: string;
+  managerId?: string;
 }
 
 /**

@@ -2,22 +2,15 @@ import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// import logger from '../../infrastructure/config/logger.js';
-
-// Temporary logger replacement
-const logger = {
-  info: console.log,
-  error: console.error,
-  warn: console.warn,
-};
+import logger from '../../../infrastructure/config/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class MigrationManager {
   constructor() {
-    this.migrationsPath = path.join(__dirname, '../../infrastructure/database/migrations');
-    this.seedsPath = path.join(__dirname, '../../infrastructure/database/seeds');
+    this.migrationsPath = path.join(__dirname, '../../../infrastructure/database/migrations');
+    this.seedsPath = path.join(__dirname, '../../../infrastructure/database/seeds');
     this.migrationCollection = 'migrations';
 
     // Define Migration model once
@@ -34,12 +27,10 @@ class MigrationManager {
   ensureDirectories() {
     if (!fs.existsSync(this.migrationsPath)) {
       fs.mkdirSync(this.migrationsPath, { recursive: true });
-      logger.info('Created migrations directory');
     }
 
     if (!fs.existsSync(this.seedsPath)) {
       fs.mkdirSync(this.seedsPath, { recursive: true });
-      logger.info('Created seeds directory');
     }
   }
 
@@ -89,14 +80,11 @@ class MigrationManager {
         ? `file://${filePath.replace(/\\/g, '/')}`
         : `file://${path.resolve(filePath).replace(/\\/g, '/')}`;
 
-      logger.info(`Applying migration: ${filename}`);
-
       const migration = await import(fileUrl);
 
       if (migration.up && typeof migration.up === 'function') {
         // Pass mongoose instance to the migration
         await migration.up(mongoose);
-        logger.info(`Migration applied successfully: ${filename}`);
         return true;
       } else {
         logger.warn(`No 'up' function found in migration: ${filename}`);
@@ -121,14 +109,11 @@ class MigrationManager {
         ? `file://${filePath.replace(/\\/g, '/')}`
         : `file://${path.resolve(filePath).replace(/\\/g, '/')}`;
 
-      logger.info(`Rolling back migration: ${filename}`);
-
       const migration = await import(fileUrl);
 
       if (migration.down && typeof migration.down === 'function') {
         // Pass mongoose instance to the migration
         await migration.down(mongoose);
-        logger.info(`Migration rolled back successfully: ${filename}`);
         return true;
       } else {
         logger.warn(`No 'down' function found in migration: ${filename}`);
@@ -150,11 +135,8 @@ class MigrationManager {
     const pendingMigrations = migrationFiles.filter((file) => !appliedMigrations.includes(file));
 
     if (pendingMigrations.length === 0) {
-      logger.info('No pending migrations to apply');
       return { applied: [], failed: [] };
     }
-
-    logger.info(`Found ${pendingMigrations.length} pending migrations`);
 
     const results = { applied: [], failed: [] };
 
@@ -183,7 +165,6 @@ class MigrationManager {
     const appliedMigrations = await this.getAppliedMigrations();
 
     if (appliedMigrations.length === 0) {
-      logger.info('No migrations to rollback');
       return false;
     }
 
@@ -195,7 +176,6 @@ class MigrationManager {
       // Remove from applied migrations
       await this.MigrationModel.deleteOne({ name: lastMigration });
 
-      logger.info(`Successfully rolled back migration: ${lastMigration}`);
       return true;
     } catch (error) {
       logger.error(`Failed to rollback migration: ${lastMigration}`, error);
@@ -210,11 +190,8 @@ class MigrationManager {
     const seedFiles = this.getSeedFiles();
 
     if (seedFiles.length === 0) {
-      logger.info('No seed files found');
       return { seeded: [], failed: [] };
     }
-
-    logger.info(`Running ${seedFiles.length} seed files`);
 
     const results = { seeded: [], failed: [] };
 
@@ -228,12 +205,9 @@ class MigrationManager {
 
         const seed = await import(fileUrl);
 
-        logger.info(`Running seed: ${filename}`);
-
         if (seed.run && typeof seed.run === 'function') {
           // Pass mongoose instance to the seed
           await seed.run(mongoose);
-          logger.info(`Seed completed successfully: ${filename}`);
           results.seeded.push(filename);
         } else {
           logger.warn(`No 'run' function found in seed: ${filename}`);
@@ -322,6 +296,13 @@ export async function runSeeds(specificFile) {
 export async function showMigrationStatus() {
   const status = await migrationManager.showStatus();
 
+  logger.info('Migration status', {
+    total: status.total,
+    applied: status.applied,
+    pending: status.pending,
+  });
+
+  // CLI output for human readability
   console.log(`Total migrations: ${status.total}`);
   console.log(`Applied: ${status.applied}`);
   console.log(`Pending: ${status.pending}`);

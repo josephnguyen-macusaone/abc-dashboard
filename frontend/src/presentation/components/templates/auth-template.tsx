@@ -18,7 +18,7 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
       <div className="fixed inset-0 bg-background z-0" />
 
       {/* Curved brand background */}
-      <div className="fixed inset-0 pointer-events-none z-[1]">
+      <div className="fixed inset-0 pointer-events-none z-1">
         <svg
           className="w-full"
           style={{ height: '50vh' }}
@@ -41,7 +41,7 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
           'px-6 py-8 sm:px-8'
         )}>
           {/* Logo */}
-          <Logo variant="light" width={160} height={64} className="mb-12" />
+          <Logo width={160} height={64}/>
 
           <SectionErrorBoundary
             fallbackTitle="Authentication Error"

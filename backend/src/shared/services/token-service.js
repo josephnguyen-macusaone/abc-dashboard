@@ -13,9 +13,9 @@ import {
  * Handles JWT token generation and verification with comprehensive error handling
  */
 export class TokenService {
-  constructor(correlationId = null) {
-    this.correlationId = correlationId;
-    this.operationId = correlationId ? `${correlationId}_token` : null;
+  constructor() {
+    this.correlationId = null;
+    this.operationId = null;
     this.jwtSecret = config.JWT_SECRET;
     this.jwtExpiresIn = config.JWT_EXPIRES_IN;
     this.refreshTokenExpiresIn = config.JWT_REFRESH_EXPIRES_IN;
@@ -48,12 +48,6 @@ export class TokenService {
         expiresIn: this.jwtExpiresIn,
         issuer: this.jwtIssuer,
         audience: payload.email || 'user',
-      });
-
-      logger.debug('Access token generated successfully', {
-        correlationId: this.correlationId,
-        userId: payload.userId || payload.id,
-        expiresIn: this.jwtExpiresIn,
       });
 
       return token;
@@ -101,12 +95,6 @@ export class TokenService {
 
       const decoded = jwt.verify(token, this.jwtSecret, {
         issuer: this.jwtIssuer,
-      });
-
-      logger.debug('Token verified successfully', {
-        correlationId: this.correlationId,
-        tokenType: 'access',
-        userId: decoded.userId || decoded.id,
       });
 
       return decoded;
@@ -259,5 +247,14 @@ export class TokenService {
    */
   hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Set correlation ID for request tracking (used by DI container)
+   * @param {string} correlationId - Request correlation ID
+   */
+  setCorrelationId(correlationId) {
+    this.correlationId = correlationId;
+    this.operationId = correlationId ? `${correlationId}_token` : null;
   }
 }

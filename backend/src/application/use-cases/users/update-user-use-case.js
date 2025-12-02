@@ -4,6 +4,11 @@
  */
 import logger from '../../../infrastructure/config/logger.js';
 import { UserResponseDto } from '../../dto/user/index.js';
+import {
+  ValidationException,
+  ResourceNotFoundException,
+  InsufficientPermissionsException,
+} from '../../../domain/exceptions/domain.exception.js';
 
 export class UpdateUserUseCase {
   constructor(userRepository) {
@@ -67,35 +72,35 @@ export class UpdateUserUseCase {
     try {
       // Validate input
       if (!userId) {
-        throw new Error('User ID is required');
+        throw new ValidationException('User ID is required');
       }
 
       if (!updates || Object.keys(updates).length === 0) {
-        throw new Error('No updates provided');
+        throw new ValidationException('No updates provided');
       }
 
       if (!currentUser) {
-        throw new Error('Current user information is required');
+        throw new ValidationException('Current user information is required');
       }
 
       // Find the user to update
       const user = await this.userRepository.findById(userId);
       if (!user) {
-        throw new Error('User not found');
+        throw new ResourceNotFoundException('User');
       }
 
       // Check permissions based on user roles
       const canUpdate = this.canUserUpdateUser(currentUser, user);
 
       if (!canUpdate.allowed) {
-        throw new Error(canUpdate.reason || 'Insufficient permissions to update this user');
+        throw new InsufficientPermissionsException(canUpdate.reason || 'update this user');
       }
 
       // Validate username uniqueness if being updated
       if (updates.username && updates.username !== user.username) {
         const existingUsername = await this.userRepository.findByUsername(updates.username);
         if (existingUsername) {
-          throw new Error('Username already taken');
+          throw new ValidationException('Username already taken');
         }
       }
 
@@ -103,7 +108,7 @@ export class UpdateUserUseCase {
       const updatedUser = await this.userRepository.update(userId, updates);
 
       if (!updatedUser) {
-        throw new Error('Failed to update user');
+        throw new ValidationException('Failed to update user');
       }
 
       // Log the update

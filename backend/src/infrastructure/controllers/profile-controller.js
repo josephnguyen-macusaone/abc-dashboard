@@ -4,18 +4,19 @@
  */
 import { BaseController } from './base-controller.js';
 import { UpdateProfileRequestDto } from '../../application/dto/profile/index.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 export class ProfileController extends BaseController {
   constructor(
     getProfileUseCase,
-    updateProfileUseCase,
-    updateAuthProfileUseCase,
+    profileUpdateProfileUseCase,
+    authUpdateProfileUseCase,
     recordLoginUseCase
   ) {
     super();
     this.getProfileUseCase = getProfileUseCase;
-    this.updateProfileUseCase = updateProfileUseCase;
-    this.updateAuthProfileUseCase = updateAuthProfileUseCase;
+    this.updateProfileUseCase = profileUpdateProfileUseCase;
+    this.updateAuthProfileUseCase = authUpdateProfileUseCase;
     this.recordLoginUseCase = recordLoginUseCase;
   }
 
@@ -51,7 +52,9 @@ export class ProfileController extends BaseController {
 
       // Check if there are any updates
       if (!updateRequest.hasUpdates()) {
-        return res.badRequest('No valid fields provided for update');
+        return sendErrorResponse(res, 'VALIDATION_FAILED', {
+          details: [{ field: 'body', message: 'No valid fields provided for update' }]
+        });
       }
 
       // Use the auth update profile use case which handles all profile fields

@@ -287,74 +287,74 @@ export const Typography = forwardRef<HTMLElement, TypographyProps>(
     const lineClampClass = lineClamp ? `line-clamp-${lineClamp}` : "";
     const transformClass = transform ? transform.replace("-", " ") : "";
 
-  // Parse color for nested variants (e.g., "neutral.50" -> color: "neutral", neutral: 50)
-  const parseColor = (colorValue: string) => {
-    if (colorValue.includes('.')) {
-      const [parent, child] = colorValue.split('.');
+    // Parse color for nested variants (e.g., "neutral.50" -> color: "neutral", neutral: 50)
+    const parseColor = (colorValue: string) => {
+      if (colorValue.includes('.')) {
+        const [parent, child] = colorValue.split('.');
+        return {
+          color: parent as "default" | "muted" | "inverse" | "inverse-muted" | "primary" | "secondary" | "success" | "warning" | "error" | "info" | "destructive" | "accent" | "neutral" | "slate" | "brand" | "white" | "black" | "transparent" | "current" | "inherit",
+          [parent]: parseInt(child) || child
+        };
+      }
       return {
-        color: parent as "default" | "muted" | "inverse" | "inverse-muted" | "primary" | "secondary" | "success" | "warning" | "error" | "info" | "destructive" | "accent" | "neutral" | "slate" | "brand" | "white" | "black" | "transparent" | "current" | "inherit",
-        [parent]: parseInt(child) || child
+        color: colorValue as "default" | "muted" | "inverse" | "inverse-muted" | "primary" | "secondary" | "success" | "warning" | "error" | "info" | "destructive" | "accent" | "neutral" | "slate" | "brand" | "white" | "black" | "transparent" | "current" | "inherit"
       };
-    }
-    return {
-      color: colorValue as "default" | "muted" | "inverse" | "inverse-muted" | "primary" | "secondary" | "success" | "warning" | "error" | "info" | "destructive" | "accent" | "neutral" | "slate" | "brand" | "white" | "black" | "transparent" | "current" | "inherit"
     };
-  };
 
-  const colorProps = parseColor(color);
+    const colorProps = parseColor(color);
 
-  // Define font size mappings for inline styles as fallback
-  const fontSizeMap: Record<string, string> = {
-    "display-xl": "4.5rem",
-    "display-l": "3.5rem",
-    "display-m": "2.75rem",
-    "title-xl": "2.25rem",
-    "title-l": "1.75rem",
-    "title-m": "1.5rem",
-    "title-s": "1.25rem",
-    "title-xs": "1.125rem",
-    "body-m": "1rem",
-    "body-s": "0.875rem",
-    "body-xs": "0.75rem",
-    "label-l": "1rem",
-    "label-m": "0.875rem",
-    "label-s": "0.75rem",
-    "caption": "0.75rem",
-    "button-l": "1rem",
-    "button-m": "0.875rem",
-    "button-s": "0.75rem",
-  };
+    // Define font size mappings for inline styles as fallback
+    const fontSizeMap: Record<string, string> = {
+      "display-xl": "4.5rem",
+      "display-l": "3.5rem",
+      "display-m": "2.75rem",
+      "title-xl": "2.25rem",
+      "title-l": "1.75rem",
+      "title-m": "1.5rem",
+      "title-s": "1.25rem",
+      "title-xs": "1.125rem",
+      "body-m": "1rem",
+      "body-s": "0.875rem",
+      "body-xs": "0.75rem",
+      "label-l": "1rem",
+      "label-m": "0.875rem",
+      "label-s": "0.75rem",
+      "caption": "0.75rem",
+      "button-l": "1rem",
+      "button-m": "0.875rem",
+      "button-s": "0.75rem",
+    };
 
-  // Get font size from variant or use custom fontSize
-  const computedFontSize = fontSize || (variant ? fontSizeMap[variant] : undefined);
+    // Get font size from variant or use custom fontSize
+    const computedFontSize = fontSize || (variant ? fontSizeMap[variant] : undefined);
 
-  return (
-    <Component
-      ref={ref}
-      className={cn(
-        typographyVariants({
-          variant: variant!,
-          align,
-          weight,
-          decoration,
-          "letter-spacing": letterSpacing,
-          "line-height": lineHeight,
-          ...colorProps,
-        }),
-        truncate && "truncate",
-        lineClampClass,
-        transformClass,
-        className
-      )}
-      style={{
-        fontSize: computedFontSize,
-        ...props.style
-      }}
-      {...props}
-    >
-      {children}
-    </Component>
-  );
+    return (
+      <Component
+        ref={ref}
+        className={cn(
+          typographyVariants({
+            variant: variant!,
+            align,
+            weight,
+            decoration,
+            "letter-spacing": letterSpacing,
+            "line-height": lineHeight,
+            ...colorProps,
+          }),
+          truncate && "truncate",
+          lineClampClass,
+          transformClass,
+          className
+        )}
+        style={{
+          fontSize: computedFontSize,
+          ...props.style
+        }}
+        {...props}
+      >
+        {children}
+      </Component>
+    );
   }
 );
 
@@ -700,7 +700,7 @@ export const Truncate = forwardRef<HTMLElement, TruncateProps>(
         lineClamp={maxLines > 1 ? maxLines : undefined}
         truncate={maxLines === 1}
         className={cn(
-          wordBreak && "break-words",
+          wordBreak && "wrap-break-words",
           ellipsisClass,
           className
         )}

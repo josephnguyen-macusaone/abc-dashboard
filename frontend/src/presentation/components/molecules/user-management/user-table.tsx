@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { Typography, Button } from '@/presentation/components/atoms';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/presentation/components/atoms/ui/table';
 import { UserTableRow } from './user-table-row';
-import { Users, UserPlus, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, UserPlus, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, List } from 'lucide-react';
 import type { User } from '@/domain/entities/user-entity';
 
 type SortField = 'name' | 'role' | 'isActive';
@@ -21,7 +22,6 @@ export interface UserTableProps {
   canDelete: (user: User) => boolean;
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
-  onChangePassword?: (user: User) => void;
   onCreateFirst?: () => void;
   isLoading?: boolean;
   className?: string;
@@ -34,14 +34,13 @@ export function UserTable({
   canDelete,
   onEdit,
   onDelete,
-  onChangePassword,
   onCreateFirst,
   isLoading = false,
   className,
 }: UserTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'name', direction: 'asc' });
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Sorting logic
   const sortedUsers = useMemo(() => {
@@ -87,6 +86,12 @@ export function UserTable({
       direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
     setCurrentPage(1); // Reset to first page when sorting changes
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
   };
 
   // Generate pagination buttons with ellipsis for large page counts
@@ -165,11 +170,11 @@ export function UserTable({
   }
 
   return (
-    <div className={`overflow-x-auto ${className || ''}`}>
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border bg-muted/30">
-            <th className="text-left p-4">
+    <div className={className}>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-56">
               <button
                 onClick={() => handleSort('name')}
                 className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -177,16 +182,28 @@ export function UserTable({
                 <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
                   User
                 </Typography>
-                {sortConfig.field === 'name' && (
+                {sortConfig.field === 'name' ? (
                   sortConfig.direction === 'asc' ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (
                     <ChevronDown className="h-3 w-3" />
                   )
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-50" />
                 )}
               </button>
-            </th>
-            <th className="text-left p-4">
+            </TableHead>
+            <TableHead className="w-72">
+              <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
+                Email
+              </Typography>
+            </TableHead>
+            <TableHead className="w-32">
+              <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
+                Phone
+              </Typography>
+            </TableHead>
+            <TableHead className="w-28">
               <button
                 onClick={() => handleSort('role')}
                 className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -194,16 +211,18 @@ export function UserTable({
                 <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
                   Role
                 </Typography>
-                {sortConfig.field === 'role' && (
+                {sortConfig.field === 'role' ? (
                   sortConfig.direction === 'asc' ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (
                     <ChevronDown className="h-3 w-3" />
                   )
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-50" />
                 )}
               </button>
-            </th>
-            <th className="text-left p-4">
+            </TableHead>
+            <TableHead className="w-28">
               <button
                 onClick={() => handleSort('isActive')}
                 className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -211,23 +230,25 @@ export function UserTable({
                 <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
                   Status
                 </Typography>
-                {sortConfig.field === 'isActive' && (
+                {sortConfig.field === 'isActive' ? (
                   sortConfig.direction === 'asc' ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (
                     <ChevronDown className="h-3 w-3" />
                   )
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-50" />
                 )}
               </button>
-            </th>
-            <th className="text-right p-4">
+            </TableHead>
+            <TableHead className="w-36 text-right">
               <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
                 Actions
               </Typography>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/50">
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {paginatedUsers.map((user) => (
             <UserTableRow
               key={user.id}
@@ -237,61 +258,65 @@ export function UserTable({
               canDelete={canDelete(user)}
               onEdit={onEdit}
               onDelete={onDelete}
-              onChangePassword={onChangePassword}
             />
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
+      {users.length > 0 && (
         <div className="flex items-center justify-between px-4 py-4 border-t border-border bg-muted/20">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-              {Math.min(currentPage * itemsPerPage, sortedUsers.length)} of {sortedUsers.length} users
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-
-            <div className="flex items-center gap-1">
-              {getPaginationButtons().map((page, index) => (
-                typeof page === 'number' ? (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className="w-8 h-8 p-0"
-                  >
-                    {page}
-                  </Button>
-                ) : (
-                  <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
-                    ...
-                  </span>
-                )
-              ))}
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <List className="h-4 w-4" />
+              <span className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+                {Math.min(currentPage * itemsPerPage, sortedUsers.length)} of {sortedUsers.length.toLocaleString()} users
+              </span>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {getPaginationButtons().map((page, index) => (
+                  typeof page === 'number' ? (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  ) : (
+                    <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+                      ...
+                    </span>
+                  )
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

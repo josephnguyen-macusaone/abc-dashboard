@@ -60,8 +60,8 @@ export function EditProfilePage() {
 
   return (
     <DashboardTemplate>
-      <div className="space-y-6 flex justify-center">
-        <Card className="w-full max-w-4xl">
+      <div className="space-y-6 flex justify-center items-center">
+        <Card className="w-full max-w">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -80,7 +80,7 @@ export function EditProfilePage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {parsedProfileData  && (
+            {parsedProfileData && (
               <ProfileUpdateForm
                 initialData={parsedProfileData}
                 onSuccess={handleSuccess}

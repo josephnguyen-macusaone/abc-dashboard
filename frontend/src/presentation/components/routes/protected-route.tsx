@@ -1,66 +1,67 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { LoadingOverlay } from '@/presentation/components/atoms';
+import { getRouteConfig, canAccessRoute, getDefaultRedirect } from '@/shared/constants/routes';
+
+// Check if we're on the client side
+const isClient = typeof window !== 'undefined';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  redirectTo?: string;
-  requireAuth?: boolean;
-  requireAdmin?: boolean;
+  fallback?: React.ReactNode;
 }
 
-export function ProtectedRoute({
-  children,
-  redirectTo = '/login',
-  requireAuth = true,
-  requireAdmin = false
-}: ProtectedRouteProps) {
+/**
+ * Simplified ProtectedRoute component
+ * Most authentication logic is now handled by Next.js Middleware
+ * This component provides client-side fallbacks and loading states
+ */
+export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, isLoading, canAccessProtectedRoutes } = useAuthStore();
-  const isAdmin = user?.role === 'admin';
 
-  useEffect(() => {
-    // Don't redirect while auth is still loading
-    if (isLoading) return;
-
-    if (requireAuth && !isAuthenticated) {
-      router.push(redirectTo);
-      return;
-    }
-
-    // Check if user is authenticated but not email-verified
-    if (requireAuth && isAuthenticated && !canAccessProtectedRoutes()) {
-      // User is logged in but email not verified - redirect to verification page
-      router.push(`/verify-email?email=${encodeURIComponent(user?.email || '')}`);
-      return;
-    }
-
-    if (!requireAuth && isAuthenticated && canAccessProtectedRoutes()) {
-      // Redirect authenticated users away from auth pages
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, isAdmin, isLoading, requireAuth, requireAdmin, redirectTo, router, user, canAccessProtectedRoutes]);
-
-  // Show loading while checking authentication
-  if (isLoading) {
+  // During server-side rendering or initial client load, show loading
+  if (!isClient || isLoading) {
     return <LoadingOverlay text="Loading..." />;
   }
 
-  // Show loading while checking authentication and admin status
-  if (requireAuth && !isAuthenticated) {
-    return <LoadingOverlay text="Loading..." />;
+  // Get route configuration
+  const routeConfig = getRouteConfig(pathname);
+
+  // If no route config, allow access (public routes)
+  if (!routeConfig) {
+    return <>{children}</>;
   }
 
-  // Show loading if user is authenticated but not verified
-  if (requireAuth && isAuthenticated && !canAccessProtectedRoutes()) {
-    return <LoadingOverlay text="Loading..." />;
+  // Check if user can access this route
+  const hasAccess = canAccessRoute(pathname, user?.role);
+
+  // If user doesn't have access, show fallback or redirect
+  if (!hasAccess) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+
+    // Fallback redirect logic for client-side navigation
+    if (!isAuthenticated) {
+      router.push('/login');
+      return <LoadingOverlay text="Redirecting to login..." />;
   }
 
-  if (requireAuth && requireAdmin && !isAdmin) {
-    return <LoadingOverlay text="Loading..." />;
+    // User is authenticated but doesn't have permission
+    const redirectPath = getDefaultRedirect(user?.role);
+    router.push(redirectPath);
+    return <LoadingOverlay text="Redirecting..." />;
+  }
+
+  // Check if user needs email verification
+  if (isAuthenticated && user && !canAccessProtectedRoutes()) {
+    router.push(`/verify-email?email=${encodeURIComponent(user.email || '')}`);
+    return <LoadingOverlay text="Redirecting to email verification..." />;
   }
 
   return <>{children}</>;
