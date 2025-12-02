@@ -70,12 +70,14 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   // ALL hooks must be called before any conditional returns
   const handleLogout = useCallback(async () => {
     try {
+      // Navigate immediately to prevent showing access denied page
+      router.replace('/login');
+
       await toast.promise(
         logout(),
         {
           loading: 'Logging out...',
           success: () => {
-            router.replace('/login');
             return 'Logged out successfully!';
           },
           error: (error: any) => {

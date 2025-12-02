@@ -7,7 +7,7 @@ import { UserTableRow } from './user-table-row';
 import { Users, UserPlus, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ArrowUpDown, List } from 'lucide-react';
 import type { User } from '@/domain/entities/user-entity';
 
-type SortField = 'name' | 'role' | 'isActive';
+type SortField = 'name' | 'role' | 'isActive' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -39,7 +39,7 @@ export function UserTable({
   className,
 }: UserTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'name', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'createdAt', direction: 'desc' });
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Sorting logic
@@ -61,6 +61,10 @@ export function UserTable({
         case 'isActive':
           aValue = a.isActive;
           bValue = b.isActive;
+          break;
+        case 'createdAt':
+          aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           break;
         default:
           return 0;
@@ -231,6 +235,25 @@ export function UserTable({
                   Status
                 </Typography>
                 {sortConfig.field === 'isActive' ? (
+                  sortConfig.direction === 'asc' ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-50" />
+                )}
+              </button>
+            </TableHead>
+            <TableHead className="w-32">
+              <button
+                onClick={() => handleSort('createdAt')}
+                className="flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <Typography variant="label-s" className="text-muted-foreground uppercase tracking-wider">
+                  Created At
+                </Typography>
+                {sortConfig.field === 'createdAt' ? (
                   sortConfig.direction === 'asc' ? (
                     <ChevronUp className="h-3 w-3" />
                   ) : (

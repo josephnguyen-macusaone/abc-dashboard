@@ -123,6 +123,13 @@ export class UpdateUserUseCase {
         message: 'User profile updated successfully',
       };
     } catch (error) {
+      // Re-throw domain exceptions as-is for proper error handling
+      if (error instanceof ValidationException ||
+          error instanceof ResourceNotFoundException ||
+          error instanceof InsufficientPermissionsException) {
+        throw error;
+      }
+      // Wrap unexpected errors
       throw new Error(`User update failed: ${error.message}`);
     }
   }

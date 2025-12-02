@@ -243,6 +243,7 @@ export function ManagerDashboard({ className }: ManagerDashboardProps) {
             loading={loading}
             showRoleColumn={false}
             showManagerColumn={false}
+            showCreatedAtColumn={true}
             actions={['view', 'edit', 'activate', 'deactivate']}
             onView={handleViewUser}
             onEdit={handleEditUser}

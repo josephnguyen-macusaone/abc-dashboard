@@ -5,7 +5,7 @@ import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { authApi } from '@/infrastructure/api/auth';
-import { Mail, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Mail, CheckCircle, ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
 
 interface ForgotPasswordFormProps {
   onBackToLogin?: () => void;
@@ -26,6 +26,7 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
   const [errors, setErrors] = useState<Partial<Record<keyof ForgotPasswordFormData, string | null>>>({});
   const [touched, setTouched] = useState<Partial<Record<keyof ForgotPasswordFormData, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isHelpExpanded, setIsHelpExpanded] = useState(false);
 
   // Real-time email validation
   const emailValidation = useMemo(() => {
@@ -237,48 +238,6 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
             )}
           </Button>
         </form>
-
-        {/* Help Section */}
-        <div className="space-y-3 pt-4 border-t border-border">
-          <Typography variant="body-s" className="text-foreground">
-            If you're not able to sign in, please see the following common causes:
-          </Typography>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Typography variant="body-s" className="font-medium text-foreground">
-                Username or Password is mistyped
-              </Typography>
-              <Typography variant="body-xs" className="text-muted-foreground">
-                Your username is not your email address. Passwords are case-sensitive. Before you change or reset your password, make sure you don't have Caps Lock turned on.
-              </Typography>
-            </div>
-
-            <div className="space-y-2">
-              <Typography variant="body-s" className="font-medium text-foreground">
-                Browser is outdated
-              </Typography>
-              <Typography variant="body-xs" className="text-muted-foreground">
-                If your browser is not up-to-date, you may encounter issues signing or using the site. Make sure you have the latest version of your browser. We recommend using the Google Chrome or Mozilla Firefox browsers for the best experience.
-              </Typography>
-            </div>
-
-            <div className="space-y-2">
-              <Typography variant="body-s" className="font-medium text-foreground">
-                Cookies or Javascript are disabled
-              </Typography>
-              <Typography variant="body-xs" className="text-muted-foreground">
-                Check your browser's settings to make sure cookies and Javascript are enabled.
-              </Typography>
-            </div>
-          </div>
-
-          <Typography variant="body-xs" className="text-muted-foreground">
-            Should you still not be able to sign in please contact your site administrator at{' '}
-            <span className="font-medium text-foreground">+1 888 873 7799</span>.
-          </Typography>
-        </div>
-
         {/* Back to Login */}
         {onBackToLogin && (
           <div className="text-center">

@@ -62,6 +62,15 @@ export function UserTableRow({
       <TableCell className="text-center">
         <StatusBadge isActive={user.isActive} />
       </TableCell>
+      <TableCell>
+        <Typography variant="body-s" className="text-muted-foreground">
+          {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }) : 'N/A'}
+        </Typography>
+      </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end space-x-1.5">
           {canEdit && (

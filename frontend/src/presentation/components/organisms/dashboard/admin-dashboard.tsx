@@ -296,6 +296,7 @@ export function AdminDashboard({ className }: AdminDashboardProps) {
             loading={loading}
             showRoleColumn={true}
             showManagerColumn={true}
+            showCreatedAtColumn={true}
             actions={['view', 'edit', 'delete']}
             selectedUsers={selectedUsers}
             onSelectionChange={setSelectedUsers}

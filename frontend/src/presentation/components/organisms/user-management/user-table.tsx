@@ -28,6 +28,7 @@ interface UserTableProps {
   loading?: boolean;
   showRoleColumn?: boolean;
   showManagerColumn?: boolean;
+  showCreatedAtColumn?: boolean;
   actions?: Array<'view' | 'edit' | 'delete' | 'activate' | 'deactivate'>;
   selectedUsers?: string[];
   onSelectionChange?: (userIds: string[]) => void;
@@ -45,6 +46,7 @@ export const AdvancedUserTable: React.FC<UserTableProps> = ({
   loading = false,
   showRoleColumn = true,
   showManagerColumn = false,
+  showCreatedAtColumn = false,
   actions = ['view', 'edit', 'delete'],
   selectedUsers = [],
   onSelectionChange,
@@ -141,6 +143,11 @@ export const AdvancedUserTable: React.FC<UserTableProps> = ({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
+              {showCreatedAtColumn && (
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created At
+                </th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -196,6 +203,17 @@ export const AdvancedUserTable: React.FC<UserTableProps> = ({
                     {user.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </td>
+                {showCreatedAtColumn && (
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : 'N/A'}
+                  </td>
+                )}
                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

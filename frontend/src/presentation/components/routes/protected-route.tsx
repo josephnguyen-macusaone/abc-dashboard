@@ -24,6 +24,39 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, canAccessProtectedRoutes } = useAuthStore();
 
+  // Handle navigation effects in useEffect to avoid calling router during render
+  useEffect(() => {
+    // Only run navigation logic on client side after loading
+    if (!isClient || isLoading) return;
+
+    // Get route configuration
+    const routeConfig = getRouteConfig(pathname);
+
+    // If no route config or route doesn't require auth, no navigation needed
+    if (!routeConfig || !routeConfig.requireAuth) return;
+
+    // Check if user can access this route
+    const hasAccess = canAccessRoute(pathname, user?.role);
+
+    if (!hasAccess) {
+      // If user is not authenticated, redirect to login
+      if (!isAuthenticated) {
+        router.push('/login');
+        return;
+      }
+
+      // User is authenticated but doesn't have permission - redirect based on role
+      const redirectPath = getDefaultRedirect(user?.role);
+      router.push(redirectPath);
+      return;
+    }
+
+    // Check if user needs email verification
+    if (isAuthenticated && user && !canAccessProtectedRoutes()) {
+      router.push(`/verify-email?email=${encodeURIComponent(user.email || '')}`);
+    }
+  }, [router, pathname, user, isAuthenticated, isLoading, canAccessProtectedRoutes]);
+
   // During server-side rendering or initial client load, show loading
   if (!isClient || isLoading) {
     return <LoadingOverlay text="Loading..." />;
@@ -40,27 +73,24 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   // Check if user can access this route
   const hasAccess = canAccessRoute(pathname, user?.role);
 
-  // If user doesn't have access, show fallback or redirect
+  // If user doesn't have access, show fallback or loading (navigation handled in useEffect)
   if (!hasAccess) {
+    // If user is not authenticated, show loading (will redirect via useEffect)
+    if (!isAuthenticated) {
+      return <LoadingOverlay text="Redirecting to login..." />;
+    }
+
+    // User is authenticated but doesn't have permission - show fallback or loading
     if (fallback) {
       return <>{fallback}</>;
     }
 
-    // Fallback redirect logic for client-side navigation
-    if (!isAuthenticated) {
-      router.push('/login');
-      return <LoadingOverlay text="Redirecting to login..." />;
-  }
-
-    // User is authenticated but doesn't have permission
-    const redirectPath = getDefaultRedirect(user?.role);
-    router.push(redirectPath);
+    // Show loading while redirecting (navigation handled in useEffect)
     return <LoadingOverlay text="Redirecting..." />;
   }
 
-  // Check if user needs email verification
+  // Check if user needs email verification (navigation handled in useEffect)
   if (isAuthenticated && user && !canAccessProtectedRoutes()) {
-    router.push(`/verify-email?email=${encodeURIComponent(user.email || '')}`);
     return <LoadingOverlay text="Redirecting to email verification..." />;
   }
 

@@ -12,6 +12,7 @@ import { VerifyEmailUseCase as AuthVerifyEmailUseCase } from '../../application/
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
 import { ChangePasswordUseCase } from '../../application/use-cases/auth/change-password-use-case.js';
 import { RequestPasswordResetUseCase } from '../../application/use-cases/auth/request-password-reset-use-case.js';
+import { RequestPasswordResetWithGeneratedPasswordUseCase } from '../../application/use-cases/auth/request-password-reset-with-generated-password-use-case.js';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password-use-case.js';
 import { GetUsersUseCase } from '../../application/use-cases/users/get-users-use-case.js';
 import { CreateUserUseCase } from '../../application/use-cases/users/create-user-use-case.js';
@@ -155,6 +156,14 @@ class Container {
   getRequestPasswordResetUseCase() {
     return new RequestPasswordResetUseCase(
       this.getUserRepository(),
+      this.getTokenService(),
+      this.getEmailService()
+    );
+  }
+
+  getRequestPasswordResetWithGeneratedPasswordUseCase() {
+    return new RequestPasswordResetWithGeneratedPasswordUseCase(
+      this.getUserRepository(),
       this.getAuthService(),
       this.getEmailService()
     );
@@ -221,8 +230,10 @@ class Container {
       this.getMarkEmailVerifiedUseCase(),
       this.getChangePasswordUseCase(),
       this.getRequestPasswordResetUseCase(),
+      this.getRequestPasswordResetWithGeneratedPasswordUseCase(),
       this.getResetPasswordUseCase(),
-      this.getTokenService()
+      this.getTokenService(),
+      this.getUserProfileRepository()
     );
   }
 

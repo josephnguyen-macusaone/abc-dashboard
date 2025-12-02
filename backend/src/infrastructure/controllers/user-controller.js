@@ -134,6 +134,16 @@ export class UserController {
         responseData.temporaryPassword = result.temporaryPassword;
       }
 
+      // Include warning if email wasn't sent
+      if (result.warning) {
+        responseData.warning = result.warning;
+      }
+
+      // Include email status for client-side handling
+      if (result.emailSent !== undefined) {
+        responseData.emailSent = result.emailSent;
+      }
+
       return res.created(responseData, result.message);
     } catch (error) {
       // Handle domain exceptions

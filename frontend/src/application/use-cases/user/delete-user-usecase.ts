@@ -1,6 +1,4 @@
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
-import { AuthDomainService } from '@/domain/services/auth-domain-service';
-import { UserDomainService } from '@/domain/services/user-domain-service';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
 /**
@@ -39,6 +37,8 @@ export class DeleteUserUseCase {
 
   /**
    * Validate delete permissions
+   * Note: Full permission validation is done on the backend.
+   * Frontend only does basic validation to improve UX.
    */
   private async validateDeletePermissions(userId: string, correlationId: string): Promise<void> {
     // Get current user to check permissions
@@ -48,21 +48,22 @@ export class DeleteUserUseCase {
       throw new Error('Authentication required');
     }
 
-    // Validate account status
-    const accountValidation = AuthDomainService.validateUserAccountStatus(currentUser);
-    if (!accountValidation.isValid) {
-      throw new Error(accountValidation.reason || 'Account validation failed');
+    // Basic account status check
+    if (!currentUser.isActive) {
+      throw new Error('Your account is deactivated. Please contact administrator.');
     }
 
-    // Get target user for permission validation
-    const targetUser = await this.userRepository.getUserById(userId);
-    if (!targetUser) {
-      throw new Error('User not found');
+    // Cannot delete yourself
+    if (currentUser.id === userId) {
+      throw new Error('You cannot delete your own account');
     }
 
-    // Check delete permissions using domain service
-    if (!UserDomainService.canUserDeleteUser(currentUser, targetUser)) {
-      throw new Error('Insufficient permissions to delete this user');
+    // Basic role check - only admins and managers can delete users
+    if (currentUser.role !== 'admin' && currentUser.role !== 'manager') {
+      throw new Error('Insufficient permissions to delete users');
     }
+
+    // Note: Detailed permission checks (role hierarchy, etc.) 
+    // are delegated to the backend which has full context
   }
 }

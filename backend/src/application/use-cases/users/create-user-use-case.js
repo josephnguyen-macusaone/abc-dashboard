@@ -75,7 +75,7 @@ export class CreateUserUseCase {
         throw new ValidationException(`Invalid role '${userRole}'. Must be one of: ${validRoles.join(', ')}`);
       }
 
-      // Create user entity
+      // Create user entity - admin-created users are immediately active
       const user = await this.userRepository.save({
         username,
         hashedPassword,
@@ -84,6 +84,7 @@ export class CreateUserUseCase {
         role: userRole,
         avatarUrl,
         phone,
+        isActive: true, // Admin-created users are immediately active
         isFirstLogin: true,
         requiresPasswordChange: true,
         langKey: 'en',
@@ -109,8 +110,11 @@ export class CreateUserUseCase {
       }
 
       // Send welcome email with temporary password
+      let emailSent = false;
+      let emailError = null;
+      
       try {
-        await this.emailService.sendWelcomeWithPassword(user.email, {
+        const emailResult = await this.emailService.sendWelcomeWithPassword(user.email, {
           displayName: user.displayName,
           username: user.username,
           password: temporaryPassword,
@@ -119,17 +123,32 @@ export class CreateUserUseCase {
           managerName,
         });
 
-        logger.info('Welcome email sent', {
-          userId: user.id,
-          email: user.email,
-          role: user.role,
-          managedBy,
-        });
-      } catch (emailError) {
+        // Check if email was actually sent or just logged for later
+        emailSent = emailResult && !emailResult.logged;
+
+        if (emailSent) {
+          logger.info('Welcome email sent successfully', {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            managedBy,
+          });
+        } else {
+          logger.warn('Welcome email queued for later delivery', {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            managedBy,
+            reason: 'Email service temporarily unavailable',
+          });
+        }
+      } catch (error) {
+        emailError = error;
         logger.error('Failed to send welcome email', {
           userId: user.id,
           email: user.email,
-          error: emailError.message,
+          error: error.message,
+          stack: error.stack,
         });
         // Don't fail the user creation if email fails
         // Admin can manually resend or user can request password reset
@@ -155,14 +174,27 @@ export class CreateUserUseCase {
         username: user.username,
         role: user.role,
         managedBy,
-        temporaryPasswordSent: true,
+        emailSent,
+        emailQueued: !emailSent && !emailError,
       });
 
       // Return user data as DTO (without sensitive information)
+      // Construct appropriate message based on email status
+      let message = 'User created successfully.';
+      if (emailSent) {
+        message += ' Welcome email sent with temporary password.';
+      } else if (emailError) {
+        message += ' However, the welcome email could not be sent. Please manually provide the user with their temporary password or use the password reset feature.';
+      } else {
+        message += ' Welcome email has been queued for delivery.';
+      }
+
       return {
         user: UserResponseDto.fromEntity(user),
-        message: 'User created successfully. Welcome email sent with temporary password.',
+        message,
+        emailSent,
         temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined, // Only expose in dev
+        warning: !emailSent ? 'Email service temporarily unavailable. User account created but notification pending.' : undefined,
       };
     } catch (error) {
       // Re-throw domain exceptions as-is

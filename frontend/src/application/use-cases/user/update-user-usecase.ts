@@ -1,7 +1,6 @@
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
 import { User, UserRole } from '@/domain/entities/user-entity';
 import { UpdateUserDTO } from '@/application/dto/user-dto';
-import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { UserDomainService } from '@/domain/services/user-domain-service';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
@@ -44,6 +43,8 @@ export class UpdateUserUseCase {
 
   /**
    * Validate update permissions
+   * Note: Full permission validation is done on the backend.
+   * Frontend only does basic validation to improve UX.
    */
   private async validateUpdatePermissions(userId: string, updates: UpdateUserDTO, correlationId: string): Promise<void> {
     // Get current user to check permissions
@@ -53,40 +54,25 @@ export class UpdateUserUseCase {
       throw new Error('Authentication required');
     }
 
-    // Validate account status
-    const accountValidation = AuthDomainService.validateUserAccountStatus(currentUser);
-    if (!accountValidation.isValid) {
-      throw new Error(accountValidation.reason || 'Account validation failed');
+    // Basic account status check
+    if (!currentUser.isActive) {
+      throw new Error('Your account is deactivated. Please contact administrator.');
     }
 
-    // Check role change permissions
-    if (updates.role) {
-      const targetUser = await this.userRepository.getUserById(userId);
-      if (!targetUser) {
-        throw new Error('Target user not found');
-      }
-
-      if (!UserDomainService.canUserChangeRole(currentUser, targetUser.role, updates.role as UserRole)) {
-        throw new Error('Insufficient permissions to change user role');
+    // Basic role check - only admins and managers can update other users
+    if (currentUser.id !== userId) {
+      if (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.MANAGER) {
+        throw new Error('Insufficient permissions to update other users');
       }
     }
 
-    // Check activation/deactivation permissions
-    if (updates.isActive !== undefined) {
-      const targetUser = await this.userRepository.getUserById(userId);
-      if (!targetUser) {
-        throw new Error('Target user not found');
-      }
-
-      if (!UserDomainService.canUserToggleActivation(currentUser, targetUser, updates.isActive)) {
-        throw new Error(`Insufficient permissions to ${updates.isActive ? 'activate' : 'deactivate'} user`);
-      }
-    }
-
-    // Validate data consistency
+    // Validate data consistency (format validation only)
     const consistencyCheck = UserDomainService.validateUserDataConsistency(updates);
     if (!consistencyCheck.isValid) {
       throw new Error(`Validation failed: ${consistencyCheck.errors.join(', ')}`);
     }
+
+    // Note: Detailed permission checks (role changes, activation/deactivation) 
+    // are delegated to the backend which has full context
   }
 }

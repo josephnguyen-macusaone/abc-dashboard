@@ -44,9 +44,23 @@ cd abc-dashboard
 cp .env.example .env
 cp frontend/.env.example frontend/.env
 
-# Build and deploy
+# Initialize database (migrations and seeding)
+docker-compose --profile setup up db-setup
+
+# Build and deploy services
 docker-compose up -d
+
+# Access the application:
+# - Frontend: http://localhost
+# - API: http://localhost:5000
+# - API Docs: http://localhost:5000/api-docs
+# - MailHog (email testing): http://localhost:8025
 ```
+
+**Database Commands:**
+- **Initialize/seed database:** `docker-compose --profile setup up db-setup`
+- **Run migrations only:** `docker-compose run --rm backend npm run migrate:prod`
+- **Run seeding only:** `docker-compose run --rm backend npm run seed:prod`
 
 ### Option 3: Local Development
 

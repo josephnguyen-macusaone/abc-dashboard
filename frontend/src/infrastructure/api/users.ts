@@ -114,7 +114,7 @@ export class UserApiService {
    */
   static async updateUser(id: string, updates: UpdateUserRequestDto): Promise<UpdateUserResponseDto> {
     try {
-      const response = await httpClient.put<ApiResponse<UpdateUserResponseDto>>(`/users/${id}`, updates);
+      const response = await httpClient.patch<ApiResponse<UpdateUserResponseDto>>(`/users/${id}`, updates);
 
       if (!response.data) {
         throw new Error('Update user response missing data');
