@@ -51,6 +51,35 @@ const createTransporter = () => {
     });
   }
 
+  // SendGrid configuration
+  if (config.EMAIL_SERVICE === 'sendgrid') {
+    logger.info('Using SendGrid SMTP for email service');
+
+    // Validate required SendGrid configuration
+    if (!config.EMAIL_PASS || config.EMAIL_PASS === 'your-sendgrid-api-key-here') {
+      logger.error('SendGrid requires EMAIL_PASS (API Key)');
+      throw new Error('Missing SendGrid API Key - set EMAIL_PASS in your .env file');
+    }
+
+    return nodemailer.createTransporter({
+      host: config.EMAIL_HOST || 'smtp.sendgrid.net',
+      port: config.EMAIL_PORT || 587,
+      secure: false, // Use TLS (STARTTLS)
+      auth: {
+        user: config.EMAIL_USER || 'apikey', // SendGrid uses 'apikey' as username
+        pass: config.EMAIL_PASS, // SendGrid API Key as password
+      },
+      tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false, // Allow self-signed certificates during development
+      },
+      // Connection pooling for better performance
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+    });
+  }
+
   // Gmail configuration (legacy support)
   if (config.EMAIL_SERVICE === 'gmail') {
     logger.warn('Using legacy Gmail configuration. Consider upgrading to Google Workspace SMTP');
@@ -194,7 +223,7 @@ const sendTemplatedEmail = async (template, email, data) => {
   }
 
   const emailContent = templateConfig(data);
-  return await sendEmail({
+  return sendEmail({
     email,
     ...emailContent,
   });

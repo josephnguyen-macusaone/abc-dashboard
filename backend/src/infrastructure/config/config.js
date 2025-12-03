@@ -25,15 +25,28 @@ export const config = {
   EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'ABC Dashboard',
   EMAIL_HOST:
     process.env.EMAIL_HOST ||
-    ((process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
+    ((process.env.EMAIL_SERVICE ||
+      (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
       ? 'localhost'
-      : 'smtp.gmail.com'),
+      : (process.env.EMAIL_SERVICE ||
+            (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) ===
+          'sendgrid'
+        ? 'smtp.sendgrid.net'
+        : 'smtp.gmail.com'),
   EMAIL_PORT:
-    (process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
+    (process.env.EMAIL_SERVICE ||
+      (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
       ? 1025 // MailHog SMTP port
-      : (process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'google-workspace'
-        ? 587 // Google Workspace SMTP port (TLS)
-        : parseInt(process.env.EMAIL_PORT) || (process.env.NODE_ENV === 'development' ? 1025 : 587),
+      : (process.env.EMAIL_SERVICE ||
+            (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) ===
+          'sendgrid'
+        ? 587 // SendGrid SMTP port (TLS)
+        : (process.env.EMAIL_SERVICE ||
+              (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) ===
+            'google-workspace'
+          ? 587 // Google Workspace SMTP port (TLS)
+          : parseInt(process.env.EMAIL_PORT) ||
+            (process.env.NODE_ENV === 'development' ? 1025 : 587),
   EMAIL_SECURE: process.env.EMAIL_SECURE === 'true' || false,
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS, // App Password for Google Workspace
