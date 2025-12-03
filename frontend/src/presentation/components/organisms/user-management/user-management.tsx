@@ -7,13 +7,13 @@ import {
   UserFilters,
   UserTable,
   UserFormModal,
-} from '@/presentation/components/molecules/user-management';
+} from '@/presentation/components/molecules/domain/user-management';
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
 import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
-import { canManageRole } from '@/shared/constants';
+import { canManageRole, USER_ROLES, PermissionUtils } from '@/shared/constants';
 import { UserPlus, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/presentation/contexts/toast-context';
 
@@ -49,7 +49,7 @@ export function UserManagement({
   className
 }: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'admin' | 'manager' | 'staff' | 'all'>('all');
+  const [roleFilter, setRoleFilter] = useState<'admin' | 'manager' | 'staff' | 'all'>('all'); // TODO: Use USER_ROLES type
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete' | 'changePassword'>('list');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const toast = useToast();
@@ -121,14 +121,31 @@ export function UserManagement({
     setSelectedUser(null);
   };
 
+  // Check if current user can edit a target user
+  // - Users can edit their own profile
+  // - Admin can edit anyone EXCEPT other admins
+  // - Manager can edit staff only
   const canEditUser = (user: User) => {
-    const canEdit = currentUser.role === 'admin' && canManageRole(currentUser.role, user.role);
-    return canEdit;
+    return PermissionUtils.canUpdateTargetUser(
+      currentUser.role,
+      currentUser.id,
+      user.id,
+      user.role
+    );
   };
 
+  // Check if current user can delete a target user
+  // - Users CANNOT delete themselves
+  // - Admin can delete anyone EXCEPT other admins
+  // - Manager can delete staff only
+  // - Staff cannot delete anyone
   const canDeleteUser = (user: User) => {
-    const canDelete = currentUser.role === 'admin' && canManageRole(currentUser.role, user.role);
-    return canDelete;
+    return PermissionUtils.canDeleteTargetUser(
+      currentUser.role,
+      currentUser.id,
+      user.id,
+      user.role
+    );
   };
 
   // Render different views
@@ -208,7 +225,8 @@ export function UserManagement({
           </Typography>
         </div>
 
-        {currentUser.role === 'admin' && (
+        {/* Show Add User button for users who can create users (Admin and Manager) */}
+        {PermissionUtils.canCreateUser(currentUser.role) && (
           <Button onClick={handleCreateUser}>
             <UserPlus className="h-4 w-4" />
             <Typography variant="button-s">Add User</Typography>

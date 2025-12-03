@@ -6,6 +6,7 @@ import logger from './logger.js';
 const createTransporter = () => {
   // MailHog configuration for development
   if (config.EMAIL_SERVICE === 'mailhog') {
+    logger.info('Using MailHog for email service');
     return nodemailer.createTransporter({
       host: config.EMAIL_HOST,
       port: config.EMAIL_PORT,
@@ -16,8 +17,43 @@ const createTransporter = () => {
     });
   }
 
-  // Gmail configuration
+  // Google Workspace SMTP configuration
+  if (config.EMAIL_SERVICE === 'google-workspace') {
+    logger.info('Using Google Workspace SMTP for email service');
+
+    // Validate required Google Workspace configuration
+    if (!config.EMAIL_USER || !config.EMAIL_PASS) {
+      logger.error('Google Workspace SMTP requires EMAIL_USER and EMAIL_PASS (App Password)');
+      throw new Error('Missing Google Workspace SMTP credentials');
+    }
+
+    if (!config.EMAIL_FROM) {
+      logger.error('Google Workspace SMTP requires EMAIL_FROM address');
+      throw new Error('Missing EMAIL_FROM configuration for Google Workspace');
+    }
+
+    return nodemailer.createTransporter({
+      host: config.EMAIL_HOST || 'smtp.gmail.com',
+      port: config.EMAIL_PORT || 587,
+      secure: false, // Use TLS (STARTTLS)
+      auth: {
+        user: config.EMAIL_USER, // Google Workspace email address
+        pass: config.EMAIL_PASS, // App Password (not regular password)
+      },
+      tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false, // Allow self-signed certificates during development
+      },
+      // Connection pooling for better performance
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+    });
+  }
+
+  // Gmail configuration (legacy support)
   if (config.EMAIL_SERVICE === 'gmail') {
+    logger.warn('Using legacy Gmail configuration. Consider upgrading to Google Workspace SMTP');
     return nodemailer.createTransporter({
       service: 'gmail',
       auth: {
@@ -27,7 +63,8 @@ const createTransporter = () => {
     });
   }
 
-  // Generic SMTP configuration
+  // Generic SMTP configuration (fallback)
+  logger.info('Using generic SMTP configuration');
   const transporterConfig = {
     host: config.EMAIL_HOST,
     port: config.EMAIL_PORT,
@@ -49,6 +86,7 @@ const transporter = createTransporter();
 // Verify connection configuration
 const verifyConnection = async () => {
   try {
+    // Handle nodemailer (SMTP) verification
     await transporter.verify();
     logger.info('Email service connected successfully');
     return true;
@@ -61,8 +99,9 @@ const verifyConnection = async () => {
 // Send email function
 const sendEmail = async (options) => {
   try {
+    // Handle nodemailer (SMTP) services
     const mailOptions = {
-      from: `${config.EMAIL_FROM_NAME || 'Your App'} <${config.EMAIL_FROM}>`,
+      from: `${config.EMAIL_FROM_NAME || 'ABC Dashboard'} <${config.EMAIL_FROM}>`,
       to: options.email,
       subject: options.subject,
       html: options.html,

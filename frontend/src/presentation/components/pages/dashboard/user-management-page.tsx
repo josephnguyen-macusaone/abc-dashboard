@@ -7,7 +7,9 @@ import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User, UserRole } from '@/domain/entities/user-entity';
 import { UserListParams } from '@/application/dto/user-dto';
+import { SortBy, SortOrder } from '@/shared/types';
 import { DashboardTemplate } from '@/presentation/components/templates';
+import { logger } from '@/shared/utils';
 
 export function UserManagementPage() {
   const { user: currentUser } = useAuth();
@@ -15,6 +17,9 @@ export function UserManagementPage() {
   const { success: showSuccess, error: showError } = useToast();
 
   const [users, setUsers] = useState<User[]>([]);
+
+  // Prevent duplicate API calls in React Strict Mode
+  const hasLoadedRef = useRef(false);
 
   // Load users on mount and when needed
   const loadUsers = useCallback(async (filters?: { search?: string; role?: string }) => {
@@ -24,19 +29,24 @@ export function UserManagementPage() {
         limit: 100, // Get all users for now
         email: filters?.search, // Search by email (supports partial matches via backend regex)
         role: filters?.role as UserRole | undefined, // Cast to UserRole enum
+        sortBy: SortBy.CREATED_AT, // Sort by creation date
+        sortOrder: SortOrder.DESC, // Latest users first
       };
 
       const result = await getUsers(params);
       setUsers(result.users || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      logger.error('Error loading users', { error });
       showError?.('Failed to load users');
     }
   }, [getUsers, showError]);
 
-  // Load users on mount
+  // Load users on mount (prevent duplicate calls in React Strict Mode)
   useEffect(() => {
-    loadUsers();
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadUsers();
+    }
   }, [loadUsers]);
 
   // Handle user creation
@@ -55,7 +65,7 @@ export function UserManagementPage() {
 
       showSuccess?.(`User "${userData.username}" created successfully`);
     } catch (error) {
-      console.error('Error creating user:', error);
+      logger.error('Error creating user', { error });
       showError?.('Failed to create user');
       throw error;
     }
@@ -69,7 +79,7 @@ export function UserManagementPage() {
     try {
       // For now, password updates are not implemented in the current architecture
       // This would need a separate use case and service method
-      console.warn('Password update not implemented yet');
+      logger.warn('Password update not implemented yet');
 
       // For demo purposes, show success
       showSuccess?.('Password update feature not implemented yet');
@@ -79,7 +89,7 @@ export function UserManagementPage() {
       //   // password fields would go here
       // });
     } catch (error) {
-      console.error('Error updating user password:', error);
+      logger.error('Error updating user password', { error });
       showError?.('Failed to update user password');
       throw error;
     }
@@ -95,7 +105,7 @@ export function UserManagementPage() {
 
       showSuccess?.('User deleted successfully');
     } catch (error) {
-      console.error('Error deleting user:', error);
+      logger.error('Error deleting user', { error });
       showError?.('Failed to delete user');
       throw error;
     }

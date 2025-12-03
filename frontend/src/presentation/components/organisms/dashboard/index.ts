@@ -1,2 +1,3 @@
 export * from './admin-dashboard';
-export * from './manager-dashboard';
+export * from './staff-dashboard';
+export * from './sections';

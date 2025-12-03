@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { AuthTemplate } from '@/presentation/components/templates/auth-template';
-import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
+import { ErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { Typography } from '@/presentation/components/atoms';
-import { Button } from '@/presentation/components/atoms/ui/button';
+import { Button } from '@/presentation/components/atoms';
 
 interface VerifyEmailPageProps {
   token?: string;

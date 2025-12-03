@@ -29,22 +29,56 @@ export class EmailService {
    */
   createTransporter() {
     try {
-      const transporterConfig = {
-        host: config.EMAIL_HOST,
-        port: config.EMAIL_PORT,
-        secure: config.EMAIL_SECURE,
-        auth:
-          config.EMAIL_USER && config.EMAIL_PASS
-            ? {
-                user: config.EMAIL_USER,
-                pass: config.EMAIL_PASS,
-              }
-            : undefined,
-        // Add connection timeout
-        connectionTimeout: 10000, // 10 seconds
-        greetingTimeout: 5000, // 5 seconds
-        socketTimeout: 30000, // 30 seconds
-      };
+      let transporterConfig;
+
+      // Google Workspace SMTP configuration
+      if (config.EMAIL_SERVICE === 'google-workspace') {
+        logger.info('Initializing Google Workspace SMTP transporter', {
+          correlationId: this.correlationId,
+          host: config.EMAIL_HOST,
+          port: config.EMAIL_PORT,
+        });
+
+        transporterConfig = {
+          host: config.EMAIL_HOST,
+          port: config.EMAIL_PORT,
+          secure: false, // Use TLS (STARTTLS) for Google Workspace
+          auth: {
+            user: config.EMAIL_USER,
+            pass: config.EMAIL_PASS, // App Password
+          },
+          tls: {
+            ciphers: 'SSLv3',
+            rejectUnauthorized: false, // Allow during development
+          },
+          // Connection pooling for better performance
+          pool: true,
+          maxConnections: 5,
+          maxMessages: 100,
+          // Connection timeouts
+          connectionTimeout: 30000, // 30 seconds for Google Workspace
+          greetingTimeout: 10000, // 10 seconds
+          socketTimeout: 60000, // 60 seconds
+        };
+      } else {
+        // Standard SMTP configuration (MailHog, generic SMTP)
+        transporterConfig = {
+          host: config.EMAIL_HOST,
+          port: config.EMAIL_PORT,
+          secure: config.EMAIL_SECURE,
+          auth:
+            config.EMAIL_USER && config.EMAIL_PASS
+              ? {
+                  user: config.EMAIL_USER,
+                  pass: config.EMAIL_PASS,
+                }
+              : undefined,
+          // Add connection timeout
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 5000, // 5 seconds
+          socketTimeout: 30000, // 30 seconds
+        };
+      }
 
       const transporter = nodemailer.createTransport(transporterConfig);
 
@@ -52,6 +86,7 @@ export class EmailService {
       transporter.on('error', (error) => {
         logger.error('Email transporter error', {
           correlationId: this.correlationId,
+          service: config.EMAIL_SERVICE,
           error: error.message,
           code: error.code,
         });
@@ -62,6 +97,7 @@ export class EmailService {
     } catch (error) {
       logger.error('Failed to create email transporter', {
         correlationId: this.correlationId,
+        service: config.EMAIL_SERVICE,
         error: error.message,
       });
       throw new ExternalServiceUnavailableException('Email service configuration');
@@ -869,27 +905,29 @@ export class EmailService {
         () =>
           withServiceRetry(
             async () => {
-              try {
-                await this.transporter.verify();
-                this.isHealthy = true;
-                this.lastHealthCheck = new Date();
-                return true;
-              } catch (verifyError) {
-                this.isHealthy = false;
-                throw this._mapEmailError(verifyError);
+              await this.transporter.verify();
+              this.isHealthy = true;
+              this.lastHealthCheck = new Date();
+
+              // Additional service-specific validation
+              if (config.EMAIL_SERVICE === 'google-workspace') {
+                await this._validateGoogleWorkspaceConfig();
               }
+
+              return true;
             },
             {
               correlationId: this.correlationId,
               maxRetries: 2, // Fewer retries for health checks
             }
           ),
-        10000, // 10 second timeout
+        config.EMAIL_SERVICE === 'google-workspace' ? 30000 : 10000, // Longer timeout for Google Workspace
         'Email connection verification'
       );
 
       logger.info('Email service connection verified', {
         correlationId: this.correlationId,
+        service: config.EMAIL_SERVICE,
         healthy: this.isHealthy,
       });
 
@@ -897,6 +935,7 @@ export class EmailService {
     } catch (error) {
       logger.error('Email service connection verification failed', {
         correlationId: this.correlationId,
+        service: config.EMAIL_SERVICE,
         error: error.message,
       });
 
@@ -909,6 +948,59 @@ export class EmailService {
 
       throw new ExternalServiceUnavailableException('Email service');
     }
+  }
+
+  /**
+   * Validate Google Workspace configuration
+   * @private
+   */
+  async _validateGoogleWorkspaceConfig() {
+    const issues = [];
+
+    // Check required environment variables
+    if (!config.EMAIL_USER) {
+      issues.push('EMAIL_USER is required for Google Workspace');
+    }
+
+    if (!config.EMAIL_PASS) {
+      issues.push('EMAIL_PASS (App Password) is required for Google Workspace');
+    }
+
+    if (!config.EMAIL_FROM) {
+      issues.push('EMAIL_FROM is required for Google Workspace');
+    }
+
+    // Validate email format
+    if (config.EMAIL_USER && !this._isValidEmail(config.EMAIL_USER)) {
+      issues.push('EMAIL_USER must be a valid email address');
+    }
+
+    if (config.EMAIL_FROM && !this._isValidEmail(config.EMAIL_FROM)) {
+      issues.push('EMAIL_FROM must be a valid email address');
+    }
+
+    // Check if it's a Google Workspace domain
+    if (
+      config.EMAIL_USER &&
+      !config.EMAIL_USER.includes('@gmail.com') &&
+      !config.EMAIL_USER.includes('@googlemail.com')
+    ) {
+      logger.warn('Using custom domain - ensure Google Workspace is properly configured', {
+        correlationId: this.correlationId,
+        email: config.EMAIL_USER.replace(/(.{2}).*(@.*)/, '$1***$2'), // Mask email
+      });
+    }
+
+    if (issues.length > 0) {
+      const errorMessage = `Google Workspace configuration issues: ${issues.join(', ')}`;
+      logger.error(errorMessage, { correlationId: this.correlationId });
+      throw new ValidationException(errorMessage);
+    }
+
+    logger.info('Google Workspace configuration validated', {
+      correlationId: this.correlationId,
+      user: config.EMAIL_USER.replace(/(.{2}).*(@.*)/, '$1***$2'), // Mask email
+    });
   }
 
   /**
@@ -965,15 +1057,65 @@ export class EmailService {
    */
   _mapEmailError(error) {
     const errorMessage = error.message?.toLowerCase() || '';
+    const errorCode = error.code || error.responseCode;
+
+    // Google Workspace specific errors
+    if (config.EMAIL_SERVICE === 'google-workspace') {
+      // App Password issues
+      if (errorCode === 535 || errorMessage.includes('authentication failed')) {
+        logger.error('Google Workspace authentication failed - check App Password', {
+          correlationId: this.correlationId,
+          error: errorMessage,
+        });
+        return new ExternalServiceUnavailableException(
+          'Google Workspace authentication failed. Verify App Password is correct.'
+        );
+      }
+
+      // Daily sending limit exceeded
+      if (errorCode === 550 && errorMessage.includes('quota')) {
+        logger.warn('Google Workspace daily sending limit exceeded', {
+          correlationId: this.correlationId,
+          error: errorMessage,
+        });
+        return new ExternalServiceUnavailableException(
+          'Google Workspace daily sending limit exceeded'
+        );
+      }
+
+      // Account disabled or suspended
+      if (
+        errorCode === 550 &&
+        (errorMessage.includes('disabled') || errorMessage.includes('suspended'))
+      ) {
+        logger.error('Google Workspace account issue', {
+          correlationId: this.correlationId,
+          error: errorMessage,
+        });
+        return new ExternalServiceUnavailableException(
+          'Google Workspace account disabled or suspended'
+        );
+      }
+
+      // TLS/SSL issues
+      if (errorMessage.includes('tls') || errorMessage.includes('ssl')) {
+        logger.warn('Google Workspace TLS/SSL connection issue', {
+          correlationId: this.correlationId,
+          error: errorMessage,
+        });
+        return new ExternalServiceUnavailableException('Google Workspace TLS connection failed');
+      }
+    }
 
     // Connection errors
     if (
       error.code === 'ECONNREFUSED' ||
       error.code === 'ENOTFOUND' ||
       errorMessage.includes('connection') ||
-      errorMessage.includes('connect')
+      errorMessage.includes('connect') ||
+      errorMessage.includes('network')
     ) {
-      return new ExternalServiceUnavailableException('Email SMTP server');
+      return new ExternalServiceUnavailableException('Email SMTP server connection failed');
     }
 
     // Timeout errors
@@ -982,39 +1124,54 @@ export class EmailService {
       error.code === 'ESOCKETTIMEDOUT' ||
       errorMessage.includes('timeout')
     ) {
-      return new NetworkTimeoutException('Email sending');
+      return new NetworkTimeoutException('Email sending timeout');
     }
 
-    // Authentication errors
+    // Authentication errors (generic)
     if (
       error.code === 'EAUTH' ||
       errorMessage.includes('authentication') ||
-      errorMessage.includes('credentials')
+      errorMessage.includes('credentials') ||
+      errorMessage.includes('login')
     ) {
-      return new ExternalServiceUnavailableException('Email authentication');
+      return new ExternalServiceUnavailableException('Email authentication failed');
     }
 
     // Rate limiting
-    if (error.code === 'EMESSAGE' && errorMessage.includes('rate limit')) {
-      return new ExternalServiceUnavailableException('Email rate limiting');
+    if (
+      error.code === 'EMESSAGE' &&
+      (errorMessage.includes('rate limit') || errorMessage.includes('quota'))
+    ) {
+      return new ExternalServiceUnavailableException('Email rate limiting exceeded');
     }
 
     // Invalid recipient
     if (
       error.code === 'EENVELOPE' ||
       errorMessage.includes('invalid recipient') ||
-      errorMessage.includes('mailbox')
+      errorMessage.includes('mailbox') ||
+      errorMessage.includes('user unknown')
     ) {
-      return new ValidationException('Invalid email recipient');
+      return new ValidationException('Invalid email recipient address');
     }
 
-    // Generic service unavailable
-    if (error.code === 'ESOCKET' || error.responseCode >= 500) {
-      return new ExternalServiceUnavailableException('Email delivery service');
+    // Server errors
+    if (error.code === 'ESOCKET' || (error.responseCode && error.responseCode >= 500)) {
+      return new ExternalServiceUnavailableException(
+        'Email delivery service temporarily unavailable'
+      );
     }
 
     // Return original error wrapped in service exception
-    return new ExternalServiceUnavailableException('Email service');
+    logger.warn('Unhandled email error', {
+      correlationId: this.correlationId,
+      service: config.EMAIL_SERVICE,
+      error: error.message,
+      code: error.code,
+      responseCode: error.responseCode,
+    });
+
+    return new ExternalServiceUnavailableException('Email service error');
   }
 
   /**
@@ -1388,7 +1545,11 @@ export class EmailService {
       'email_service',
       () => this.sendEmail(to, subject, template, data),
       (error) =>
-        this.handleEmailDegradation('password_reset_with_generated_password', { to, subject, data }, error),
+        this.handleEmailDegradation(
+          'password_reset_with_generated_password',
+          { to, subject, data },
+          error
+        ),
       { operation: 'sendPasswordResetWithGeneratedPassword', to, correlationId: this.correlationId }
     );
   }

@@ -26,9 +26,11 @@ export class AuthApiService {
   static async login(credentials: LoginRequestDto): Promise<LoginResponseDto> {
     try {
       const response = await httpClient.post<ApiResponse<LoginResponseDto>>('/auth/login', credentials);
+
       if (!response.data) {
         throw new Error('Login response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -41,9 +43,11 @@ export class AuthApiService {
   static async register(userData: RegisterRequestDto): Promise<RegisterResponseDto> {
     try {
       const response = await httpClient.post<ApiResponse<RegisterResponseDto>>('/auth/register', userData);
+
       if (!response.data) {
         throw new Error('Register response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -56,9 +60,11 @@ export class AuthApiService {
   static async getStatus(): Promise<AuthStatusResponseDto> {
     try {
       const response = await httpClient.get<ApiResponse<AuthStatusResponseDto>>('/auth/profile');
+
       if (!response.data) {
         throw new Error('Auth status response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -71,9 +77,11 @@ export class AuthApiService {
   static async refreshToken(): Promise<{ tokens: AuthTokensDto }> {
     try {
       const response = await httpClient.post<ApiResponse<{ tokens: AuthTokensDto }>>('/auth/refresh');
+
       if (!response.data) {
         throw new Error('Refresh token response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -101,9 +109,11 @@ export class AuthApiService {
   static async verifyEmail(token: string): Promise<{ user: UserDto; message: string }> {
     try {
       const response = await httpClient.post<ApiResponse<{ user: UserDto; message: string }>>('/auth/verify-email', { token });
+
       if (!response.data) {
         throw new Error('Email verification response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -201,9 +211,11 @@ export class AuthApiService {
   static async changePassword(data: ChangePasswordRequestDto): Promise<ChangePasswordResponseDto> {
     try {
       const response = await httpClient.post<ApiResponse<ChangePasswordResponseDto>>('/auth/change-password', data);
+
       if (!response.data) {
         throw new Error('Change password response missing data');
       }
+
       return response.data;
     } catch (error) {
       throw error;

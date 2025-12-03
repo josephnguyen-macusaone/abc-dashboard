@@ -17,7 +17,7 @@ export class CircularBuffer<T> {
   push(item: T): void {
     this.buffer[this.tail] = item;
     this.tail = (this.tail + 1) % this.size;
-    
+
     if (this.count < this.size) {
       this.count++;
     } else {

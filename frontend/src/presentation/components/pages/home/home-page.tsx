@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/presentation/contexts/auth-context';
-import { LoadingSpinner } from '@/presentation/components/atoms/ui/loading';
+import { LoadingSpinner } from '@/presentation/components/atoms';
 
 export default function HomePage() {
   const router = useRouter();

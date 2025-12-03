@@ -4,10 +4,11 @@ import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Typography } from '@/presentation/components/atoms';
-import { Avatar, AvatarFallback, AvatarImage, Button } from '@/presentation/components/atoms/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/primitives/avatar';
+import { Button } from '@/presentation/components/atoms/primitives/button';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { Mail, Phone, Edit3, Key } from 'lucide-react';
-import { Badge } from '@/presentation/components/atoms/ui';
+import { Badge } from '@/presentation/components/atoms/primitives/badge';
 
 export function ProfilePage() {
   const { user } = useAuth();

@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { LoadingOverlay } from '@/presentation/components/atoms';
-import { getRouteConfig, canAccessRoute, getDefaultRedirect } from '@/shared/constants/routes';
+import { getRouteConfig, canAccessRoute, getDefaultRedirect } from '@/shared/constants';
 
 // Check if we're on the client side
 const isClient = typeof window !== 'undefined';

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, ReactNode, useCallback, useEffect, useState } from 'react';
 import { useToast } from './toast-context';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
+import { handleApiError as processApiError } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
 import { RetryUtils } from '@/shared/utils/retry';
 
@@ -313,8 +314,15 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
   }, [getUserFriendlyMessage, getErrorCategory]);
 
   const handleAuthError = useCallback((error: any) => {
-    handleApiError(error, 'Authentication Error');
-  }, [handleApiError]);
+    // Only log auth errors, don't show toast - forms handle their own error UI
+    const errorResponse = processApiError(error);
+    logger.error(`Authentication Error: ${errorResponse.message}`, {
+      statusCode: errorResponse.status,
+      errorCode: errorResponse.code,
+      category: 'auth-error',
+      details: errorResponse.details,
+    });
+  }, []);
 
   const handleNetworkError = useCallback((error: any) => {
     logger.error('Network Error:', { error });

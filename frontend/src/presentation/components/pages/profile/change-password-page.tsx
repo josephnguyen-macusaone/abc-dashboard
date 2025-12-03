@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Card, CardContent, CardTitle, CardDescription, CardHeader } from '@/presentation/components/atoms';
-import { ChangePasswordForm } from '@/presentation/components/organisms/form';
+import { ChangePasswordForm } from '@/presentation/components/organisms/user';
 import { Key, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/presentation/components/atoms';
 

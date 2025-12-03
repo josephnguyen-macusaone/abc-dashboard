@@ -1,5 +1,6 @@
 import { User, AuthTokens } from '@/domain/entities/user-entity';
 import logger from '@/shared/utils/logger';
+import { STORAGE_KEYS } from '@/shared/constants';
 
 /**
  * Infrastructure Service: Local Storage
@@ -9,10 +10,10 @@ export class LocalStorageService {
   private static readonly logger = logger.createChild({
     component: 'LocalStorageService',
   });
-  private static readonly TOKEN_KEY = 'auth_token';
-  private static readonly USER_KEY = 'auth_user';
-  private static readonly REFRESH_TOKEN_KEY = 'auth_refresh_token';
-  private static readonly THEME_KEY = 'theme';
+  private static get TOKEN_KEY() { return STORAGE_KEYS.TOKEN; }
+  private static get USER_KEY() { return STORAGE_KEYS.USER; }
+  private static get REFRESH_TOKEN_KEY() { return STORAGE_KEYS.REFRESH_TOKEN; }
+  private static get THEME_KEY() { return STORAGE_KEYS.THEME; }
 
   /**
    * Token operations

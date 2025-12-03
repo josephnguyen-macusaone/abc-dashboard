@@ -22,7 +22,7 @@ export class DeleteUserUseCase {
     if (deleter.id === targetUser.id) {
       return {
         allowed: false,
-        reason: 'Users cannot delete their own account'
+        reason: 'Users cannot delete their own account',
       };
     }
 
@@ -31,7 +31,7 @@ export class DeleteUserUseCase {
       if (targetUser.role === 'admin') {
         return {
           allowed: false,
-          reason: 'Admin accounts cannot be deleted'
+          reason: 'Admin accounts cannot be deleted',
         };
       }
       return { allowed: true };
@@ -42,13 +42,13 @@ export class DeleteUserUseCase {
       if (targetUser.role === 'admin') {
         return {
           allowed: false,
-          reason: 'Managers cannot delete admin accounts'
+          reason: 'Managers cannot delete admin accounts',
         };
       }
       if (targetUser.role === 'manager') {
         return {
           allowed: false,
-          reason: 'Managers cannot delete other managers'
+          reason: 'Managers cannot delete other managers',
         };
       }
       if (targetUser.role === 'staff') {
@@ -59,7 +59,7 @@ export class DeleteUserUseCase {
     // Staff and other roles cannot delete anyone
     return {
       allowed: false,
-      reason: 'Insufficient permissions to delete users'
+      reason: 'Insufficient permissions to delete users',
     };
   }
 
@@ -83,7 +83,7 @@ export class DeleteUserUseCase {
       // Debug logging
       logger.info('Delete user use case - checking permissions', {
         deleter: { id: currentUser.id, role: currentUser.role, email: currentUser.email },
-        target: { id: user.id, role: user.role, email: user.email }
+        target: { id: user.id, role: user.role, email: user.email },
       });
 
       // Check permissions based on user roles
@@ -113,6 +113,15 @@ export class DeleteUserUseCase {
         userId,
       };
     } catch (error) {
+      // Re-throw domain exceptions as-is to preserve their type and status codes
+      if (
+        error instanceof ValidationException ||
+        error instanceof ResourceNotFoundException ||
+        error instanceof InsufficientPermissionsException
+      ) {
+        throw error;
+      }
+      // For unexpected errors, wrap with context
       throw new Error(`User deletion failed: ${error.message}`);
     }
   }

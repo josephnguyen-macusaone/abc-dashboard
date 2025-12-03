@@ -2,8 +2,9 @@
 
 import { cn } from '@/shared/utils';
 import { ReactNode } from 'react';
-import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { Logo } from '@/presentation/components/atoms/ui/logo';
+import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
+import { Logo } from '@/presentation/components/atoms';
+import { useTheme } from '@/presentation/contexts/theme-context';
 
 interface AuthTemplateProps {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface AuthTemplateProps {
 export const AuthTemplate: React.FC<AuthTemplateProps> = ({
   children,
 }) => {
+  const { theme } = useTheme();
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Full background layer */}
@@ -41,7 +43,12 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
           'px-6 py-8 sm:px-8'
         )}>
           {/* Logo */}
-          <Logo width={160} height={64}/>
+          <Logo
+            variant={theme === 'dark' ? 'dark' : 'light'}
+            width={160}
+            height={64}
+            className="mx-auto"
+          />
 
           <SectionErrorBoundary
             fallbackTitle="Authentication Error"

@@ -50,7 +50,6 @@ export const DASHBOARD_ROLE_CONFIGS: Record<string, DashboardRoleConfig> = {
     color: 'default' as const,
     features: [
       { title: 'My Tasks', description: 'View and manage your tasks', icon: FileText },
-      { title: 'Profile', description: 'Manage your profile settings', icon: UserCircle },
     ]
   }
 };

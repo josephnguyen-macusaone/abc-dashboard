@@ -4,8 +4,8 @@ import { Archivo, Inter } from "next/font/google";
 
 import { AuthProvider, UserProvider, ToastProvider, ThemeProvider, ErrorProvider } from '@/presentation/contexts';
 import { Toaster } from '@/presentation/components/atoms';
-import { ErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
-import { RouteSuspense } from '@/presentation/components/routes/route-suspense';
+import { ErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
+import { RouteSuspense } from '@/presentation/components/routes/suspense-route';
 
 import "./globals.css";
 
@@ -26,7 +26,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ABC Dashboard",
+  title: "ABC Salon",
 };
 
 export default function RootLayout({

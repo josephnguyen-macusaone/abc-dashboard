@@ -6,10 +6,10 @@ import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { CreateUserDTO, User } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
-import { PermissionUtils } from '@/shared/constants';
+import { PermissionUtils, ROLE_DEFINITIONS, type UserRoleType } from '@/shared/constants';
 import { Typography, Button } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
 import { UserPlus, Loader2, X, ArrowLeft, Edit } from 'lucide-react';
 
@@ -23,38 +23,34 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   const { user: currentUser } = useAuth();
   const { success: showSuccess } = useToast();
 
-  // Get available roles for the current user
+  // Get available roles for the current user based on role creation permissions
+  // - Admin: can create admin, manager, staff
+  // - Manager: can only create staff
+  // - Staff: cannot create any users
   const getAvailableRoles = () => {
-    const roles: { value: 'admin' | 'manager' | 'staff'; label: string }[] = [];
-
-    if (PermissionUtils.canCreateUser(currentUser?.role)) {
-      // Check each role individually since PermissionUtils.canCreateUser only checks if user can create users in general
-      if (currentUser?.role === 'admin') {
-        roles.push({ value: 'admin', label: 'Admin' });
-        roles.push({ value: 'manager', label: 'Manager' });
-      } else if (currentUser?.role === 'manager') {
-        roles.push({ value: 'manager', label: 'Manager' });
-      }
-      // Staff role is always available for users who can create users
-      roles.push({ value: 'staff', label: 'Staff' });
-    }
-
-    return roles;
+    const creatableRoles = PermissionUtils.getCreatableRoles(currentUser?.role);
+    
+    return creatableRoles.map((role: UserRoleType) => ({
+      value: role,
+      label: ROLE_DEFINITIONS[role]?.displayName || role,
+    }));
   };
 
   const availableRoles = getAvailableRoles();
+  const defaultRole = availableRoles.length > 0 ? availableRoles[availableRoles.length - 1].value : 'staff';
+  
   const [formData, setFormData] = useState<{
     username: string;
     email: string;
     firstName: string;
     lastName: string;
-    role: 'admin' | 'manager' | 'staff'
+    role: UserRoleType;
   }>({
     username: '',
     email: '',
     firstName: '',
     lastName: '',
-    role: availableRoles[0]?.value || 'staff'
+    role: defaultRole, // Default to the lowest permission role available (staff if available)
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,6 +77,35 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       // Error is handled by the UserContext
     }
   };
+
+  // If user cannot create any users, show access denied message
+  if (availableRoles.length === 0) {
+    return (
+      <Card className="max-w mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            <Typography variant="title-s">Create New User</Typography>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Typography variant="body-m" className="text-muted-foreground">
+              You do not have permission to create users.
+            </Typography>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="mt-4"
+            >
+              Go Back
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="max-w mx-auto">
@@ -148,7 +173,7 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
           <FormField label="Role" className="space-y-3">
             <Select
               value={formData.role}
-              onValueChange={(value: 'admin' | 'manager' | 'staff') => setFormData({ ...formData, role: value })}
+              onValueChange={(value: string) => setFormData({ ...formData, role: value as UserRoleType })}
               disabled={isCreating}
             >
               <SelectTrigger className="h-11">

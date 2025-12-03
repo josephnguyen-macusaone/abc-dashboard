@@ -8,5 +8,6 @@ export type { SvgAssetPaths, ImageAssetPaths, AssetPaths } from './assets';
 export * from './api';
 export * from './auth';
 export * from './dashboard';
+export * from './routes';
 export * from './ui';
 export * from './security';

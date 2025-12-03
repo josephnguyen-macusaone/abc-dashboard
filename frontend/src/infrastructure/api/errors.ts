@@ -9,8 +9,27 @@ export function handleApiError(error: any): ApiExceptionDto {
     const { status, data } = error.response;
 
     // Server responded with error
-    const message = data?.message || data?.error || `Request failed with status ${status}`;
-    const code = data?.code || `HTTP_${status}`;
+    // Handle both direct message and nested error.message formats
+    let message: string;
+    let code: string;
+
+    if (data?.error?.message) {
+      // API format: {"success":false,"error":{"code":401,"message":"Invalid email or password","category":"authentication"}}
+      message = data.error.message;
+      code = data.error.code || `HTTP_${status}`;
+    } else if (data?.message) {
+      // Standard format: {"message":"Error message","code":"ERROR_CODE"}
+      message = data.message;
+      code = data.code || `HTTP_${status}`;
+    } else if (typeof data?.error === 'string') {
+      // Simple error string: {"error":"Error message"}
+      message = data.error;
+      code = `HTTP_${status}`;
+    } else {
+      // Fallback
+      message = `Request failed with status ${status}`;
+      code = `HTTP_${status}`;
+    }
 
     return new ApiExceptionDto(message, code, status, data);
   }
@@ -90,6 +109,9 @@ export function logApiError(error: any, context?: string): void {
     message: errorInfo.message,
     code: errorInfo.code,
     status: errorInfo.status,
+    category: errorInfo.details?.error?.category || errorInfo.details?.category,
+    endpoint: error.response?.config?.url,
+    method: error.response?.config?.method?.toUpperCase(),
     details: errorInfo.details,
   });
 }

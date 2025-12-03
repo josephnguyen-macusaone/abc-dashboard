@@ -21,7 +21,7 @@ PROJECT_NAME="abc-dashboard"
 DOMAIN_NAME=${DOMAIN_NAME:-"localhost"}
 SERVER_IP=${SERVER_IP:-"127.0.0.1"}
 OPENLITESPEED_CONFIG_DIR="/usr/local/lsws/conf"
-VIRTUAL_HOST_CONFIG="$OPENLITESPEED_CONFIG_DIR/vhosts/$PROJECT_NAME.xml"
+VIRTUAL_HOST_CONFIG="$OPENLITESPEED_CONFIG_DIR/vhosts/$PROJECT_NAME.conf"
 DEPLOYMENT_DIR="/var/www/$PROJECT_NAME"
 
 # Parse command line arguments
@@ -119,11 +119,15 @@ check_prerequisites() {
     fi
 
     # Check OpenLiteSpeed
-    if ! command_exists lswsctrl; then
+    if ! command_exists lswsctrl && [ ! -f "/usr/local/lsws/bin/lswsctrl" ]; then
         log_error "OpenLiteSpeed is not installed. Please install OpenLiteSpeed first."
         exit 1
     else
         log_success "OpenLiteSpeed found"
+        # Add OpenLiteSpeed bin to PATH if not already there
+        if [[ ":$PATH:" != *":/usr/local/lsws/bin:"* ]]; then
+            export PATH="$PATH:/usr/local/lsws/bin"
+        fi
     fi
 
     log_success "Prerequisites check completed"
@@ -162,7 +166,6 @@ create_deployment_directory() {
     fi
 
     mkdir -p "$DEPLOYMENT_DIR"
-    cd "$DEPLOYMENT_DIR"
     log_success "Deployment directory ready"
 }
 
@@ -173,12 +176,14 @@ copy_project_files() {
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+    # Change to deployment directory
+    cd "$DEPLOYMENT_DIR"
+
     # Copy necessary files
     cp "$PROJECT_ROOT/docker-compose.yml" .
     cp "$PROJECT_ROOT/.env" .
     cp -r "$PROJECT_ROOT/backend" .
     cp -r "$PROJECT_ROOT/frontend" .
-    cp -r "$PROJECT_ROOT/infrastructure" .
 
     log_success "Project files copied"
 }
@@ -192,8 +197,8 @@ build_frontend() {
     log_info "Installing frontend dependencies..."
     npm ci
 
-    # Build the application
-    log_info "Building Next.js application..."
+    # Build the application (with static export due to output: 'export' in next.config.ts)
+    log_info "Building Next.js application with static export..."
     npm run build
 
     cd ..
@@ -214,62 +219,102 @@ build_frontend_image() {
 configure_openlitespeed() {
     log_info "Configuring OpenLiteSpeed virtual host..."
 
-    # Create virtual host directory
+    # Create virtual host directory structure
     mkdir -p "/usr/local/lsws/$PROJECT_NAME/html"
     mkdir -p "/usr/local/lsws/$PROJECT_NAME/logs"
+    mkdir -p "/usr/local/lsws/$PROJECT_NAME/conf"
 
-    # Create virtual host configuration
+    # Create virtual host configuration file
     cat > "$VIRTUAL_HOST_CONFIG" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<virtualHost>
-    <name>$PROJECT_NAME</name>
-    <vhRoot>/usr/local/lsws/$PROJECT_NAME/</vhRoot>
-    <configFile>\$SERVER_ROOT/conf/templates/vhost.xml</configFile>
-    <note></note>
-    <listener>Default</listener>
-    <listener>SSL</listener>
-    <docRoot>\$VH_ROOT/html/</docRoot>
-    <index>
-        <useServer>0</useServer>
-        <indexFiles>index.html,index.php</indexFiles>
-        <autoIndex>0</autoIndex>
-    </index>
-    <contextList>
-        <context>
-            <type>proxy</type>
-            <uri>/api/*</uri>
-            <location>http://localhost:5000/api/</location>
-            <handler>proxy:fcgi://localhost</handler>
-            <note>API proxy to backend container</note>
-        </context>
-        <context>
-            <type>static</type>
-            <uri>/api-docs/*</uri>
-            <location>http://localhost:5000/api-docs/</location>
-            <handler>proxy:fcgi://localhost</handler>
-            <note>API documentation proxy</note>
-        </context>
-    </contextList>
-    <accessControl>
-        <allow>*.*.*.*</allow>
-        <deny></deny>
-    </accessControl>
-    <customLog>
-        <useServer>1</useServer>
-        <fileName>\$VH_ROOT/logs/access.log</fileName>
-        <logFormat>%h %l %u %t "%r" %>s %b "%{Referer}i" "%{User-Agent}i"</logFormat>
-        <logHeaders>5</logHeaders>
-        <rollingSize>10M</rollingSize>
-        <keepDays>30</keepDays>
-        <compressArchive>1</compressArchive>
-    </customLog>
-</virtualHost>
+docRoot                   \$VH_ROOT/html
+vhDomain                  $DOMAIN_NAME
+vhAliases                 www.$DOMAIN_NAME
+adminEmails               admin@$DOMAIN_NAME
+
+enableGzip                1
+enableBr                  1
+
+index  {
+  useServer               0
+  indexFiles              index.html, index.htm
+  autoIndex               0
+}
+
+# Disable directory browsing and redirects for SPA
+dir  {
+  autoIndex               0
+  dirIndex                0
+}
+
+errorpage 404 {
+  url                     /index.html
+}
+
+expires  {
+  enableExpires           1
+  expiresByType           image/*=A604800,text/css=A604800,application/javascript=A604800,application/x-javascript=A604800
+}
+
+accessControl  {
+  allow                   *
+  deny
+}
+
+realm $PROJECT_NAME {
+  userDB  {
+    location               conf/vhosts/\$VH_NAME/htpasswd
+  }
+}
+
+context /api/ {
+  location                http://localhost:5000/api/
+  allowBrowse             1
+  addDefaultCharset       off
+
+  rewrite  {
+    enable                  1
+    rules                   ^(.*)$ \$1 break
+  }
+}
+
+context /api-docs/ {
+  location                http://localhost:5000/api-docs/
+  allowBrowse             1
+  addDefaultCharset       off
+}
+
+# Handle client-side routing for Next.js static export
+# Rewrite all non-API, non-static routes to index.html for SPA routing
+rewrite  {
+  enable                  1
+  rules                   ^/(?!api/|api-docs/|_next/|favicon\.ico|.*\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$).* /index.html [L]
+}
+
+accessLog  {
+  useServer               1
+  logFormat               "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
+  logHeaders              5
+  rollingSize             10M
+  keepDays                30
+  compressArchive         1
+}
 EOF
 
-    # Add virtual host to server configuration
-    if ! grep -q "$PROJECT_NAME" "$OPENLITESPEED_CONFIG_DIR/httpd_config.xml"; then
-        sed -i "/<\/virtualHostList>/i \
-  <virtualHost>$PROJECT_NAME</virtualHost>" "$OPENLITESPEED_CONFIG_DIR/httpd_config.xml"
+    # Add virtual host to main server configuration if not already present
+    if ! grep -q "$PROJECT_NAME" "$OPENLITESPEED_CONFIG_DIR/httpd_config.conf"; then
+        # Find where to insert the virtual host configuration
+        sed -i "/^vhTemplate centralConfigLog/a \\
+\\
+virtualhost $PROJECT_NAME {\\
+    vhRoot                  /usr/local/lsws/$PROJECT_NAME/\\
+    configFile              conf/vhosts/$PROJECT_NAME.conf\\
+    allowSymbolLink         1\\
+    enableScript            1\\
+    restrained              1\\
+}" "$OPENLITESPEED_CONFIG_DIR/httpd_config.conf"
+
+        # Add to listeners
+        sed -i "/map                      Example */a map                      $PROJECT_NAME $DOMAIN_NAME" "$OPENLITESPEED_CONFIG_DIR/httpd_config.conf"
     fi
 
     log_success "OpenLiteSpeed virtual host configured"

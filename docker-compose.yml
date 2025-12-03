@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # MongoDB Database
   mongodb:
@@ -10,8 +12,6 @@ services:
       - mongodb_data:/data/db
     networks:
       - abc-dashboard-network
-    ports:
-      - "27017:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -25,30 +25,12 @@ services:
     restart: unless-stopped
     networks:
       - abc-dashboard-network
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 3
-
-  # MailHog Email Testing Service (development only)
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: abc-dashboard-mailhog
-    restart: unless-stopped
-    networks:
-      - abc-dashboard-network
-    ports:
-      - "1025:1025"  # SMTP server for receiving emails
-      - "8025:8025"  # Web interface for viewing captured emails
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025"]
-      interval: 30s
-      timeout: 10s
       retries: 3
 
   # Backend API
@@ -58,48 +40,11 @@ services:
       dockerfile: Dockerfile
     container_name: abc-dashboard-backend
     restart: unless-stopped
+    ports:
+      - "5000:5000"
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGODB_URI=mongodb://mongodb:27017/abc_dashboard
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-abc_dashboard_dev_jwt_secret_key_2024}
-      - CLIENT_URL=http://localhost:3000
-      - EMAIL_SERVICE=mailhog
-      - EMAIL_HOST=mailhog
-      - EMAIL_PORT=1025
-      - EMAIL_FROM=noreply@abc-dashboard.com
-      - EMAIL_FROM_NAME=ABC Dashboard
-      - DATABASE_TYPE=mongodb
-    volumes:
-      - ./backend/logs:/app/logs
-    networks:
-      - abc-dashboard-network
-    ports:
-      - "5000:5000"
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mailhog:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-   # Database Setup (runs migrations and seeding)
-  # Usage: docker-compose --profile setup up db-setup
-  db-setup:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: abc-dashboard-db-setup
-    environment:
-      - NODE_ENV=production
       - MONGODB_URI=mongodb://mongodb:27017/abc_dashboard
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
@@ -114,29 +59,39 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-    # Run migration and seeding commands sequentially
-    command: >
-      sh -c "
-        echo '🚀 Starting database setup...' &&
-        echo '📦 Running database migrations...' &&
-        npm run migrate:prod &&
-        echo '🌱 Running database seeding...' &&
-        npm run seed:prod &&
-        echo '✅ Database setup completed successfully!' &&
-        echo '' &&
-        echo '📊 Available test accounts:' &&
-        echo '   Admin: admin@example.com / Admin123!' &&
-        echo '   Managers: [department].manager@example.com / Manager123!' &&
-        echo '   Staff: [department].staff[number]@example.com / Staff123!' &&
-        echo '' &&
-        echo '🌐 Services available at:' &&
-        echo '   API: http://localhost:5000' &&
-        echo '   API Docs: http://localhost:5000/api-docs' &&
-        echo '   MailHog: http://localhost:8025'
-      "
-    # This service runs once and exits
-    profiles:
-      - setup
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: abc-dashboard-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:5000
+    networks:
+      - abc-dashboard-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   mongodb_data:

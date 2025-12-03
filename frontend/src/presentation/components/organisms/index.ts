@@ -1,11 +1,17 @@
 // Barrel exports for all organism components
 // This provides a single import point for all organism-level UI components
 
-// Common components
-export * from './common/';
+// Layout components
+export * from './layout';
 
-// Form components
-export * from './form';
+// Error handling components
+export * from './error-handling';
+
+// Authentication components
+export * from './auth';
+
+// User profile components
+export * from './user';
 
 // User management components
 export * from './user-management';

@@ -3,7 +3,7 @@
 import { ScrollArea, LoadingOverlay } from '@/presentation/components/atoms';
 import { DashboardHeader, MobileOverlay, NavigationItem } from '@/presentation/components/molecules';
 import { Sidebar } from '@/presentation/components/organisms';
-import { SectionErrorBoundary } from '@/presentation/components/organisms/common/error-boundary';
+import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useState } from 'react';
 import { Home, Users } from 'lucide-react';

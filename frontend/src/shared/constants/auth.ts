@@ -62,6 +62,19 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, readonly PermissionType[]> =
 } as const;
 
 /**
+ * Role Creation Permissions - which roles can create which other roles
+ * Matches backend permission logic exactly:
+ * - Admin: can create admin, manager, staff
+ * - Manager: can only create staff
+ * - Staff: cannot create any users
+ */
+export const ROLE_CREATION_PERMISSIONS: Record<UserRoleType, readonly UserRoleType[]> = {
+  [USER_ROLES.ADMIN]: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+  [USER_ROLES.MANAGER]: [USER_ROLES.STAFF],
+  [USER_ROLES.STAFF]: [],
+} as const;
+
+/**
  * Type alias for permission values
  */
 export type PermissionType = typeof USER_PERMISSIONS[keyof typeof USER_PERMISSIONS];
@@ -152,31 +165,105 @@ export const PermissionUtils = {
 
   /**
    * Check if user can update users (with hierarchical restrictions)
+   * Matches backend logic:
+   * - Admin can update anyone EXCEPT other admins
+   * - Manager can update staff only
+   * - Staff cannot update other users (only themselves via different check)
    */
   canUpdateUser: (userRole: string | undefined, targetUserRole?: string): boolean => {
     if (!PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.UPDATE_USER)) {
       return false;
     }
 
-    // Admin can update anyone
-    if (userRole === USER_ROLES.ADMIN) {
+    // If no target role specified, just check basic permission
+    if (!targetUserRole) {
       return true;
     }
 
-    // Manager cannot update admins or other managers
-    if (userRole === USER_ROLES.MANAGER) {
-      return targetUserRole === USER_ROLES.STAFF || !targetUserRole;
+    // Admin can update anyone EXCEPT other admins
+    if (userRole === USER_ROLES.ADMIN) {
+      return targetUserRole !== USER_ROLES.ADMIN;
     }
 
-    // Staff can only update their own profile
+    // Manager can update staff only (not admins or other managers)
+    if (userRole === USER_ROLES.MANAGER) {
+      return targetUserRole === USER_ROLES.STAFF;
+    }
+
+    // Staff cannot update other users
     return false;
   },
 
   /**
-   * Check if user can delete users
+   * Check if user can update a specific target user (including self-update check)
+   * @param userRole - Current user's role
+   * @param userId - Current user's ID
+   * @param targetUserId - Target user's ID
+   * @param targetUserRole - Target user's role
+   */
+  canUpdateTargetUser: (
+    userRole: string | undefined,
+    userId: string | undefined,
+    targetUserId: string | undefined,
+    targetUserRole?: string
+  ): boolean => {
+    // Users can always update their own profile
+    if (userId && targetUserId && userId === targetUserId) {
+      return true;
+    }
+
+    // Otherwise, check hierarchical permissions
+    return PermissionUtils.canUpdateUser(userRole, targetUserRole);
+  },
+
+  /**
+   * Check if user has basic delete permission
    */
   canDeleteUser: (userRole: string | undefined): boolean => {
     return PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.DELETE_USER);
+  },
+
+  /**
+   * Check if user can delete a specific target user (with hierarchical restrictions)
+   * Matches backend logic:
+   * - Users CANNOT delete themselves
+   * - Admin can delete anyone EXCEPT other admins
+   * - Manager can delete staff only
+   * - Staff cannot delete anyone
+   */
+  canDeleteTargetUser: (
+    userRole: string | undefined,
+    userId: string | undefined,
+    targetUserId: string | undefined,
+    targetUserRole?: string
+  ): boolean => {
+    // Users cannot delete themselves
+    if (userId && targetUserId && userId === targetUserId) {
+      return false;
+    }
+
+    // Must have basic delete permission
+    if (!PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.DELETE_USER)) {
+      return false;
+    }
+
+    // If no target role specified, just check basic permission
+    if (!targetUserRole) {
+      return true;
+    }
+
+    // Admin can delete anyone EXCEPT other admins
+    if (userRole === USER_ROLES.ADMIN) {
+      return targetUserRole !== USER_ROLES.ADMIN;
+    }
+
+    // Manager can delete staff only (not admins or other managers)
+    if (userRole === USER_ROLES.MANAGER) {
+      return targetUserRole === USER_ROLES.STAFF;
+    }
+
+    // Staff cannot delete anyone
+    return false;
   },
 
   /**
@@ -230,5 +317,28 @@ export const PermissionUtils = {
    */
   isStaff: (userRole: string | undefined): boolean => {
     return userRole === USER_ROLES.STAFF;
+  },
+
+  /**
+   * Get roles that a user can create based on their role
+   * - Admin: can create admin, manager, staff
+   * - Manager: can only create staff
+   * - Staff: cannot create any users
+   */
+  getCreatableRoles: (userRole: string | undefined): UserRoleType[] => {
+    if (!isValidUserRole(userRole)) {
+      return [];
+    }
+    return [...ROLE_CREATION_PERMISSIONS[userRole]];
+  },
+
+  /**
+   * Check if a user can create a specific role
+   */
+  canCreateRole: (userRole: string | undefined, targetRole: UserRoleType): boolean => {
+    if (!isValidUserRole(userRole)) {
+      return false;
+    }
+    return ROLE_CREATION_PERMISSIONS[userRole].includes(targetRole);
   },
 };

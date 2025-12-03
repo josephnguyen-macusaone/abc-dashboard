@@ -8,14 +8,14 @@ import { useUser } from '@/presentation/contexts/user-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
-import { USER_ROLE_LABELS } from '@/shared/constants';
+import { USER_ROLE_LABELS, USER_ROLES } from '@/shared/constants';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/ui/card';
-import { Button } from '@/presentation/components/atoms/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
+import { Button } from '@/presentation/components/atoms/primitives/button';
 import { Input } from '@/presentation/components/atoms/forms/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
 import { FormField, InputField } from '@/presentation/components/molecules';
-import { Loading } from '@/presentation/components/atoms/ui/loading';
+import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Typography } from '@/presentation/components/atoms';
 
 import { Edit, X, Check, ArrowLeft } from 'lucide-react';
@@ -31,7 +31,7 @@ const updateUserSchema = z.object({
     .refine((val) => !val || /^[\+]?[1-9][\d]{0,15}$/.test(val), {
       message: 'Phone number must be in valid format'
     }),
-  role: z.enum(['admin', 'manager', 'staff']).optional(),
+  role: z.enum([USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF]).optional(),
   isActive: z.boolean().optional(),
 }).refine((data) => {
   // At least one field must be provided
@@ -52,7 +52,7 @@ interface UserEditFormProps {
 
 export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
   const { updateUser, loading: { updateUser: isUpdating }, error: { updateUser: updateError } } = useUser();
-  const { success: showSuccess } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
 
   const {
     register,
@@ -106,8 +106,59 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
       onSuccess?.(updatedUser);
 
     } catch (err) {
-      // Error is handled by the UserContext
-      console.error('Error updating user:', err);
+      // Extract error details more thoroughly
+      let errorMessage = 'Failed to update user';
+      let errorCode = '';
+      let errorCategory = '';
+      let errorDetails = '';
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        errorDetails = err.stack || '';
+      } else if (typeof err === 'object' && err !== null) {
+        // Try to extract meaningful error information
+        const errorObj = err as any;
+        if (errorObj.message) errorMessage = errorObj.message;
+        if (errorObj.error && typeof errorObj.error === 'string') errorMessage = errorObj.error;
+        if (errorObj.code) errorCode = errorObj.code;
+        if (errorObj.category) errorCategory = errorObj.category;
+        if (errorObj.details) errorDetails = JSON.stringify(errorObj.details);
+        if (errorObj.response?.data?.message) errorMessage = errorObj.response.data.message;
+        if (errorObj.response?.data?.error) errorMessage = errorObj.response.data.error;
+        if (errorObj.response?.data?.code) errorCode = errorObj.response.data.code;
+        if (errorObj.response?.data?.category) errorCategory = errorObj.response.data.category;
+      }
+
+      // Handle specific error types with appropriate user messages
+      if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND') || errorCode === 'USER_NOT_FOUND') {
+        showError?.('User not found. The user may have been deleted.');
+      } else if (errorCode === 'INSUFFICIENT_PERMISSIONS' || errorCategory === 'authorization' ||
+        errorMessage.includes('permission') || errorMessage.includes('Insufficient') ||
+        errorMessage.includes('cannot update') || errorMessage.includes('Admins cannot update other admin') ||
+        errorMessage.includes('Managers cannot update other managers') ||
+        errorMessage.includes('Managers cannot update admin accounts')) {
+        // Permission-related errors
+        let permissionMessage = 'You do not have permission to update this user';
+        if (errorMessage.includes('Admins cannot update other admin')) {
+          permissionMessage = 'Administrators cannot update other administrator accounts';
+        } else if (errorMessage.includes('Managers cannot update other managers')) {
+          permissionMessage = 'Managers cannot update other manager accounts';
+        } else if (errorMessage.includes('Managers cannot update admin')) {
+          permissionMessage = 'Managers cannot update administrator accounts';
+        }
+        showError?.(permissionMessage);
+      } else if (errorCode === 'VALIDATION_FAILED' || errorCategory === 'validation' ||
+        errorMessage.includes('Username already taken')) {
+        // Validation errors
+        if (errorMessage.includes('Username already taken')) {
+          showError?.('Username is already taken. Please choose a different username.');
+        } else {
+          showError?.('Unable to update user due to validation error. Please check your input.');
+        }
+      } else {
+        // Unknown errors
+        showError?.(`Failed to update user: ${errorMessage}`);
+      }
     }
   };
 
@@ -185,7 +236,7 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
             >
               <Select
                 value={selectedRole}
-                onValueChange={(value: 'admin' | 'manager' | 'staff') => setValue('role', value)}
+                onValueChange={(value: typeof USER_ROLES.MANAGER | typeof USER_ROLES.STAFF) => setValue('role', value)}
                 disabled={isUpdating}
               >
                 <SelectTrigger className="h-11">
@@ -202,12 +253,6 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
                     <div className="flex items-center gap-2">
                       <span>Manager</span>
                       <Typography variant="body-xs" color="muted" as="span">Team management access</Typography>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="admin">
-                    <div className="flex items-center gap-2">
-                      <span>Administrator</span>
-                      <Typography variant="body-xs" color="muted" as="span">Full system access</Typography>
                     </div>
                   </SelectItem>
                 </SelectContent>

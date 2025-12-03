@@ -38,14 +38,23 @@ const loadEnvironmentConfig = () => {
     test: path.join(__dirname, '../../../env/test.env'), // Separate test config
   };
 
-  const envFile = envFiles[nodeEnv];
+  // Also check for standard .env file in backend root
+  const standardEnvFile = path.join(__dirname, '../../../.env');
 
-  // Check if environment file exists
+  const envFile = envFiles[nodeEnv];
+  let loadedFrom = null;
+
+  // Try environment-specific file first, then fallback to standard .env
   if (fs.existsSync(envFile)) {
     startupLogger.startup(`Loading environment config: ${envFile} (NODE_ENV=${nodeEnv})`);
     dotenv.config({ path: envFile });
+    loadedFrom = envFile;
+  } else if (fs.existsSync(standardEnvFile)) {
+    startupLogger.startup(`Loading environment config: ${standardEnvFile} (NODE_ENV=${nodeEnv})`);
+    dotenv.config({ path: standardEnvFile });
+    loadedFrom = standardEnvFile;
   } else {
-    startupLogger.warn(`Environment file not found: ${envFile}`);
+    startupLogger.warn(`Environment files not found: ${envFile} or ${standardEnvFile}`);
     startupLogger.warn(
       `Make sure you have created the environment file or set environment variables manually`
     );

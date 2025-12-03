@@ -2,17 +2,63 @@
 
 This directory contains comprehensive documentation for the ABC Dashboard frontend application, built with Next.js, React, and TypeScript following Clean Architecture principles.
 
-## 📚 Documentation Overview
+## 📚 Documentation Structure
 
-| Document | Description | Key Topics |
-|----------|-------------|------------|
-| **[Architecture Overview](./architecture-overview.md)** | High-level system architecture with visual diagrams | Clean Architecture layers, data flow, component hierarchy, technology stack |
-| **[Clean Architecture Guide](./clean-architecture-guide.md)** | Detailed implementation of Clean Architecture | Domain layer, Application layer, Infrastructure layer, Presentation layer, testing |
-| **[Component Structure](./component-structure.md)** | Atomic Design implementation and component patterns | Atoms, Molecules, Organisms, Pages, Templates, best practices |
-| **[State Management](./state-management.md)** | State management patterns and stores | Zustand stores, React Context, React Hook Form, custom hooks, persistence |
-| **[Authentication Flow](./authentication-flow.md)** | Complete authentication and authorization system | JWT tokens, role-based access, session management, security |
-| **[API Integration](./api-integration.md)** | API communication patterns and error handling | Axios client, interceptors, repositories, error handling, testing |
-| **[Deployment Guide](./deployment-guide.md)** | Deployment strategies and environment configuration | Vercel, Docker, environment variables, security, monitoring |
+The documentation is organized into logical sections for easy navigation:
+
+### 🚀 [Getting Started](./getting-started/)
+Quick setup guides and fundamental concepts to get you up and running.
+
+| Guide | Description |
+|-------|-------------|
+| **[Quick Start](./getting-started/quick-start.md)** | Get running in 5 minutes |
+| **[Setup](./getting-started/setup.md)** | Complete development environment |
+| **[Concepts](./getting-started/concepts.md)** | Core architectural concepts |
+
+### 🏛️ [Architecture](./architecture/)
+System design, architectural patterns, and technical decisions.
+
+| Document | Description |
+|----------|-------------|
+| **[Overview](./architecture/overview.md)** | System architecture with diagrams |
+| **[Clean Architecture](./architecture/clean-architecture.md)** | Clean Architecture implementation |
+| **[Design Patterns](./architecture/design-patterns.md)** | Patterns and principles used |
+
+### 🧬 [Components](./components/)
+UI component organization and implementation patterns.
+
+| Document | Description |
+|----------|-------------|
+| **[Atomic Design](./components/atomic-design.md)** | Component hierarchy and structure |
+| **[Patterns](./components/patterns.md)** | Component patterns and best practices |
+| **[Styling](./components/styling.md)** | Styling approach and design system |
+
+### ✨ [Features](./features/)
+Feature-specific implementations and user workflows.
+
+| Document | Description |
+|----------|-------------|
+| **[Authentication](./features/authentication.md)** | User auth and authorization |
+| **[User Management](./features/user-management.md)** | Admin user operations |
+| **[Dashboard](./features/dashboard.md)** | Analytics and reporting |
+
+### 🔧 [Infrastructure](./infrastructure/)
+External integrations, deployment, and infrastructure concerns.
+
+| Document | Description |
+|----------|-------------|
+| **[API Integration](./infrastructure/api-integration.md)** | Backend communication |
+| **[State Management](./infrastructure/state-management.md)** | Global state patterns |
+| **[Deployment](./infrastructure/deployment.md)** | Deployment and environments |
+
+### 🛠️ [Development](./development/)
+Development practices, testing, and coding standards.
+
+| Document | Description |
+|----------|-------------|
+| **[Testing](./development/testing.md)** | Testing strategies |
+| **[Performance](./development/performance.md)** | Optimization techniques |
+| **[Conventions](./development/conventions.md)** | Code standards |
 
 ## 🏛️ Architecture Summary
 

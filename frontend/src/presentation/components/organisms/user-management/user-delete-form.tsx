@@ -14,11 +14,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/presentation/components/atoms/ui/dialog';
-import { Button } from '@/presentation/components/atoms/ui/button';
-import { Alert, AlertDescription } from '@/presentation/components/atoms/ui/alert';
-import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/ui/avatar';
-import { Badge } from '@/presentation/components/atoms/ui/badge';
+} from '@/presentation/components/atoms/primitives/dialog';
+import { Button } from '@/presentation/components/atoms/primitives/button';
+import { Alert, AlertDescription } from '@/presentation/components/atoms/primitives/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/primitives/avatar';
+import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { Typography } from '@/presentation/components/atoms';
 
 import { Trash2, AlertTriangle, UserX, Shield, Clock, Calendar, Mail, ArrowLeft, Loader2 } from 'lucide-react';
@@ -44,12 +44,6 @@ export function UserDeleteForm({
   const handleDelete = async () => {
     if (!user) return;
 
-    // Debug: Show current user and target user info
-    console.log('Attempting to delete user:', {
-      targetUser: { id: user.id, email: user.email, role: user.role, displayName: user.displayName },
-      currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, role: currentUser.role } : 'No current user'
-    });
-
     setIsDeletingUser(true);
 
     try {
@@ -69,13 +63,13 @@ export function UserDeleteForm({
       onSuccess?.();
 
     } catch (err) {
-      console.error('Error deleting user:', err);
-
       // Reset loading state
       setIsDeletingUser(false);
 
       // Extract error details more thoroughly
       let errorMessage = 'Failed to delete user';
+      let errorCode = '';
+      let errorCategory = '';
       let errorDetails = '';
 
       if (err instanceof Error) {
@@ -86,24 +80,47 @@ export function UserDeleteForm({
         const errorObj = err as any;
         if (errorObj.message) errorMessage = errorObj.message;
         if (errorObj.error && typeof errorObj.error === 'string') errorMessage = errorObj.error;
+        if (errorObj.code) errorCode = errorObj.code;
+        if (errorObj.category) errorCategory = errorObj.category;
         if (errorObj.details) errorDetails = JSON.stringify(errorObj.details);
         if (errorObj.response?.data?.message) errorMessage = errorObj.response.data.message;
         if (errorObj.response?.data?.error) errorMessage = errorObj.response.data.error;
+        if (errorObj.response?.data?.code) errorCode = errorObj.response.data.code;
+        if (errorObj.response?.data?.category) errorCategory = errorObj.response.data.category;
       }
 
-      console.error('Detailed error info:', { errorMessage, errorDetails, fullError: err });
-
-      if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND')) {
+      // Handle specific error types with appropriate user messages
+      if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND') || errorCode === 'USER_NOT_FOUND') {
         // Treat "not found" as success - the user is already deleted (idempotent operation)
         onOpenChange(false);
         success?.('User deleted successfully');
         onSuccess?.();
-      } else if (errorMessage.includes('permission') || errorMessage.includes('Insufficient') ||
-        errorMessage.includes('cannot delete')) {
-        error?.(`Permission denied: ${errorMessage}`);
+      } else if (errorCode === 'INSUFFICIENT_PERMISSIONS' || errorCategory === 'authorization' ||
+        errorMessage.includes('permission') || errorMessage.includes('Insufficient') ||
+        errorMessage.includes('cannot delete') || errorMessage.includes('Users cannot delete their own account') ||
+        errorMessage.includes('Admin accounts cannot be deleted') ||
+        errorMessage.includes('Managers cannot delete other managers')) {
+        // Permission-related errors
+        let permissionMessage = 'You do not have permission to delete this user';
+        if (errorMessage.includes('Users cannot delete their own account')) {
+          permissionMessage = 'You cannot delete your own account';
+        } else if (errorMessage.includes('Admin accounts cannot be deleted')) {
+          permissionMessage = 'Administrator accounts cannot be deleted';
+        } else if (errorMessage.includes('Managers cannot delete other managers')) {
+          permissionMessage = 'Managers cannot delete other manager accounts';
+        } else if (errorMessage.includes('Managers cannot delete admin')) {
+          permissionMessage = 'Managers cannot delete administrator accounts';
+        }
+        error?.(permissionMessage);
+        // Still refresh the list to show current state
+        onSuccess?.();
+      } else if (errorCode === 'VALIDATION_FAILED' || errorCategory === 'validation') {
+        // Generic validation errors
+        error?.('Unable to delete user due to validation error. Please try again.');
         // Still refresh the list to show current state
         onSuccess?.();
       } else {
+        // Unknown errors
         error?.(`Failed to delete user: ${errorMessage}`);
         // Still refresh the list to show current state
         onSuccess?.();
@@ -166,7 +183,7 @@ export function UserDeleteForm({
 
               <div className="flex-1 space-y-2">
                 <div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <Typography variant="title-s" className="font-semibold text-foreground" as="h3">
                       {user.displayName}
                     </Typography>
@@ -180,17 +197,10 @@ export function UserDeleteForm({
                       >
                         {USER_ROLE_LABELS[user.role as keyof typeof USER_ROLE_LABELS] || user.role}
                       </Badge>
-
-                      {user.role === 'admin' && (
-                        <Badge variant="outline" className="px-2 py-1 border-red-200 text-red-700 dark:border-red-800 dark:text-red-400">
-                          <Shield className="h-3 w-3" />
-                          Protected Admin
-                        </Badge>
-                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Mail className="h-4 w-4 mr-1" />
+                  <div className="flex items-center gap-2 text-muted-foreground mt-2">
+                    <Mail className="h-4 w-4" />
                     <span className="text-body-s text-muted-foreground">
                       {user.email}
                     </span>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { RegisterForm } from '@/presentation/components/organisms/form/register-form';
+import { RegisterForm } from '@/presentation/components/organisms/auth/register-form';
 import { AuthTemplate } from '@/presentation/components/templates/auth-template';
 
 function RegisterPage() {

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { AuthTemplate } from '@/presentation/components/templates';
-import { ForgotPasswordForm } from '@/presentation/components/organisms/form';
+import { ForgotPasswordForm } from '@/presentation/components/organisms/auth';
 
 function ForgotPasswordPage() {
   const router = useRouter();

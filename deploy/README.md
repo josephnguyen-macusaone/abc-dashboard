@@ -9,37 +9,47 @@
 ```bash
 # Prerequisites: Node.js 20+, Docker, OpenLiteSpeed installed
 
-# 1. Configure environment
+# 1. Configure environment (single consolidated .env file)
 cp .env.example .env
 nano .env  # Edit with production values
 
-# 2. Configure frontend
-cd frontend && cp .env.example .env && cd ..
-
-# 3. Deploy everything automatically
-./deploy/deploy.sh
+# 2. Deploy everything automatically
+./deploy.sh
 ```
 
-### Option 2: Docker Only
+### Option 2: Docker Only (Consolidated)
 
-**Development Environment:**
+**Development Environment (Full Stack):**
 
 ```bash
 # Run development environment with hot reload (from project root)
-docker-compose -f deploy/docker/docker-compose.dev.yml up -d
+docker-compose --profile dev up -d
 
 # View logs
-docker-compose -f deploy/docker/docker-compose.dev.yml logs -f
+docker-compose --profile dev logs -f
+
+# Stop development environment
+docker-compose --profile dev down
 ```
 
-**Production Environment:**
+**Production Environment (Backend Only):**
 
 ```bash
-# Build and run production services
-docker-compose -f docker-compose.prod.yml up -d
+# Run production backend with databases
+docker-compose --profile prod up -d
 
-# Or build and run main services (backend + database only)
-docker-compose up -d
+# View logs
+docker-compose --profile prod logs -f
+
+# Stop production environment
+docker-compose --profile prod down
+```
+
+**Database Setup (Production):**
+
+```bash
+# Run database migrations and seeding
+docker-compose --profile setup up db-setup
 ```
 
 ## 🏗️ System Architecture
@@ -79,20 +89,35 @@ graph TB
 
 ```txt
 abc-dashboard/
-├── docker-compose.yml             Main Docker deployment (backend + db)
-├── docker-compose.prod.yml        Full production deployment (frontend + backend + db)
+├── docker-compose.yml             Consolidated Docker deployment (all environments)
+├── .env                           Consolidated environment variables (for Docker)
+├── .env.example                   Consolidated environment template
+├── backend/
+│   ├── .env                       Local development (optional)
+│   └── .env.example               Local development template
+├── frontend/
+│   ├── .env                       Local development (optional)
+│   └── .env.example               Local development template
 ├── deploy/
 │   ├── README.md                  This deployment guide
-│   ├── deploy.sh                  OpenLiteSpeed deployment script
-│   └── docker/                    Docker configurations
-│       └── docker-compose.dev.yml Development environment
-├── .env                           Environment variables
-├── .env.example                   Environment template
+│   └── deploy.sh                  OpenLiteSpeed deployment script
 └── infrastructure/                Infrastructure configs
     └── nginx/                     Nginx configs (legacy)
 ```
 
 ## ⚙️ Environment Configuration
+
+### Environment Variable Structure
+
+**Consolidated Approach:**
+- **Root `.env`**: Single file used by Docker Compose for all services
+- **Backend `.env`**: Optional, for local development without Docker
+- **Frontend `.env`**: Optional, for local development without Docker
+
+**When to use each:**
+- **Docker deployment**: Only need root `.env`
+- **Local development**: Use individual `.env` files in backend/frontend folders
+- **Mixed setup**: Root `.env` for Docker, individual ones for local services
 
 ### Required Variables
 
@@ -101,7 +126,7 @@ abc-dashboard/
 NODE_ENV=production
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 
-# Database
+# Database & Cache
 MONGODB_URI=mongodb://mongodb:27017/abc_dashboard
 REDIS_URL=redis://redis:6379
 
@@ -114,6 +139,9 @@ EMAIL_SECURE=false
 EMAIL_USER=your-gmail@gmail.com
 EMAIL_PASS=your-gmail-app-password
 EMAIL_SERVICE=gmail
+
+# Frontend (for Docker deployment)
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 ```
 
 ### Email Setup
@@ -152,12 +180,16 @@ graph TD
 
 ## 🐳 Docker Services
 
-| Service | Development | Production | Port | Purpose |
-|---------|-------------|------------|------|---------|
-| **MongoDB** | `mongo:6` | `mongo:6` | 27017 | Database |
-| **Redis** | `redis:7-alpine` | `redis:7-alpine` | 6379 | Cache |
-| **Backend** | Custom Node.js | Custom Node.js | 5000 | API Server |
-| **Frontend** | Custom Node.js + Next.js | Nginx + Static Files | 3000/80 | Web App |
+| Service | Profile | Port | Purpose |
+|---------|---------|------|---------|
+| **MongoDB** | `dev`, `prod`, `setup` | 27017 | Database |
+| **Redis** | `dev`, `prod`, `setup` | 6379 | Cache |
+| **MailHog** | `dev`, `prod`, `setup` | 8025/1025 | Email Testing |
+| **Backend (Prod)** | `prod` | 5000 | API Server (Production) |
+| **Backend (Dev)** | `dev` | 5000 | API Server (Development w/ hot reload) |
+| **Frontend (Dev)** | `dev` | 3000 | Web App (Development w/ hot reload) |
+| **DB Setup** | `setup` | - | Database migrations & seeding |
+| **Seed (Dev)** | `dev` | - | Development database seeding |
 
 ## 🔄 Handling Existing Deployments
 
@@ -190,18 +222,22 @@ The deployment script handles existing installations automatically:
 ## 🔧 Management Commands
 
 ```bash
-# View all services
-docker-compose ps
+# Development Environment
+docker-compose --profile dev ps                    # View dev services
+docker-compose --profile dev logs -f              # View dev logs
+docker-compose --profile dev logs -f backend-dev  # View backend logs
+docker-compose --profile dev restart              # Restart dev services
+docker-compose --profile dev down                 # Stop dev environment
 
-# View logs
-docker-compose logs -f
-docker-compose logs -f backend
+# Production Environment
+docker-compose --profile prod ps                  # View prod services
+docker-compose --profile prod logs -f             # View prod logs
+docker-compose --profile prod logs -f backend     # View backend logs
+docker-compose --profile prod restart             # Restart prod services
+docker-compose --profile prod down                # Stop prod environment
 
-# Restart services
-docker-compose restart
-
-# Stop deployment
-docker-compose down
+# Database Setup
+docker-compose --profile setup up db-setup        # Run migrations & seeding
 
 # OpenLiteSpeed commands
 systemctl status lsws

@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/atoms/ui/card';
-import { ProfileUpdateForm } from '@/presentation/components/organisms/form/profile-update-form';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/atoms';
+import { ProfileUpdateForm } from '@/presentation/components/organisms/user/profile-update-form';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { User } from 'lucide-react';
 import { Typography } from '@/presentation/components/atoms';

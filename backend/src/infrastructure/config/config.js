@@ -16,20 +16,27 @@ export const config = {
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 14, // Increased from 12 for better security
 
   // Email configuration
+  // Email service (define first so other email config can reference it)
+  EMAIL_SERVICE:
+    process.env.EMAIL_SERVICE ||
+    (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace'),
+
   EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@yourapp.com',
-  EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Your App',
+  EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'ABC Dashboard',
   EMAIL_HOST:
     process.env.EMAIL_HOST ||
-    (process.env.NODE_ENV === 'development' ? 'localhost' : 'smtp.gmail.com'),
+    ((process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
+      ? 'localhost'
+      : 'smtp.gmail.com'),
   EMAIL_PORT:
-    process.env.EMAIL_SERVICE === 'mailhog'
-      ? 1025  // MailHog SMTP port
-      : (parseInt(process.env.EMAIL_PORT) || (process.env.NODE_ENV === 'development' ? 1025 : 587)),
+    (process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
+      ? 1025 // MailHog SMTP port
+      : (process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'google-workspace'
+        ? 587 // Google Workspace SMTP port (TLS)
+        : parseInt(process.env.EMAIL_PORT) || (process.env.NODE_ENV === 'development' ? 1025 : 587),
   EMAIL_SECURE: process.env.EMAIL_SECURE === 'true' || false,
   EMAIL_USER: process.env.EMAIL_USER,
-  EMAIL_PASS: process.env.EMAIL_PASS,
-  EMAIL_SERVICE:
-    process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'development' ? 'mailhog' : 'gmail'),
+  EMAIL_PASS: process.env.EMAIL_PASS, // App Password for Google Workspace
 
   // Cache configuration
   CACHE_USER_DATA_TTL: parseInt(process.env.CACHE_USER_DATA_TTL) || 1800, // 30 minutes

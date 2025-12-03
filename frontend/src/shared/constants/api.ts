@@ -2,12 +2,14 @@
  * API and HTTP related constants and utilities
  */
 
+import logger from '@/shared/utils/logger';
+
 /**
  * Validates and normalizes the API base URL
  * Ensures the URL has a valid http:// or https:// scheme for CORS requests
  */
 const validateAndNormalizeBaseURL = (url: string | undefined): string => {
-  const DEFAULT_URL = 'http://localhost:5000/api/v1';
+  const DEFAULT_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
   // If URL is empty, undefined, or null, use default
   if (!url || url.trim() === '') {
@@ -24,7 +26,7 @@ const validateAndNormalizeBaseURL = (url: string | undefined): string => {
       return trimmedUrl;
     } catch {
       // Invalid URL format, use default
-      console.warn(`Invalid API URL format: "${trimmedUrl}". Using default: ${DEFAULT_URL}`);
+      logger.warn(`Invalid API URL format: "${trimmedUrl}". Using default: ${DEFAULT_URL}`);
       return DEFAULT_URL;
     }
   }
@@ -35,7 +37,7 @@ const validateAndNormalizeBaseURL = (url: string | undefined): string => {
   }
 
   // For other URLs without protocol, default to https://
-  console.warn(`API URL missing protocol: "${trimmedUrl}". Assuming https://`);
+  logger.warn(`API URL missing protocol: "${trimmedUrl}". Assuming https://`);
   return `https://${trimmedUrl}`;
 };
 
@@ -47,22 +49,4 @@ export const API_CONFIG = {
   TIMEOUT: 30000,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
-} as const;
-
-/**
- * HTTP Status Codes
- */
-export const HTTP_STATUS = {
-  OK: 200,
-  CREATED: 201,
-  NO_CONTENT: 204,
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  CONFLICT: 409,
-  UNPROCESSABLE_ENTITY: 422,
-  INTERNAL_SERVER_ERROR: 500,
-  BAD_GATEWAY: 502,
-  SERVICE_UNAVAILABLE: 503,
 } as const;

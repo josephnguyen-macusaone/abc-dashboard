@@ -3,8 +3,13 @@ export default {
   // Test environment
   testEnvironment: 'node',
 
-  // ES Modules support
+  // ES Modules support (automatically handled by package.json "type": "module")
   extensionsToTreatAsEsm: [],
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
 
   // Test files location
   testMatch: ['<rootDir>/tests/**/*.test.js'],
@@ -36,6 +41,14 @@ export default {
 
   // Transform configuration for ES modules
   transform: {},
+
+  // Transform ignore patterns for ES modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(supertest)/)',
+  ],
+
+  // Module file extensions
+  moduleFileExtensions: ['js', 'json', 'mjs'],
 
   // Test timeout (increased for integration tests)
   testTimeout: 30000,
