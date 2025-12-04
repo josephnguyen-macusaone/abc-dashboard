@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 
 import { AuthProvider, UserProvider, ToastProvider, ThemeProvider, ErrorProvider } from '@/presentation/contexts';
 import { Toaster } from '@/presentation/components/atoms';
@@ -43,10 +44,12 @@ export default function RootLayout({
               <ErrorProvider>
                 <AuthProvider>
                   <UserProvider>
+                    <NuqsAdapter>
                     <RouteSuspense message="Initializing application...">
                     {children}
                     </RouteSuspense>
                     <Toaster />
+                    </NuqsAdapter>
                   </UserProvider>
                 </AuthProvider>
               </ErrorProvider>

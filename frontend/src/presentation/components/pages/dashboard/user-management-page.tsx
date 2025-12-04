@@ -11,10 +11,21 @@ import { SortBy, SortOrder } from '@/shared/types';
 import { DashboardTemplate } from '@/presentation/components/templates';
 import { logger } from '@/shared/utils';
 
+/**
+ * UserManagementPage
+ *
+ * Page component that handles:
+ * - User data fetching and state management
+ * - Authentication guard
+ *
+ * Note: CRUD operations (Create, Update, Delete) are handled directly
+ * by the form components (UserCreateForm, UserEditForm, UserDeleteForm)
+ * which access the UserContext directly.
+ */
 export function UserManagementPage() {
   const { user: currentUser } = useAuth();
-  const { getUsers, createUser, updateUser, deleteUser, loading } = useUser();
-  const { success: showSuccess, error: showError } = useToast();
+  const { getUsers, loading } = useUser();
+  const { error: showError } = useToast();
 
   const [users, setUsers] = useState<User[]>([]);
 
@@ -49,68 +60,6 @@ export function UserManagementPage() {
     }
   }, [loadUsers]);
 
-  // Handle user creation
-  const handleCreateUser = useCallback(async (userData: { username: string; role: string; password?: string; firstName?: string; lastName?: string }) => {
-    try {
-      await createUser({
-        username: userData.username,
-        email: `${userData.username}@example.com`, // Generate email from username
-        firstName: userData.firstName || userData.username,
-        lastName: userData.lastName || '',
-        role: userData.role as UserRole,
-      });
-
-      // Reload users
-      await loadUsers();
-
-      showSuccess?.(`User "${userData.username}" created successfully`);
-    } catch (error) {
-      logger.error('Error creating user', { error });
-      showError?.('Failed to create user');
-      throw error;
-    }
-  }, [createUser, loadUsers, showSuccess, showError]);
-
-  // Handle user password update (Note: password updates may not be implemented yet)
-  const handleUpdateUserPassword = useCallback(async (
-    userId: string,
-    passwordData: { oldPassword: string; newPassword: string; confirmPassword: string }
-  ) => {
-    try {
-      // For now, password updates are not implemented in the current architecture
-      // This would need a separate use case and service method
-      logger.warn('Password update not implemented yet');
-
-      // For demo purposes, show success
-      showSuccess?.('Password update feature not implemented yet');
-
-      // Uncomment when password update is implemented:
-      // await updateUser(userId, {
-      //   // password fields would go here
-      // });
-    } catch (error) {
-      logger.error('Error updating user password', { error });
-      showError?.('Failed to update user password');
-      throw error;
-    }
-  }, [showSuccess, showError]);
-
-  // Handle user deletion
-  const handleDeleteUser = useCallback(async (userId: string) => {
-    try {
-      await deleteUser(userId);
-
-      // Reload users
-      await loadUsers();
-
-      showSuccess?.('User deleted successfully');
-    } catch (error) {
-      logger.error('Error deleting user', { error });
-      showError?.('Failed to delete user');
-      throw error;
-    }
-  }, [deleteUser, loadUsers]);
-
   if (!currentUser) {
     return (
       <DashboardTemplate>
@@ -122,18 +71,11 @@ export function UserManagementPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <UserManagement
-        currentUser={currentUser}
-        users={users}
-        isLoading={loading.getUsers}
-        onLoadUsers={loadUsers}
-        onCreateUser={handleCreateUser}
-        onUpdateUserPassword={handleUpdateUserPassword}
-        onDeleteUser={handleDeleteUser}
-        onSuccess={showSuccess}
-        onError={showError}
-      />
-    </div>
+    <UserManagement
+      currentUser={currentUser}
+      users={users}
+      isLoading={loading.getUsers}
+      onLoadUsers={loadUsers}
+    />
   );
 }

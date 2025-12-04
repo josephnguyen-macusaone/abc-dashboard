@@ -267,6 +267,7 @@
     --ring: var(--clr-primary-500);
     --radius: 0.5rem;
 
+
     /* Sidebar */
     --sidebar-background: var(--clr-light);
     --sidebar-foreground: var(--clr-text-900);
@@ -466,6 +467,7 @@
     --ring: var(--clr-primary-500);
     --radius: 0.5rem;
 
+
     /* Sidebar */
     --sidebar-background: var(--clr-light);
     --sidebar-foreground: var(--clr-text-900);
@@ -663,6 +665,7 @@
     --border: var(--clr-border-700);
     --input: var(--clr-border-700);
     --ring: var(--clr-primary-500);
+
 
     /* Sidebar */
     --sidebar-background: var(--clr-bg-900);

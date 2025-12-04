@@ -56,7 +56,7 @@ export function StatsCards({
             key={stat.id}
             className="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               <Typography variant="label-s" color="muted" className="text-muted-foreground">
                 {stat.label}
               </Typography>

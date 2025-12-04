@@ -108,3 +108,18 @@ export interface TableFilters {
 
 // Re-export enum
 export { Role, SortBy, SortOrder } from './enum';
+
+// Re-export license types
+export type { LicenseStatus, LicenseTerm, LicenseRecord } from './license';
+
+/**
+ * Column Definition for table configuration
+ */
+export interface ColumnDefinition {
+  key: string;
+  label: string;
+  visible: boolean;
+  sortable?: boolean;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+}

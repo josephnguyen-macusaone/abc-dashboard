@@ -17,6 +17,13 @@ module.exports = {
     'text-label-l', 'text-label-m', 'text-label-s',
     'text-caption',
     'text-button-l', 'text-button-m', 'text-button-s',
+
+    // Table classes - ensure table styling isn't purged
+    'bg-muted', 'bg-muted/50', 'bg-muted/30', 'bg-muted/20',
+    'hover:bg-muted/50', 'hover:bg-muted/70', 'hover:bg-white/70', 'hover:bg-gray-700/70',
+    'data-[state=selected]:bg-muted', 'data-[state=selected]:bg-blue-50', 'data-[state=selected]:bg-blue-900/30',
+    'border-b', 'border-t', 'border-border',
+    'transition-colors', 'transition-all',
   ],
   theme: {
     container: {
@@ -385,10 +392,38 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
 
+      /* ========================================
+         TABLE SPACING
+         Custom spacing for table elements
+         ======================================== */
+      spacing: {
+        'table-cell': '1rem', // Standard table cell padding
+        'table-header': '0.75rem 1rem', // Header padding
+        'table-compact': '0.5rem', // Compact table spacing
+        'table-comfortable': '1rem', // Comfortable table spacing
+      },
+
+      /* ========================================
+         TABLE BORDERS
+         Enhanced border utilities for tables
+         ======================================== */
+      borderWidth: {
+        'table': '1px',
+        'table-thick': '2px',
+      },
+
       backgroundImage: {
         "brand-gradient": "linear-gradient(135deg, #FF885C, #F88800, #CC4700, #471A02)",
         "brand-gradient-horizontal": "linear-gradient(90deg, #FF885C, #F88800, #CC4700, #471A02)",
         "brand-gradient-vertical": "linear-gradient(180deg, #FF885C, #F88800, #CC4700, #471A02)",
+        "table-header-gradient": "linear-gradient(135deg, hsl(var(--muted)), hsl(var(--muted) / 0.8))",
+        "table-stripe": "linear-gradient(90deg, transparent, hsl(var(--muted) / 0.3), transparent)",
+      },
+
+      boxShadow: {
+        'table': '0 1px 3px 0 hsl(var(--foreground) / 0.1)',
+        'table-hover': '0 2px 8px 0 hsl(var(--foreground) / 0.15)',
+        'table-selected': '0 0 0 2px hsl(var(--primary) / 0.2)',
       },
 
       keyframes: {
@@ -400,11 +435,40 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "table-row-fade-in": {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "table-hover-scale": {
+          "0%": { transform: "scale(1)" },
+          "100%": { transform: "scale(1.002)" },
+        },
       },
 
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "table-row-fade-in": "table-row-fade-in 0.3s ease-in-out",
+        "table-hover-scale": "table-hover-scale 0.2s ease-out",
+      },
+
+      /* ========================================
+         TABLE SYSTEM
+         Enhanced table styling and utilities
+         ======================================== */
+      table: {
+        spacing: {
+          'compact': '0.5rem',
+          'comfortable': '1rem',
+          'spacious': '1.5rem',
+        },
+        colors: {
+          'header-bg': 'hsl(var(--muted))',
+          'row-bg': 'hsl(var(--background))',
+          'row-hover': 'hsl(var(--muted) / 0.5)',
+          'row-selected': 'hsl(var(--primary) / 0.1)',
+          'border': 'hsl(var(--border))',
+        },
       },
     },
   },

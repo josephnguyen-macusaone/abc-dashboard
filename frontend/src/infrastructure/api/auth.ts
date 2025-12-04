@@ -76,7 +76,16 @@ export class AuthApiService {
    */
   static async refreshToken(): Promise<{ tokens: AuthTokensDto }> {
     try {
-      const response = await httpClient.post<ApiResponse<{ tokens: AuthTokensDto }>>('/auth/refresh');
+      // Get refresh token from localStorage
+      const refreshToken = localStorage.getItem('refreshToken');
+
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await httpClient.post<ApiResponse<{ tokens: AuthTokensDto }>>('/auth/refresh', {
+        refreshToken
+      });
 
       if (!response.data) {
         throw new Error('Refresh token response missing data');

@@ -1,6 +1,6 @@
 'use client';
 
-import { ScrollArea, LoadingOverlay } from '@/presentation/components/atoms';
+import { LoadingOverlay } from '@/presentation/components/atoms';
 import { DashboardHeader, MobileOverlay, NavigationItem } from '@/presentation/components/molecules';
 import { Sidebar } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
@@ -127,7 +127,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full bg-background">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -147,16 +147,16 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
       <MobileOverlay isOpen={sidebarOpen} onClose={handleSidebarClose} />
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-0">
+      <div className="flex flex-1 flex-col lg:pl-0 min-w-0">
         {/* Top bar */}
         <DashboardHeader
           sidebarOpen={sidebarOpen}
           onSidebarToggle={handleSidebarToggle}
         />
 
-        {/* Page content */}
-        <ScrollArea className="flex-1 overflow-auto">
-          <main className="p-4 lg:p-6">
+        {/* Page content - only vertical scrolling, horizontal scrolling happens inside tables */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+          <main className="p-4 lg:p-6 min-w-0">
             <SectionErrorBoundary
               fallbackTitle="Dashboard Error"
               fallbackMessage="There was a problem loading the dashboard content. Please try refreshing the page."
@@ -165,7 +165,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
               {children}
             </SectionErrorBoundary>
           </main>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

@@ -391,13 +391,14 @@ export const RetryUtils = {
    */
   withLoggingLevel<T extends (...args: any[]) => any>(
     fn: T,
-    logLevel: RetryConfig['logLevel'] = 'minimal'
+    logLevel: RetryConfig['logLevel'] = 'minimal',
+    context?: string
   ): T {
     return ((...args: Parameters<T>) => {
       return retryAsync(
         () => fn(...args),
         { logLevel },
-        fn.name || 'wrapped_function'
+        context || fn.name || 'wrapped_function'
       );
     }) as T;
   },

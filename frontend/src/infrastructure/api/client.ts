@@ -6,12 +6,10 @@ import axios, {
   InternalAxiosRequestConfig
 } from 'axios';
 import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
-import { handleApiError, isRetryableError } from '@/infrastructure/api/errors';
+import { handleApiError } from '@/infrastructure/api/errors';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
-import { RetryUtils } from '@/shared/utils/retry';
-import { startTrace, injectIntoHeaders, logWithTrace } from '@/shared/utils/tracing';
+import { startTrace, injectIntoHeaders } from '@/shared/utils/tracing';
 import { API_CONFIG } from '@/shared/constants';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
 
 // Default configuration - API_CONFIG.BASE_URL already handles validation and normalization
 const DEFAULT_BASE_URL = API_CONFIG.BASE_URL;
@@ -25,7 +23,7 @@ class HttpClient {
   private isRefreshing = false;
   private failedQueue: Array<{
     resolve: (token: string) => void;
-    reject: (error: any) => void;
+    reject: (error: unknown) => void;
   }> = [];
 
   constructor(baseURL: string = DEFAULT_BASE_URL, config?: RequestConfig) {
@@ -55,11 +53,11 @@ class HttpClient {
       (config: InternalAxiosRequestConfig) => {
         // Generate correlation ID for this request
         const correlationId = generateCorrelationId();
-        (config as any).correlationId = correlationId;
+        (config as InternalAxiosRequestConfig & { correlationId: string; trace: any }).correlationId = correlationId;
 
         // Start trace for this request
         const trace = startTrace(`api_${config.method?.toUpperCase()}_${config.url}`);
-        (config as any).trace = trace;
+        (config as InternalAxiosRequestConfig & { correlationId: string; trace: any }).trace = trace;
 
         // Inject trace headers
         const traceHeaders = injectIntoHeaders(trace);
@@ -94,12 +92,12 @@ class HttpClient {
         return config;
       },
       (error: AxiosError) => {
-        const correlationId = (error.config as any)?.correlationId || generateCorrelationId();
+        const correlationId = (error.config as InternalAxiosRequestConfig & { correlationId?: string })?.correlationId || generateCorrelationId();
         logger.api('Request failed', {
           correlationId,
           error: error.message,
           url: error.config?.url,
-          category: 'api-error',
+          category: 'api-error' as const,
         });
         return Promise.reject(handleApiError(error));
       }
@@ -115,18 +113,18 @@ class HttpClient {
         logger.api(`Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
           correlationId,
           status: response.status,
-          duration: Date.now() - (response.config as any)?.startTime,
+          duration: Date.now() - ((response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime || Date.now()),
           url: response.config.url,
           traceId: trace?.traceId,
           spanId: trace?.spanId,
-          category: 'api-details',
+          category: 'api-details' as const,
         });
 
         return response;
       },
       async (error: AxiosError) => {
-        const correlationId = (error.config as any)?.correlationId || generateCorrelationId();
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
+        const correlationId = (error.config as InternalAxiosRequestConfig & { correlationId?: string })?.correlationId || generateCorrelationId();
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number; correlationId?: string };
 
         // Log failed response with detailed error info
         const errorResponse = handleApiError(error);
@@ -140,6 +138,58 @@ class HttpClient {
           details: errorResponse.details,
         });
 
+        // Handle 401 errors with automatic token refresh
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (this.isRefreshing) {
+            // If refresh is already in progress, queue this request
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({ resolve, reject });
+            });
+          }
+
+          originalRequest._retry = true;
+
+          // Check if we have a refresh token
+          const refreshToken = this.getRefreshToken();
+          if (!refreshToken) {
+            // No refresh token, redirect to login
+            this.handleAuthFailure();
+            return Promise.reject(errorResponse);
+          }
+
+          this.isRefreshing = true;
+
+          try {
+            // Attempt to refresh token
+            const refreshResult = await this.attemptTokenRefresh();
+
+            if (refreshResult) {
+              // Token refresh successful, retry original request
+              const newToken = this.getAuthToken();
+              if (newToken && originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              }
+
+              // Process queued requests
+              this.processQueue(null, newToken);
+
+              // Retry the original request
+              return this.instance(originalRequest);
+            } else {
+              // Token refresh failed
+              await this.handleAuthFailure();
+              return Promise.reject(errorResponse);
+            }
+          } catch (refreshError) {
+            // Token refresh failed
+            this.processQueue(refreshError, null);
+            await this.handleAuthFailure();
+            return Promise.reject(errorResponse);
+          } finally {
+            this.isRefreshing = false;
+          }
+        }
+
         // Return the processed error for component handling
         return Promise.reject(errorResponse);
 
@@ -150,7 +200,7 @@ class HttpClient {
   /**
    * Process queued requests after token refresh
    */
-  private processQueue(error: any, token: string | null = null): void {
+  private processQueue(error: unknown, token: string | null = null): void {
     this.failedQueue.forEach(({ resolve, reject }) => {
       if (error) {
         reject(error);
@@ -180,6 +230,56 @@ class HttpClient {
   }
 
   /**
+   * Get refresh token from localStorage
+   */
+  private getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('refreshToken');
+  }
+
+  /**
+   * Attempt to refresh the authentication token
+   */
+  private async attemptTokenRefresh(): Promise<boolean> {
+    try {
+      const refreshToken = this.getRefreshToken();
+      if (!refreshToken) return false;
+
+      // Import auth store dynamically to avoid circular dependencies
+      const { useAuthStore } = await import('@/infrastructure/stores/auth-store');
+
+      // Attempt token refresh
+      const success = await useAuthStore.getState().refreshToken();
+
+      return success;
+    } catch (error) {
+      logger.error('Token refresh failed:', { error: error instanceof Error ? error.message : String(error) });
+      return false;
+    }
+  }
+
+  /**
+   * Handle authentication failure - clear state and redirect to login
+   */
+  private async handleAuthFailure(): Promise<void> {
+    try {
+      // Import auth store dynamically to avoid circular dependencies
+      const { useAuthStore } = await import('@/infrastructure/stores/auth-store');
+
+      // Clear authentication state
+      useAuthStore.getState().logout();
+
+      // Redirect to login page if in browser
+      if (typeof window !== 'undefined') {
+        // Use window.location for reliable client-side navigation
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      logger.error('Failed to handle auth failure:', { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  /**
    * Set authentication token
    */
   setAuthToken(token: string | null): void {
@@ -193,7 +293,7 @@ class HttpClient {
   /**
    * Generic GET request
    */
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.get(url, config);
     return response.data;
   }
@@ -201,7 +301,7 @@ class HttpClient {
   /**
    * Generic POST request
    */
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.post(url, data, config);
     return response.data;
   }
@@ -209,7 +309,7 @@ class HttpClient {
   /**
    * Generic PUT request
    */
-  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.put(url, data, config);
     return response.data;
   }
@@ -217,7 +317,7 @@ class HttpClient {
   /**
    * Generic PATCH request
    */
-  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.patch(url, data, config);
     return response.data;
   }
@@ -225,7 +325,7 @@ class HttpClient {
   /**
    * Generic DELETE request
    */
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.delete(url, config);
     return response.data;
   }
