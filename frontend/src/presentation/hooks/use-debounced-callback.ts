@@ -1,9 +1,10 @@
 /**
- * useDebouncedCallback Hook
+ * @see https://github.com/mantinedev/mantine/blob/master/packages/@mantine/hooks/src/use-debounced-callback/use-debounced-callback.ts
  */
 
 import * as React from "react";
-import { useCallbackRef } from "./use-callback-ref";
+
+import { useCallbackRef } from "@/presentation/hooks/use-callback-ref";
 
 export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   callback: T,
@@ -11,7 +12,6 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
 ) {
   const handleCallback = useCallbackRef(callback);
   const debounceTimerRef = React.useRef(0);
-
   React.useEffect(
     () => () => window.clearTimeout(debounceTimerRef.current),
     [],
@@ -30,4 +30,3 @@ export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
 
   return setValue;
 }
-

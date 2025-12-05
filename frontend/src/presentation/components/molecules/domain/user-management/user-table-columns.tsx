@@ -1,6 +1,5 @@
 /**
  * User Table Column Definitions
- * Uses tablecn pattern with TanStack Table
  */
 
 "use client";
@@ -10,10 +9,8 @@ import { User2, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import * as React from "react";
 
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data-table";
-import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { RoleBadge, StatusBadge } from "@/presentation/components/molecules/domain/user-management";
-import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,31 +53,6 @@ export function getUserTableColumns({
 }: GetUserTableColumnsProps): ColumnDef<User>[] {
   return [
     {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          aria-label="Select all"
-          className="translate-y-0.5"
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          aria-label="Select row"
-          className="translate-y-0.5"
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
-    {
       id: "displayName",
       accessorFn: (row) => row.displayName || row.name || row.username || row.id,
       header: ({ column }) => (
@@ -99,7 +71,6 @@ export function getUserTableColumns({
           </div>
         );
       },
-      size: 220,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const displayName = row.getValue(id) as string;
@@ -109,6 +80,28 @@ export function getUserTableColumns({
         label: "Name",
         variant: "text",
         placeholder: "Search users...",
+      },
+    },
+    {
+      id: "username",
+      accessorKey: "username",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label="Username" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground truncate max-w-[150px]">
+          {row.getValue("username") || "-"}
+        </span>
+      ),
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const username = row.getValue(id) as string;
+        return username?.toLowerCase().includes(value.toLowerCase());
+      },
+      meta: {
+        label: "Username",
+        variant: "text",
+        placeholder: "Search usernames...",
       },
     },
     {
@@ -122,7 +115,6 @@ export function getUserTableColumns({
           {row.getValue("email")}
         </span>
       ),
-      size: 250,
       // No filter - search by name instead
       meta: {
         label: "Email",
@@ -139,7 +131,6 @@ export function getUserTableColumns({
           {row.getValue("phone") || "-"}
         </span>
       ),
-      size: 130,
       meta: {
         label: "Phone",
       },
@@ -156,7 +147,6 @@ export function getUserTableColumns({
           <RoleBadge role={role as any} />
         );
       },
-      size: 100,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const role = row.getValue(id) as string;
@@ -181,7 +171,6 @@ export function getUserTableColumns({
           <StatusBadge isActive={isActive} />
         );
       },
-      size: 100,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const isActive = row.getValue(id) as boolean;
@@ -215,7 +204,6 @@ export function getUserTableColumns({
           </span>
         );
       },
-      size: 130,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         if (!value) return true;

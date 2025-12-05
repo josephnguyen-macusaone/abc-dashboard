@@ -2,14 +2,13 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Home, ChevronRight, LucideIcon, Users } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Typography } from '@/presentation/components/atoms';
 
 interface BreadcrumbItem {
   name: string;
   href: string;
-  icon?: LucideIcon;
 }
 
 export function Breadcrumb() {
@@ -19,7 +18,7 @@ export function Breadcrumb() {
   // Generate breadcrumb items from pathname and query params
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const paths = pathname.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Dashboard', href: '/dashboard', icon: Home }];
+    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Dashboard', href: '/dashboard' }];
 
     // Map path names to display names
     const pathNameMap: Record<string, string> = {
@@ -53,7 +52,11 @@ export function Breadcrumb() {
         breadcrumbs.push({
           name: 'User Management',
           href: '/dashboard?section=users',
-          icon: Users,
+        });
+      } else if (section === 'licenses') {
+        breadcrumbs.push({
+          name: 'License Management',
+          href: '/dashboard?section=licenses',
         });
       }
       // Add more sections as needed
@@ -73,7 +76,6 @@ export function Breadcrumb() {
     <nav aria-label="Breadcrumb" className="flex items-center space-x-1">
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
-        const Icon = crumb.icon;
 
         return (
           <div key={crumb.href} className="flex items-center space-x-1">
@@ -85,7 +87,6 @@ export function Breadcrumb() {
                 variant="body-s"
                 className="font-medium text-foreground flex items-center space-x-1"
               >
-                {Icon && <Icon className="h-4 w-4 mr-2" />}
                 <span>{crumb.name}</span>
               </Typography>
             ) : (
@@ -93,11 +94,8 @@ export function Breadcrumb() {
                 href={crumb.href}
                 className={cn(
                   "flex items-center space-x-1 text-muted-foreground hover:text-foreground transition-colors",
-                  crumb.icon && "font-medium"
                 )}
               >
-                {crumb.icon && <crumb.icon className="h-4 w-4 mr-2" />}
-                {/* MAC USA ONE Typography: Body S for breadcrumb links */}
                 <Typography variant="body-s" as="span">
                   {crumb.name}
                 </Typography>

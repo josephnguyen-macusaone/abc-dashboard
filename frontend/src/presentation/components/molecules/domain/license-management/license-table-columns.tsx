@@ -1,6 +1,5 @@
 /**
  * License Table Column Definitions
- * Uses tablecn pattern with TanStack Table
  */
 
 "use client";
@@ -100,21 +99,20 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       id: "dbA",
       accessorKey: "dbA",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Database" />
+        <DataTableColumnHeader column={column} label="DBA" />
       ),
       cell: ({ row }) => (
         <span className="font-medium truncate max-w-[150px]">
           {row.getValue("dbA")}
         </span>
       ),
-      size: 150,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const dbA = row.getValue(id) as string;
         return dbA.toLowerCase().includes(value.toLowerCase());
       },
       meta: {
-        label: "Database",
+        label: "DBA",
         variant: "text",
         placeholder: "Search licenses...",
       },
@@ -128,7 +126,6 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => (
         <span className="text-center">{row.getValue("zip")}</span>
       ),
-      size: 100,
       meta: {
         label: "Zip Code",
       },
@@ -150,7 +147,6 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           </span>
         );
       },
-      size: 120,
       filterFn: (row, id, value) => {
         if (!value) return true;
         const date = new Date(row.getValue(id) as string);
@@ -198,7 +194,6 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => (
         <Badge variant="outline">{row.getValue("plan")}</Badge>
       ),
-      size: 120,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
@@ -277,7 +272,6 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           </span>
         );
       },
-      size: 120,
       filterFn: (row, id, value) => {
         if (!value) return true;
         const date = new Date(row.getValue(id) as string);
@@ -301,6 +295,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         </span>
       ),
       size: 140,
+      meta: {
+        label: "SMS Purchased",
+      },
     },
     {
       id: "smsSent",
@@ -314,6 +311,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         </span>
       ),
       size: 110,
+      meta: {
+        label: "SMS Sent",
+      },
     },
     {
       id: "smsBalance",
@@ -326,7 +326,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           {row.getValue("smsBalance")}
         </span>
       ),
-      size: 120,
+      meta: {
+        label: "SMS Balance",
+      },
     },
     {
       id: "agents",
@@ -338,6 +340,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <span className="text-center">{row.getValue("agents")}</span>
       ),
       size: 90,
+      meta: {
+        label: "Agents",
+      },
     },
     {
       id: "agentsName",
@@ -354,6 +359,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       size: 200,
+      meta: {
+        label: "Agents Name",
+      },
     },
     {
       id: "agentsCost",
@@ -367,6 +375,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         </span>
       ),
       size: 130,
+      meta: {
+        label: "Agents Cost",
+      },
     },
     {
       id: "notes",

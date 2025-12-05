@@ -9,7 +9,7 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ className }: AdminDashboardProps) {
   return (
-    <div className={`space-y-6 ${className || ''}`}>
+    <div className={`space-y-8 ${className || ''}`}>
       <LicenseMetricsSection />
       <LicenseTableSection />
     </div>

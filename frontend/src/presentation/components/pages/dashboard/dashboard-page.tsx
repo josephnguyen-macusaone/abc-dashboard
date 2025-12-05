@@ -6,6 +6,7 @@ import { DashboardTemplate } from '@/presentation/components/templates';
 import { AccessDeniedCard } from '@/presentation/components/molecules/ui';
 import { AdminDashboard, StaffDashboard } from '@/presentation/components/organisms';
 import { UserManagementPage } from './user-management-page';
+import { LicenseManagementPage } from './license-management-page';
 import { USER_ROLES } from '@/shared/constants';
 
 interface DashboardPageProps { }
@@ -18,7 +19,8 @@ export function DashboardPage({ }: DashboardPageProps = {}) {
   const currentSection = searchParams.get('section');
 
   // Check if user is admin or manager
-  const isAdminOrManager = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.MANAGER;
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
+  const isAdminOrManager = isAdmin || user?.role === USER_ROLES.MANAGER;
   const isStaff = user?.role === USER_ROLES.STAFF;
 
   // Render different sections based on URL parameter
@@ -34,6 +36,19 @@ export function DashboardPage({ }: DashboardPageProps = {}) {
           <AccessDeniedCard
             title="Access Denied"
             message="You don't have permission to access user management."
+          />
+        );
+
+      case 'licenses':
+        // License Management section (admin only)
+        if (isAdmin) {
+          return <LicenseManagementPage />;
+        }
+        // If non-admin tries to access licenses section, show access denied
+        return (
+          <AccessDeniedCard
+            title="Access Denied"
+            message="You don't have permission to access license management."
           />
         );
 

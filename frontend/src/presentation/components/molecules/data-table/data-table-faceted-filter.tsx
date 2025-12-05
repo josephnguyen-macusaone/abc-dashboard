@@ -1,7 +1,3 @@
-/**
- * DataTableFacetedFilter Component
- */
-
 "use client";
 
 import type { Column } from "@tanstack/react-table";
@@ -33,7 +29,6 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   title?: string;
   options: Option[];
   multiple?: boolean;
-  icon?: React.ComponentType<{ className?: string }>;
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -41,7 +36,6 @@ export function DataTableFacetedFilter<TData, TValue>({
   title,
   options,
   multiple,
-  icon: Icon,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const [open, setOpen] = React.useState(false);
 
@@ -85,10 +79,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "h-9 border-dashed rounded-lg font-normal",
-            selectedValues?.size > 0 && "border-solid"
-          )}
+          className="border-dashed font-normal"
         >
           {selectedValues?.size > 0 ? (
             <div
@@ -98,12 +89,10 @@ export function DataTableFacetedFilter<TData, TValue>({
               className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={onReset}
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle />
             </div>
-          ) : Icon ? (
-            <Icon className="h-4 w-4" />
           ) : (
-            <PlusCircle className="h-4 w-4" />
+            <PlusCircle />
           )}
           {title}
           {selectedValues?.size > 0 && (
@@ -166,11 +155,11 @@ export function DataTableFacetedFilter<TData, TValue>({
                           : "opacity-50 [&_svg]:invisible",
                       )}
                     >
-                      <Check className="h-3 w-3 text-primary-foreground" />
+                      <Check />
                     </div>
-                    {option.icon && <option.icon className="h-4 w-4 text-muted-foreground" />}
+                    {option.icon && <option.icon />}
                     <span className="truncate">{option.label}</span>
-                    {option.count !== undefined && (
+                    {option.count && (
                       <span className="ml-auto font-mono text-xs">
                         {option.count}
                       </span>

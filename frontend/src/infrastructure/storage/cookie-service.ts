@@ -100,11 +100,11 @@ export class CookieService {
       const userData = this.getCookie('user');
       if (!userData) return null;
 
-      const userObj = JSON.parse(userData);
+      const userObj = JSON.parse(userData) as Record<string, unknown>;
 
       // Ensure name field exists - provide fallback if missing
       if (!userObj.name) {
-        userObj.name = userObj.displayName || userObj.username || userObj.email?.split('@')[0] || 'User';
+        userObj.name = userObj.displayName || userObj.username || (typeof userObj.email === 'string' ? userObj.email.split('@')[0] : null) || 'User';
       }
 
       return User.fromObject(userObj);

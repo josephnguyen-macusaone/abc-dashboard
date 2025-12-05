@@ -6,7 +6,7 @@ import { Sidebar } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useState } from 'react';
-import { Home, Users } from 'lucide-react';
+import { Home, Users, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { PermissionUtils } from '@/shared/constants';
@@ -26,6 +26,7 @@ const getNavigationItems = (userRole?: string): NavigationItem[] => {
     return [
       ...baseItems,
       { name: 'User Management', href: '/dashboard?section=users', icon: Users },
+      { name: 'License Management', href: '/dashboard?section=licenses', icon: FileSpreadsheet },
     ];
   }
 
@@ -34,6 +35,7 @@ const getNavigationItems = (userRole?: string): NavigationItem[] => {
     return [
       ...baseItems,
       { name: 'User Management', href: '/dashboard?section=users', icon: Users },
+      { name: 'License Management', href: '/dashboard?section=licenses', icon: FileSpreadsheet },
     ];
   }
 
@@ -158,9 +160,10 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <main className="p-4 lg:p-6 min-w-0">
             <SectionErrorBoundary
+              variant="dashboard"
               fallbackTitle="Dashboard Error"
-              fallbackMessage="There was a problem loading the dashboard content. Please try refreshing the page."
-              enableRetry={true}
+              fallbackMessage="Something went wrong! Please try refreshing the page."
+              enableRetry={false}
             >
               {children}
             </SectionErrorBoundary>

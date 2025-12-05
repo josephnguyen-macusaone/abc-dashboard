@@ -31,19 +31,20 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   // Initialize theme from localStorage or set default to light
   useEffect(() => {
-    let initialTheme = THEMES.LIGHT; // Default to light theme
+    let initialTheme: (typeof THEMES)[keyof typeof THEMES] = THEMES.LIGHT; // Default to light theme
     let initialActualTheme: 'light' | 'dark' = 'light';
 
     const stored = localStorage.getItem('theme-storage');
     if (stored) {
       try {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as { state?: { theme?: string } };
         const storedTheme = parsed.state?.theme;
-        if (storedTheme && Object.values(THEMES).includes(storedTheme)) {
-          initialTheme = storedTheme;
+        const themeValues = Object.values(THEMES) as string[];
+        if (storedTheme && themeValues.includes(storedTheme)) {
+          initialTheme = storedTheme as (typeof THEMES)[keyof typeof THEMES];
           initialActualTheme = storedTheme === THEMES.DARK ? 'dark' : 'light';
         }
-      } catch (error) {
+      } catch {
         // Clear corrupted data and use default
         localStorage.removeItem('theme-storage');
       }

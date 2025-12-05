@@ -5,15 +5,12 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus, Users, Trash2 } from "lucide-react";
+import { UserPlus, Users } from "lucide-react";
 
 import {
   DataTable,
   DataTableToolbar,
   DataTableSkeleton,
-  DataTableActionBar,
-  DataTableActionBarAction,
-  DataTableActionBarSelection,
 } from "@/presentation/components/molecules/data-table";
 import { useDataTable } from "@/presentation/hooks";
 import { Button } from "@/presentation/components/atoms/primitives/button";
@@ -30,7 +27,6 @@ interface UsersDataTableProps {
   canDelete: (user: User) => boolean;
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
-  onBulkDelete?: (users: User[]) => void;
   onCreateUser?: () => void;
   isLoading?: boolean;
 }
@@ -43,7 +39,6 @@ export function UsersDataTable({
   canDelete,
   onEdit,
   onDelete,
-  onBulkDelete,
   onCreateUser,
   isLoading = false,
 }: UsersDataTableProps) {
@@ -77,16 +72,11 @@ export function UsersDataTable({
     data,
     columns,
     pageCount,
-    // Client-side pagination, sorting, filtering
-    manualPagination: false,
-    manualSorting: false,
-    manualFiltering: false,
     initialState: {
-      pagination: { pageSize: 10, pageIndex: 0 },
+      pagination: { pageSize: 5, pageIndex: 0 },
       sorting: [{ id: "createdAt", desc: true }],
       columnVisibility: {
-        select: false, // Hide select checkbox column
-        phone: false,
+        select: false,
       },
     },
   });
@@ -128,34 +118,17 @@ export function UsersDataTable({
   }
 
   return (
-    <DataTable
-      table={table}
-      showPageSizeSelector={false}
-      actionBar={
-        <DataTableActionBar table={table}>
-          <DataTableActionBarSelection table={table} />
-          {onBulkDelete && (
-            <DataTableActionBarAction
-              tooltip="Delete selected"
-              onClick={() => {
-                const selectedUsers = table
-                  .getFilteredSelectedRowModel()
-                  .rows.map((row) => row.original);
-                onBulkDelete(selectedUsers);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </DataTableActionBarAction>
-          )}
-        </DataTableActionBar>
-      }
-    >
+    <DataTable table={table} >
       <DataTableToolbar table={table}>
         {onCreateUser && currentUser.role === "admin" && (
-          <Button onClick={onCreateUser} size="sm">
-            <UserPlus className="h-4 w-4" />
-            Add User
+          <Button
+            onClick={onCreateUser}
+            size="sm"
+            className="gap-1.5"
+            title="Add User"
+          >
+            <UserPlus className="h-2.5 w-2.5 text-foreground" />
+            <span className="hidden sm:inline">Add User</span>
           </Button>
         )}
       </DataTableToolbar>

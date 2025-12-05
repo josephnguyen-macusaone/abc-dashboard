@@ -3,11 +3,6 @@
 // Dashboard components
 export {
   DateRangeFilterCard,
-  LicensesDataTable,
-  getLicenseTableColumns,
-  STATUS_OPTIONS as LICENSE_STATUS_OPTIONS,
-  PLAN_OPTIONS,
-  TERM_OPTIONS,
   type DateRangeFilterCardProps
 } from './dashboard';
 
@@ -29,3 +24,14 @@ export {
   type RoleBadgeProps,
   type StatusBadgeProps
 } from './user-management';
+
+// License management components
+export {
+  LicensesDataGrid,
+  getLicenseGridColumns,
+  LicensesDataTable,
+  getLicenseTableColumns,
+  STATUS_OPTIONS as LICENSE_STATUS_OPTIONS,
+  PLAN_OPTIONS,
+  TERM_OPTIONS,
+} from './license-management';

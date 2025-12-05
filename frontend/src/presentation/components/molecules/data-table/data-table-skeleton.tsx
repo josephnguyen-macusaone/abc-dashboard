@@ -1,7 +1,3 @@
-/**
- * DataTableSkeleton Component
- */
-
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import {
   Table,

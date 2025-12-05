@@ -1,7 +1,3 @@
-/**
- * DataTableActionBar Component
- */
-
 "use client";
 
 import type { Table } from "@tanstack/react-table";
@@ -9,7 +5,6 @@ import { Loader, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Separator } from "@/presentation/components/atoms/primitives/separator";
 import {

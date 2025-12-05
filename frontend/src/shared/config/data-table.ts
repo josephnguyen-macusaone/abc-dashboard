@@ -1,7 +1,3 @@
-/**
- * Data Table Configuration
- */
-
 export type DataTableConfig = typeof dataTableConfig;
 
 export const dataTableConfig = {

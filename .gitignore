@@ -148,3 +148,5 @@ Thumbs.db
 # Project-specific .gitignore files
 # See backend/.gitignore for backend-specific patterns
 # See frontend/.gitignore for frontend-specific patterns (when created)
+
+.cursor

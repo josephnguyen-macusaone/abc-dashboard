@@ -27,7 +27,6 @@ const colors = {
 // Current environment
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = process.env.NODE_ENV === 'development';
-const isTest = process.env.NODE_ENV === 'test';
 
 // Environment-based configuration
 const LOG_CONFIG = {
@@ -647,8 +646,40 @@ const enhancedLogger = {
     enhancedLogger.debug(`🧩 ${message}`, { category: 'component-lifecycle', ...meta });
   },
 
-  // Error boundary logging
+  // Error boundary logging (concise version for production)
   errorBoundary: (message: string, meta: {
+    correlationId?: string;
+    userId?: string;
+    error?: Error;
+    componentStack?: string;
+    category?: string;
+    [key: string]: any;
+  } = {}): void => {
+    // Create concise error summary for production readability
+    const errorMessage = meta.error?.message || 'Unknown error';
+    const errorName = meta.error?.name || 'Error';
+
+    // Summarize component stack (first few lines only)
+    const componentStackSummary = meta.componentStack
+      ? meta.componentStack.split('\n').slice(0, 3).join('\n').trim()
+      : 'No component stack available';
+
+    const conciseMeta = {
+      correlationId: meta.correlationId,
+      errorId: meta.errorId,
+      errorType: errorName,
+      errorMessage: errorMessage.length > 100 ? errorMessage.substring(0, 100) + '...' : errorMessage,
+      componentStackSummary,
+      hasFullStack: !!meta.componentStack,
+      level: meta.level || 'component',
+      category: 'error-boundary',
+    };
+
+    enhancedLogger.error(`💥 ${message}`, conciseMeta);
+  },
+
+  // Detailed error boundary logging (for when full details are needed)
+  errorBoundaryDetailed: (message: string, meta: {
     correlationId?: string;
     userId?: string;
     error?: Error;
@@ -688,4 +719,5 @@ export const {
   tracing,
   component,
   errorBoundary,
+  errorBoundaryDetailed,
 } = enhancedLogger;

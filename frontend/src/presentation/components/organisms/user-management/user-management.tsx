@@ -166,7 +166,7 @@ export function UserManagement({
       {/* Users Table */}
       <UsersDataTable
         data={users}
-        pageCount={Math.ceil(users.length / 10)}
+        pageCount={Math.ceil(users.length / 5)}
         currentUser={currentUser}
         canEdit={canEditUser}
         canDelete={canDeleteUser}

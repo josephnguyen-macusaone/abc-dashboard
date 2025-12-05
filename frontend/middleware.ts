@@ -33,12 +33,12 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const userData = request.cookies.get('user')?.value;
 
-  let user = null;
+  let user: { id?: string; role?: string; email?: string; isActive?: boolean } | null = null;
   let isAuthenticated = false;
 
   try {
     if (token && userData) {
-      user = JSON.parse(userData);
+      user = JSON.parse(userData) as { id?: string; role?: string; email?: string; isActive?: boolean };
       // Ensure user has required fields for role checking
       if (user && user.role) {
         isAuthenticated = true;

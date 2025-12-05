@@ -1,7 +1,3 @@
-/**
- * Data Table Types
- */
-
 import type { ColumnSort, Row, RowData } from "@tanstack/react-table";
 import type { DataTableConfig } from "@/shared/config/data-table";
 import type { FilterItemSchema } from "@/shared/lib/parsers";

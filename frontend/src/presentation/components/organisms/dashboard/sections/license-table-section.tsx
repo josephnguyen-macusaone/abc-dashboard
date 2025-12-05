@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { LicensesDataTable } from '@/presentation/components/molecules/domain/dashboard';
-import { mockLicenses } from '@/shared/mock/license-mock-data';
+import { useRouter } from 'next/navigation';
+import { LicensesDataTable } from '@/presentation/components/molecules/domain/license-management';
+import { fakerLicensesSmall } from '@/shared/mock/license-faker-data';
 
 export interface LicenseTableSectionProps {
   /**
@@ -26,15 +27,22 @@ export interface LicenseTableSectionProps {
 export function LicenseTableSection({
   title = 'License Management',
   description = 'Manage license records and subscriptions',
-  maxTableHeight = '500px',
   className,
 }: LicenseTableSectionProps) {
+  const router = useRouter();
+
+  const onEdit = React.useCallback(() => {
+    router.push('/dashboard?section=licenses');
+  }, [router]);
+
   return (
     <LicensesDataTable
-      data={mockLicenses}
-      pageCount={Math.ceil(mockLicenses.length / 10)}
+      data={fakerLicensesSmall}
+      pageCount={Math.ceil(fakerLicensesSmall.length / 5)}
       title={title}
       description={description}
+      showHeader={true}
+      onEdit={onEdit}
       className={className}
     />
   );

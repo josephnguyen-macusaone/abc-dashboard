@@ -1,7 +1,3 @@
-/**
- * DataTableViewOptions Component
- */
-
 "use client";
 
 import type { Table } from "@tanstack/react-table";
@@ -54,7 +50,7 @@ export function DataTableViewOptions<TData>({
           size="sm"
           className="ml-auto hidden h-8 font-normal lg:flex"
         >
-          <Settings2 className="h-4 w-4 text-muted-foreground" />
+          <Settings2 className="text-muted-foreground" />
           View
         </Button>
       </PopoverTrigger>
@@ -89,4 +85,3 @@ export function DataTableViewOptions<TData>({
     </Popover>
   );
 }
-

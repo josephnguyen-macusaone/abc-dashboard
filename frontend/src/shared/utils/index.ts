@@ -83,7 +83,7 @@ export function isEmpty(value: any): boolean {
  * Deep clone object
  */
 export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
+  return JSON.parse(JSON.stringify(obj)) as T;
 }
 
 /**

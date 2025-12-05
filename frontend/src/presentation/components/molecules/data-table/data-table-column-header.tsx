@@ -1,7 +1,3 @@
-/**
- * DataTableColumnHeader Component
- */
-
 "use client";
 
 import type { Column } from "@tanstack/react-table";
@@ -65,24 +61,24 @@ export function DataTableColumnHeader<TData, TValue>({
               checked={column.getIsSorted() === "asc"}
               onClick={() => column.toggleSorting(false)}
             >
-              <ChevronUp className="mr-2 h-3.5 w-3.5" />
-              Asc
+              <ChevronUp className="mr-3 h-3.5 w-3.5" />
+              <span className="text-body-s">Asc</span>
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
               className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground"
               checked={column.getIsSorted() === "desc"}
               onClick={() => column.toggleSorting(true)}
             >
-              <ChevronDown className="mr-2 h-3.5 w-3.5" />
-              Desc
+              <ChevronDown className="mr-3 h-3.5 w-3.5" />
+              <span className="text-body-s">Desc</span>
             </DropdownMenuCheckboxItem>
             {column.getIsSorted() && (
               <DropdownMenuItem
                 className="pl-2 [&_svg]:text-muted-foreground"
                 onClick={() => column.clearSorting()}
               >
-                <X className="mr-2 h-3.5 w-3.5" />
-                Reset
+                <X className="mr-3 h-3.5 w-3.5" />
+                <span className="text-body-s">Reset</span>
               </DropdownMenuItem>
             )}
           </>
@@ -93,8 +89,8 @@ export function DataTableColumnHeader<TData, TValue>({
             checked={!column.getIsVisible()}
             onClick={() => column.toggleVisibility(false)}
           >
-            <EyeOff className="mr-2 h-3.5 w-3.5" />
-            Hide
+            <EyeOff className="mr-3 h-3.5 w-3.5" />
+            <span className="text-body-s">Hide</span>
           </DropdownMenuCheckboxItem>
         )}
       </DropdownMenuContent>

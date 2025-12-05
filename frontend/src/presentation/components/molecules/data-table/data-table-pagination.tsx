@@ -1,7 +1,3 @@
-/**
- * DataTablePagination Component
- */
-
 import type { Table } from "@tanstack/react-table";
 import {
   ChevronLeft,
@@ -23,27 +19,14 @@ import { cn } from "@/shared/utils";
 interface DataTablePaginationProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
   pageSizeOptions?: number[];
-  showSelection?: boolean;
-  showPageSizeSelector?: boolean;
 }
 
 export function DataTablePagination<TData>({
   table,
-  pageSizeOptions = [10, 20, 30, 40, 50],
-  showSelection = false,
-  showPageSizeSelector = true,
+  pageSizeOptions = [5, 10, 20, 30, 50],
   className,
   ...props
 }: DataTablePaginationProps<TData>) {
-  const totalRows = table.getFilteredRowModel().rows.length;
-  const pageSize = table.getState().pagination.pageSize;
-  const pageIndex = table.getState().pagination.pageIndex;
-  const pageCount = table.getPageCount();
-
-  // Calculate showing range
-  const startRow = pageIndex * pageSize + 1;
-  const endRow = Math.min((pageIndex + 1) * pageSize, totalRows);
-
   return (
     <div
       className={cn(
@@ -53,20 +36,10 @@ export function DataTablePagination<TData>({
       {...props}
     >
       <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
-        {showSelection ? (
-          <>
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {totalRows} row(s) selected
-          </>
-        ) : (
-          <>
-            Showing {startRow} to {endRow} of {totalRows} entries
-          </>
-        )}
+        Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to {Math.min(table.getState().pagination.pageIndex * table.getState().pagination.pageSize + table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} of {table.getFilteredRowModel().rows.length} entries
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-        {showPageSizeSelector && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center space-x-2">
           <p className="whitespace-nowrap font-medium text-sm">Rows per page</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
@@ -86,52 +59,53 @@ export function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>
-        )}
         <div className="flex items-center justify-center font-medium text-sm">
-          Page {pageIndex + 1} of {pageCount > 0 ? pageCount : 1}
+          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          {table.getPageCount()}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center space-x-2">
           <Button
             aria-label="Go to first page"
             variant="outline"
-            size="icon-sm"
-            className="hidden lg:flex"
+            size="icon"
+            className="hidden size-8 lg:flex"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
-            <ChevronsLeft className="h-4 w-4" />
+            <ChevronsLeft />
           </Button>
           <Button
             aria-label="Go to previous page"
             variant="outline"
-            size="icon-sm"
+            size="icon"
+            className="size-8"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft />
           </Button>
           <Button
             aria-label="Go to next page"
             variant="outline"
-            size="icon-sm"
+            size="icon"
+            className="size-8"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight />
           </Button>
           <Button
             aria-label="Go to last page"
             variant="outline"
-            size="icon-sm"
-            className="hidden lg:flex"
+            size="icon"
+            className="hidden size-8 lg:flex"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >
-            <ChevronsRight className="h-4 w-4" />
+            <ChevronsRight />
           </Button>
         </div>
       </div>
     </div>
   );
 }
-

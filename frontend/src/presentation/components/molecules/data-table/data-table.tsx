@@ -1,11 +1,7 @@
-/**
- * DataTable Component
- */
-
 import { flexRender, type Table as TanstackTable } from "@tanstack/react-table";
-import * as React from "react";
+import type * as React from "react";
 
-import { DataTablePagination } from "./data-table-pagination";
+import { DataTablePagination } from "@/presentation/components/molecules/data-table/data-table-pagination";
 import {
   Table,
   TableBody,
@@ -19,7 +15,6 @@ import { cn } from "@/shared/utils";
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
-  showPageSizeSelector?: boolean;
 }
 
 export function DataTable<TData>({
@@ -27,90 +22,68 @@ export function DataTable<TData>({
   actionBar,
   children,
   className,
-  showPageSizeSelector = true,
   ...props
 }: DataTableProps<TData>) {
-  // Reset to page 1 if current page exceeds page count
-  const pageCount = table.getPageCount();
-  const currentPage = table.getState().pagination.pageIndex;
-
-  React.useEffect(() => {
-    if (pageCount > 0 && currentPage >= pageCount) {
-      table.setPageIndex(0);
-    }
-  }, [pageCount, currentPage, table]);
-
   return (
     <div
-      className={cn("flex w-full flex-col gap-2.5", className)}
+      className={cn("flex w-full flex-col gap-6 overflow-auto", className)}
       {...props}
     >
       {children}
-      <Table className="rounded-md border">
-        <TableHeader className="sticky top-0 z-10 bg-inherit">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  colSpan={header.colSpan}
-                  className="whitespace-nowrap bg-muted"
-                  style={{
-                    minWidth: header.column.columnDef.size,
-                  }}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row, index) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                className={cn(
-                  "transition-colors duration-200 ease-in-out cursor-pointer"
-                )}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className="whitespace-nowrap"
-                    style={{
-                      minWidth: cell.column.columnDef.size,
-                    }}
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader className="bg-muted">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    colSpan={header.colSpan}
                   >
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext(),
-                    )}
-                  </TableCell>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow className="hover:bg-transparent">
-              <TableCell
-                colSpan={table.getAllColumns().length}
-                className="h-24 text-center"
-              >
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getPaginationRowModel().rows?.length ? (
+              table.getPaginationRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className="even:bg-muted/20"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
       <div className="flex flex-col gap-2.5">
-        <DataTablePagination table={table} showPageSizeSelector={showPageSizeSelector} />
+        <DataTablePagination table={table} />
         {actionBar &&
           table.getFilteredSelectedRowModel().rows.length > 0 &&
           actionBar}

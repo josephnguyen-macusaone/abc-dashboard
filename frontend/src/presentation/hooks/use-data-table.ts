@@ -1,9 +1,3 @@
-/**
- * useDataTable Hook
- *
- * Main hook for managing data table state with URL synchronization
- */
-
 "use client";
 
 import {
@@ -71,18 +65,6 @@ interface UseDataTableProps<TData>
   scroll?: boolean;
   shallow?: boolean;
   startTransition?: React.TransitionStartFunction;
-  /**
-   * Enable server-side pagination (default: false for client-side)
-   */
-  manualPagination?: boolean;
-  /**
-   * Enable server-side sorting (default: false for client-side)
-   */
-  manualSorting?: boolean;
-  /**
-   * Enable server-side filtering (default: false for client-side)
-   */
-  manualFiltering?: boolean;
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
@@ -99,12 +81,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     scroll = false,
     shallow = true,
     startTransition,
-    manualPagination = false,
-    manualSorting = false,
-    manualFiltering = false,
     ...tableProps
   } = props;
-
   const pageKey = queryKeys?.page ?? PAGE_KEY;
   const perPageKey = queryKeys?.perPage ?? PER_PAGE_KEY;
   const sortKey = queryKeys?.sort ?? SORT_KEY;
@@ -291,11 +269,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const table = useReactTable({
     ...tableProps,
-    data: tableProps.data ?? [],
     columns,
     initialState,
-    // Only pass pageCount when using server-side pagination
-    ...(manualPagination && { pageCount }),
+    pageCount,
     state: {
       pagination,
       sorting,
@@ -320,9 +296,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
-    manualPagination,
-    manualSorting,
-    manualFiltering,
+    manualPagination: false,
+    manualSorting: false,
+    manualFiltering: false,
     meta: {
       ...tableProps.meta,
       queryKeys: {
