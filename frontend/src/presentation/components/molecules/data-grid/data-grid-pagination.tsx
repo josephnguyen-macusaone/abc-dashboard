@@ -1,3 +1,5 @@
+"use client";
+
 import type { Table } from "@tanstack/react-table";
 import {
   ChevronLeft,
@@ -16,17 +18,18 @@ import {
 } from "@/presentation/components/atoms/forms/select";
 import { cn } from "@/shared/utils";
 
-interface DataTablePaginationProps<TData> extends React.ComponentProps<"div"> {
+interface DataGridPaginationProps<TData>
+  extends React.ComponentProps<"div"> {
   table: Table<TData>;
   pageSizeOptions?: number[];
 }
 
-export function DataTablePagination<TData>({
+export function DataGridPagination<TData>({
   table,
   pageSizeOptions = [20, 40, 60],
   className,
   ...props
-}: DataTablePaginationProps<TData>) {
+}: DataGridPaginationProps<TData>) {
   return (
     <div
       className={cn(

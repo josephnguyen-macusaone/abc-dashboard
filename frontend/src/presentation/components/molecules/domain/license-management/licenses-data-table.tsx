@@ -48,7 +48,7 @@ export function LicensesDataTable({
     columns,
     pageCount,
     initialState: {
-      pagination: { pageSize: 5, pageIndex: 0 },
+      pagination: { pageSize: 20, pageIndex: 0 },
       sorting: [{ id: "id", desc: false }],
       columnVisibility: {
         select: false,

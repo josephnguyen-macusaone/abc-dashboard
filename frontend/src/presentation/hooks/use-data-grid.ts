@@ -6,6 +6,7 @@ import {
   type ColumnFiltersState,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   type RowSelectionState,
   type SortingState,
@@ -102,6 +103,11 @@ interface DataGridState {
   searchOpen: boolean;
   lastClickedRowIndex: number | null;
   pasteDialog: PasteDialogState;
+  isProcessingDataUpdate: boolean;
+  pagination: {
+    pageIndex: number;
+    pageSize: number;
+  };
 }
 
 interface DataGridStore {
@@ -209,10 +215,15 @@ function useDataGrid<TData>({
       matchIndex: -1,
       searchOpen: false,
       lastClickedRowIndex: null,
+      isProcessingDataUpdate: false,
       pasteDialog: {
         open: false,
         rowsNeeded: 0,
         clipboardText: "",
+      },
+      pagination: {
+        pageIndex: 0,
+        pageSize: 20,
       },
     };
   });
@@ -284,6 +295,7 @@ function useDataGrid<TData>({
   const rowHeight = useStore(store, (state) => state.rowHeight);
   const contextMenu = useStore(store, (state) => state.contextMenu);
   const pasteDialog = useStore(store, (state) => state.pasteDialog);
+  const pagination = useStore(store, (state) => state.pagination);
 
   const rowHeightValue = getRowHeightValue(rowHeight);
 
@@ -350,6 +362,9 @@ function useDataGrid<TData>({
 
       if (updateArray.length === 0) return;
 
+      // Set flag to indicate we're processing a data update
+      store.setState("isProcessingDataUpdate", true);
+
       const currentTable = tableRef.current;
       const currentData = propsRef.current.data;
       const rows = currentTable?.getRowModel().rows;
@@ -407,8 +422,13 @@ function useDataGrid<TData>({
       }
 
       propsRef.current.onDataChange?.(newData);
+
+      // Reset flag after data change is processed
+      requestAnimationFrame(() => {
+        store.setState("isProcessingDataUpdate", false);
+      });
     },
-    [propsRef],
+    [propsRef, store],
   );
 
   const getIsCellSelected = React.useCallback(
@@ -1535,6 +1555,18 @@ function useDataGrid<TData>({
     [store, columnIds],
   );
 
+  const onPaginationChange = React.useCallback(
+    (updater: Updater<{ pageIndex: number; pageSize: number }>) => {
+      const currentState = store.getState();
+      const newPagination =
+        typeof updater === "function"
+          ? updater(currentState.pagination)
+          : updater;
+      store.setState("pagination", newPagination);
+    },
+    [store],
+  );
+
   const onRowSelect = React.useCallback(
     (rowIndex: number, selected: boolean, shiftKey: boolean) => {
       const currentState = store.getState();
@@ -1705,6 +1737,10 @@ function useDataGrid<TData>({
     () => getSortedRowModel(),
     [],
   );
+  const getMemoizedPaginationRowModel = React.useMemo(
+    () => getPaginationRowModel(),
+    [],
+  );
 
   const tableState = React.useMemo<Partial<TableState>>(
     () => ({
@@ -1712,8 +1748,9 @@ function useDataGrid<TData>({
       sorting,
       columnFilters,
       rowSelection,
+      pagination,
     }),
-    [propsRef, sorting, columnFilters, rowSelection],
+    [propsRef, sorting, columnFilters, rowSelection, pagination],
   );
 
   const tableOptions = React.useMemo<TableOptions<TData>>(() => {
@@ -1727,10 +1764,12 @@ function useDataGrid<TData>({
       onRowSelectionChange,
       onSortingChange,
       onColumnFiltersChange,
+      onPaginationChange,
       columnResizeMode: "onChange",
       getCoreRowModel: getMemoizedCoreRowModel,
       getFilteredRowModel: getMemoizedFilteredRowModel,
       getSortedRowModel: getMemoizedSortedRowModel,
+      getPaginationRowModel: getMemoizedPaginationRowModel,
       meta: tableMeta,
     };
   }, [
@@ -1742,9 +1781,11 @@ function useDataGrid<TData>({
     onRowSelectionChange,
     onSortingChange,
     onColumnFiltersChange,
+    onPaginationChange,
     getMemoizedCoreRowModel,
     getMemoizedFilteredRowModel,
     getMemoizedSortedRowModel,
+    getMemoizedPaginationRowModel,
     tableMeta,
   ]);
 
@@ -1765,7 +1806,7 @@ function useDataGrid<TData>({
   }, [table.getState().columnSizingInfo, table.getState().columnSizing]);
 
   const rowVirtualizer = useVirtualizer({
-    count: table.getRowModel().rows.length,
+    count: table.getPaginationRowModel().rows.length,
     getScrollElement: () => dataGridRef.current,
     estimateSize: () => rowHeightValue,
     overscan,
@@ -1875,6 +1916,11 @@ function useDataGrid<TData>({
   React.useEffect(() => {
     const currentState = store.getState();
     const autoFocus = propsRef.current.autoFocus;
+
+    // Don't auto-focus if we're processing a data update (e.g., after editing)
+    if (currentState.isProcessingDataUpdate) {
+      return;
+    }
 
     if (
       autoFocus &&

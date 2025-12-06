@@ -211,55 +211,50 @@ export function LicensesDataGrid({
   return (
     <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="title-s">{title}</CardTitle>
-              <Typography variant="body-s" className="text-muted-foreground mt-1">
-                {description}
-              </Typography>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <FileText className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex items-center gap-2">
-            {hasChanges && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReset}
-                  disabled={isSaving}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Discard
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={!onSave || isSaving}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </Button>
-              </>
-            )}
+          <div>
+            <CardTitle className="title-s">{title}</CardTitle>
+            <Typography variant="body-s" className="text-muted-foreground mt-1">
+              {description}
+            </Typography>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Toolbar with Search, Filter, Sort, Row Height, View */}
-        <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-between">
+        {/* Toolbar with Search, Filter, Sort, Row Height, View, and Action buttons */}
+        <div className="flex flex-wrap items-center gap-2 justify-between">
           <div className="flex items-center gap-2">
             <DataGridSearch table={gridState.table} placeholder="Search DBA..." />
             <DataGridFilterMenu table={gridState.table} />
-          </div>
-          <div className="flex items-center gap-2">
             <DataGridSortMenu table={gridState.table} />
             <DataGridRowHeightMenu table={gridState.table} />
             <DataGridViewMenu table={gridState.table} />
           </div>
+          {/* Action buttons */}
+          {hasChanges && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={isSaving}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={!onSave || isSaving}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
         </div>
         <DataGrid {...gridState} height={height} stretchColumns />
       </CardContent>

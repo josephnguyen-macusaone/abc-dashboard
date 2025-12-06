@@ -101,9 +101,6 @@ export function LicenseManagement({
         </div>
       </div>
 
-      {/* Statistics */}
-      <LicenseMetricsSection />
-
       {/* Licenses Data Grid */}
       <LicensesDataGrid
         data={licenses}

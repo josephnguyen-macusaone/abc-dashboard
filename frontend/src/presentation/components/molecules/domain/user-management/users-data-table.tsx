@@ -73,7 +73,7 @@ export function UsersDataTable({
     columns,
     pageCount,
     initialState: {
-      pagination: { pageSize: 5, pageIndex: 0 },
+      pagination: { pageSize: 20, pageIndex: 0 },
       sorting: [{ id: "createdAt", desc: true }],
       columnVisibility: {
         select: false,

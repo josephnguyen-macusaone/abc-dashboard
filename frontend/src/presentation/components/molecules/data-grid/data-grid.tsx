@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import * as React from "react";
 import { DataGridColumnHeader } from "./data-grid-column-header";
 import { DataGridRow } from "./data-grid-row";
+import { DataGridPagination } from "./data-grid-pagination";
 import type { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { flexRender } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/utils";
@@ -41,7 +42,7 @@ export function DataGrid<TData>({
   className,
   ...props
 }: DataGridProps<TData>) {
-  const rows = table.getRowModel().rows;
+  const rows = table.getPaginationRowModel().rows;
   const readOnly = tableMeta?.readOnly ?? false;
   const columnVisibility = table.getState().columnVisibility;
   const columnPinning = table.getState().columnPinning;
@@ -221,6 +222,9 @@ export function DataGrid<TData>({
             </div>
           </div>
         )}
+      </div>
+      <div className="flex flex-col gap-2.5">
+        <DataGridPagination table={table} />
       </div>
     </div>
   );

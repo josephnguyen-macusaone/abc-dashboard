@@ -16,8 +16,8 @@ export const STORAGE_KEYS = {
  * Cookie Configuration
  */
 export const COOKIE_CONFIG = {
-  TOKEN_EXPIRY_DAYS: 7,
-  USER_EXPIRY_DAYS: 7,
+  TOKEN_EXPIRY_DAYS: 1, // Temporary: 24h for testing, will change to minutes later
+  USER_EXPIRY_DAYS: 1, // Temporary: 24h for testing, will change to minutes later
   SECURE: process.env.NODE_ENV === 'production',
   SAME_SITE: 'Lax' as const,
 } as const;

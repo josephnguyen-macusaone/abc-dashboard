@@ -283,18 +283,12 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
         break;
     }
 
-    // Handle special cases with additional actions
-    if (category === 'auth' && userFriendlyMessage.includes('session')) {
-      // For session expiry, suggest re-login
-      toast.error(toastTitle, {
-        description: userFriendlyMessage,
-        action: {
-          label: 'Sign In',
-          onClick: () => {
-            // In a real app, this would trigger a login flow
-            window.location.href = '/login';
-          },
-        },
+    // Skip showing toasts for authentication errors since HTTP client handles logout automatically
+    if (category === 'auth') {
+      // Log the error but don't show toast - HTTP client will handle logout and redirect
+      logger.warn(`Authentication error handled automatically: ${userFriendlyMessage}`, {
+        error: error?.message,
+        category: 'auth-error-handled',
       });
       return;
     }
