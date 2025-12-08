@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_OPTIONS=\"--max-old-space-size=4096\" next build",
+    "build:clean": "npm run cleanup && npm run build",
+    "cleanup": "bash cleanup-build.sh",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "next lint",
     "generate:assets": "node scripts/generate-assets.js",
     "generate:assets:watch": "node scripts/generate-assets.js --watch"
   },
@@ -47,7 +49,7 @@
     "lucide-react": "^0.555.0",
     "motion": "^12.23.25",
     "nanoid": "^5.1.6",
-    "next": "16.0.5",
+    "next": "16.0.7",
     "nuqs": "^2.8.2",
     "react": "19.2.0",
     "react-day-picker": "^9.11.3",

@@ -157,6 +157,16 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
     },
     {
+      id: "agentsName",
+      accessorKey: "agentsName",
+      header: "Agents Name",
+      size: 200,
+      meta: {
+        label: "Agents Name",
+        cell: { variant: "short-text" as const },
+      },
+    },
+    {
       id: "agentsCost",
       accessorKey: "agentsCost",
       header: "Agents Cost",

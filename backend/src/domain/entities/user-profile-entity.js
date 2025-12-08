@@ -7,20 +7,16 @@ export class UserProfile {
     id,
     userId,
     bio,
-    emailVerified,
     lastLoginAt,
     lastActivityAt,
-    emailVerifiedAt,
     createdAt,
     updatedAt,
   }) {
     this.id = id;
     this.userId = userId;
     this.bio = bio;
-    this.emailVerified = emailVerified || false;
     this.lastLoginAt = lastLoginAt;
     this.lastActivityAt = lastActivityAt;
-    this.emailVerifiedAt = emailVerifiedAt;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
 
@@ -39,15 +35,6 @@ export class UserProfile {
     if (this.bio && this.bio.length > 500) {
       throw new Error('Bio cannot exceed 500 characters');
     }
-
-    // Email verification timestamp validation
-    if (this.emailVerified && !this.emailVerifiedAt) {
-      throw new Error('Email verification timestamp required when email is verified');
-    }
-
-    if (this.emailVerifiedAt && !this.emailVerified) {
-      throw new Error('Email cannot be marked verified without verification timestamp');
-    }
   }
 
   /**
@@ -58,10 +45,8 @@ export class UserProfile {
       id: this.id,
       userId: this.userId,
       bio: this.bio || null,
-      emailVerified: this.emailVerified,
       lastLoginAt: this.lastLoginAt,
       lastActivityAt: this.lastActivityAt,
-      emailVerifiedAt: this.emailVerifiedAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
@@ -112,23 +97,6 @@ export class UserProfile {
       userId: this.userId,
       profileId: this.id,
       activityAt: this.lastActivityAt,
-      occurredAt: new Date(),
-    };
-  }
-
-  verifyEmail() {
-    if (this.emailVerified) {
-      throw new Error('Email already verified');
-    }
-
-    this.emailVerified = true;
-    this.emailVerifiedAt = new Date();
-
-    return {
-      type: 'UserEmailVerified',
-      userId: this.userId,
-      profileId: this.id,
-      verifiedAt: this.emailVerifiedAt,
       occurredAt: new Date(),
     };
   }

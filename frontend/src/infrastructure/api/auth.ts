@@ -158,7 +158,11 @@ export class AuthApiService {
    */
   static async getProfile(): Promise<UserProfileDto> {
     try {
+      console.log('Frontend: Calling getProfile API');
       const response = await httpClient.get<ApiResponse<{ user: any; isAuthenticated: boolean }>>('/auth/profile');
+      console.log('Frontend: getProfile response status:', response.status);
+      console.log('Frontend: getProfile response data:', response.data);
+
       if (!response.data) {
         throw new Error('Get profile response missing data');
       }

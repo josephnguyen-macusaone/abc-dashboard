@@ -1,4 +1,6 @@
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
+import { User } from '@/domain/entities/user-entity';
+import { UserDomainService } from '@/domain/services/user-domain-service';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
 /**
@@ -41,29 +43,40 @@ export class DeleteUserUseCase {
    * Frontend only does basic validation to improve UX.
    */
   private async validateDeletePermissions(userId: string, correlationId: string): Promise<void> {
-    // Get current user to check permissions
-    const currentUser = await this.userRepository.getCurrentUser();
+    let currentUser: User | null = null;
+    let targetUser: User | null = null;
+
+    try {
+      [currentUser, targetUser] = await Promise.all([
+        this.userRepository.getCurrentUser(),
+        this.userRepository.getUserById(userId)
+      ]);
+    } catch (fetchError) {
+      // If we can't fetch users, log but don't block - let backend handle auth
+      this.logger.warn('Failed to fetch user data for permission validation', {
+        correlationId,
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+      });
+      // Continue - backend will handle authentication and permissions
+      return;
+    }
 
     if (!currentUser) {
       throw new Error('Authentication required');
     }
 
-    // Basic account status check
-    if (!currentUser.isActive) {
+    if (!targetUser) {
+      throw new Error('Target user not found');
+    }
+
+    // Basic account status check - be lenient if isActive is undefined
+    if (currentUser.isActive === false) {
       throw new Error('Your account is deactivated. Please contact administrator.');
     }
 
-    // Cannot delete yourself
-    if (currentUser.id === userId) {
-      throw new Error('You cannot delete your own account');
+    // Domain-level permission check
+    if (!UserDomainService.canUserDeleteUser(currentUser, targetUser)) {
+      throw new Error('Insufficient permissions to delete this user');
     }
-
-    // Basic role check - only admins and managers can delete users
-    if (currentUser.role !== 'admin' && currentUser.role !== 'manager') {
-      throw new Error('Insufficient permissions to delete users');
-    }
-
-    // Note: Detailed permission checks (role hierarchy, etc.) 
-    // are delegated to the backend which has full context
   }
 }

@@ -1,4 +1,5 @@
 import { User } from '@/domain/entities/user-entity';
+import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
 import {
   CreateUserDTO,
@@ -14,7 +15,7 @@ import {
   UserProfileDto,
   CreateUserResponseDto
 } from '@/application/dto/api-dto';
-import { userApi } from '../api/users';
+import { userApi } from '@/infrastructure/api/users';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 import { SortBy } from '@/shared/types';
 
@@ -102,11 +103,13 @@ export class UserRepository implements IUserRepository {
       throw new Error('User profile missing required role field');
     }
 
+    const normalizedRole = AuthDomainService.getDefaultRole(userProfile.role);
+
     return User.fromObject({
       id: String(userProfile.id), // Ensure id is always a string
       name: userProfile.displayName || userProfile.username || '',
       email: userProfile.email,
-      role: userProfile.role,
+      role: normalizedRole,
       isActive: userProfile.isActive ?? true,
       username: userProfile.username,
       avatar: userProfile.avatarUrl,
@@ -238,27 +241,46 @@ export class UserRepository implements IUserRepository {
     const logger = this.createOperationLogger('get_user_by_id');
 
     try {
-      // Check cache first
-      const cachedUser = this.getCachedUser(id);
-      if (cachedUser) {
-        logger.start(correlationId, { userId: id, cached: true });
-        logger.success(correlationId, 0, { userId: cachedUser.id, source: 'cache' });
-        return cachedUser;
-      }
+      // Skip cache for fresh data - cache can cause stale role data
+      // const cachedUser = this.getCachedUser(id);
+      // if (cachedUser) {
+      //   logger.start(correlationId, { userId: id, cached: true });
+      //   logger.success(correlationId, 0, { userId: cachedUser.id, source: 'cache' });
+      //   return cachedUser;
+      // }
 
       logger.start(correlationId, { userId: id });
 
       const startTime = Date.now();
       const response = await userApi.getUser(id);
+
+      // Debug: Log raw API response
+      console.log('getUserById API response for ID:', id, response);
+
       const userData = this.validateApiResponse<UserProfileDto>(response, 'getUser');
+
+      // Debug: Log validated user data
+      console.log('getUserById validated userData:', {
+        id: userData.id,
+        email: userData.email,
+        role: userData.role,
+      });
+
       const duration = Date.now() - startTime;
 
       const user = this.mapUserProfileToDomain(userData);
 
+      // Debug: Log mapped user
+      console.log('getUserById mapped user:', {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
       // Cache the result
       this.setCachedUser(id, user);
 
-      logger.success(correlationId, duration, { userId: user.id });
+      logger.success(correlationId, duration, { userId: user.id, userRole: user.role });
 
       return user;
     } catch (error) {

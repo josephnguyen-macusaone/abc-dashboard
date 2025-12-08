@@ -21,6 +21,7 @@ class HttpClient {
   private instance: AxiosInstance;
   private retryConfig: RetryConfig;
   private isRefreshing = false;
+  private isHandlingAuthFailure = false;
   private failedQueue: Array<{
     resolve: (token: string) => void;
     reject: (error: unknown) => void;
@@ -68,6 +69,9 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log('Frontend: Adding auth header for request:', config.url, 'Token length:', token.length);
+          } else {
+            console.log('Frontend: No token found for request:', config.url);
           }
         }
 
@@ -170,18 +174,20 @@ class HttpClient {
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
               }
 
-              // Process queued requests
+              // Process queued requests with the new token
               this.processQueue(null, newToken);
 
               // Retry the original request
               return this.instance(originalRequest);
             } else {
-              // Token refresh failed
+              // Token refresh failed - reject all queued requests and handle auth failure once
+              const refreshError = new Error('Token refresh failed');
+              this.processQueue(refreshError, null);
               await this.handleAuthFailure();
               return Promise.reject(errorResponse);
             }
           } catch (refreshError) {
-            // Token refresh failed
+            // Token refresh failed - reject all queued requests and handle auth failure once
             this.processQueue(refreshError, null);
             await this.handleAuthFailure();
             return Promise.reject(errorResponse);
@@ -243,7 +249,12 @@ class HttpClient {
   private async attemptTokenRefresh(): Promise<boolean> {
     try {
       const refreshToken = this.getRefreshToken();
-      if (!refreshToken) return false;
+      if (!refreshToken) {
+        logger.warn('No refresh token available for token refresh attempt');
+        return false;
+      }
+
+      logger.info('Attempting token refresh');
 
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth-store');
@@ -251,9 +262,15 @@ class HttpClient {
       // Attempt token refresh
       const success = await useAuthStore.getState().refreshToken();
 
+      if (success) {
+        logger.info('Token refresh successful');
+      } else {
+        logger.warn('Token refresh failed - refresh method returned false');
+      }
+
       return success;
     } catch (error) {
-      logger.error('Token refresh failed:', { error: error instanceof Error ? error.message : String(error) });
+      logger.error('Token refresh failed with exception:', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -262,20 +279,35 @@ class HttpClient {
    * Handle authentication failure - clear state and redirect to login
    */
   private async handleAuthFailure(): Promise<void> {
+    // Prevent multiple simultaneous auth failure handling
+    if (this.isHandlingAuthFailure) {
+      logger.info('Auth failure handling already in progress, skipping duplicate call');
+      return;
+    }
+
+    this.isHandlingAuthFailure = true;
+
     try {
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth-store');
 
       // Clear authentication state
-      useAuthStore.getState().logout();
+      await useAuthStore.getState().logout();
 
       // Redirect to login page if in browser
       if (typeof window !== 'undefined') {
+        // Prevent multiple rapid redirects by checking if already redirecting
+        const redirectingKey = 'auth_redirecting';
+        if (!sessionStorage.getItem(redirectingKey)) {
+          sessionStorage.setItem(redirectingKey, 'true');
         // Use window.location for reliable client-side navigation
         window.location.href = '/login';
+        }
       }
     } catch (error) {
       logger.error('Failed to handle auth failure:', { error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.isHandlingAuthFailure = false;
     }
   }
 

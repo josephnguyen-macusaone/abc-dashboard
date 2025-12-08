@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache (optional)
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: abc-dashboard-redis
@@ -33,6 +33,17 @@ services:
       timeout: 5s
       retries: 3
 
+  # Mailhog for email testing (development only)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: abc-dashboard-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"    # SMTP server
+      - "8025:8025"    # Web interface
+    networks:
+      - abc-dashboard-network
+
   # Backend API
   backend:
     build:
@@ -43,16 +54,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=5000
-      - MONGODB_URI=mongodb://mongodb:27017/abc_dashboard
-      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://localhost:27017/abc_dashboard
       - JWT_SECRET=${JWT_SECRET}
       - CLIENT_URL=${CLIENT_URL}
       - EMAIL_SERVICE=${EMAIL_SERVICE}
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_SECURE=${EMAIL_SECURE}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - EMAIL_USER=${EMAIL_USER}
@@ -60,13 +69,14 @@ services:
       - DATABASE_TYPE=mongodb
     volumes:
       - ./backend/logs:/app/logs
+      - /app/node_modules
     networks:
       - abc-dashboard-network
     depends_on:
-      mongodb:
-        condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
       interval: 30s
@@ -85,8 +95,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://backend:5000
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=/api/v1
     networks:
       - abc-dashboard-network
     depends_on:

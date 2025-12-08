@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Typography } from '@/presentation/components/atoms';
-import { LicenseMetricsSection } from '@/presentation/components/organisms/dashboard/sections/license-metrics-section';
 import { LicensesDataGrid } from '@/presentation/components/molecules/domain/license-management';
+import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { cn } from '@/shared/utils';
 import type { LicenseRecord } from '@/shared/types';
 import type { User } from '@/domain/entities/user-entity';
@@ -33,6 +33,10 @@ interface LicenseManagementProps {
   onAddLicense?: () => LicenseRecord;
   /** Callback for deleting license rows */
   onDeleteLicenses?: (licenses: LicenseRecord[], indices: number[]) => Promise<void>;
+  /** Current date range filter */
+  dateRange?: { from?: Date; to?: Date };
+  /** Callback when date range changes */
+  onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -45,6 +49,8 @@ export function LicenseManagement({
   onSaveLicenses,
   onAddLicense,
   onDeleteLicenses,
+  dateRange,
+  onDateRangeChange,
   className
 }: LicenseManagementProps) {
   // Reload licenses handler (called after operations)
@@ -87,8 +93,29 @@ export function LicenseManagement({
     [onDeleteLicenses],
   );
 
+  // Filter licenses by date range
+  const filteredLicenses = useMemo(() => {
+    if (!dateRange?.from && !dateRange?.to) {
+      return licenses;
+    }
+
+    return licenses.filter((license) => {
+      const startDate = new Date(license.startDay);
+
+      if (dateRange.from && startDate < dateRange.from) {
+        return false;
+      }
+
+      if (dateRange.to && startDate > dateRange.to) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [licenses, dateRange]);
+
   return (
-    <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-6 px-6 pb-8', className)}>
+    <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6', className)}>
       {/* Header */}
       <div className="flex items-center justify-between pt-4">
         <div className="">
@@ -99,18 +126,25 @@ export function LicenseManagement({
             Manage license records and subscriptions
           </Typography>
         </div>
+        {/* Date Range Filter */}
+        {onDateRangeChange && (
+          <DateRangeFilterCard
+            initialDateFrom={dateRange?.from}
+            initialDateTo={dateRange?.to}
+            onUpdate={onDateRangeChange}
+            align="end"
+          />
+        )}
       </div>
 
       {/* Licenses Data Grid */}
       <LicensesDataGrid
-        data={licenses}
+        data={filteredLicenses}
         isLoading={isLoading}
         height={650}
         onSave={handleSave}
         onAddRow={handleAddRow}
         onDeleteRows={handleDeleteRows}
-        title="All Licenses"
-        description="Click on any cell to edit. Press Enter or double-click to start editing. Use keyboard shortcuts like Excel: Enter to edit, Tab to navigate, Ctrl+C/V to copy/paste."
       />
     </div>
   );

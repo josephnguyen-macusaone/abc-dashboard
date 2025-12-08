@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import logger from '../../infrastructure/config/logger.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
+import { config } from '../../infrastructure/config/config.js';
+import crypto from 'crypto';
 
 /**
  * Authentication Service
@@ -8,7 +10,7 @@ import { ValidationException } from '../../domain/exceptions/domain.exception.js
  */
 export class AuthService {
   constructor() {
-    this.saltRounds = 12;
+    this.saltRounds = Number.isInteger(config.BCRYPT_ROUNDS) ? config.BCRYPT_ROUNDS : 12;
     this.correlationId = null;
     this.operationId = null;
   }
@@ -88,30 +90,27 @@ export class AuthService {
    */
   generateTemporaryPassword() {
     try {
-      // Generate a 12-character password with mixed case, numbers, and special characters
-      const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      const numbers = '0123456789';
-      const special = '!@#$%^&*';
+      const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+      const length = 16;
+      const randomBytes = crypto.randomBytes(length * 2); // extra to ensure coverage
 
-      let password = '';
-
-      // Ensure at least one character from each category
-      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-      password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-      password += special.charAt(Math.floor(Math.random() * special.length));
-
-      // Fill remaining characters randomly
-      const allChars = lowercase + uppercase + numbers + special;
-      for (let i = 4; i < 12; i++) {
-        password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+      const chars = [];
+      for (let i = 0; chars.length < length && i < randomBytes.length; i++) {
+        chars.push(charset.charAt(randomBytes[i] % charset.length));
       }
 
-      // Shuffle the password
-      password = password.split('').sort(() => Math.random() - 0.5).join('');
+      // Ensure minimum complexity: force one of each class
+      const ensureClasses = [
+        'abcdefghijklmnopqrstuvwxyz',
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        '0123456789',
+        '!@#$%^&*',
+      ];
+      ensureClasses.forEach((group, idx) => {
+        chars[idx] = group.charAt(randomBytes[idx] % group.length);
+      });
 
-      return password;
+      return chars.join('');
     } catch (error) {
       logger.error('Temporary password generation failed', {
         correlationId: this.correlationId,

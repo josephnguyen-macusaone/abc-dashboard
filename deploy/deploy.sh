@@ -193,9 +193,14 @@ build_frontend() {
 
     cd frontend
 
-    # Install dependencies
+    # Install dependencies and ensure package-lock.json exists
     log_info "Installing frontend dependencies..."
-    npm ci
+    if [ -f package-lock.json ]; then
+        npm ci
+    else
+        log_info "No package-lock.json found, running npm install to generate it..."
+        npm install
+    fi
 
     # Build the application (with static export due to output: 'export' in next.config.ts)
     log_info "Building Next.js application with static export..."
@@ -342,41 +347,9 @@ start_services() {
 wait_for_services() {
     log_info "Waiting for services to be healthy..."
 
-    # Wait for MongoDB
-    log_info "Waiting for MongoDB..."
-    timeout=60
-    while [ $timeout -gt 0 ]; do
-        if docker-compose exec -T mongodb mongosh --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
-            log_success "MongoDB is ready"
-            break
-        fi
-        sleep 2
-        timeout=$((timeout - 2))
-    done
+    # Note: MongoDB Atlas and Redis are external services, no local checks needed
 
-    if [ $timeout -le 0 ]; then
-        log_error "MongoDB failed to start"
-        exit 1
-    fi
-
-    # Wait for Redis
-    log_info "Waiting for Redis..."
-    timeout=30
-    while [ $timeout -gt 0 ]; do
-        if docker-compose exec -T redis redis-cli ping | grep -q PONG; then
-            log_success "Redis is ready"
-            break
-        fi
-        sleep 1
-        timeout=$((timeout - 1))
-    done
-
-    if [ $timeout -le 0 ]; then
-        log_error "Redis failed to start"
-        exit 1
-    fi
-
-    # Wait for backend
+    # Wait for backend API
     log_info "Waiting for backend API..."
     timeout=60
     while [ $timeout -gt 0 ]; do
@@ -390,6 +363,23 @@ wait_for_services() {
 
     if [ $timeout -le 0 ]; then
         log_error "Backend API failed to start"
+        exit 1
+    fi
+
+    # Wait for frontend
+    log_info "Waiting for frontend..."
+    timeout=30
+    while [ $timeout -gt 0 ]; do
+        if curl -f http://localhost:3000/ >/dev/null 2>&1; then
+            log_success "Frontend is ready"
+            break
+        fi
+        sleep 2
+        timeout=$((timeout - 2))
+    done
+
+    if [ $timeout -le 0 ]; then
+        log_error "Frontend failed to start"
         exit 1
     fi
 

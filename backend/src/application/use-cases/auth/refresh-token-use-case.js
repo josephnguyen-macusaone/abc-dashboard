@@ -9,9 +9,10 @@ import {
 import { TokensDto } from '../../dto/auth/index.js';
 
 export class RefreshTokenUseCase {
-  constructor(userRepository, tokenService) {
+  constructor(userRepository, tokenService, refreshTokenRepository) {
     this.userRepository = userRepository;
     this.tokenService = tokenService;
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   /**
@@ -34,6 +35,13 @@ export class RefreshTokenUseCase {
         throw new InvalidCredentialsException('Invalid or expired refresh token');
       }
 
+      // Ensure token exists in storage and is not revoked/expired
+      const tokenHash = this.tokenService.hashToken(refreshToken);
+      const storedToken = await this.refreshTokenRepository.findValidByHash(tokenHash);
+      if (!storedToken) {
+        throw new InvalidCredentialsException('Invalid or expired refresh token');
+      }
+
       // Find user by ID from token
       const user = await this.userRepository.findById(decoded.userId);
       if (!user) {
@@ -47,9 +55,26 @@ export class RefreshTokenUseCase {
       });
 
       // Optionally generate a new refresh token (rotate refresh tokens)
-      const newRefreshToken = this.tokenService.generateRefreshToken({
-        userId: user.id,
-      });
+      const newRefreshToken = this.tokenService.generateRefreshToken({ userId: user.id });
+
+      // Persist rotated refresh token and revoke the old one
+      try {
+        const decodedNewRefresh = this.tokenService.verifyToken(newRefreshToken);
+        const newRefreshHash = this.tokenService.hashToken(newRefreshToken);
+        const newExpiresAt = decodedNewRefresh?.exp
+          ? new Date(decodedNewRefresh.exp * 1000)
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        await this.refreshTokenRepository.saveToken({
+          userId: user.id,
+          tokenHash: newRefreshHash,
+          expiresAt: newExpiresAt,
+        });
+
+        await this.refreshTokenRepository.revokeByHash(tokenHash, newRefreshHash);
+      } catch (persistError) {
+        throw new Error(`Refresh token rotation failed: ${persistError.message}`);
+      }
 
       // Return new tokens as DTO
       return {

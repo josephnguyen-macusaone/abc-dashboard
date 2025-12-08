@@ -1,4 +1,4 @@
-import { User, AuthTokens } from '@/domain/entities/user-entity';
+import { User } from '@/domain/entities/user-entity';
 import logger from '@/shared/utils/logger';
 import { STORAGE_KEYS } from '@/shared/constants';
 

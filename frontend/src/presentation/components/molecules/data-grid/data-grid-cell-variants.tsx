@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from "@/presentation/components/atoms/forms/select";
 import { Calendar } from "@/presentation/components/atoms/primitives/calendar";
+import { Button } from "@/presentation/components/atoms/primitives/button";
+import { Input } from "@/presentation/components/atoms/forms/input";
+import { CalendarIcon, X } from "lucide-react";
 import { cn } from "@/shared/utils";
 import type { CellVariantProps } from "@/shared/types/data-grid";
 
@@ -489,12 +492,14 @@ export function DateCell<TData>({
 }: CellVariantProps<TData>) {
   const initialValue = cell.getValue() as string;
   const [value, setValue] = React.useState(initialValue ?? "");
+  const [inputValue, setInputValue] = React.useState(formatDateForDisplay(value));
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const prevInitialValueRef = React.useRef(initialValue);
   if (initialValue !== prevInitialValueRef.current) {
     prevInitialValueRef.current = initialValue;
     setValue(initialValue ?? "");
+    setInputValue(formatDateForDisplay(initialValue ?? ""));
   }
 
   const selectedDate = value ? new Date(value) : undefined;
@@ -505,17 +510,62 @@ export function DateCell<TData>({
 
       const formattedDate = date.toISOString().split("T")[0] ?? "";
       setValue(formattedDate);
+      setInputValue(formatDateForDisplay(formattedDate));
       tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: formattedDate });
       tableMeta?.onCellEditingStop?.();
     },
     [tableMeta, rowIndex, columnId, readOnly],
   );
 
+  const onQuickSelect = React.useCallback(
+    (daysOffset: number) => {
+      if (readOnly) return;
+
+      const date = new Date();
+      date.setDate(date.getDate() + daysOffset);
+      const formattedDate = date.toISOString().split("T")[0] ?? "";
+      setValue(formattedDate);
+      setInputValue(formatDateForDisplay(formattedDate));
+      tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: formattedDate });
+      tableMeta?.onCellEditingStop?.();
+    },
+    [tableMeta, rowIndex, columnId, readOnly],
+  );
+
+  const onInputChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setInputValue(event.target.value);
+    },
+    [],
+  );
+
+  const onInputKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        // Try to parse the input as a date
+        const parsedDate = new Date(event.currentTarget.value);
+        if (!isNaN(parsedDate.getTime())) {
+          const formattedDate = parsedDate.toISOString().split("T")[0] ?? "";
+          setValue(formattedDate);
+          setInputValue(formatDateForDisplay(formattedDate));
+          tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: formattedDate });
+          tableMeta?.onCellEditingStop?.();
+        }
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setInputValue(formatDateForDisplay(value));
+        tableMeta?.onCellEditingStop?.();
+      }
+    },
+    [tableMeta, rowIndex, columnId, value],
+  );
+
   const onOpenChange = React.useCallback(
     (isOpen: boolean) => {
       if (isOpen && !readOnly) {
         tableMeta?.onCellEditingStart?.(rowIndex, columnId);
-      } else {
+      } else if (!isOpen) {
         tableMeta?.onCellEditingStop?.();
       }
     },
@@ -527,6 +577,7 @@ export function DateCell<TData>({
       if (isEditing && event.key === "Escape") {
         event.preventDefault();
         setValue(initialValue);
+        setInputValue(formatDateForDisplay(initialValue));
         tableMeta?.onCellEditingStop?.();
       } else if (!isEditing && isFocused && event.key === "Tab") {
         event.preventDefault();
@@ -550,30 +601,107 @@ export function DateCell<TData>({
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
     >
-      <Popover open={isEditing} onOpenChange={onOpenChange}>
-        <PopoverAnchor asChild>
-          <span data-slot="grid-cell-content">
-            {formatDateForDisplay(value)}
-          </span>
-        </PopoverAnchor>
-        {isEditing && (
-          <PopoverContent
-            data-grid-cell-editor=""
-            align="start"
-            alignOffset={-8}
-            className="w-auto p-0"
-          >
-            <Calendar
-              autoFocus
-              captionLayout="dropdown"
-              mode="single"
-              defaultMonth={selectedDate ?? new Date()}
-              selected={selectedDate}
-              onSelect={onDateSelect}
-            />
-          </PopoverContent>
-        )}
-      </Popover>
+      <div className="size-full overflow-hidden">
+        <Popover open={isEditing} onOpenChange={onOpenChange}>
+          <PopoverAnchor asChild>
+            <span data-slot="grid-cell-content" className="flex h-full items-center">
+              {formatDateForDisplay(value)}
+            </span>
+          </PopoverAnchor>
+          {isEditing && (
+            <PopoverContent
+              data-grid-cell-editor=""
+              align="start"
+              alignOffset={-8}
+              className="w-80 p-0"
+              side="bottom"
+              sideOffset={4}
+            >
+              <div className="p-4 space-y-3">
+                {/* Quick Select Buttons */}
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => onQuickSelect(0)}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => onQuickSelect(-1)}
+                  >
+                    Yesterday
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => onQuickSelect(1)}
+                  >
+                    Tomorrow
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => onQuickSelect(7)}
+                  >
+                    +7 days
+                  </Button>
+                </div>
+
+                {/* Date Input */}
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input
+                    value={inputValue}
+                    onChange={onInputChange}
+                    onKeyDown={onInputKeyDown}
+                    placeholder="MM/DD/YYYY"
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  {value && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-muted"
+                      onClick={() => {
+                        setValue("");
+                        setInputValue("");
+                        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: "" });
+                        tableMeta?.onCellEditingStop?.();
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Calendar */}
+                <div className="border-t pt-3">
+                  <Calendar
+                    mode="single"
+                    defaultMonth={selectedDate ?? new Date()}
+                    selected={selectedDate}
+                    onSelect={onDateSelect}
+                    className="rounded-md"
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          )}
+        </Popover>
+      </div>
     </DataGridCellWrapper>
   );
 }

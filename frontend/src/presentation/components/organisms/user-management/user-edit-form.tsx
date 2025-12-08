@@ -18,7 +18,7 @@ import { FormField, InputField } from '@/presentation/components/molecules';
 import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Edit, X, Check, ArrowLeft } from 'lucide-react';
+import { Edit, X, Check } from 'lucide-react';
 
 // Validation schema for updates (all fields optional)
 const updateUserSchema = z.object({
@@ -163,7 +163,7 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
   };
 
   return (
-    <Card className="max-w mx-auto">
+    <Card className="max-w-3xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Edit className="h-5 w-5" />
@@ -201,81 +201,79 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Display Name */}
-            <InputField
-              label="Display Name"
-              type="text"
-              placeholder="Enter display name"
-              value={watch('displayName') || ''}
-              onChange={(e) => setValue('displayName', e.target.value)}
-              error={errors.displayName?.message}
-              disabled={isUpdating}
-              inputClassName="h-11"
-              className="space-y-3"
-            />
+          {/* Display Name */}
+          <InputField
+            label="Display Name"
+            type="text"
+            placeholder="Enter display name"
+            value={watch('displayName') || ''}
+            onChange={(e) => setValue('displayName', e.target.value)}
+            error={errors.displayName?.message}
+            disabled={isUpdating}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
 
-            {/* Phone */}
-            <InputField
-              label="Phone Number"
-              type="tel"
-              placeholder="Enter phone number"
-              value={watch('phone') || ''}
-              onChange={(e) => setValue('phone', e.target.value)}
-              error={errors.phone?.message}
-              disabled={isUpdating}
-              inputClassName="h-11"
-              className="space-y-3"
-            />
+          {/* Phone */}
+          <InputField
+            label="Phone Number"
+            type="tel"
+            placeholder="Enter phone number"
+            value={watch('phone') || ''}
+            onChange={(e) => setValue('phone', e.target.value)}
+            error={errors.phone?.message}
+            disabled={isUpdating}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
 
-            {/* Role */}
-            <FormField
-              label="Role"
-              error={errors.role?.message}
-              className="space-y-3"
+          {/* Role */}
+          <FormField
+            label="Role"
+            error={errors.role?.message}
+            className="space-y-3"
+          >
+            <Select
+              value={selectedRole}
+              onValueChange={(value: typeof USER_ROLES.MANAGER | typeof USER_ROLES.STAFF) => setValue('role', value)}
+              disabled={isUpdating}
             >
-              <Select
-                value={selectedRole}
-                onValueChange={(value: typeof USER_ROLES.MANAGER | typeof USER_ROLES.STAFF) => setValue('role', value)}
-                disabled={isUpdating}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="staff">
-                    <div className="flex items-center gap-2">
-                      <span>Staff</span>
-                      <Typography variant="body-xs" color="muted" as="span">Basic user access</Typography>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="manager">
-                    <div className="flex items-center gap-2">
-                      <span>Manager</span>
-                      <Typography variant="body-xs" color="muted" as="span">Team management access</Typography>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </FormField>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="staff">
+                  <div className="flex items-center gap-2">
+                    <span>Staff</span>
+                    <Typography variant="body-xs" color="muted" as="span">Basic user access</Typography>
+                  </div>
+                </SelectItem>
+                <SelectItem value="manager">
+                  <div className="flex items-center gap-2">
+                    <span>Manager</span>
+                    <Typography variant="body-xs" color="muted" as="span">Team management access</Typography>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
 
-            {/* Status */}
-            <FormField label="Status" className="space-y-3">
-              <Select
-                value={isActive ? 'active' : 'inactive'}
-                onValueChange={(value: string) => setValue('isActive', value === 'active')}
-                disabled={isUpdating}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormField>
-          </div>
+          {/* Status */}
+          <FormField label="Status" className="space-y-3">
+            <Select
+              value={isActive ? 'active' : 'inactive'}
+              onValueChange={(value: string) => setValue('isActive', value === 'active')}
+              disabled={isUpdating}
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
 
           {/* Form Actions */}
           <div className="flex flex-col sm:flex-row justify-end gap-3">

@@ -2,13 +2,13 @@ import { UserRepository } from '../../infrastructure/repositories/user-repositor
 import { UserProfileRepository } from '../../infrastructure/repositories/user-profile-repository.js';
 import UserModel from '../../infrastructure/models/user-model.js';
 import UserProfileModel from '../../infrastructure/models/user-profile-model.js';
+import RefreshTokenModel from '../../infrastructure/models/refresh-token-model.js';
+import { RefreshTokenRepository } from '../../infrastructure/repositories/refresh-token-repository.js';
 import { AuthController } from '../../infrastructure/controllers/auth-controller.js';
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
-import { RegisterUseCase } from '../../application/use-cases/auth/register-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
-import { VerifyEmailUseCase as AuthVerifyEmailUseCase } from '../../application/use-cases/auth/verify-email-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
 import { ChangePasswordUseCase } from '../../application/use-cases/auth/change-password-use-case.js';
 import { RequestPasswordResetUseCase } from '../../application/use-cases/auth/request-password-reset-use-case.js';
@@ -22,7 +22,6 @@ import { GetUserStatsUseCase } from '../../application/use-cases/users/get-user-
 import { GetProfileUseCase } from '../../application/use-cases/profiles/get-profile-use-case.js';
 import { UpdateProfileUseCase as ProfileUpdateProfileUseCase } from '../../application/use-cases/profiles/update-profile-use-case.js';
 import { RecordLoginUseCase } from '../../application/use-cases/profiles/record-login-use-case.js';
-import { MarkEmailVerifiedUseCase } from '../../application/use-cases/profiles/mark-email-verified-use-case.js';
 import { AuthService } from '../services/auth-service.js';
 import { TokenService } from '../services/token-service.js';
 import { EmailService } from '../services/email-service.js';
@@ -70,6 +69,11 @@ class Container {
       tokenService.correlationId = correlationId;
     }
 
+    const refreshTokenRepo = this.instances.get('refreshTokenRepository');
+    if (refreshTokenRepo && refreshTokenRepo.setCorrelationId) {
+      refreshTokenRepo.setCorrelationId(correlationId);
+    }
+
     const emailService = this.instances.get('emailService');
     if (emailService) {
       emailService.correlationId = correlationId;
@@ -104,6 +108,13 @@ class Container {
     return this.instances.get('tokenService');
   }
 
+  getRefreshTokenRepository() {
+    if (!this.instances.has('refreshTokenRepository')) {
+      this.instances.set('refreshTokenRepository', new RefreshTokenRepository(RefreshTokenModel));
+    }
+    return this.instances.get('refreshTokenRepository');
+  }
+
   getEmailService() {
     if (!this.instances.has('emailService')) {
       this.instances.set('emailService', new EmailService());
@@ -116,28 +127,16 @@ class Container {
     return new LoginUseCase(
       this.getUserRepository(),
       this.getAuthService(),
-      this.getTokenService()
-    );
-  }
-
-  getRegisterUseCase() {
-    return new RegisterUseCase(
-      this.getUserRepository(),
-      this.getAuthService(),
       this.getTokenService(),
-      this.getEmailService()
+      this.getRefreshTokenRepository()
     );
   }
 
   getRefreshTokenUseCase() {
-    return new RefreshTokenUseCase(this.getUserRepository(), this.getTokenService());
-  }
-
-  getAuthVerifyEmailUseCase() {
-    return new AuthVerifyEmailUseCase(
+    return new RefreshTokenUseCase(
       this.getUserRepository(),
       this.getTokenService(),
-      this.getEmailService()
+      this.getRefreshTokenRepository()
     );
   }
 
@@ -216,24 +215,18 @@ class Container {
     return new RecordLoginUseCase(this.getUserProfileRepository());
   }
 
-  getMarkEmailVerifiedUseCase() {
-    return new MarkEmailVerifiedUseCase(this.getUserProfileRepository());
-  }
-
   // Controllers
   getAuthController() {
     return new AuthController(
       this.getLoginUseCase(),
-      this.getRegisterUseCase(),
       this.getRefreshTokenUseCase(),
-      this.getAuthVerifyEmailUseCase(),
-      this.getMarkEmailVerifiedUseCase(),
       this.getChangePasswordUseCase(),
       this.getRequestPasswordResetUseCase(),
       this.getRequestPasswordResetWithGeneratedPasswordUseCase(),
       this.getResetPasswordUseCase(),
       this.getTokenService(),
-      this.getUserProfileRepository()
+      this.getUserProfileRepository(),
+      this.getRefreshTokenRepository()
     );
   }
 

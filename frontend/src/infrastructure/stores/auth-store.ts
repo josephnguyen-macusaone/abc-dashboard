@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { User, UserRole } from '@/domain/entities/user-entity';
+import { User } from '@/domain/entities/user-entity';
 import { authApi } from '@/infrastructure/api/auth';
 import { httpClient } from '@/infrastructure/api/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
@@ -14,8 +14,7 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  emailVerificationRequired: boolean;
-  emailVerificationMessage: string | null;
+  isLoggingOut: boolean;
 
   // Password reset state
   passwordResetSent: boolean;
@@ -24,10 +23,8 @@ interface AuthState {
   // Actions
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
-  verifyEmail: (email: string, token: string) => Promise<{ user: User; message: string }>;
   canAccessProtectedRoutes: () => boolean;
   updateProfile: (updates: Partial<{
     firstName: string;
@@ -44,7 +41,6 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
-  clearEmailVerificationState: () => void;
   clearPasswordResetState: () => void;
 }
 
@@ -63,8 +59,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isLoading: true,
           isAuthenticated: false,
-          emailVerificationRequired: false,
-          emailVerificationMessage: null,
+          isLoggingOut: false,
           passwordResetSent: false,
           passwordResetEmail: null,
 
@@ -141,11 +136,6 @@ export const useAuthStore = create<AuthState>()(
                 CookieService.setUser(completeUser);
                 LocalStorageService.setUser(completeUser);
                 set({ isAuthenticated: true });
-
-                storeLogger.info('Login successful', {
-                  userId: completeUser.id,
-                  role: completeUser.role
-                });
               } catch (profileError) {
                 // Fallback to login response data
                 const basicUser = User.fromObject({
@@ -165,53 +155,7 @@ export const useAuthStore = create<AuthState>()(
               }
             } catch (error: any) {
               const errorMessage = getErrorMessage(error);
-
-              // Check if this is an email verification error
-              if (errorMessage.includes('verify your email') || errorMessage.includes('Check your email')) {
-                set({
-                  emailVerificationRequired: true,
-                  emailVerificationMessage: errorMessage
-                });
-                return;
-              }
-
               throw new Error(errorMessage);
-            } finally {
-              set({ isLoading: false });
-            }
-          },
-
-          register: async (username: string, firstName: string, lastName: string, email: string, password: string, role?: string) => {
-            try {
-              set({ isLoading: true });
-
-              const registerResult = await authApi.register({
-                username,
-                firstName,
-                lastName,
-                email,
-                password,
-                role: role as UserRole
-              });
-
-              const registeredUser = User.fromObject({
-                ...registerResult.user,
-                isActive: false, // New users are not active until email verification
-                lastLogin: new Date(),
-                updatedAt: new Date()
-              });
-
-              set({ user: registeredUser });
-              CookieService.setUser(registeredUser);
-              LocalStorageService.setUser(registeredUser);
-              set({ isAuthenticated: false });
-
-              storeLogger.info('User registered successfully', {
-                userId: registeredUser.id,
-                email: registeredUser.email
-              });
-            } catch (error: any) {
-              throw new Error(getErrorMessage(error));
             } finally {
               set({ isLoading: false });
             }
@@ -236,7 +180,6 @@ export const useAuthStore = create<AuthState>()(
                 LocalStorageService.setRefreshToken(newTokens.tokens.refreshToken);
               }
 
-              storeLogger.info('Token refresh successful');
               return true;
             } catch (error) {
               storeLogger.warn('Token refresh failed', {
@@ -253,28 +196,9 @@ export const useAuthStore = create<AuthState>()(
             }
           },
 
-          verifyEmail: async (token: string) => {
-            try {
-              const response = await authApi.verifyEmail(token);
-              const user = User.fromObject(response.user);
-
-              set({ user });
-              CookieService.setUser(user);
-              LocalStorageService.setUser(user);
-
-              storeLogger.info('Email verification successful');
-              return { user, message: response.message };
-            } catch (error) {
-              storeLogger.warn('Email verification failed', {
-                error: error instanceof Error ? error.message : String(error)
-              });
-              throw error;
-            }
-          },
-
           canAccessProtectedRoutes: () => {
             const state = get();
-            return state.isAuthenticated && state.user?.isActive === true;
+            return state.isAuthenticated;
           },
 
           updateProfile: async (updates) => {
@@ -286,7 +210,6 @@ export const useAuthStore = create<AuthState>()(
               CookieService.setUser(updatedUser);
               LocalStorageService.setUser(updatedUser);
 
-              storeLogger.info('Profile update successful');
               return updatedUser;
             } catch (error) {
               storeLogger.warn('Profile update failed', {
@@ -302,7 +225,6 @@ export const useAuthStore = create<AuthState>()(
                 currentPassword,
                 newPassword
               });
-              storeLogger.info('Password change successful');
             } catch (error) {
               storeLogger.warn('Password change failed', {
                 error: error instanceof Error ? error.message : String(error)
@@ -321,8 +243,6 @@ export const useAuthStore = create<AuthState>()(
                 passwordResetSent: true,
                 passwordResetEmail: email
               });
-
-              storeLogger.info('Password reset request successful');
             } catch (error) {
               storeLogger.warn('Password reset request failed', {
                 error: error instanceof Error ? error.message : String(error)
@@ -343,8 +263,6 @@ export const useAuthStore = create<AuthState>()(
                 passwordResetSent: false,
                 passwordResetEmail: null
               });
-
-              storeLogger.info('Password reset successful');
             } catch (error) {
               storeLogger.warn('Password reset failed', {
                 error: error instanceof Error ? error.message : String(error)
@@ -356,6 +274,14 @@ export const useAuthStore = create<AuthState>()(
           },
 
           logout: async () => {
+            // Prevent multiple simultaneous logout calls
+            if (get().isLoggingOut) {
+              storeLogger.info('Logout already in progress, skipping duplicate call');
+              return;
+            }
+
+            set({ isLoggingOut: true });
+
             try {
               await authApi.logout();
             } catch (error) {
@@ -368,6 +294,7 @@ export const useAuthStore = create<AuthState>()(
                 user: null,
                 token: null,
                 isAuthenticated: false,
+                isLoggingOut: false,
                 passwordResetSent: false,
                 passwordResetEmail: null
               });
@@ -395,7 +322,6 @@ export const useAuthStore = create<AuthState>()(
               CookieService.setUser(user);
               LocalStorageService.setUser(user);
 
-              storeLogger.info('Current user refreshed successfully', { userId: user.id });
               return user;
             } catch (error) {
               storeLogger.error('Failed to refresh current user', {
@@ -404,11 +330,6 @@ export const useAuthStore = create<AuthState>()(
               throw error;
             }
           },
-
-          clearEmailVerificationState: () => set({
-            emailVerificationRequired: false,
-            emailVerificationMessage: null
-          }),
 
           clearPasswordResetState: () => set({
             passwordResetSent: false,
@@ -422,6 +343,7 @@ export const useAuthStore = create<AuthState>()(
           user: state.user,
           token: state.token,
           isAuthenticated: state.isAuthenticated,
+          // Don't persist isLoggingOut as it's a temporary state
         }),
       }
     ),

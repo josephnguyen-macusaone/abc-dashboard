@@ -4,6 +4,7 @@
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
+import { config } from '../../../infrastructure/config/config.js';
 
 export class RequestPasswordResetUseCase {
   constructor(userRepository, tokenService, emailService) {
@@ -46,13 +47,15 @@ export class RequestPasswordResetUseCase {
       // Generate password reset token
       const resetToken = this.tokenService.generatePasswordResetToken(user.id, user.email);
 
-      // Send email with reset link
+      // Send email with reset link - use CLIENT_URL from config
       try {
-        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+        const baseUrl = config.CLIENT_URL || 'https://portal.abcsalon.us';
+        const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
         await this.emailService.sendPasswordResetEmail(user.email, {
           displayName: user.displayName || user.email.split('@')[0],
           resetUrl,
+          email: user.email,
         });
 
         logger.info('Password reset email sent successfully', {

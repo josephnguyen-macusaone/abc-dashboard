@@ -60,6 +60,31 @@ export class EmailService {
           greetingTimeout: 10000, // 10 seconds
           socketTimeout: 60000, // 60 seconds
         };
+      } else if (config.EMAIL_SERVICE === 'mailjet') {
+        logger.info('Initializing Mailjet SMTP transporter', {
+          correlationId: this.correlationId,
+          host: config.EMAIL_HOST || 'in-v3.mailjet.com',
+          port: config.EMAIL_PORT || 587,
+        });
+
+        if (!config.EMAIL_USER || !config.EMAIL_PASS) {
+          throw new ValidationException(
+            'Mailjet requires EMAIL_USER (API Key) and EMAIL_PASS (Secret Key)'
+          );
+        }
+
+        transporterConfig = {
+          host: config.EMAIL_HOST || 'in-v3.mailjet.com',
+          port: config.EMAIL_PORT || 587,
+          secure: config.EMAIL_SECURE === true || config.EMAIL_SECURE === 'true',
+          auth: {
+            user: config.EMAIL_USER,
+            pass: config.EMAIL_PASS,
+          },
+          pool: true,
+          maxConnections: 5,
+          maxMessages: 100,
+        };
       } else {
         // Standard SMTP configuration (MailHog, generic SMTP)
         transporterConfig = {
@@ -104,262 +129,9 @@ export class EmailService {
     }
   }
 
-  /**
-   * Send email verification with graceful degradation
-   * @param {string} to - Recipient email
-   * @param {Object} data - Template data
-   */
-  async sendEmailVerification(to, data) {
-    const subject = 'Verify Your Email - ABC Dashboard';
-    const template = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify Your Email - ABC Dashboard</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
-
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
-          body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #FAFAFA;
-            color: #262627;
-            line-height: 1.6;
-          }
-
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-
-          .header {
-            background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%);
-            padding: 40px 30px;
-            text-align: center;
-          }
-
-          .logo {
-            font-family: 'Archivo', sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            color: #FFFFFF;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 8px;
-          }
-
-          .header-text {
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.9;
-          }
-
-          .content {
-            padding: 40px 30px;
-          }
-
-          .welcome-text {
-            font-size: 20px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 16px;
-          }
-
-          .description {
-            font-size: 16px;
-            color: #525252;
-            margin-bottom: 32px;
-            line-height: 1.6;
-          }
-
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #F66600 0%, #CC4700 100%);
-            color: #FFFFFF;
-            text-decoration: none;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            text-align: center;
-            margin: 24px 0;
-            box-shadow: 0 4px 14px 0 rgba(246, 102, 0, 0.39);
-            transition: all 0.2s ease;
-          }
-
-          .cta-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px 0 rgba(246, 102, 0, 0.5);
-          }
-
-          .alternative-link {
-            background-color: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 24px 0;
-            text-align: center;
-          }
-
-          .alternative-link p {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 12px;
-          }
-
-          .link-text {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 14px;
-            color: #0B80D8;
-            word-break: break-all;
-            background-color: #EFF6FF;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #BFDBFE;
-          }
-
-          .warning-box {
-            background-color: #FFF3CD;
-            border: 1px solid #FFEAA7;
-            border-radius: 8px;
-            padding: 16px;
-            margin: 24px 0;
-          }
-
-          .warning-box p {
-            font-size: 14px;
-            color: #92400E;
-            margin: 0;
-          }
-
-          .footer {
-            background-color: #F8FAFC;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #E2E8F0;
-          }
-
-          .footer-text {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 8px;
-          }
-
-          .footer-brand {
-            font-family: 'Archivo', sans-serif;
-            font-weight: 600;
-            color: #262627;
-            font-size: 16px;
-          }
-
-          @media (max-width: 600px) {
-            .container {
-              margin: 10px;
-              border-radius: 8px;
-            }
-
-            .header {
-              padding: 30px 20px;
-            }
-
-            .logo {
-              font-size: 24px;
-            }
-
-            .header-text {
-              font-size: 16px;
-            }
-
-            .content {
-              padding: 30px 20px;
-            }
-
-            .welcome-text {
-              font-size: 18px;
-            }
-
-            .description {
-              font-size: 15px;
-            }
-
-            .cta-button {
-              padding: 14px 24px;
-              font-size: 15px;
-              display: block;
-              width: 100%;
-            }
-
-            .alternative-link {
-              padding: 16px;
-            }
-
-            .footer {
-              padding: 20px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <!-- Header -->
-          <div class="header">
-            <div class="logo">${this.getLogoSVG()}</div>
-            <div class="header-text">Account Verification</div>
-          </div>
-
-          <!-- Main Content -->
-          <div class="content">
-            <div class="title">Verify Your Email</div>
-            <div class="subtitle">
-              Hi {{firstName}}, welcome to ABC Dashboard! Please verify your email address to get started.
-            </div>
-
-            <!-- CTA Button -->
-            <div style="text-align: center;">
-              <a href="{{verificationUrl}}" class="cta-button">
-                Verify Email Address
-              </a>
-            </div>
-
-            <!-- Alternative Link -->
-            <div class="alternative-link">
-              <p>If the button doesn't work, copy and paste this link:</p>
-              <div class="link-text">{{verificationUrl}}</div>
-            </div>
-
-            <!-- Security Warning -->
-            <div class="warning-box">
-              <p>This verification link expires in 24 hours. If you didn't create this account, please ignore this email.</p>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="footer">
-            <div class="footer-text">ABC Dashboard Team</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    return executeWithDegradation(
-      'email_service',
-      () => this.sendEmail(to, subject, template, data),
-      (error) => this.handleEmailDegradation('email_verification', { to, subject, data }, error),
-      { operation: 'sendEmailVerification', to, correlationId: this.correlationId }
-    );
+  // Email verification disabled (admin-managed accounts)
+  async sendEmailVerification() {
+    throw new Error('Email verification is disabled for admin-managed accounts');
   }
 
   /**
@@ -376,403 +148,111 @@ export class EmailService {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Welcome to ABC Dashboard</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
-
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
-          body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #FAFAFA;
-            color: #262627;
-            line-height: 1.6;
-          }
-
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-
-          .header {
-            background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%);
-            padding: 40px 30px;
-            text-align: center;
-          }
-
-          .logo {
-            font-family: 'Archivo', sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            color: #FFFFFF;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 8px;
-          }
-
-          .header-text {
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.9;
-          }
-
-          .content {
-            padding: 40px 30px;
-          }
-
-          .welcome-text {
-            font-size: 24px;
-            font-weight: 700;
-            color: #262627;
-            margin-bottom: 16px;
-            text-align: center;
-          }
-
-          .greeting {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 12px;
-          }
-
-          .description {
-            font-size: 16px;
-            color: #525252;
-            margin-bottom: 32px;
-            line-height: 1.6;
-          }
-
-          .account-info {
-            background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
-            border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-          }
-
-          .account-info h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-          }
-
-          .account-info h3:before {
-            content: "👤";
-            margin-right: 8px;
-          }
-
-          .info-row {
-            display: flex;
-            margin-bottom: 12px;
-            align-items: center;
-          }
-
-          .info-label {
-            font-weight: 600;
-            color: #374151;
-            min-width: 120px;
-            flex-shrink: 0;
-          }
-
-          .info-value {
-            color: #262627;
-            flex: 1;
-          }
-
-          .password-value {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            background-color: #FFFFFF;
-            border: 1px solid #D1D5DB;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 14px;
-          }
-
-          .security-notice {
-            background: linear-gradient(135deg, #FFF3CD 0%, #FEF3C7 100%);
-            border: 1px solid #FCD34D;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-
-          .security-notice h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #92400E;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-          }
-
-          .security-notice h4:before {
-            content: "⚠️";
-            margin-right: 8px;
-          }
-
-          .security-notice p {
-            font-size: 14px;
-            color: #92400E;
-            margin: 0;
-          }
-
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
-            color: #FFFFFF;
-            text-decoration: none;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            text-align: center;
-            margin: 24px 0;
-            box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.39);
-            transition: all 0.2s ease;
-          }
-
-          .cta-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px 0 rgba(34, 197, 94, 0.5);
-          }
-
-          .steps-section {
-            background-color: #F8FAFC;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-          }
-
-          .steps-section h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-          }
-
-          .steps-section h3:before {
-            content: "🚀";
-            margin-right: 8px;
-          }
-
-          .steps-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-          }
-
-          .step-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            font-size: 15px;
-            color: #374151;
-          }
-
-          .step-number {
-            background: linear-gradient(135deg, #0B80D8 0%, #075985 100%);
-            color: #FFFFFF;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 12px;
-            margin-right: 12px;
-            flex-shrink: 0;
-            margin-top: 2px;
-          }
-
-          {{#if managerName}}
-          .manager-section {
-            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-            border: 1px solid #BFDBFE;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-
-          .manager-section h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1E40AF;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-          }
-
-          .manager-section h3:before {
-            content: "👔";
-            margin-right: 8px;
-          }
-
-          .manager-section p {
-            font-size: 14px;
-            color: #1E40AF;
-            margin: 0;
-          }
-          {{/if}}
-
-          .footer {
-            background-color: #F8FAFC;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #E2E8F0;
-          }
-
-          .footer-text {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 8px;
-          }
-
-          .footer-brand {
-            font-family: 'Archivo', sans-serif;
-            font-weight: 600;
-            color: #262627;
-            font-size: 16px;
-          }
-
-          .disclaimer {
-            background-color: #FEF2F2;
-            border: 1px solid #FECACA;
-            border-radius: 8px;
-            padding: 16px;
-            margin: 20px 0;
-            font-size: 13px;
-            color: #991B1B;
-          }
-
-          @media (max-width: 600px) {
-            .container {
-              margin: 10px;
-              border-radius: 8px;
-            }
-
-            .header {
-              padding: 30px 20px;
-            }
-
-            .logo {
-              font-size: 24px;
-            }
-
-            .header-text {
-              font-size: 16px;
-            }
-
-            .content {
-              padding: 30px 20px;
-            }
-
-            .welcome-text {
-              font-size: 20px;
-            }
-
-            .account-info {
-              padding: 20px;
-            }
-
-            .info-row {
-              flex-direction: column;
-              align-items: flex-start;
-            }
-
-            .info-label {
-              margin-bottom: 4px;
-              min-width: auto;
-            }
-
-            .cta-button {
-              padding: 14px 24px;
-              font-size: 15px;
-              display: block;
-              width: 100%;
-            }
-
-            .steps-section {
-              padding: 20px;
-            }
-
-            .footer {
-              padding: 20px;
-            }
-          }
-        </style>
       </head>
-      <body>
-        <div class="container">
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
+          <tr>
+            <td style="padding: 40px 20px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
           <!-- Header -->
-          <div class="header">
-            <div class="logo">${this.getLogoSVG()}</div>
-            <div class="header-text">Welcome Aboard!</div>
-          </div>
+                <tr>
+                  <td style="background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%); padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">ABC Salon</h1>
+                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #ffffff; opacity: 0.9;">Welcome Aboard!</p>
+                  </td>
+                </tr>
 
           <!-- Main Content -->
-          <div class="content">
-            <div class="title">Welcome to ABC Dashboard</div>
-            <div class="subtitle">
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #262627; text-align: center;">Welcome to ABC Dashboard</h2>
+                    <p style="margin: 0 0 24px 0; font-size: 16px; color: #525252; line-height: 1.6; text-align: center;">
               Hi {{displayName}}, your account has been created with the role: <strong>{{role}}</strong>
-            </div>
+                    </p>
 
             <!-- Account Details -->
-            <div style="background-color: #F8FAFC; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <div style="margin-bottom: 12px;"><strong>Email:</strong> {{username}}</div>
-              <div style="margin-bottom: 12px;"><strong>Temporary Password:</strong> <code style="background-color: #E5E7EB; padding: 2px 6px; border-radius: 4px;">{{password}}</code></div>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="background-color: #F8FAFC; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding-bottom: 12px;"><strong>Email:</strong> {{{email}}}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding-bottom: 12px;"><strong>Temporary Password:</strong>
+                                <span style="background-color: #E5E7EB; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace;">{{password}}</span>
+                              </td>
+                            </tr>
               {{#if managerName}}
-              <div><strong>Manager:</strong> {{managerName}}</div>
+                            <tr>
+                              <td><strong>Manager:</strong> {{managerName}}</td>
+                            </tr>
               {{/if}}
-            </div>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
 
             <!-- Security Notice -->
-            <div style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 14px; border-radius: 6px; margin: 20px 0;">
-              <p style="color: #F57C00; margin: 0;"><strong>Important:</strong> This is a temporary password. You must change it on first login.</p>
-            </div>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                          <p style="margin: 0; font-size: 14px; color: #F57C00;">
+                            ⚠️ <strong>Important:</strong> This is a temporary password. You must change it on first login.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
 
             <!-- CTA Button -->
-            <div style="text-align: center;">
-              <a href="{{loginUrl}}" class="cta-button">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 32px 0;">
+                      <tr>
+                        <td style="text-align: center;">
+                          <a href="{{{loginUrl}}}" style="display: inline-block; background-color: #22C55E; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                 Login to ABC Dashboard
               </a>
-            </div>
+                        </td>
+                      </tr>
+                    </table>
 
-            <!-- Quick Steps -->
-            <div style="background-color: #F8FAFC; padding: 16px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="margin-bottom: 12px; color: #262627;">Quick Start:</h3>
-              <ol style="margin: 0; padding-left: 20px;">
-                <li>Click "Login to ABC Dashboard" above</li>
-                <li>Use your email and temporary password</li>
-                <li>Change your password when prompted</li>
-              </ol>
-            </div>
+                    <!-- Steps -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="background-color: #F8FAFC; padding: 20px; border-radius: 8px;">
+                          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #262627;">Quick Start:</h3>
+                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">1. Click "Login to ABC Dashboard" above</p>
+                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">2. Use your email and temporary password</p>
+                          <p style="margin: 0; font-size: 14px; color: #374151;">3. Change your password when prompted</p>
+                        </td>
+                      </tr>
+                    </table>
 
             {{#if managerName}}
-            <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; padding: 14px; border-radius: 6px; margin: 20px 0;">
-              <p style="color: #1E40AF; margin: 0;"><strong>Manager:</strong> {{managerName}} - Contact them for support.</p>
-            </div>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
+                      <tr>
+                        <td style="background-color: #EFF6FF; border: 1px solid #BFDBFE; padding: 16px; border-radius: 8px;">
+                          <p style="margin: 0; font-size: 14px; color: #1E40AF;">
+                            👔 <strong>Manager:</strong> {{managerName}} - Contact them for support.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
             {{/if}}
-          </div>
+                  </td>
+                </tr>
 
           <!-- Footer -->
-          <div class="footer">
-            <div class="footer-text">ABC Dashboard Team</div>
-          </div>
-        </div>
+                <tr>
+                  <td style="background-color: #F8FAFC; padding: 30px; text-align: center; border-top: 1px solid #E2E8F0;">
+                    <p style="margin: 0; font-size: 14px; color: #64748B;">© 2025 ABC Salon. All rights reserved.</p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
@@ -1503,7 +983,7 @@ export class EmailService {
 
             <!-- CTA Button -->
             <div style="text-align: center;">
-              <a href="{{loginUrl}}" class="cta-button">
+              <a href="{{{loginUrl}}}" class="cta-button">
                 Login to ABC Dashboard
               </a>
             </div>
@@ -1870,7 +1350,7 @@ export class EmailService {
 
             <!-- CTA Button -->
             <div style="text-align: center;">
-              <a href="{{loginUrl}}" style="background-color: #0B80D8; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block; margin: 20px 0;">
+              <a href="{{{loginUrl}}}" style="background-color: #0B80D8; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block; margin: 20px 0;">
                 Login to ABC Dashboard
               </a>
             </div>
@@ -1913,332 +1393,90 @@ export class EmailService {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Reset Your Password - ABC Dashboard</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
-
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
-          body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #FAFAFA;
-            color: #262627;
-            line-height: 1.6;
-          }
-
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-
-          .header {
-            background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%);
-            padding: 40px 30px;
-            text-align: center;
-          }
-
-          .logo {
-            font-family: 'Archivo', sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            color: #FFFFFF;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 8px;
-          }
-
-          .header-text {
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.9;
-          }
-
-          .content {
-            padding: 40px 30px;
-          }
-
-          .main-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #262627;
-            margin-bottom: 16px;
-            text-align: center;
-          }
-
-          .greeting {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 12px;
-          }
-
-          .description {
-            font-size: 16px;
-            color: #525252;
-            margin-bottom: 32px;
-            line-height: 1.6;
-          }
-
-          .security-notice {
-            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-            border: 1px solid #FCD34D;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-
-          .security-notice h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #92400E;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-          }
-
-          .security-notice h4:before {
-            content: "🔒";
-            margin-right: 8px;
-          }
-
-          .security-notice p {
-            font-size: 14px;
-            color: #92400E;
-            margin: 0;
-          }
-
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #F66600 0%, #CC4700 100%);
-            color: #FFFFFF;
-            text-decoration: none;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            text-align: center;
-            margin: 24px 0;
-            box-shadow: 0 4px 14px 0 rgba(246, 102, 0, 0.39);
-            transition: all 0.2s ease;
-          }
-
-          .cta-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px 0 rgba(246, 102, 0, 0.5);
-          }
-
-          .alternative-link {
-            background-color: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 24px 0;
-            text-align: center;
-          }
-
-          .alternative-link p {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 12px;
-          }
-
-          .link-text {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 14px;
-            color: #0B80D8;
-            word-break: break-all;
-            background-color: #EFF6FF;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #BFDBFE;
-          }
-
-          .steps-section {
-            background-color: #F8FAFC;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-          }
-
-          .steps-section h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-          }
-
-          .steps-section h3:before {
-            content: "📋";
-            margin-right: 8px;
-          }
-
-          .steps-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-          }
-
-          .step-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            font-size: 15px;
-            color: #374151;
-          }
-
-          .step-number {
-            background: linear-gradient(135deg, #0B80D8 0%, #075985 100%);
-            color: #FFFFFF;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 12px;
-            margin-right: 12px;
-            flex-shrink: 0;
-            margin-top: 2px;
-          }
-
-          .footer {
-            background-color: #F8FAFC;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #E2E8F0;
-          }
-
-          .footer-text {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 8px;
-          }
-
-          .footer-brand {
-            font-family: 'Archivo', sans-serif;
-            font-weight: 600;
-            color: #262627;
-            font-size: 16px;
-          }
-
-          .ignore-notice {
-            background-color: #FEF2F2;
-            border: 1px solid #FECACA;
-            border-radius: 8px;
-            padding: 16px;
-            margin: 20px 0;
-            font-size: 14px;
-            color: #991B1B;
-          }
-
-          @media (max-width: 600px) {
-            .container {
-              margin: 10px;
-              border-radius: 8px;
-            }
-
-            .header {
-              padding: 30px 20px;
-            }
-
-            .logo {
-              font-size: 24px;
-            }
-
-            .header-text {
-              font-size: 16px;
-            }
-
-            .content {
-              padding: 30px 20px;
-            }
-
-            .main-title {
-              font-size: 20px;
-            }
-
-            .cta-button {
-              padding: 14px 24px;
-              font-size: 15px;
-              display: block;
-              width: 100%;
-            }
-
-            .alternative-link {
-              padding: 16px;
-            }
-
-            .steps-section {
-              padding: 20px;
-            }
-
-            .footer {
-              padding: 20px;
-            }
-          }
-        </style>
       </head>
-      <body>
-        <div class="container">
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
+          <tr>
+            <td style="padding: 40px 20px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                
           <!-- Header -->
-          <div class="header">
-            <div class="logo">${this.getLogoSVG()}</div>
-            <div class="header-text">Password Reset</div>
-          </div>
+                <tr>
+                  <td style="background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%); padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">ABC Salon</h1>
+                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #ffffff; opacity: 0.9;">Password Reset</p>
+                  </td>
+                </tr>
 
           <!-- Main Content -->
-          <div class="content">
-            <div class="title">Reset Your Password</div>
-            <div class="subtitle">
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #262627; text-align: center;">Reset Your Password</h2>
+                    <p style="margin: 0 0 24px 0; font-size: 16px; color: #525252; line-height: 1.6; text-align: center;">
               Hi {{displayName}}, we received a request to reset your ABC Dashboard password.
-            </div>
+                    </p>
 
             <!-- Security Notice -->
-            <div style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 14px; border-radius: 6px; margin: 20px 0;">
-              <p style="color: #F57C00; margin: 0;">This link expires in <strong>10 minutes</strong> for security. If you didn't request this, ignore this email.</p>
-            </div>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                          <p style="margin: 0; font-size: 14px; color: #F57C00;">
+                            ⏱️ This link expires in <strong>10 minutes</strong> for security.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
 
             <!-- CTA Button -->
-            <div style="text-align: center;">
-              <a href="{{resetUrl}}" class="cta-button">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 32px 0;">
+                      <tr>
+                        <td style="text-align: center;">
+                          <a href="{{{resetUrl}}}" style="display: inline-block; background-color: #F66600; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                 Reset Password
               </a>
-            </div>
+                        </td>
+                      </tr>
+                    </table>
 
-            <!-- Alternative Link -->
-            <div class="alternative-link">
-              <p>If the button doesn't work, copy and paste this link:</p>
-              <div class="link-text">{{resetUrl}}</div>
-            </div>
-
-            <!-- Quick Steps -->
-            <div style="background-color: #F8FAFC; padding: 16px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="margin-bottom: 12px; color: #262627;">What to do:</h3>
-              <ol style="margin: 0; padding-left: 20px;">
-                <li>Click the "Reset Password" button above</li>
-                <li>Enter your new password (minimum 8 characters)</li>
-                <li>Confirm the new password</li>
-                <li>Click "Reset Password" to finish</li>
-              </ol>
-            </div>
-          </div>
+                    <!-- Steps -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="background-color: #F8FAFC; padding: 20px; border-radius: 8px;">
+                          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #262627;">What to do:</h3>
+                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">1. Click the "Reset Password" button above</p>
+                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">2. Enter your new password (minimum 8 characters)</p>
+                          <p style="margin: 0; font-size: 14px; color: #374151;">3. Confirm your new password</p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Security Notice -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
+                      <tr>
+                        <td style="background-color: #FEF2F2; border: 1px solid #FECACA; padding: 16px; border-radius: 8px;">
+                          <p style="margin: 0; font-size: 13px; color: #991B1B;">
+                            🔒 If you didn't request this password reset, you can safely ignore this email.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
 
           <!-- Footer -->
-          <div class="footer">
-            <div class="footer-text">ABC Dashboard Team</div>
-          </div>
-        </div>
+                <tr>
+                  <td style="background-color: #F8FAFC; padding: 30px; text-align: center; border-top: 1px solid #E2E8F0;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748B;">© 2025 ABC Salon. All rights reserved.</p>
+                    <p style="margin: 0; font-size: 12px; color: #94A3B8;">
+                      This email was sent to {{{email}}}
+                    </p>
+                  </td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;

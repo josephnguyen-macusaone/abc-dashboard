@@ -1,6 +1,9 @@
-import { LoginUseCase, RegisterUseCase, LogoutUseCase, UpdateProfileUseCase, GetProfileUseCase, UpdateProfileDTO } from '@/application/use-cases';
+import { LoginUseCase, LogoutUseCase, UpdateProfileUseCase, GetProfileUseCase, UpdateProfileDTO } from '@/application/use-cases';
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthResult, User, AuthTokens } from '@/domain/entities/user-entity';
+import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { CookieService } from '@/infrastructure/storage/cookie-service';
+import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
 /**
@@ -15,7 +18,6 @@ export class AuthService {
   constructor(
     private readonly authRepository: IAuthRepository,
     private readonly loginUseCase: LoginUseCase,
-    private readonly registerUseCase: RegisterUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly updateProfileUseCase: UpdateProfileUseCase,
     private readonly getProfileUseCase: GetProfileUseCase
@@ -38,36 +40,6 @@ export class AuthService {
         correlationId,
         email,
         operation: 'login_error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Register new user
-   */
-  async register(
-    username: string,
-    firstName: string,
-    lastName: string,
-    email: string,
-    password: string,
-    role?: string
-  ): Promise<AuthResult> {
-    const correlationId = generateCorrelationId();
-
-    try {
-      const result = await this.registerUseCase.execute(username, firstName, lastName, email, password, role);
-      if (!result.isAuthenticated) {
-        throw new Error('This email is already registered');
-      }
-      return result;
-    } catch (error) {
-      this.logger.error(`Registration error`, {
-        correlationId,
-        email,
-        operation: 'registration_error',
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -98,10 +70,20 @@ export class AuthService {
    */
   async refreshToken(): Promise<AuthTokens> {
     const correlationId = generateCorrelationId();
+    const authStore = useAuthStore.getState();
     const currentUser = await this.getCurrentUser();
 
     try {
       const tokens = await this.authRepository.refreshToken();
+
+      // Persist and propagate tokens
+      authStore.setToken(tokens.accessToken);
+      CookieService.setToken(tokens.accessToken);
+      LocalStorageService.setToken(tokens.accessToken);
+      if (tokens.refreshToken) {
+        LocalStorageService.setRefreshToken(tokens.refreshToken);
+      }
+
       return tokens;
     } catch (error) {
       this.logger.error(`Token refresh error`, {
@@ -119,8 +101,15 @@ export class AuthService {
    * Note: Authentication status is managed by the auth store
    */
   async isAuthenticated(): Promise<boolean> {
-    // Authentication status is now managed locally by the auth store
-    return false;
+    const authStore = useAuthStore.getState();
+
+    if (authStore.isAuthenticated) {
+      return true;
+    }
+
+    // Rehydrate store if needed
+    await authStore.initialize();
+    return useAuthStore.getState().isAuthenticated;
   }
 
   /**
@@ -128,8 +117,21 @@ export class AuthService {
    * Note: Current user is managed by the auth store
    */
   async getCurrentUser(): Promise<User | null> {
-    // Current user is now managed locally by the auth store
+    const authStore = useAuthStore.getState();
+    if (authStore.user) {
+      return authStore.user;
+    }
+
+    try {
+      const profileData = await this.getProfileUseCase.execute();
+      authStore.setUser(profileData);
+      return profileData;
+    } catch (error) {
+      this.logger.warn('Failed to fetch current user', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     return null;
+    }
   }
 
   /**
@@ -151,26 +153,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Verify email with token
-   */
-  async verifyEmail(email: string, token: string): Promise<{ user: User; message: string }> {
-    const correlationId = generateCorrelationId();
-    const currentUser = await this.getCurrentUser();
-
-    try {
-      const response = await this.authRepository.verifyEmail(email, token);
-      return response;
-    } catch (error) {
-      this.logger.error(`Email verification failed`, {
-        correlationId,
-        userId: currentUser?.id,
-        operation: 'email_verification_error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
 
 
   /**

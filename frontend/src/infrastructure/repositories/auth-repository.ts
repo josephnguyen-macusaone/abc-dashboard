@@ -1,6 +1,7 @@
-import { IAuthRepository } from '../../domain/repositories/i-auth-repository';
-import { User, AuthResult, AuthTokens, UserRole } from '../../domain/entities/user-entity';
-import { authApi } from '../api/auth';
+import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
+import { User, AuthResult, AuthTokens, UserRole } from '@/domain/entities/user-entity';
+import { AuthDomainService } from '@/domain/services/auth-domain-service';
+import { authApi } from '@/infrastructure/api/auth';
 import { UserProfileDto } from '@/application/dto/api-dto';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
@@ -69,7 +70,7 @@ export class AuthRepository implements IAuthRepository {
         id: response.user.id,
         name: response.user.name || response.user.email.split('@')[0] || 'User',
         email: response.user.email,
-        role: response.user.role,
+        role: AuthDomainService.getDefaultRole(response.user.role),
         isActive: response.user.isActive,
         createdAt: new Date(response.user.createdAt),
       };
@@ -85,54 +86,6 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
-  async register(
-    username: string,
-    firstName: string,
-    lastName: string,
-    email: string,
-    password: string,
-    role?: string
-  ): Promise<AuthResult> {
-    const correlationId = generateCorrelationId();
-    const logger = this.createOperationLogger('register');
-
-    try {
-      const userRole = (role as UserRole) || UserRole.STAFF;
-
-      logger.start(correlationId, { email, firstName, lastName, role: userRole });
-
-      const startTime = Date.now();
-      const response = await authApi.register({
-        username,
-        email,
-        password,
-        firstName,
-        lastName,
-        role: userRole,
-      });
-      const duration = Date.now() - startTime;
-
-      // Map backend UserDto to frontend User entity format
-      // Handle missing name field by using email as fallback
-      const userData = {
-        id: response.user.id,
-        name: response.user.name || response.user.email.split('@')[0] || 'User',
-        email: response.user.email,
-        role: response.user.role,
-        isActive: response.user.isActive,
-        createdAt: new Date(response.user.createdAt),
-      };
-
-      const user = User.fromObject(userData);
-      const tokens = new AuthTokens(response.tokens.accessToken, response.tokens.refreshToken);
-
-      logger.success(correlationId, duration, { userId: user.id });
-
-      return AuthResult.authenticated(user, tokens);
-    } catch (error) {
-      throw this.handleApiError(error, 'register', correlationId);
-    }
-  }
 
   async logout(): Promise<void> {
     const correlationId = generateCorrelationId();
@@ -147,13 +100,9 @@ export class AuthRepository implements IAuthRepository {
 
       logger.success(correlationId, duration);
     } catch (error) {
-      // Logout should not fail - we still want to clear local state
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(correlationId, errorMessage);
-      // Don't rethrow logout errors
+      throw this.handleApiError(error, 'logout', correlationId);
     }
   }
-
 
   async refreshToken(): Promise<AuthTokens> {
     const correlationId = generateCorrelationId();
@@ -176,37 +125,6 @@ export class AuthRepository implements IAuthRepository {
     }
   }
 
-  async verifyEmail(email: string, token: string): Promise<{ user: User; message: string }> {
-    const correlationId = generateCorrelationId();
-    const logger = this.createOperationLogger('verify_email');
-
-    try {
-      logger.start(correlationId, { email });
-
-      const startTime = Date.now();
-      const response = await authApi.verifyEmail(token);
-      const duration = Date.now() - startTime;
-
-      // Map backend UserDto to frontend User entity format
-      // Handle missing name field by using email as fallback
-      const userData = {
-        id: response.user.id,
-        name: response.user.name || response.user.email.split('@')[0] || 'User',
-        email: response.user.email,
-        role: response.user.role,
-        isActive: response.user.isActive,
-        createdAt: new Date(response.user.createdAt),
-      };
-
-      const user = User.fromObject(userData);
-
-      logger.success(correlationId, duration, { userId: user.id });
-
-      return { user, message: response.message };
-    } catch (error) {
-      throw this.handleApiError(error, 'verify_email', correlationId);
-    }
-  }
 
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
@@ -255,11 +173,13 @@ export class AuthRepository implements IAuthRepository {
     // Ensure we have a valid name field - use displayName, then username, then email prefix as fallback
     const name = userProfile.displayName || userProfile.username || userProfile.email.split('@')[0] || 'User';
 
+    const normalizedRole = AuthDomainService.getDefaultRole(userProfile.role);
+
     return User.fromObject({
       id: userProfile.id,
       name: name,
       email: userProfile.email,
-      role: userProfile.role,
+      role: normalizedRole,
       isActive: userProfile.isActive,
       username: userProfile.username,
       avatar: userProfile.avatarUrl,
@@ -299,7 +219,7 @@ export class AuthRepository implements IAuthRepository {
         id: response.user.id,
         name: response.user.name || response.user.email.split('@')[0] || 'User',
         email: response.user.email,
-        role: response.user.role,
+        role: AuthDomainService.getDefaultRole(response.user.role),
         isActive: response.user.isActive,
         createdAt: new Date(response.user.createdAt),
       };

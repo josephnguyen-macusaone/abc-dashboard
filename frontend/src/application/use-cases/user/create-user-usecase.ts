@@ -23,8 +23,43 @@ export class CreateUserUseCase {
     const correlationId = generateCorrelationId();
 
     try {
+      let operator: User | null = null;
+
+      try {
+        operator = await this.userRepository.getCurrentUser();
+      } catch (fetchError) {
+        // If we can't fetch current user, log but continue - let backend handle auth
+        this.logger.warn('Failed to fetch current user for permission validation', {
+          correlationId,
+          error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        });
+      }
+
+      if (operator) {
+        // Only check status if we have the user data
+        if (operator.isActive === false) {
+          throw new Error('Your account is deactivated. Please contact administrator.');
+        }
+
       // Validate input using domain service
       this.validateInput(userData, correlationId);
+
+        // Get the target role for permission checking
+        const targetRole = AuthDomainService.getDefaultRole(userData.role);
+
+        // Permission check: Admin can create manager/staff, Manager only staff
+        if (operator.role === UserRole.ADMIN) {
+          if (targetRole === UserRole.ADMIN) {
+            throw new Error('Admins can create managers or staff, not new admins');
+          }
+        } else if (operator.role === UserRole.MANAGER) {
+          if (targetRole !== UserRole.STAFF) {
+            throw new Error('Managers can only create staff accounts');
+          }
+        } else {
+          throw new Error('Insufficient permissions to create users');
+        }
+      }
 
       // Apply application rules
       const defaultedUserData = this.applyDefaults(userData);
@@ -58,16 +93,12 @@ export class CreateUserUseCase {
       throw new Error('Invalid email format');
     }
 
-    // Validate role
-    if (userData.role && !Object.values(UserRole).includes(userData.role)) {
+    const requestedRole = AuthDomainService.getDefaultRole(userData.role);
+    if (!Object.values(UserRole).includes(requestedRole)) {
       throw new Error('Invalid user role');
     }
 
     // Validate required fields
-    if (!userData.username?.trim()) {
-      throw new Error('Username is required');
-    }
-
     if (!userData.email?.trim()) {
       throw new Error('Email is required');
     }
@@ -78,6 +109,11 @@ export class CreateUserUseCase {
 
     if (!userData.lastName?.trim()) {
       throw new Error('Last name is required');
+    }
+
+    // Username is optional - will be auto-generated from email if not provided
+    if (userData.username && userData.username.trim().length < 3) {
+      throw new Error('Username must be at least 3 characters if provided');
     }
 
     // Validate data consistency using domain service
@@ -93,6 +129,7 @@ export class CreateUserUseCase {
   private applyDefaults(userData: CreateUserDTO): CreateUserDTO {
     return {
       ...userData,
+      role: AuthDomainService.getDefaultRole(userData.role),
     };
   }
 }

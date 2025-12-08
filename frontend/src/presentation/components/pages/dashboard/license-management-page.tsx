@@ -6,19 +6,17 @@
 
 import { useState, useCallback } from "react";
 import { useAuth } from "@/presentation/contexts/auth-context";
-import { useToast } from "@/presentation/contexts/toast-context";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
 import { fakerLicenses, createEmptyLicense } from "@/shared/mock/license-faker-data";
-import { logger } from "@/shared/utils";
 import type { LicenseRecord } from "@/shared/types";
-import type { User } from "@/domain/entities/user-entity";
 
 export function LicenseManagementPage() {
   const { user: currentUser } = useAuth();
 
   const [licenses, setLicenses] = useState<LicenseRecord[]>(fakerLicenses);
   const [isLoading, setIsLoading] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>();
 
   // Data is loaded immediately from faker
 
@@ -42,6 +40,10 @@ export function LicenseManagementPage() {
     [],
   );
 
+  const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
+    setDateRange(values.range);
+  }, []);
+
   if (!currentUser) {
     return (
       <DashboardTemplate>
@@ -60,6 +62,8 @@ export function LicenseManagementPage() {
       onSaveLicenses={onSave}
       onAddLicense={onAddRow}
       onDeleteLicenses={onDeleteRows}
+      dateRange={dateRange}
+      onDateRangeChange={onDateRangeChange}
     />
   );
 }

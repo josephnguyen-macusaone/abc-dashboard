@@ -9,6 +9,11 @@ import logger from '@/shared/utils/logger';
  * Ensures the URL has a valid http:// or https:// scheme for CORS requests
  */
 const validateAndNormalizeBaseURL = (url: string | undefined): string => {
+  // In production, use relative URLs since OpenLiteSpeed proxies /api/* to the backend
+  if (process.env.NODE_ENV === 'production') {
+    return '/api/v1';
+  }
+
   const DEFAULT_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
   // If URL is empty, undefined, or null, use default

@@ -30,6 +30,24 @@ export const metadata: Metadata = {
   title: "ABC Salon",
 };
 
+// Theme script to prevent flash of wrong theme
+const themeScript = `
+  (function() {
+    try {
+      const stored = localStorage.getItem('theme-storage');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const theme = parsed.state?.theme;
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,6 +55,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${inter.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: themeScript,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider>
@@ -45,10 +70,10 @@ export default function RootLayout({
                 <AuthProvider>
                   <UserProvider>
                     <NuqsAdapter>
-                    <RouteSuspense message="Initializing application...">
-                    {children}
-                    </RouteSuspense>
-                    <Toaster />
+                      <RouteSuspense message="Initializing application...">
+                        {children}
+                      </RouteSuspense>
+                      <Toaster />
                     </NuqsAdapter>
                   </UserProvider>
                 </AuthProvider>

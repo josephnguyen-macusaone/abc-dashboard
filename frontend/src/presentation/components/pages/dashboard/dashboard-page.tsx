@@ -9,9 +9,7 @@ import { UserManagementPage } from './user-management-page';
 import { LicenseManagementPage } from './license-management-page';
 import { USER_ROLES } from '@/shared/constants';
 
-interface DashboardPageProps { }
-
-export function DashboardPage({ }: DashboardPageProps = {}) {
+export function DashboardPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
 
@@ -40,11 +38,11 @@ export function DashboardPage({ }: DashboardPageProps = {}) {
         );
 
       case 'licenses':
-        // License Management section (admin only)
-        if (isAdmin) {
+        // License Management section (admin and manager)
+        if (isAdminOrManager) {
           return <LicenseManagementPage />;
         }
-        // If non-admin tries to access licenses section, show access denied
+        // If non-admin/manager tries to access licenses section, show access denied
         return (
           <AccessDeniedCard
             title="Access Denied"

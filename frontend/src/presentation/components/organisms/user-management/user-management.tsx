@@ -4,9 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Typography } from '@/presentation/components/atoms';
 import { UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { UsersDataTable } from '@/presentation/components/molecules/domain/user-management';
+import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
+import { UserManagementSkeleton } from './user-management-skeleton';
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
+import { UserFormTemplate } from '@/presentation/components/templates';
 import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
@@ -32,6 +35,12 @@ interface UserManagementProps {
   isLoading?: boolean;
   /** Callback to reload users (called after CRUD operations) */
   onLoadUsers?: (filters?: { search?: string; role?: string }) => Promise<void>;
+  /** Current date range filter */
+  dateRange?: { from?: Date; to?: Date };
+  /** Callback when date range changes */
+  onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
+  /** Callback when role filter is applied */
+  onRoleFilter?: (role: string | null) => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -41,6 +50,9 @@ export function UserManagement({
   users,
   isLoading = false,
   onLoadUsers,
+  dateRange,
+  onDateRangeChange,
+  onRoleFilter,
   className
 }: UserManagementProps) {
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete'>('list');
@@ -109,20 +121,24 @@ export function UserManagement({
   // Render different views
   if (currentView === 'create') {
     return (
-      <UserCreateForm
-        onSuccess={handleFormSuccess}
-        onCancel={handleFormCancel}
-      />
+      <UserFormTemplate onBack={handleFormCancel}>
+        <UserCreateForm
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+        />
+      </UserFormTemplate>
     );
   }
 
   if (currentView === 'edit' && selectedUser) {
     return (
-      <UserEditForm
-        user={selectedUser}
-        onSuccess={handleFormSuccess}
-        onCancel={handleFormCancel}
-      />
+      <UserFormTemplate onBack={handleFormCancel}>
+        <UserEditForm
+          user={selectedUser}
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+        />
+      </UserFormTemplate>
     );
   }
 
@@ -142,38 +158,61 @@ export function UserManagement({
     );
   }
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <UserManagementSkeleton
+        showDateFilter={!!onDateRangeChange}
+        className={className}
+      />
+    );
+  }
+
   // Default list view
   return (
-    <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-6 px-6 pb-8', className)}>
+    <div className={cn('bg-card border border-border rounded-xl shadow-sm px-6 py-6', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between pt-4">
-        <div className="">
-          <Typography variant="title-l" className="text-foreground">
-            User Management
-          </Typography>
-          <Typography variant="body-s" color="muted" className="text-muted-foreground mt-0.5">
-            Manage user accounts and roles
-          </Typography>
+      <div className="mb-5">
+        <div className="flex items-center justify-between">
+          <div className="">
+            <Typography variant="title-l" className="text-foreground">
+              User Management
+            </Typography>
+            <Typography variant="body-s" color="muted" className="text-muted-foreground mt-1">
+              Manage user accounts and roles
+            </Typography>
+          </div>
+          {/* Date Range Filter */}
+          {onDateRangeChange && (
+            <DateRangeFilterCard
+              initialDateFrom={dateRange?.from}
+              initialDateTo={dateRange?.to}
+              onUpdate={onDateRangeChange}
+              align="end"
+            />
+          )}
         </div>
       </div>
 
       {/* Statistics */}
-      <UserStatsCards
-        users={users}
-        isLoading={isLoading}
-      />
+      <div className="mb-5">
+        <UserStatsCards
+          users={users}
+          isLoading={false}
+          onRoleFilter={onRoleFilter}
+        />
+      </div>
 
       {/* Users Table */}
       <UsersDataTable
         data={users}
-        pageCount={Math.ceil(users.length / 5)}
         currentUser={currentUser}
         canEdit={canEditUser}
         canDelete={canDeleteUser}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
         onCreateUser={PermissionUtils.canCreateUser(currentUser.role) ? handleCreateUser : undefined}
-        isLoading={isLoading}
+        isLoading={false}
       />
     </div>
   );

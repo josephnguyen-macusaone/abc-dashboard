@@ -2,6 +2,7 @@ import express from 'express';
 import { validateRequest } from '../middleware/validation-middleware.js';
 import { authSchemas } from '../api/v1/schemas/auth.schemas.js';
 import { optionalAuth, authenticate } from '../middleware/auth-middleware.js';
+import { accountLockout, createRateLimit } from '../api/v1/middleware/security.middleware.js';
 
 /**
  * Auth Routes
@@ -10,100 +11,16 @@ import { optionalAuth, authenticate } from '../middleware/auth-middleware.js';
 export function createAuthRoutes(authController) {
   const router = express.Router();
 
-  /**
-   * @swagger
-   * /auth/register:
-   *   post:
-   *     summary: Register a new user
-   *     tags: [Authentication]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *               - password
-   *               - firstName
-   *               - lastName
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 format: email
-   *               password:
-   *                 type: string
-   *                 minLength: 8
-   *               firstName:
-   *                 type: string
-   *               lastName:
-   *                 type: string
-   *               username:
-   *                 type: string
-   *                 description: Optional username. If not provided, will be auto-generated.
-   *               role:
-   *                 type: string
-   *                 enum: [admin, manager, staff]
-   *                 default: staff
-   *     responses:
-   *       201:
-   *         description: User registered successfully
-   *       400:
-   *         description: Validation error
-   */
-  router.post(
-    '/register',
-    validateRequest(authSchemas.register),
-    authController.register.bind(authController)
+  const loginLimiter = createRateLimit(
+    15 * 60 * 1000,
+    30,
+    'Too many login attempts, please try again later.'
   );
 
-  /**
-   * @swagger
-   * /auth/verify-email:
-   *   post:
-   *     summary: Verify or confirm email verification
-   *     description: |
-   *       Handles both registration email verification and authenticated user email confirmation.
-   *
-   *       **Registration Flow**: Provide `token` to verify email and activate new account.
-   *       **Confirmation Flow**: Provide `action: "confirm"` to mark authenticated user's email as verified.
-   *     tags: [Authentication]
-   *     security:
-   *       - bearerAuth: []  # Optional - only required for confirmation flow
-   *     requestBody:
-   *       content:
-   *         application/json:
-   *           schema:
-   *             oneOf:
-   *               - type: object
-   *                 required:
-   *                   - token
-   *                 properties:
-   *                   token:
-   *                     type: string
-   *                     description: Email verification token from registration email
-   *               - type: object
-   *                 required:
-   *                   - action
-   *                 properties:
-   *                   action:
-   *                     type: string
-   *                     enum: [confirm]
-   *                     description: Action to perform (currently only 'confirm' supported)
-   *     responses:
-   *       200:
-   *         description: Email verified successfully
-   *       400:
-   *         description: Invalid token, missing action, or validation error
-   *       401:
-   *         description: Authentication required for confirmation action
-   *       404:
-   *         description: User not found
-   */
-  router.post(
-    '/verify-email',
-    validateRequest(authSchemas.verifyEmail),
-    authController.verifyEmail.bind(authController)
+  const refreshLimiter = createRateLimit(
+    15 * 60 * 1000,
+    60,
+    'Too many refresh attempts, please try again later.'
   );
 
   /**
@@ -135,6 +52,8 @@ export function createAuthRoutes(authController) {
    */
   router.post(
     '/login',
+    loginLimiter,
+    accountLockout,
     validateRequest(authSchemas.login),
     authController.login.bind(authController)
   );
@@ -248,6 +167,7 @@ export function createAuthRoutes(authController) {
    */
   router.post(
     '/refresh',
+    refreshLimiter,
     validateRequest(authSchemas.refreshToken),
     authController.refreshToken.bind(authController)
   );

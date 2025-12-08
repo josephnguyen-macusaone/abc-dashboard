@@ -223,7 +223,7 @@ export function DataGrid<TData>({
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-4 mt-6">
         <DataGridPagination table={table} />
       </div>
     </div>

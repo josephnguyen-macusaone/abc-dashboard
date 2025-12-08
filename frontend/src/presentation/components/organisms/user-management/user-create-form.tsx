@@ -11,7 +11,7 @@ import { Typography, Button } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
-import { UserPlus, Loader2, X, ArrowLeft, Edit } from 'lucide-react';
+import { UserPlus, Loader2, X } from 'lucide-react';
 
 interface UserCreateFormProps {
   onSuccess?: (user: User) => void;
@@ -19,7 +19,7 @@ interface UserCreateFormProps {
 }
 
 export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
-  const { createUser, loading: { createUser: isCreating }, error: { createUser: createError } } = useUser();
+  const { createUser, loading: { createUser: isCreating } } = useUser();
   const { user: currentUser } = useAuth();
   const { success: showSuccess } = useToast();
 
@@ -29,7 +29,7 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   // - Staff: cannot create any users
   const getAvailableRoles = () => {
     const creatableRoles = PermissionUtils.getCreatableRoles(currentUser?.role);
-    
+
     return creatableRoles.map((role: UserRoleType) => ({
       value: role,
       label: ROLE_DEFINITIONS[role]?.displayName || role,
@@ -38,44 +38,42 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
 
   const availableRoles = getAvailableRoles();
   const defaultRole = availableRoles.length > 0 ? availableRoles[availableRoles.length - 1].value : 'staff';
-  
+
   const [formData, setFormData] = useState<{
     username: string;
     email: string;
     firstName: string;
     lastName: string;
+    phone: string;
     role: UserRoleType;
   }>({
     username: '',
     email: '',
     firstName: '',
     lastName: '',
-    role: defaultRole, // Default to the lowest permission role available (staff if available)
+    phone: '',
+    role: defaultRole,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.username || !formData.email || !formData.firstName || !formData.lastName) {
+    if (!formData.email || !formData.firstName || !formData.lastName) {
       return; // Error will be shown by validation
     }
 
-    try {
-      const userData: CreateUserDTO = {
-        username: formData.username,
-        email: formData.email,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        role: formData.role as UserRole,
-      };
+    const userData: CreateUserDTO = {
+      username: formData.username,
+      email: formData.email,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      phone: formData.phone,
+      role: formData.role as UserRole,
+    };
 
-      const user = await createUser(userData);
-      showSuccess?.('User created successfully!');
-      onSuccess?.(user);
-
-    } catch (err) {
-      // Error is handled by the UserContext
-    }
+    const user = await createUser(userData);
+    showSuccess?.('User created successfully!');
+    onSuccess?.(user);
   };
 
   // If user cannot create any users, show access denied message
@@ -108,7 +106,7 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   }
 
   return (
-    <Card className="max-w mx-auto">
+    <Card className="max-w-3xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserPlus className="h-5 w-5" />
@@ -121,18 +119,6 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <InputField
-            label="Username"
-            type="text"
-            placeholder="Enter username"
-            value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-            required
-            disabled={isCreating}
-            inputClassName="h-11"
-            className="space-y-3"
-          />
-
-          <InputField
             label="Email"
             type="email"
             placeholder="Enter email address"
@@ -144,31 +130,40 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
             className="space-y-3"
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="First Name"
-              type="text"
-              placeholder="Enter first name"
-              value={formData.firstName}
-              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              required
-              disabled={isCreating}
-              inputClassName="h-11"
-              className="space-y-3"
-            />
+          <InputField
+            label="Phone (Optional)"
+            type="tel"
+            placeholder="Enter phone number"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            disabled={isCreating}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
 
-            <InputField
-              label="Last Name"
-              type="text"
-              placeholder="Enter last name"
-              value={formData.lastName}
-              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              required
-              disabled={isCreating}
-              inputClassName="h-11"
-              className="space-y-3"
-            />
-          </div>
+          <InputField
+            label="First Name"
+            type="text"
+            placeholder="Enter first name"
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            required
+            disabled={isCreating}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
+
+          <InputField
+            label="Last Name"
+            type="text"
+            placeholder="Enter last name"
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            required
+            disabled={isCreating}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
 
           <FormField label="Role" className="space-y-3">
             <Select

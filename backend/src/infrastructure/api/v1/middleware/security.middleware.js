@@ -111,15 +111,27 @@ export const resetFailedAttempts = async (req) => {
 
 // Security headers middleware
 export const securityHeaders = (req, res, next) => {
+  const connectSrc = ["'self'"];
+  if (config.CLIENT_URL) {
+    try {
+      const client = new URL(config.CLIENT_URL);
+      connectSrc.push(client.origin);
+    } catch {
+      connectSrc.push(config.CLIENT_URL);
+    }
+  }
+
   // Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-      "font-src 'self' https://fonts.gstatic.com; " +
-      "img-src 'self' data: https:; " +
-      "connect-src 'self' https://api.example.com;"
+    [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https:",
+      `connect-src ${connectSrc.join(' ')}`,
+    ].join('; ')
   );
 
   // Prevent clickjacking
@@ -251,7 +263,9 @@ export const createRateLimit = (windowMs, maxRequests, message) => {
         maxRequests,
       });
 
-      return sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', { retryAfter: Math.ceil(windowMs / 1000) });
+      return sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', {
+        retryAfter: Math.ceil(windowMs / 1000),
+      });
     }
 
     // Add current request

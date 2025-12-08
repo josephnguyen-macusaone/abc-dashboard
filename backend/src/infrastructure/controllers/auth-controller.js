@@ -11,85 +11,31 @@ import {
   ValidationException,
   ResourceNotFoundException,
 } from '../../domain/exceptions/domain.exception.js';
+import { trackFailedLogin, resetFailedAttempts } from '../api/v1/middleware/security.middleware.js';
 
 export class AuthController extends BaseController {
   constructor(
     loginUseCase,
-    registerUseCase,
     refreshTokenUseCase,
-    verifyEmailUseCase,
-    markEmailVerifiedUseCase,
     changePasswordUseCase,
     requestPasswordResetUseCase,
     requestPasswordResetWithGeneratedPasswordUseCase,
     resetPasswordUseCase,
     tokenService,
-    userProfileRepository
+    userProfileRepository,
+    refreshTokenRepository
   ) {
     super();
     this.loginUseCase = loginUseCase;
-    this.registerUseCase = registerUseCase;
     this.refreshTokenUseCase = refreshTokenUseCase;
-    this.verifyEmailUseCase = verifyEmailUseCase;
-    this.markEmailVerifiedUseCase = markEmailVerifiedUseCase;
     this.changePasswordUseCase = changePasswordUseCase;
     this.requestPasswordResetUseCase = requestPasswordResetUseCase;
-    this.requestPasswordResetWithGeneratedPasswordUseCase = requestPasswordResetWithGeneratedPasswordUseCase;
+    this.requestPasswordResetWithGeneratedPasswordUseCase =
+      requestPasswordResetWithGeneratedPasswordUseCase;
     this.resetPasswordUseCase = resetPasswordUseCase;
     this.tokenService = tokenService;
     this.userProfileRepository = userProfileRepository;
-  }
-
-  async register(req, res) {
-    try {
-      const { username, email, password, firstName, lastName, avatarUrl, bio, phone } = req.body;
-
-      // Use comprehensive AuthValidator for registration
-      AuthValidator.validateRegister({
-        username,
-        email,
-        password,
-        displayName: firstName && lastName ? `${firstName} ${lastName}` : undefined,
-      });
-
-      const result = await this.executeUseCase(
-        this.registerUseCase,
-        {
-          username,
-          email,
-          password,
-          firstName,
-          lastName,
-          avatarUrl,
-          bio,
-          phone,
-        },
-        { operation: 'register', email, username }
-      );
-
-      // Generate tokens for immediate login (skip email verification requirement)
-      const tokens = await this.tokenService.generateTokens({
-        id: result.user.id,
-        email: result.user.email,
-        username: result.user.username,
-      });
-
-      return res.created(
-        {
-          user: result.user,
-          tokens: {
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-          },
-        },
-        result.message
-      );
-    } catch (error) {
-      return this.handleError(error, req, res, {
-        operation: 'register',
-        requestBody: { ...req.body, password: '[REDACTED]' },
-      });
-    }
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   async login(req, res) {
@@ -107,8 +53,14 @@ export class AuthController extends BaseController {
         { operation: 'login', email }
       );
 
+      await resetFailedAttempts(req);
+
       return res.success(result, 'Login successful');
     } catch (error) {
+      if (error instanceof InvalidCredentialsException) {
+        await trackFailedLogin(req);
+      }
+
       return this.handleError(error, req, res, {
         operation: 'login',
         requestBody: {
@@ -128,9 +80,20 @@ export class AuthController extends BaseController {
         Expires: '0',
       });
 
+      logger.debug('Get profile request', {
+        correlationId: req.correlationId,
+        hasUser: !!req.user,
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        userEmail: req.user?.email,
+      });
+
       // Check if user is authenticated (user attached by optional auth middleware)
       if (!req.user) {
         // Not authenticated - return status only
+        logger.warn('Get profile - no user attached', {
+          correlationId: req.correlationId,
+        });
         return res.success(
           {
             user: null,
@@ -143,8 +106,20 @@ export class AuthController extends BaseController {
       // User is authenticated - return full profile
       const user = req.user;
 
+      logger.debug('Auth controller getProfile - authenticated user', {
+        correlationId: req.correlationId,
+        userId: user?.id || user?._id,
+        userRole: user?.role,
+        userEmail: user?.email,
+      });
+
       // Validate user object
       if (!user.id && !user._id) {
+        logger.warn('Auth controller getProfile - invalid user object', {
+          correlationId: req.correlationId,
+          hasId: !!user?.id,
+          has_id: !!user?._id,
+        });
         return sendErrorResponse(res, 'INVALID_TOKEN');
       }
 
@@ -162,8 +137,7 @@ export class AuthController extends BaseController {
         profile = null;
       }
 
-      return res.success(
-        {
+      const responseData = {
           user: {
             id: user.id || user._id?.toString(),
             username: user.username,
@@ -174,14 +148,25 @@ export class AuthController extends BaseController {
             bio: profile?.bio || null,
             phone: user.phone || null,
             isActive: user.isActive,
-            emailVerified: profile?.emailVerified ?? false,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
           },
           isAuthenticated: true,
-        },
-        'Profile retrieved successfully'
-      );
+      };
+
+      logger.debug('Sending profile response', {
+        correlationId: req.correlationId,
+        userId: responseData.user.id,
+        userRole: responseData.user.role,
+        isAuthenticated: responseData.isAuthenticated,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Profile retrieved successfully',
+        timestamp: new Date().toISOString(),
+        data: responseData,
+      });
     } catch (error) {
       logger.error('Get profile error: Unexpected error', {
         error: error.message,
@@ -210,48 +195,6 @@ export class AuthController extends BaseController {
 
       // Handle unexpected errors
       logger.error('Refresh token error:', error);
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
-    }
-  }
-
-  async verifyEmail(req, res) {
-    try {
-      const { token, action } = req.body;
-
-      // Determine flow type
-      if (token) {
-        // Registration verification flow - requires token
-        const result = await this.verifyEmailUseCase.execute({ token });
-
-        return res.success({ user: result.user }, result.message);
-      } else if (action === 'confirm') {
-        // Authenticated user confirmation flow - requires authentication
-        if (!req.user) {
-          return sendErrorResponse(res, 'TOKEN_MISSING');
-        }
-
-        const userId = req.user.id || req.user._id?.toString();
-        if (!userId) {
-          return sendErrorResponse(res, 'INVALID_TOKEN');
-        }
-
-        // Use the mark email verified use case
-        const result = await this.markEmailVerifiedUseCase.execute(userId);
-
-        return res.success({ profile: result.profile }, result.message);
-      } else {
-        return sendErrorResponse(res, 'MISSING_REQUIRED_FIELD', {
-          fieldName: 'token or action',
-        });
-      }
-    } catch (error) {
-      // Handle domain exceptions
-      if (error instanceof ValidationException || error instanceof ResourceNotFoundException) {
-        return res.status(error.statusCode).json(error.toResponse());
-      }
-
-      // Handle unexpected errors
-      logger.error('Email verification/confirmation error:', error);
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
@@ -299,8 +242,17 @@ export class AuthController extends BaseController {
 
   async logout(req, res) {
     try {
-      // In a stateless JWT system, logout is handled client-side
-      // by removing the token. We could implement token blacklisting here.
+      if (!req.user) {
+        return sendErrorResponse(res, 'TOKEN_MISSING');
+      }
+
+      if (!this.refreshTokenRepository) {
+        logger.warn('Refresh token repository not available during logout');
+      } else {
+        const userId = req.user.id || req.user._id?.toString();
+        await this.refreshTokenRepository.revokeAllForUser(userId);
+      }
+
       return res.success(null, 'Logout successful');
     } catch (error) {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');

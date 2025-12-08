@@ -4,6 +4,39 @@ const nextConfig: NextConfig = {
   // Disable trailing slashes to prevent routing issues
   trailingSlash: false,
 
+  // Turbopack configuration (required when using webpack config in Next.js 16)
+  turbopack: {},
+
+  // Memory optimizations for large builds
+  experimental: {
+    // Reduce memory usage during builds
+    webpackBuildWorker: true,
+  },
+
+  // Simplified webpack config to prevent memory issues
+  webpack: (config, { dev, isServer }) => {
+    // Only apply optimizations in production builds
+    if (!dev && !isServer) {
+      // Reduce bundle splitting complexity
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+            },
+          },
+        },
+      };
+    }
+
+    return config;
+  },
+
   // Proxy configuration for API routes
   async rewrites() {
     return [

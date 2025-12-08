@@ -21,13 +21,15 @@ import {
 import type { User } from "@/domain/entities/user-entity";
 import type { DataTableRowAction, Option } from "@/shared/types/data-table";
 
-import { CircleDashed, CheckCircle2, XCircle, Shield, Users, UserCog, CalendarDays } from "lucide-react";
+import { CircleDashed, CheckCircle2, XCircle, Shield, Users, UserCog } from "lucide-react";
+import { Typography } from "@/presentation/components/atoms";
+import { USER_ROLES } from "@/shared/constants";
 
-// Role options for filter
+// Role options for filter - derived from shared constants for consistency
 export const ROLE_OPTIONS: Option[] = [
-  { label: "Admin", value: "admin", icon: Shield },
-  { label: "Manager", value: "manager", icon: UserCog },
-  { label: "Staff", value: "staff", icon: Users },
+  { label: "Admin", value: USER_ROLES.ADMIN, icon: Shield },
+  { label: "Manager", value: USER_ROLES.MANAGER, icon: UserCog },
+  { label: "Staff", value: USER_ROLES.STAFF, icon: Users },
 ];
 
 // Status options for filter
@@ -41,8 +43,38 @@ interface GetUserTableColumnsProps {
     React.SetStateAction<DataTableRowAction<User> | null>
   >;
   currentUserId: string;
+  currentUserRole: string;
   canEdit: (user: User) => boolean;
   canDelete: (user: User) => boolean;
+  onToggleStatus?: (user: User) => void;
+}
+
+/**
+ * Check if the current user can toggle status of the target user
+ * Status can only be edited by higher-level users:
+ * - Admin can edit status of manager and staff
+ * - Manager can edit status of staff only
+ * - Staff cannot edit status of anyone
+ * - No one can edit their own status
+ */
+function canToggleUserStatus(currentUserId: string, currentUserRole: string, targetUser: User): boolean {
+  // Cannot toggle own status
+  if (currentUserId === targetUser.id) {
+    return false;
+  }
+
+  // Admin can toggle manager and staff (not other admins)
+  if (currentUserRole === 'admin') {
+    return targetUser.role !== 'admin';
+  }
+
+  // Manager can only toggle staff
+  if (currentUserRole === 'manager') {
+    return targetUser.role === 'staff';
+  }
+
+  // Staff cannot toggle anyone
+  return false;
 }
 
 export function getUserTableColumns({
@@ -93,15 +125,8 @@ export function getUserTableColumns({
           {row.getValue("username") || "-"}
         </span>
       ),
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const username = row.getValue(id) as string;
-        return username?.toLowerCase().includes(value.toLowerCase());
-      },
       meta: {
         label: "Username",
-        variant: "text",
-        placeholder: "Search usernames...",
       },
     },
     {
@@ -204,19 +229,9 @@ export function getUserTableColumns({
           </span>
         );
       },
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        if (!value) return true;
-        const createdAt = row.getValue(id) as Date | null;
-        if (!createdAt) return false;
-        const rowDate = new Date(createdAt);
-        const filterDate = new Date(value as string);
-        return rowDate >= filterDate;
-      },
+      // Removed enableColumnFilter and filterFn - using external DateRangeFilterCard instead
       meta: {
         label: "Created At",
-        variant: "date",
-        icon: CalendarDays,
       },
     },
     {
@@ -246,8 +261,8 @@ export function getUserTableColumns({
                 <DropdownMenuItem
                   onClick={() => setRowAction({ row, variant: "update" })}
                 >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
+                  <Edit className="h-4 w-4 mr-2" />
+                  <Typography variant="body-s" className="text-foreground">Edit</Typography>
                 </DropdownMenuItem>
               )}
               {showEdit && showDelete && <DropdownMenuSeparator />}
@@ -256,8 +271,8 @@ export function getUserTableColumns({
                   onClick={() => setRowAction({ row, variant: "delete" })}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Typography variant="body-s" className="text-destructive">Delete</Typography>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

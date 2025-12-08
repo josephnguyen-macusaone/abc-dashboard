@@ -111,12 +111,6 @@ export const useUserStore = create<UserState>()(
               pagination: response.pagination,
               loading: false
             });
-
-            storeLogger.info('Users fetched successfully', {
-              count: users.length,
-              filters: currentFilters,
-              pagination: response.pagination
-            });
           } catch (error) {
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
@@ -134,7 +128,6 @@ export const useUserStore = create<UserState>()(
 
             set({ currentUser: user, loading: false });
 
-            storeLogger.info('User fetched successfully', { userId: id });
             return user;
           } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -166,7 +159,6 @@ export const useUserStore = create<UserState>()(
               loading: false
             }));
 
-            storeLogger.info('User created successfully', { userId: newUser.id });
             return newUser;
           } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -192,7 +184,6 @@ export const useUserStore = create<UserState>()(
               loading: false
             }));
 
-            storeLogger.info('User updated successfully', { userId: id });
             return updatedUser;
           } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -214,8 +205,6 @@ export const useUserStore = create<UserState>()(
               selectedUsers: state.selectedUsers.filter(userId => userId !== id),
               loading: false
             }));
-
-            storeLogger.info('User deleted successfully', { userId: id });
           } catch (error) {
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
@@ -239,7 +228,6 @@ export const useUserStore = create<UserState>()(
               loading: false
             }));
 
-            storeLogger.info('Staff reassigned successfully', { staffId, managerId });
             return updatedUser;
           } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -257,7 +245,6 @@ export const useUserStore = create<UserState>()(
 
             set({ loading: false });
 
-            storeLogger.info('User stats fetched successfully');
             return stats;
           } catch (error) {
             const errorMessage = getErrorMessage(error);

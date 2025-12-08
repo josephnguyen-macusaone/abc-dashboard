@@ -8,9 +8,19 @@ import v1Routes from '../routes/index.js';
 import { errorHandler } from '../api/v1/middleware/error-handler.middleware.js';
 import { correlationIdMiddleware } from '../api/v1/middleware/correlation-id.middleware.js';
 import { requestLogger } from '../api/v1/middleware/request-logger.middleware.js';
-import { securityHeaders, requestSizeLimiter, injectionProtection, createRateLimit } from '../api/v1/middleware/security.middleware.js';
+import {
+  securityHeaders,
+  requestSizeLimiter,
+  injectionProtection,
+  createRateLimit,
+} from '../api/v1/middleware/security.middleware.js';
 import { responseHelpersMiddleware } from '../../shared/http/response-transformer.js';
-import { cacheTrackingMiddleware, userActivityMiddleware, securityMetricsMiddleware, performanceMiddleware } from '../api/v1/middleware/metrics.middleware.js';
+import {
+  cacheTrackingMiddleware,
+  userActivityMiddleware,
+  securityMetricsMiddleware,
+  performanceMiddleware,
+} from '../api/v1/middleware/metrics.middleware.js';
 import swaggerSpec from '../config/swagger.js';
 import logger from '../config/logger.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
@@ -53,21 +63,25 @@ app.use(securityMetricsMiddleware);
 app.use(responseHelpersMiddleware);
 
 // API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    docExpansion: 'none',
-    filter: true,
-    showExtensions: true,
-    showCommonExtensions: true,
-    syntaxHighlight: {
-      activate: true,
-      theme: 'arta'
-    }
-  }
-}));
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      docExpansion: 'none',
+      filter: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+      syntaxHighlight: {
+        activate: true,
+        theme: 'arta',
+      },
+    },
+  })
+);
 
 // Health check with comprehensive metrics
 app.get('/api/v1/health', getHealthWithMetrics);
@@ -93,13 +107,13 @@ app.use('/api/v1', v1Routes);
 app.use('*', (req, res) => {
   logger.withRequest(req).warn('Route not found', {
     method: req.method,
-    url: req.originalUrl
+    url: req.originalUrl,
   });
 
   res.status(404).json({
     success: false,
     message: 'Route not found',
-    correlationId: req.correlationId
+    correlationId: req.correlationId,
   });
 });
 

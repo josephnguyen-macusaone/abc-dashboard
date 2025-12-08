@@ -374,7 +374,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent align={align} className="w-auto p-0 mt-2">
-        <div className="flex py-2">
+        <div className="flex py-4">
           <div className="flex">
             <div className="flex flex-col">
               <div className="flex flex-col lg:flex-row gap-2 px-3 justify-end items-center lg:items-start pb-4 lg:pb-0">
@@ -417,7 +417,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                     <Label htmlFor="compare-mode">Compare</Label>
                   </div>
                 )}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col">
                   <div className="flex gap-2 items-center">
                     <DateInput
                       value={range.from}
@@ -511,7 +511,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                   </SelectContent>
                 </Select>
               )}
-              <div>
+              <div className={isSmallScreen ? "px-6" : "md:px-6"}>
                 <Calendar
                   mode="range"
                   onSelect={(
@@ -535,8 +535,8 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
             </div>
           </div>
           {!isSmallScreen && (
-            <div className="flex flex-col items-end gap-1 pr-2 pl-6 pb-6">
-              <div className="flex w-full flex-col items-end gap-1 pr-2 pl-6 pb-6">
+            <div className="flex flex-col items-end gap-1 pr-2 pl-6">
+              <div className="flex w-full flex-col items-end gap-1 pr-2 pl-6">
                 {PRESETS.map((preset) => (
                   <PresetButton
                     key={preset.name}
@@ -549,13 +549,35 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 py-2 pr-4 border-t">
+        <div className="flex justify-between gap-2 py-3 px-4 border-t">
+          <Button
+            onClick={() => {
+              setIsOpen(false);
+              // Clear the date range by setting empty values
+              const emptyRange = { from: new Date(), to: undefined };
+              setRange(emptyRange);
+              setRangeCompare(undefined);
+              setSelectedPreset(undefined);
+              if (onUpdate) {
+                onUpdate({
+                  range: { from: new Date(), to: undefined }, // Send empty range to clear filters
+                  rangeCompare: undefined,
+                });
+              }
+            }}
+            variant="outline"
+            size="sm"
+          >
+            Clear
+          </Button>
+          <div className="flex gap-2">
           <Button
             onClick={() => {
               setIsOpen(false);
               resetValues();
             }}
             variant="ghost"
+              size="sm"
           >
             Cancel
           </Button>
@@ -569,9 +591,11 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                 onUpdate?.({ range, rangeCompare });
               }
             }}
+              size="sm"
           >
             Update
           </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

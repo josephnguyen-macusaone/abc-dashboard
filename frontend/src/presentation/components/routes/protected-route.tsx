@@ -51,10 +51,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
       return;
     }
 
-    // Check if user needs email verification
-    if (isAuthenticated && user && !canAccessProtectedRoutes()) {
-      router.push(`/verify-email?email=${encodeURIComponent(user.email || '')}`);
-    }
+    // Check if user needs additional verification (removed email verification)
   }, [router, pathname, user, isAuthenticated, isLoading, canAccessProtectedRoutes]);
 
   // During server-side rendering or initial client load, show loading
@@ -89,10 +86,6 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     return <LoadingOverlay text="Redirecting..." />;
   }
 
-  // Check if user needs email verification (navigation handled in useEffect)
-  if (isAuthenticated && user && !canAccessProtectedRoutes()) {
-    return <LoadingOverlay text="Redirecting to email verification..." />;
-  }
 
   return <>{children}</>;
 }

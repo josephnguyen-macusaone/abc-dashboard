@@ -10,7 +10,6 @@ import { UserPlus, Users } from "lucide-react";
 import {
   DataTable,
   DataTableToolbar,
-  DataTableSkeleton,
 } from "@/presentation/components/molecules/data-table";
 import { useDataTable } from "@/presentation/hooks";
 import { Button } from "@/presentation/components/atoms/primitives/button";
@@ -21,7 +20,7 @@ import type { DataTableRowAction } from "@/shared/types/data-table";
 
 interface UsersDataTableProps {
   data: User[];
-  pageCount: number;
+  pageCount?: number;
   currentUser: User;
   canEdit: (user: User) => boolean;
   canDelete: (user: User) => boolean;
@@ -33,7 +32,7 @@ interface UsersDataTableProps {
 
 export function UsersDataTable({
   data,
-  pageCount,
+  pageCount: initialPageCount = -1, // Let table auto-calculate for client-side pagination
   currentUser,
   canEdit,
   canDelete,
@@ -62,10 +61,18 @@ export function UsersDataTable({
       getUserTableColumns({
         setRowAction,
         currentUserId: currentUser.id,
+        currentUserRole: currentUser.role,
         canEdit,
         canDelete,
       }),
-    [currentUser.id, canEdit, canDelete],
+    [currentUser.id, currentUser.role, canEdit, canDelete],
+  );
+
+  const [currentPageSize, setCurrentPageSize] = React.useState(20);
+
+  const pageCount = React.useMemo(() =>
+    Math.ceil(data.length / currentPageSize),
+    [data.length, currentPageSize]
   );
 
   const { table } = useDataTable({
@@ -81,18 +88,15 @@ export function UsersDataTable({
     },
   });
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <DataTableSkeleton
-        columnCount={7}
-        rowCount={10}
-        filterCount={3}
-        withPagination
-        withViewOptions
-      />
-    );
-  }
+  // Update page size when table page size changes
+  React.useEffect(() => {
+    const tablePageSize = table.getState().pagination.pageSize;
+    if (tablePageSize !== currentPageSize) {
+      setCurrentPageSize(tablePageSize);
+    }
+  }, [table.getState().pagination.pageSize, currentPageSize]);
+
+  // Loading is now handled at the UserManagement level
 
   // Empty state
   if (data.length === 0) {

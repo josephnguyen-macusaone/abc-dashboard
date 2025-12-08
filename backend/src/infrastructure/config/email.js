@@ -1,15 +1,34 @@
 import nodemailer from 'nodemailer';
 import { config } from './config.js';
 import logger from './logger.js';
+import { emailTemplates, renderEmailTemplate } from '../email/templates.js';
 
 // Create reusable transporter object using SMTP transport
 const createTransporter = () => {
+  const service = config.EMAIL_SERVICE;
+  const resolvedHost =
+    config.EMAIL_HOST ||
+    (service === 'mailhog'
+      ? 'localhost'
+      : service === 'sendgrid'
+        ? 'smtp.sendgrid.net'
+        : service === 'mailjet'
+          ? 'in-v3.mailjet.com'
+          : 'smtp.gmail.com');
+  const resolvedPort =
+    config.EMAIL_PORT ||
+    (service === 'mailhog'
+      ? 1025
+      : service === 'sendgrid' || service === 'google-workspace' || service === 'mailjet'
+        ? 587
+        : 587);
+
   // MailHog configuration for development
   if (config.EMAIL_SERVICE === 'mailhog') {
     logger.info('Using MailHog for email service');
-    return nodemailer.createTransporter({
-      host: config.EMAIL_HOST,
-      port: config.EMAIL_PORT,
+    return nodemailer.createTransport({
+      host: resolvedHost,
+      port: resolvedPort,
       secure: false, // MailHog doesn't use TLS
       tls: {
         rejectUnauthorized: false, // Allow self-signed certificates
@@ -32,9 +51,9 @@ const createTransporter = () => {
       throw new Error('Missing EMAIL_FROM configuration for Google Workspace');
     }
 
-    return nodemailer.createTransporter({
-      host: config.EMAIL_HOST || 'smtp.gmail.com',
-      port: config.EMAIL_PORT || 587,
+    return nodemailer.createTransport({
+      host: resolvedHost,
+      port: resolvedPort,
       secure: false, // Use TLS (STARTTLS)
       auth: {
         user: config.EMAIL_USER, // Google Workspace email address
@@ -43,6 +62,34 @@ const createTransporter = () => {
       tls: {
         ciphers: 'SSLv3',
         rejectUnauthorized: false, // Allow self-signed certificates during development
+      },
+      // Connection pooling for better performance
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+    });
+  }
+
+  // Mailjet SMTP configuration
+  if (config.EMAIL_SERVICE === 'mailjet') {
+    logger.info('Using Mailjet SMTP for email service');
+
+    // Validate required Mailjet configuration
+    if (!config.EMAIL_USER || !config.EMAIL_PASS) {
+      logger.error('Mailjet requires EMAIL_USER (API Key) and EMAIL_PASS (Secret Key)');
+      throw new Error('Missing Mailjet SMTP credentials');
+    }
+
+    return nodemailer.createTransport({
+      host: resolvedHost,
+      port: resolvedPort,
+      secure: config.EMAIL_SECURE === 'true' || config.EMAIL_SECURE === true, // Use SSL for port 465
+      auth: {
+        user: config.EMAIL_USER, // Mailjet API Key
+        pass: config.EMAIL_PASS, // Mailjet Secret Key
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
       // Connection pooling for better performance
       pool: true,
@@ -61,9 +108,9 @@ const createTransporter = () => {
       throw new Error('Missing SendGrid API Key - set EMAIL_PASS in your .env file');
     }
 
-    return nodemailer.createTransporter({
-      host: config.EMAIL_HOST || 'smtp.sendgrid.net',
-      port: config.EMAIL_PORT || 587,
+    return nodemailer.createTransport({
+      host: resolvedHost,
+      port: resolvedPort,
       secure: false, // Use TLS (STARTTLS)
       auth: {
         user: config.EMAIL_USER || 'apikey', // SendGrid uses 'apikey' as username
@@ -83,7 +130,7 @@ const createTransporter = () => {
   // Gmail configuration (legacy support)
   if (config.EMAIL_SERVICE === 'gmail') {
     logger.warn('Using legacy Gmail configuration. Consider upgrading to Google Workspace SMTP');
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: config.EMAIL_USER,
@@ -95,8 +142,8 @@ const createTransporter = () => {
   // Generic SMTP configuration (fallback)
   logger.info('Using generic SMTP configuration');
   const transporterConfig = {
-    host: config.EMAIL_HOST,
-    port: config.EMAIL_PORT,
+    host: resolvedHost,
+    port: resolvedPort,
     secure: config.EMAIL_SECURE,
     auth:
       config.EMAIL_USER && config.EMAIL_PASS
@@ -107,7 +154,7 @@ const createTransporter = () => {
         : undefined,
   };
 
-  return nodemailer.createTransporter(transporterConfig);
+  return nodemailer.createTransport(transporterConfig);
 };
 
 const transporter = createTransporter();
@@ -150,80 +197,10 @@ const sendEmail = async (options) => {
   }
 };
 
-// Email templates
-const emailTemplates = {
-  // Email verification template
-  emailVerification: (data) => ({
-    subject: 'Verify Your Email Address',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Welcome to Your App!</h2>
-        <p>Thank you for registering. Please verify your email address by clicking the button below:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${data.verificationUrl}"
-              style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-            Verify Email Address
-          </a>
-        </div>
-        <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${data.verificationUrl}</p>
-        <p style="color: #999; font-size: 12px;">This link will expire in 24 hours.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #666;">If you didn't create an account, please ignore this email.</p>
-      </div>
-    `,
-    text: `
-      Welcome to Your App!
-
-      Thank you for registering. Please verify your email address by visiting: ${data.verificationUrl}
-
-      This link will expire in 24 hours.
-
-      If you didn't create an account, please ignore this email.
-    `,
-  }),
-
-  // Welcome email after verification
-  welcome: (data) => ({
-    subject: 'Welcome to Your App!',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Welcome, ${data.name}!</h2>
-        <p>Your email address has been successfully verified. You can now access all features of your account.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${data.loginUrl}"
-              style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-            Get Started
-          </a>
-        </div>
-        <p>Thank you for joining us!</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #666; font-size: 12px;">If you have any questions, feel free to contact our support team.</p>
-      </div>
-    `,
-    text: `
-      Welcome, ${data.name}!
-
-      Your email address has been successfully verified. You can now access all features of your account.
-
-      Get started: ${data.loginUrl}
-
-      Thank you for joining us!
-
-      If you have any questions, feel free to contact our support team.
-    `,
-  }),
-};
-
 // Helper function to send templated emails
 const sendTemplatedEmail = async (template, email, data) => {
-  const templateConfig = emailTemplates[template];
-  if (!templateConfig) {
-    throw new Error(`Email template '${template}' not found`);
-  }
-
-  const emailContent = templateConfig(data);
-  return sendEmail({
+  const emailContent = renderEmailTemplate(template, data);
+  return await sendEmail({
     email,
     ...emailContent,
   });

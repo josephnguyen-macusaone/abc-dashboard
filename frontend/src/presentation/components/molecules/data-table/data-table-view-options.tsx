@@ -48,10 +48,10 @@ export function DataTableViewOptions<TData>({
           role="combobox"
           variant="outline"
           size="sm"
-          className="ml-auto hidden h-8 font-normal lg:flex"
+          className="h-8 font-normal"
         >
           <Settings2 className="text-muted-foreground" />
-          View
+          <span className="hidden sm:inline ml-1">View</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-44 p-0" {...props}>

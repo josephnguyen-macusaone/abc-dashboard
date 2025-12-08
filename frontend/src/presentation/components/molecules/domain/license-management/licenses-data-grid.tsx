@@ -18,7 +18,6 @@ import {
 } from "@/presentation/components/molecules/data-grid";
 import { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { Button } from "@/presentation/components/atoms/primitives/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/atoms/primitives/card";
 import { Typography } from "@/presentation/components/atoms";
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import { getLicenseGridColumns } from "./license-grid-columns";
@@ -26,8 +25,6 @@ import type { LicenseRecord } from "@/shared/types";
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
-  title?: string;
-  description?: string;
   isLoading?: boolean;
   height?: number;
   className?: string;
@@ -38,8 +35,6 @@ interface LicensesDataGridProps {
 
 export function LicensesDataGrid({
   data: initialData,
-  title = "License Management",
-  description = "Edit license records directly in the grid like Excel",
   isLoading = false,
   height = 600,
   className,
@@ -141,56 +136,36 @@ export function LicensesDataGrid({
     autoFocus: true,
   });
 
-
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
-        <CardHeader>
+      <div className={className}>
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                 <FileText className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <CardTitle className="title-s">{title}</CardTitle>
-                <Typography variant="body-s" className="text-muted-foreground mt-1">
-                  {description}
-                </Typography>
-              </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="space-y-6">
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
             {Array.from({ length: 10 }).map((_, i) => (
               <Skeleton key={i} className="h-9 w-full" />
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   // Empty state
   if (initialData.length === 0 && !hasChanges) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="title-s">{title}</CardTitle>
-              <Typography variant="body-s" className="text-muted-foreground mt-1">
-                {description}
-              </Typography>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+      <div className={className}>
+        <div className="space-y-6">
           <div className="p-12 text-center border rounded-md">
             <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileText className="h-8 w-8 text-muted-foreground" />
@@ -203,27 +178,14 @@ export function LicensesDataGrid({
             </Typography>
             <Button onClick={handleRowAdd}>Add License</Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <FileText className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <CardTitle className="title-s">{title}</CardTitle>
-            <Typography variant="body-s" className="text-muted-foreground mt-1">
-              {description}
-            </Typography>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className={className}>
+      <div className="space-y-5">
         {/* Toolbar with Search, Filter, Sort, Row Height, View, and Action buttons */}
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <div className="flex items-center gap-2">
@@ -242,7 +204,7 @@ export function LicensesDataGrid({
                 onClick={handleReset}
                 disabled={isSaving}
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
+                <RotateCcw className="h-4 w-4" />
                 Discard
               </Button>
               <Button
@@ -250,15 +212,15 @@ export function LicensesDataGrid({
                 onClick={handleSave}
                 disabled={!onSave || isSaving}
               >
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4" />
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           )}
         </div>
         <DataGrid {...gridState} height={height} stretchColumns />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

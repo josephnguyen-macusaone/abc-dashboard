@@ -3,7 +3,6 @@
 
 // Authentication use cases
 export { LoginUseCase } from './auth/login-usecase';
-export { RegisterUseCase } from './auth/register-usecase';
 export { LogoutUseCase } from './auth/logout-usecase';
 export { UpdateProfileUseCase, type UpdateProfileDTO } from './auth/update-profile-usecase';
 export { GetProfileUseCase } from './auth/get-profile-usecase';

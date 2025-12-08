@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ROUTE_CONFIGS, AUTH_ROUTES, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
+import { ROUTE_CONFIGS, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
 export function middleware(request: NextRequest) {
@@ -119,19 +119,6 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    // Check if user needs email verification
-    if (isAuthenticated && user && !user.isActive) {
-      logger.security('Unverified user access attempt', {
-        correlationId,
-        pathname,
-        userId: user.id,
-        userEmail: user.email,
-        redirectTo: '/verify-email'
-      });
-      const verifyUrl = new URL('/verify-email', request.url);
-      verifyUrl.searchParams.set('email', user.email || '');
-      return NextResponse.redirect(verifyUrl);
-    }
 
     middlewareLogger.debug('Route access granted', {
       pathname,

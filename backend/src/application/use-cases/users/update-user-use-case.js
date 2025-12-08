@@ -19,7 +19,7 @@ export class UpdateUserUseCase {
    * Check if a user can update another user based on permissions
    */
   canUserUpdateUser(updater, targetUser) {
-    // Users can always update their own profile
+    // Users can always update their own profile (except status - handled separately)
     if (updater.id === targetUser.id) {
       return { allowed: true };
     }
@@ -62,6 +62,52 @@ export class UpdateUserUseCase {
   }
 
   /**
+   * Check if a user can update the status (isActive) of another user
+   * Status can only be edited by higher-level users:
+   * - Admin can edit status of manager and staff
+   * - Manager can edit status of staff only
+   * - Staff cannot edit status of anyone (including themselves)
+   * - No one can edit their own status
+   */
+  canUserUpdateStatus(updater, targetUser) {
+    // No one can edit their own status
+    if (updater.id === targetUser.id) {
+      return {
+        allowed: false,
+        reason: 'You cannot change your own account status'
+      };
+    }
+
+    // Admin can edit status of manager and staff (not other admins)
+    if (updater.role === 'admin') {
+      if (targetUser.role === 'admin') {
+        return {
+          allowed: false,
+          reason: 'Admins cannot change status of other admin accounts'
+        };
+      }
+      return { allowed: true };
+    }
+
+    // Manager can only edit status of staff
+    if (updater.role === 'manager') {
+      if (targetUser.role === 'staff') {
+        return { allowed: true };
+      }
+      return {
+        allowed: false,
+        reason: 'Managers can only change status of staff accounts'
+      };
+    }
+
+    // Staff cannot edit status of anyone
+    return {
+      allowed: false,
+      reason: 'You do not have permission to change account status'
+    };
+  }
+
+  /**
    * Execute update user use case
    * @param {string} userId - User ID to update
    * @param {Object} updates - Update data
@@ -94,6 +140,25 @@ export class UpdateUserUseCase {
 
       if (!canUpdate.allowed) {
         throw new InsufficientPermissionsException(canUpdate.reason || 'update this user');
+      }
+
+      // Check special permission for status (isActive) update
+      if (updates.isActive !== undefined) {
+        const canUpdateStatus = this.canUserUpdateStatus(currentUser, user);
+        if (!canUpdateStatus.allowed) {
+          throw new InsufficientPermissionsException(canUpdateStatus.reason || 'change account status');
+        }
+        
+        // Log status change for audit
+        logger.security('USER_STATUS_CHANGE', {
+          action: updates.isActive ? 'activate' : 'deactivate',
+          actorId: currentUser.id,
+          actorRole: currentUser.role,
+          targetId: user.id,
+          targetRole: user.role,
+          previousStatus: user.isActive,
+          newStatus: updates.isActive,
+        });
       }
 
       // Validate username uniqueness if being updated

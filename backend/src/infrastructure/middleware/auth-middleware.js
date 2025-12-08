@@ -115,10 +115,23 @@ export class AuthMiddleware {
       const authHeader = req.headers.authorization || req.headers.Authorization;
       const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
+      logger.debug('Optional auth check', {
+        correlationId: req.correlationId,
+        hasAuthHeader: !!authHeader,
+        hasToken: !!token,
+        tokenLength: token ? token.length : 0,
+      });
+
       if (token) {
         try {
           // Verify token
           const decoded = this.tokenService.verifyToken(token);
+
+          logger.debug('Token decoded', {
+            correlationId: req.correlationId,
+            userId: decoded?.userId,
+            hasUserId: !!(decoded && decoded.userId),
+          });
 
           // Find user
           if (decoded && decoded.userId) {
@@ -126,19 +139,41 @@ export class AuthMiddleware {
 
             if (user) {
               req.user = user;
+              logger.debug('User found and attached', {
+                correlationId: req.correlationId,
+                userId: user.id,
+                userRole: user.role,
+                userEmail: user.email,
+              });
             } else {
               req.user = null;
+              logger.warn('User not found for token', {
+                correlationId: req.correlationId,
+                userId: decoded.userId,
+              });
             }
           } else {
             req.user = null;
+            logger.warn('No userId in decoded token', {
+              correlationId: req.correlationId,
+              decodedKeys: decoded ? Object.keys(decoded) : null,
+            });
           }
         } catch (tokenError) {
           // Token is invalid or expired, but don't fail the request
           // Just continue without user attached
           req.user = null;
+          logger.warn('Token verification failed', {
+            correlationId: req.correlationId,
+            error: tokenError.message,
+            errorType: tokenError.constructor.name,
+          });
         }
       } else {
         req.user = null;
+        logger.debug('No token provided', {
+          correlationId: req.correlationId,
+        });
       }
     } catch (error) {
       // Log unexpected errors but don't fail the request for optional auth
@@ -148,6 +183,11 @@ export class AuthMiddleware {
       });
       req.user = null;
     }
+
+    logger.debug('Optional auth result', {
+      correlationId: req.correlationId,
+      hasUser: !!req.user,
+    });
 
     next();
   };
@@ -160,9 +200,13 @@ const getAuthMiddleware = async () => {
   return awilixContainer.getAuthMiddleware();
 };
 
-export const authenticate = async (req, res, next) => (await getAuthMiddleware()).authenticate(req, res, next);
-export const authorizeSelf = async (req, res, next) => (await getAuthMiddleware()).authorizeSelf(req, res, next);
+export const authenticate = async (req, res, next) =>
+  (await getAuthMiddleware()).authenticate(req, res, next);
+export const authorizeSelf = async (req, res, next) =>
+  (await getAuthMiddleware()).authorizeSelf(req, res, next);
 export const authorize = (permissions) => async (req, res, next) =>
   (await getAuthMiddleware()).authorize(permissions)(req, res, next);
-export const requireAdmin = async (req, res, next) => (await getAuthMiddleware()).requireAdmin(req, res, next);
-export const optionalAuth = async (req, res, next) => (await getAuthMiddleware()).optionalAuth(req, res, next);
+export const requireAdmin = async (req, res, next) =>
+  (await getAuthMiddleware()).requireAdmin(req, res, next);
+export const optionalAuth = async (req, res, next) =>
+  (await getAuthMiddleware()).optionalAuth(req, res, next);

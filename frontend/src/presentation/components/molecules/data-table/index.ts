@@ -5,7 +5,6 @@ export { DataTableToolbar } from "./data-table-toolbar";
 export { DataTableAdvancedToolbar } from "./data-table-advanced-toolbar";
 export { DataTableViewOptions } from "./data-table-view-options";
 export { DataTableFacetedFilter } from "./data-table-faceted-filter";
-export { DataTableDateFilter } from "./data-table-date-filter";
 export { DataTableSliderFilter } from "./data-table-slider-filter";
 export { DataTableRangeFilter } from "./data-table-range-filter";
 export { DataTableFilterList } from "./data-table-filter-list";

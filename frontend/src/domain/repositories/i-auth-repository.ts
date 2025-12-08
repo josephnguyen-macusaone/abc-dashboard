@@ -11,11 +11,6 @@ export interface IAuthRepository {
   login(email: string, password: string): Promise<AuthResult>;
 
   /**
-   * Register new user
-   */
-  register(username: string, firstName: string, lastName: string, email: string, password: string, role?: string): Promise<AuthResult>;
-
-  /**
    * Logout current user
    */
   logout(): Promise<void>;
@@ -24,12 +19,6 @@ export interface IAuthRepository {
    * Refresh authentication tokens
    */
   refreshToken(): Promise<AuthTokens>;
-
-  /**
-   * Verify email with token
-   */
-  verifyEmail(email: string, token: string): Promise<{ user: User; message: string }>;
-
 
   /**
    * Change current user's password

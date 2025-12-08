@@ -51,7 +51,7 @@ export function UserFormModal({
     newPassword: string;
     confirmPassword: string;
   }>({
-    username: user?.username || user?.id || '', // Use username if available, otherwise id
+    username: '', // No longer needed for creation - auto-generated from email
     role: (user?.role as UserRole) || defaultRole as UserRole,
     oldPassword: '', // Old password for verification when editing
     newPassword: '', // New password when editing
@@ -71,7 +71,7 @@ export function UserFormModal({
   useEffect(() => {
     if (open) {
       setFormData({
-        username: user?.username || user?.id || '', // Use username if available, otherwise id
+        username: user?.username || '', // Only for editing existing users
         role: (user?.role as UserRole) || defaultRole as UserRole,
         oldPassword: '',
         newPassword: '',
@@ -145,17 +145,15 @@ export function UserFormModal({
         return;
       }
     } else {
-      // When creating, send all fields
+      // When creating, send role only (username auto-generated from email)
       await onSubmit({
-        id: formData.username,
-        username: formData.username,
         role: formData.role,
       });
     }
     // Reset form after successful submit
     if (!user) {
       setFormData({
-        username: '',
+        username: '', // Keep empty for creation
         role: defaultRole as UserRole,
         oldPassword: '',
         newPassword: '',
@@ -175,34 +173,14 @@ export function UserFormModal({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username and Role in the same row - only show when not passwordOnly */}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Role field - compact layout with one field per line */}
           {!passwordOnly && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Username
-              </label>
-              <Input
-                value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                required
-                placeholder="Enter username"
-                disabled={!!user}
-                className={user ? 'bg-muted cursor-not-allowed' : ''}
-              />
-              {user && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Username cannot be changed after user creation
-                </p>
-              )}
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 Role
@@ -234,7 +212,6 @@ export function UserFormModal({
                 </p>
               )}
             </div>
-          </div>
           )}
 
           {/* Password fields - show when editing or when passwordOnly is true */}
@@ -242,7 +219,7 @@ export function UserFormModal({
             <>
               {/* Old Password Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Current Password <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">
@@ -283,7 +260,7 @@ export function UserFormModal({
 
               {/* New Password Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   New Password <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">
@@ -331,7 +308,7 @@ export function UserFormModal({
 
               {/* Confirm Password Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Confirm New Password <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">

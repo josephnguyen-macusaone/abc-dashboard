@@ -3,6 +3,7 @@
  * Handles user creation by administrators with automatic password generation and email sending
  */
 import logger from '../../../infrastructure/config/logger.js';
+import { config } from '../../../infrastructure/config/config.js';
 import { generateTemporaryPassword } from '../../../shared/utils/security/crypto.js';
 import { CreateUserRequestDto } from '../../dto/user/index.js';
 import { UserResponseDto } from '../../dto/user/index.js';
@@ -117,9 +118,10 @@ export class CreateUserUseCase {
         const emailResult = await this.emailService.sendWelcomeWithPassword(user.email, {
           displayName: user.displayName,
           username: user.username,
+          email: user.email,
           password: temporaryPassword,
           role: user.role,
-          loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000/login',
+          loginUrl: `${config.CLIENT_URL || 'https://portal.abcsalon.us'}/login`,
           managerName,
         });
 

@@ -39,9 +39,11 @@ export class CreateUserRequestDto extends BaseDto {
       displayName = [body.firstName, body.lastName].filter(Boolean).join(' ').trim();
     }
 
-
-    // Username is now required, no auto-generation
+    // Auto-generate username from email if not provided (since we use email for login)
     let username = body.username;
+    if (!username && body.email) {
+      username = body.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+    }
 
     return new CreateUserRequestDto({
       username: username,
@@ -63,8 +65,9 @@ export class CreateUserRequestDto extends BaseDto {
   validate() {
     const errors = [];
 
-    if (!this.username || this.username.trim().length < 3) {
-      errors.push({ field: 'username', message: 'Username must be at least 3 characters' });
+    // Username is now optional - auto-generated from email if not provided
+    if (this.username && this.username.trim().length < 3) {
+      errors.push({ field: 'username', message: 'Username must be at least 3 characters if provided' });
     }
 
     if (!this.email || !this.email.includes('@')) {

@@ -32,6 +32,7 @@ export interface UpdateUserDTO {
   phone?: string;
   role?: UserRole;
   isActive?: boolean;
+  managerId?: string;
 }
 
 /**
@@ -48,6 +49,7 @@ export interface UserListParams {
   isActive?: boolean;
   hasAvatar?: boolean;
   hasPhone?: boolean;
+  hasBio?: boolean;
   sortBy?: SortBy;
   sortOrder?: SortOrder;
 }

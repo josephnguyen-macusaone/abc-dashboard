@@ -18,8 +18,8 @@ export function LoadingOverlay({
   return (
     <div
       className={cn(
-        'flex items-center justify-center',
-        fullScreen ? 'fixed inset-0 z-50 bg-background/80 backdrop-blur-sm' : 'min-h-screen bg-background',
+        'flex items-center justify-center backdrop-blur-sm',
+        fullScreen ? 'fixed inset-0 z-50 bg-background/80' : 'min-h-screen bg-background/80',
         className
       )}
     >

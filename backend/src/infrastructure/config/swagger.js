@@ -38,73 +38,73 @@ const swaggerDefinition = {
           id: {
             type: 'string',
             description: 'User ID',
-            example: '507f1f77bcf86cd799439011'
+            example: '507f1f77bcf86cd799439011',
           },
           username: {
             type: 'string',
             description: 'Username',
-            example: 'johndoe'
+            example: 'johndoe',
           },
           email: {
             type: 'string',
             format: 'email',
             description: 'User email',
-            example: 'john.doe@example.com'
+            example: 'john.doe@example.com',
           },
           displayName: {
             type: 'string',
             description: 'Display name',
-            example: 'John Doe'
+            example: 'John Doe',
           },
           role: {
             type: 'string',
             enum: ['admin', 'manager', 'staff'],
             description: 'User role',
-            example: 'staff'
+            example: 'staff',
           },
           avatarUrl: {
             type: 'string',
             format: 'uri',
             description: 'Avatar URL',
-            nullable: true
+            nullable: true,
           },
           phone: {
             type: 'string',
             description: 'Phone number',
-            nullable: true
+            nullable: true,
           },
           isActive: {
             type: 'boolean',
             description: 'Whether the user account is active',
-            example: true
+            example: true,
           },
           isFirstLogin: {
             type: 'boolean',
-            description: 'Whether this is the user\'s first login',
-            example: false
+            description: "Whether this is the user's first login",
+            example: false,
           },
           createdAt: {
             type: 'string',
             format: 'date-time',
-            description: 'Account creation timestamp'
+            description: 'Account creation timestamp',
           },
           updatedAt: {
             type: 'string',
             format: 'date-time',
-            description: 'Last update timestamp'
-          }
-        }
+            description: 'Last update timestamp',
+          },
+        },
       },
       Error: {
         type: 'object',
         properties: {
           success: {
             type: 'boolean',
-            example: false
+            example: false,
           },
           message: {
             type: 'string',
-            description: 'Error message'
+            description: 'Error message',
           },
           errors: {
             type: 'array',
@@ -113,22 +113,22 @@ const swaggerDefinition = {
               properties: {
                 field: {
                   type: 'string',
-                  description: 'Field name that failed validation'
+                  description: 'Field name that failed validation',
                 },
                 message: {
                   type: 'string',
-                  description: 'Validation error message'
-                }
-              }
-            }
+                  description: 'Validation error message',
+                },
+              },
+            },
           },
           timestamp: {
             type: 'string',
-            format: 'date-time'
-          }
-        }
-      }
-    }
+            format: 'date-time',
+          },
+        },
+      },
+    },
   },
 };
 

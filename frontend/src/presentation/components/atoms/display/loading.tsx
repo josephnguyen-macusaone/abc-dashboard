@@ -22,7 +22,7 @@ export function Loading({
     return (
       <div
         className={cn(
-          "animate-spin rounded-full border-2 border-primary border-t-transparent",
+          "animate-spin rounded-full border-2 border-muted-foreground border-t-primary",
           sizeClasses[size],
           className
         )}

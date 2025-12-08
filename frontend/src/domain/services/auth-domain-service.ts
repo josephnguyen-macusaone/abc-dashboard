@@ -67,11 +67,13 @@ export class AuthDomainService {
   static getDefaultRole(requestedRole?: string): UserRole {
     if (!requestedRole) return UserRole.STAFF;
 
-    // Only allow valid roles
+    const normalized = requestedRole.toString().toLowerCase();
     const validRoles = Object.values(UserRole);
-    return validRoles.includes(requestedRole as UserRole)
-      ? (requestedRole as UserRole)
-      : UserRole.STAFF;
+    if (validRoles.includes(normalized as UserRole)) {
+      return normalized as UserRole;
+    }
+
+    return UserRole.STAFF;
   }
 
   /**
@@ -79,7 +81,8 @@ export class AuthDomainService {
    * Business rule: Only admins can perform administrative tasks
    */
   static canPerformAdminActions(user: User): boolean {
-    return user.isActive && user.role === UserRole.ADMIN;
+    // Allow if role is admin and account is not explicitly deactivated
+    return user.role === UserRole.ADMIN && user.isActive !== false;
   }
 
   /**
@@ -128,8 +131,17 @@ export class AuthDomainService {
    * Business rule: Tokens must be cryptographically secure
    */
   static generateSecureToken(): string {
-    // In a real implementation, this would use crypto.randomBytes
-    // For now, we'll use a simple implementation
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    // Prefer platform crypto (works in modern browsers and Node 18+)
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return globalThis.crypto.randomUUID();
+    }
+
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      globalThis.crypto.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    throw new Error('Secure token generation is unavailable in this environment');
   }
 }

@@ -12,41 +12,22 @@ export const config = {
   JWT_ISSUER: process.env.JWT_ISSUER || 'abc-dashboard',
   JWT_EMAIL_VERIFICATION_EXPIRES_IN: process.env.JWT_EMAIL_VERIFICATION_EXPIRES_IN || '24h', // Email verification expiration
   JWT_PASSWORD_RESET_EXPIRES_IN: process.env.JWT_PASSWORD_RESET_EXPIRES_IN || '10m', // Password reset expiration
-  CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
+  CLIENT_URL:
+    process.env.CLIENT_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://portal.abcsalon.us'
+      : 'http://localhost:3000'),
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 14, // Increased from 12 for better security
 
   // Email configuration
-  // Email service (define first so other email config can reference it)
   EMAIL_SERVICE:
-    process.env.EMAIL_SERVICE ||
+    process.env.EMAIL_SERVICE ??
     (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace'),
 
   EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@yourapp.com',
   EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'ABC Dashboard',
-  EMAIL_HOST:
-    process.env.EMAIL_HOST ||
-    ((process.env.EMAIL_SERVICE ||
-      (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
-      ? 'localhost'
-      : (process.env.EMAIL_SERVICE ||
-            (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) ===
-          'sendgrid'
-        ? 'smtp.sendgrid.net'
-        : 'smtp.gmail.com'),
-  EMAIL_PORT:
-    (process.env.EMAIL_SERVICE ||
-      (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) === 'mailhog'
-      ? 1025 // MailHog SMTP port
-      : (process.env.EMAIL_SERVICE ||
-            (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) ===
-          'sendgrid'
-        ? 587 // SendGrid SMTP port (TLS)
-        : (process.env.EMAIL_SERVICE ||
-              (process.env.NODE_ENV === 'development' ? 'mailhog' : 'google-workspace')) ===
-            'google-workspace'
-          ? 587 // Google Workspace SMTP port (TLS)
-          : parseInt(process.env.EMAIL_PORT) ||
-            (process.env.NODE_ENV === 'development' ? 1025 : 587),
+  EMAIL_HOST: process.env.EMAIL_HOST,
+  EMAIL_PORT: process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : undefined,
   EMAIL_SECURE: process.env.EMAIL_SECURE === 'true' || false,
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS, // App Password for Google Workspace

@@ -121,7 +121,7 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
           </Typography>
           <div>
             <Typography variant="body-s" className="text-muted-foreground">
-              We've sent a password reset link to
+              We&apos;ve sent a password reset link to
             </Typography>
             <Typography variant="body-s" className="text-foreground font-medium">
               {formData.email}
@@ -135,14 +135,14 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
               <strong>Next steps</strong>
               <ul className="list-disc list-inside">
                 <li>Check your email inbox (and spam folder)</li>
-                <li>Click the "Reset Password" link</li>
+                <li>Click the &quot;Reset Password&quot; link</li>
                 <li>Follow the instructions in the email</li>
               </ul>
             </Typography>
           </div>
 
           <Typography variant="body-xs" className="text-muted-foreground">
-            Didn't receive the email? Check your spam folder or try a different email address.
+            Didn&apos;t receive the email? Check your spam folder or try a different email address.
           </Typography>
 
           <div className="space-y-3">
@@ -182,7 +182,7 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
             Forgot Your Password?
           </Typography>
           <Typography variant="body-s" className="text-muted-foreground">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </Typography>
         </div>
 

@@ -8,7 +8,6 @@ import { UserRepository } from '@/infrastructure/repositories/user-repository';
 // Use Cases
 import {
   LoginUseCase,
-  RegisterUseCase,
   LogoutUseCase,
   UpdateProfileUseCase,
   GetProfileUseCase
@@ -33,7 +32,6 @@ class DependencyContainer {
 
   // Use Cases (Application Layer)
   private _loginUseCase?: LoginUseCase;
-  private _registerUseCase?: RegisterUseCase;
   private _logoutUseCase?: LogoutUseCase;
   private _updateProfileUseCase?: UpdateProfileUseCase;
   private _getProfileUseCase?: GetProfileUseCase;
@@ -70,13 +68,6 @@ class DependencyContainer {
       this._loginUseCase = new LoginUseCase(this.authRepository);
     }
     return this._loginUseCase;
-  }
-
-  get registerUseCase(): RegisterUseCase {
-    if (!this._registerUseCase) {
-      this._registerUseCase = new RegisterUseCase(this.authRepository);
-    }
-    return this._registerUseCase;
   }
 
   get logoutUseCase(): LogoutUseCase {
@@ -148,7 +139,6 @@ class DependencyContainer {
       this._authService = new AuthService(
         this.authRepository,
         this.loginUseCase,
-        this.registerUseCase,
         this.logoutUseCase,
         this.updateProfileUseCase,
         this.getProfileUseCase
@@ -179,7 +169,6 @@ class DependencyContainer {
     this._userRepository = undefined;
 
     this._loginUseCase = undefined;
-    this._registerUseCase = undefined;
     this._logoutUseCase = undefined;
     this._updateProfileUseCase = undefined;
     this._getProfileUseCase = undefined;

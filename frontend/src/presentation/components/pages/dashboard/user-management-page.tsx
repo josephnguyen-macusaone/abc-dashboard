@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useUser } from '@/presentation/contexts/user-context';
 import { useToast } from '@/presentation/contexts/toast-context';
@@ -28,6 +28,8 @@ export function UserManagementPage() {
   const { error: showError } = useToast();
 
   const [users, setUsers] = useState<User[]>([]);
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
 
   // Prevent duplicate API calls in React Strict Mode
   const hasLoadedRef = useRef(false);
@@ -60,6 +62,57 @@ export function UserManagementPage() {
     }
   }, [loadUsers]);
 
+  // Filter users by date range and role
+  const filteredUsers = useMemo(() => {
+    let filtered = users;
+
+    // Apply role filter first
+    if (roleFilter) {
+      filtered = filtered.filter(user => user.role === roleFilter);
+    }
+
+    // Apply date range filter
+    if (dateRange.from || dateRange.to) {
+      filtered = filtered.filter(user => {
+        if (!user.createdAt) return false;
+
+        const userDate = new Date(user.createdAt);
+        const fromDate = dateRange.from ? new Date(dateRange.from) : null;
+        const toDate = dateRange.to ? new Date(dateRange.to) : null;
+
+        // Set toDate to end of day for inclusive filtering
+        if (toDate) {
+          toDate.setHours(23, 59, 59, 999);
+        }
+
+        if (fromDate && userDate < fromDate) return false;
+        if (toDate && userDate > toDate) return false;
+
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [users, dateRange, roleFilter]);
+
+  // Handle date range changes
+  const handleDateRangeChange = useCallback((values: { range: { from: Date; to: Date | undefined }; rangeCompare?: any }) => {
+    // If the range has no "to" date, it means clear was pressed
+    if (values.range.from && !values.range.to) {
+      setDateRange({}); // Clear the date range
+    } else {
+      setDateRange({
+        from: values.range.from,
+        to: values.range.to,
+      });
+    }
+  }, []);
+
+  // Handle role filtering
+  const handleRoleFilter = useCallback((role: string | null) => {
+    setRoleFilter(role);
+  }, []);
+
   if (!currentUser) {
     return (
       <DashboardTemplate>
@@ -73,9 +126,12 @@ export function UserManagementPage() {
   return (
     <UserManagement
       currentUser={currentUser}
-      users={users}
+      users={filteredUsers}
       isLoading={loading.getUsers}
       onLoadUsers={loadUsers}
+      dateRange={dateRange}
+      onDateRangeChange={handleDateRangeChange}
+      onRoleFilter={handleRoleFilter}
     />
   );
 }

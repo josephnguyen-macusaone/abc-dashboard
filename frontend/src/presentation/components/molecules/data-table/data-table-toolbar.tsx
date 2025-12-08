@@ -4,7 +4,6 @@ import type { Column, Table } from "@tanstack/react-table";
 import { Search, X } from "lucide-react";
 import * as React from "react";
 
-import { DataTableDateFilter } from "@/presentation/components/molecules/data-table/data-table-date-filter";
 import { DataTableFacetedFilter } from "@/presentation/components/molecules/data-table/data-table-faceted-filter";
 import { DataTableSliderFilter } from "@/presentation/components/molecules/data-table/data-table-slider-filter";
 import { DataTableViewOptions } from "@/presentation/components/molecules/data-table/data-table-view-options";
@@ -38,12 +37,11 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-col py-1 sm:flex-row sm:items-start sm:justify-between",
+        "flex w-full flex-wrap items-center gap-2 py-1",
         className,
       )}
       {...props}
     >
-      <div className="flex flex-1 flex-wrap items-center gap-2">
         {columns.map((column) => (
           <DataTableToolbarFilter key={column.id} column={column} />
         ))}
@@ -59,8 +57,7 @@ export function DataTableToolbar<TData>({
             Reset
           </Button>
         )}
-      </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 ml-auto">
         {children}
         <DataTableViewOptions table={table} align="end" />
       </div>
@@ -118,16 +115,6 @@ function DataTableToolbarFilter<TData>({
           <DataTableSliderFilter
             column={column}
             title={columnMeta.label ?? column.id}
-          />
-        );
-
-      case "date":
-      case "dateRange":
-        return (
-          <DataTableDateFilter
-            column={column}
-            title={columnMeta.label ?? column.id}
-            multiple={columnMeta.variant === "dateRange"}
           />
         );
 

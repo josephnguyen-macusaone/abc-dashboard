@@ -69,10 +69,8 @@ export class UserProfileRepository extends IUserProfileRepository {
         const profileData = {
           userId: userProfile.userId,
           bio: userProfile.bio,
-          emailVerified: userProfile.emailVerified,
           lastLoginAt: userProfile.lastLoginAt,
           lastActivityAt: userProfile.lastActivityAt,
-          emailVerifiedAt: userProfile.emailVerifiedAt,
         };
 
         const profileDoc = new this.UserProfileModel(profileData);
@@ -102,17 +100,11 @@ export class UserProfileRepository extends IUserProfileRepository {
         if (updates.bio !== undefined) {
           updateData.bio = updates.bio;
         }
-        if (updates.emailVerified !== undefined) {
-          updateData.emailVerified = updates.emailVerified;
-        }
         if (updates.lastLoginAt !== undefined) {
           updateData.lastLoginAt = updates.lastLoginAt;
         }
         if (updates.lastActivityAt !== undefined) {
           updateData.lastActivityAt = updates.lastActivityAt;
-        }
-        if (updates.emailVerifiedAt !== undefined) {
-          updateData.emailVerifiedAt = updates.emailVerifiedAt;
         }
 
         const updatedDoc = await this.UserProfileModel.findByIdAndUpdate(id, updateData, {
@@ -146,17 +138,11 @@ export class UserProfileRepository extends IUserProfileRepository {
         if (updates.bio !== undefined) {
           updateData.bio = updates.bio;
         }
-        if (updates.emailVerified !== undefined) {
-          updateData.emailVerified = updates.emailVerified;
-        }
         if (updates.lastLoginAt !== undefined) {
           updateData.lastLoginAt = updates.lastLoginAt;
         }
         if (updates.lastActivityAt !== undefined) {
           updateData.lastActivityAt = updates.lastActivityAt;
-        }
-        if (updates.emailVerifiedAt !== undefined) {
-          updateData.emailVerifiedAt = updates.emailVerifiedAt;
         }
 
         const updatedDoc = await this.UserProfileModel.findOneAndUpdate({ userId }, updateData, {
@@ -282,45 +268,13 @@ export class UserProfileRepository extends IUserProfileRepository {
     );
   }
 
-  async verifyEmail(userId) {
-    return withTimeout(
-      async () => {
-        const now = new Date();
-        const updatedDoc = await this.UserProfileModel.findOneAndUpdate(
-          { userId },
-          {
-            emailVerified: true,
-            emailVerifiedAt: now,
-          },
-          { new: true, runValidators: true, upsert: true }
-        );
-
-        return this._toEntity(updatedDoc);
-      },
-      TimeoutPresets.DATABASE,
-      'user_profile_verifyEmail',
-      {
-        correlationId: this.correlationId,
-        onTimeout: (error) => {
-          logger.error('User profile verifyEmail timed out', {
-            correlationId: this.correlationId,
-            userId,
-            timeout: TimeoutPresets.DATABASE,
-          });
-        },
-      }
-    );
-  }
-
   _toEntity(profileDoc) {
     return new UserProfile({
       id: profileDoc._id?.toString(),
       userId: profileDoc.userId?.toString(),
       bio: profileDoc.bio,
-      emailVerified: profileDoc.emailVerified || false,
       lastLoginAt: profileDoc.lastLoginAt,
       lastActivityAt: profileDoc.lastActivityAt,
-      emailVerifiedAt: profileDoc.emailVerifiedAt,
       createdAt: profileDoc.createdAt,
       updatedAt: profileDoc.updatedAt,
     });

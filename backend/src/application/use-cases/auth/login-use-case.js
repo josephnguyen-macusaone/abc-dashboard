@@ -1,6 +1,10 @@
 /**
  * Login Use Case
  * Handles user authentication logic
+ *
+ * Note: Only admin can create user accounts. No self-registration.
+ * - isActive = true → can login
+ * - isActive = false → account deactivated by admin, cannot login
  */
 import {
   InvalidCredentialsException,
@@ -11,10 +15,11 @@ import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/r
 import { LoginResponseDto, UserAuthDto, TokensDto } from '../../dto/auth/index.js';
 
 export class LoginUseCase {
-  constructor(userRepository, authService, tokenService) {
+  constructor(userRepository, authService, tokenService, refreshTokenRepository) {
     this.userRepository = userRepository;
     this.authService = authService;
     this.tokenService = tokenService;
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   /**
@@ -35,10 +40,10 @@ export class LoginUseCase {
         throw new InvalidCredentialsException();
       }
 
-      // Check if account is active
+      // Check if account is active (admin controls this)
       if (!user.isActive) {
-        throw new ValidationException(
-          'Please verify your email before logging in. Check your email for the verification link.'
+        throw new AccountDeactivatedException(
+          'Your account has been deactivated. Please contact your administrator.'
         );
       }
 
@@ -63,9 +68,21 @@ export class LoginUseCase {
         requiresPasswordChange,
       });
 
-      const refreshToken = this.tokenService.generateRefreshToken({
-        userId: user.id,
-      });
+      const refreshToken = this.tokenService.generateRefreshToken({ userId: user.id });
+
+      // Persist refresh token hash for rotation and revocation
+      try {
+        const decodedRefresh = this.tokenService.verifyToken(refreshToken);
+        const expiresAt = decodedRefresh?.exp ? new Date(decodedRefresh.exp * 1000) : null;
+        const tokenHash = this.tokenService.hashToken(refreshToken);
+        await this.refreshTokenRepository.saveToken({
+          userId: user.id,
+          tokenHash,
+          expiresAt: expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+      } catch (persistError) {
+        throw new Error(`Login failed: unable to persist refresh token (${persistError.message})`);
+      }
 
       // Return structured DTO response
       return new LoginResponseDto({

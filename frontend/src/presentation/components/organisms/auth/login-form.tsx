@@ -24,7 +24,6 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const { login } = useAuth();
   const toast = useToast();
   const router = useRouter();
-  const { emailVerificationRequired, emailVerificationMessage, clearEmailVerificationState } = useAuthStore();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
@@ -33,14 +32,6 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string | null>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Show email verification message when required
-  useEffect(() => {
-    if (emailVerificationRequired && emailVerificationMessage) {
-      toast.info(`${emailVerificationMessage}`);
-      clearEmailVerificationState();
-    }
-  }, [emailVerificationRequired, emailVerificationMessage, clearEmailVerificationState]);
 
   const handleInputChange = (field: keyof LoginFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -73,19 +64,13 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           loading: 'Signing you in...',
           success: 'Welcome back!',
           error: (error: any) => {
-            const errorMessage = error?.message || 'Login failed';
-            // Email verification errors are handled by the auth context's useEffect
-            if (!errorMessage.includes('verify your email') && !errorMessage.includes('Check your email')) {
-              return errorMessage;
-            }
-            // For email verification errors, don't show error toast as it's handled elsewhere
-            throw error; // Re-throw to prevent success toast
+            return error?.message || 'Login failed';
           }
         }
       );
       onSuccess?.();
     } catch (error) {
-      // Email verification errors are handled by the useEffect above, so we don't show error toasts here
+      // Error already handled by toast.promise
     }
   };
 
