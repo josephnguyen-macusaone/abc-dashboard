@@ -96,9 +96,9 @@ export function UserManagementPage() {
   }, [users, dateRange, roleFilter]);
 
   // Handle date range changes
-  const handleDateRangeChange = useCallback((values: { range: { from: Date; to: Date | undefined }; rangeCompare?: any }) => {
-    // If the range has no "to" date, it means clear was pressed
-    if (values.range.from && !values.range.to) {
+  const handleDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
+    // If the range has no "from" date, it means clear was pressed
+    if (!values.range.from) {
       setDateRange({}); // Clear the date range
     } else {
       setDateRange({

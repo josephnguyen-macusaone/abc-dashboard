@@ -1,8 +1,6 @@
 // Ensure joi is loaded first to avoid import timing issues
 import 'joi';
 
-/* global URL */
-
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -95,45 +93,7 @@ const corsOptions =
         credentials: true,
       }
     : {
-        origin(origin, callback) {
-          // Allow requests with no origin (mobile apps, curl, server-side requests, etc.)
-          if (!origin) {
-            return callback(null, true);
-          }
-
-          // Allow the configured client URL if set
-          if (config.CLIENT_URL && origin === config.CLIENT_URL) {
-            return callback(null, true);
-          }
-
-          // In production, allow same-origin requests (when frontend and backend are on same domain)
-          // Extract domain from origin and compare with current host
-          try {
-            const originUrl = new URL(origin);
-            const hostUrl = new URL(config.CLIENT_URL || 'http://localhost:3000');
-
-            // Allow if same domain (protocol + hostname + port)
-            if (originUrl.origin === hostUrl.origin) {
-              return callback(null, true);
-            }
-
-            // For HTTPS domains, also allow HTTP localhost for development access
-            if (originUrl.protocol === 'https:' && originUrl.hostname === hostUrl.hostname) {
-              return callback(null, true);
-            }
-
-            // Allow portal.abcsalon.us specifically for production
-            if (origin === 'https://portal.abcsalon.us') {
-              return callback(null, true);
-            }
-          } catch (error) {
-            // Invalid URL format, reject
-            return callback(new Error('Invalid origin'));
-          }
-
-          // Reject other origins in production
-          return callback(new Error('Not allowed by CORS'));
-        },
+        origin: config.CLIENT_URL,
         credentials: true,
       };
 
@@ -192,7 +152,7 @@ app.get('/api/v1/health', getHealthWithMetrics);
 // Serve dashboard HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'dashboard.html'));
-});
+}); // Routes
 
 // API Routes
 app.use('/api/v1', v1Routes);
