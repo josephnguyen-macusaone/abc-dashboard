@@ -27,35 +27,13 @@ export function createProfileRoutes(profileController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 data:
-   *                   type: object
-   *                   properties:
-   *                     id:
-   *                       type: string
-   *                       description: Profile ID
-   *                     userId:
-   *                       type: string
-   *                       description: User ID
-   *                     bio:
-   *                       type: string
-   *                       nullable: true
-   *                       description: User biography
-   *                     emailVerified:
-   *                       type: boolean
-   *                       description: Email verification status
-   *                     lastLoginAt:
-   *                       type: string
-   *                       format: date-time
-   *                       nullable: true
-   *                     lastActivityAt:
-   *                       type: string
-   *                       format: date-time
-   *                       nullable: true
+   *               $ref: '#/components/schemas/ProfileResponse'
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.get('/profile', (req, res) => profileController.getProfile(req, res));
 
@@ -96,19 +74,23 @@ export function createProfileRoutes(profileController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 data:
-   *                   type: object
-   *                   description: Updated profile data
+   *               $ref: '#/components/schemas/MessageResponse'
+   *       400:
+   *         description: Validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.patch('/profile', validateRequest(profileSchemas.updateProfile), (req, res) =>
     profileController.updateProfile(req, res)
   );
-
 
   return router;
 }

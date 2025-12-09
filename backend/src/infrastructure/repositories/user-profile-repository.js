@@ -5,12 +5,13 @@ import logger from '../config/logger.js';
 
 /**
  * UserProfile Repository Implementation
- * Implements the IUserProfileRepository interface using Mongoose
+ * Implements the IUserProfileRepository interface using PostgreSQL with Knex
  */
 export class UserProfileRepository extends IUserProfileRepository {
-  constructor(userProfileModel, correlationId = null) {
+  constructor(db, correlationId = null) {
     super();
-    this.UserProfileModel = userProfileModel;
+    this.db = db;
+    this.tableName = 'user_profiles';
     this.correlationId = correlationId;
     this.operationId = correlationId ? `${correlationId}_profile_repo` : null;
   }
@@ -24,14 +25,14 @@ export class UserProfileRepository extends IUserProfileRepository {
   async findById(id) {
     return withTimeout(
       async () => {
-        const profileDoc = await this.UserProfileModel.findById(id);
-        return profileDoc ? this._toEntity(profileDoc) : null;
+        const profileRow = await this.db(this.tableName).where('id', id).first();
+        return profileRow ? this._toEntity(profileRow) : null;
       },
       TimeoutPresets.DATABASE,
       'user_profile_findById',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile findById timed out', {
             correlationId: this.correlationId,
             profileId: id,
@@ -45,14 +46,14 @@ export class UserProfileRepository extends IUserProfileRepository {
   async findByUserId(userId) {
     return withTimeout(
       async () => {
-        const profileDoc = await this.UserProfileModel.findOne({ userId });
-        return profileDoc ? this._toEntity(profileDoc) : null;
+        const profileRow = await this.db(this.tableName).where('user_id', userId).first();
+        return profileRow ? this._toEntity(profileRow) : null;
       },
       TimeoutPresets.DATABASE,
       'user_profile_findByUserId',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile findByUserId timed out', {
             correlationId: this.correlationId,
             userId,
@@ -67,21 +68,21 @@ export class UserProfileRepository extends IUserProfileRepository {
     return withTimeout(
       async () => {
         const profileData = {
-          userId: userProfile.userId,
+          user_id: userProfile.userId,
           bio: userProfile.bio,
-          lastLoginAt: userProfile.lastLoginAt,
-          lastActivityAt: userProfile.lastActivityAt,
+          last_login_at: userProfile.lastLoginAt,
+          last_activity_at: userProfile.lastActivityAt,
         };
 
-        const profileDoc = new this.UserProfileModel(profileData);
-        const savedDoc = await profileDoc.save();
-        return this._toEntity(savedDoc);
+        const [savedRow] = await this.db(this.tableName).insert(profileData).returning('*');
+
+        return this._toEntity(savedRow);
       },
       TimeoutPresets.DATABASE,
       'user_profile_save',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile save timed out', {
             correlationId: this.correlationId,
             userId: userProfile.userId,
@@ -95,30 +96,30 @@ export class UserProfileRepository extends IUserProfileRepository {
   async update(id, updates) {
     return withTimeout(
       async () => {
-        const updateData = {};
+        const updateData = { updated_at: new Date() };
 
         if (updates.bio !== undefined) {
           updateData.bio = updates.bio;
         }
         if (updates.lastLoginAt !== undefined) {
-          updateData.lastLoginAt = updates.lastLoginAt;
+          updateData.last_login_at = updates.lastLoginAt;
         }
         if (updates.lastActivityAt !== undefined) {
-          updateData.lastActivityAt = updates.lastActivityAt;
+          updateData.last_activity_at = updates.lastActivityAt;
         }
 
-        const updatedDoc = await this.UserProfileModel.findByIdAndUpdate(id, updateData, {
-          new: true,
-          runValidators: true,
-        });
+        const [updatedRow] = await this.db(this.tableName)
+          .where('id', id)
+          .update(updateData)
+          .returning('*');
 
-        return updatedDoc ? this._toEntity(updatedDoc) : null;
+        return updatedRow ? this._toEntity(updatedRow) : null;
       },
       TimeoutPresets.DATABASE,
       'user_profile_update',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile update timed out', {
             correlationId: this.correlationId,
             profileId: id,
@@ -133,31 +134,43 @@ export class UserProfileRepository extends IUserProfileRepository {
   async updateByUserId(userId, updates) {
     return withTimeout(
       async () => {
-        const updateData = {};
+        const updateData = { updated_at: new Date() };
 
         if (updates.bio !== undefined) {
           updateData.bio = updates.bio;
         }
         if (updates.lastLoginAt !== undefined) {
-          updateData.lastLoginAt = updates.lastLoginAt;
+          updateData.last_login_at = updates.lastLoginAt;
         }
         if (updates.lastActivityAt !== undefined) {
-          updateData.lastActivityAt = updates.lastActivityAt;
+          updateData.last_activity_at = updates.lastActivityAt;
         }
 
-        const updatedDoc = await this.UserProfileModel.findOneAndUpdate({ userId }, updateData, {
-          new: true,
-          runValidators: true,
-          upsert: true,
-        });
+        // Use upsert (INSERT ... ON CONFLICT ... UPDATE)
+        const existingProfile = await this.db(this.tableName).where('user_id', userId).first();
 
-        return this._toEntity(updatedDoc);
+        let resultRow;
+        if (existingProfile) {
+          [resultRow] = await this.db(this.tableName)
+            .where('user_id', userId)
+            .update(updateData)
+            .returning('*');
+        } else {
+          [resultRow] = await this.db(this.tableName)
+            .insert({
+              user_id: userId,
+              ...updateData,
+            })
+            .returning('*');
+        }
+
+        return this._toEntity(resultRow);
       },
       TimeoutPresets.DATABASE,
       'user_profile_updateByUserId',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile updateByUserId timed out', {
             correlationId: this.correlationId,
             userId,
@@ -172,14 +185,14 @@ export class UserProfileRepository extends IUserProfileRepository {
   async delete(id) {
     return withTimeout(
       async () => {
-        const result = await this.UserProfileModel.findByIdAndDelete(id);
-        return !!result;
+        const result = await this.db(this.tableName).where('id', id).del();
+        return result > 0;
       },
       TimeoutPresets.DATABASE,
       'user_profile_delete',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile delete timed out', {
             correlationId: this.correlationId,
             profileId: id,
@@ -193,14 +206,14 @@ export class UserProfileRepository extends IUserProfileRepository {
   async deleteByUserId(userId) {
     return withTimeout(
       async () => {
-        const result = await this.UserProfileModel.findOneAndDelete({ userId });
-        return !!result;
+        const result = await this.db(this.tableName).where('user_id', userId).del();
+        return result > 0;
       },
       TimeoutPresets.DATABASE,
       'user_profile_deleteByUserId',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile deleteByUserId timed out', {
             correlationId: this.correlationId,
             userId,
@@ -215,22 +228,38 @@ export class UserProfileRepository extends IUserProfileRepository {
     return withTimeout(
       async () => {
         const now = new Date();
-        const updatedDoc = await this.UserProfileModel.findOneAndUpdate(
-          { userId },
-          {
-            lastLoginAt: now,
-            lastActivityAt: now,
-          },
-          { new: true, runValidators: true, upsert: true }
-        );
+        const updateData = {
+          last_login_at: now,
+          last_activity_at: now,
+          updated_at: now,
+        };
 
-        return this._toEntity(updatedDoc);
+        // Upsert: insert if not exists, update if exists
+        const existingProfile = await this.db(this.tableName).where('user_id', userId).first();
+
+        let resultRow;
+        if (existingProfile) {
+          [resultRow] = await this.db(this.tableName)
+            .where('user_id', userId)
+            .update(updateData)
+            .returning('*');
+        } else {
+          [resultRow] = await this.db(this.tableName)
+            .insert({
+              user_id: userId,
+              last_login_at: now,
+              last_activity_at: now,
+            })
+            .returning('*');
+        }
+
+        return this._toEntity(resultRow);
       },
       TimeoutPresets.DATABASE,
       'user_profile_recordLogin',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile recordLogin timed out', {
             correlationId: this.correlationId,
             userId,
@@ -245,19 +274,36 @@ export class UserProfileRepository extends IUserProfileRepository {
     return withTimeout(
       async () => {
         const now = new Date();
-        const updatedDoc = await this.UserProfileModel.findOneAndUpdate(
-          { userId },
-          { lastActivityAt: now },
-          { new: true, runValidators: true, upsert: true }
-        );
+        const updateData = {
+          last_activity_at: now,
+          updated_at: now,
+        };
 
-        return this._toEntity(updatedDoc);
+        // Upsert: insert if not exists, update if exists
+        const existingProfile = await this.db(this.tableName).where('user_id', userId).first();
+
+        let resultRow;
+        if (existingProfile) {
+          [resultRow] = await this.db(this.tableName)
+            .where('user_id', userId)
+            .update(updateData)
+            .returning('*');
+        } else {
+          [resultRow] = await this.db(this.tableName)
+            .insert({
+              user_id: userId,
+              last_activity_at: now,
+            })
+            .returning('*');
+        }
+
+        return this._toEntity(resultRow);
       },
       TimeoutPresets.DATABASE,
       'user_profile_recordActivity',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User profile recordActivity timed out', {
             correlationId: this.correlationId,
             userId,
@@ -268,15 +314,18 @@ export class UserProfileRepository extends IUserProfileRepository {
     );
   }
 
-  _toEntity(profileDoc) {
+  /**
+   * Convert database row to entity (snake_case to camelCase)
+   */
+  _toEntity(profileRow) {
     return new UserProfile({
-      id: profileDoc._id?.toString(),
-      userId: profileDoc.userId?.toString(),
-      bio: profileDoc.bio,
-      lastLoginAt: profileDoc.lastLoginAt,
-      lastActivityAt: profileDoc.lastActivityAt,
-      createdAt: profileDoc.createdAt,
-      updatedAt: profileDoc.updatedAt,
+      id: profileRow.id,
+      userId: profileRow.user_id,
+      bio: profileRow.bio,
+      lastLoginAt: profileRow.last_login_at,
+      lastActivityAt: profileRow.last_activity_at,
+      createdAt: profileRow.created_at,
+      updatedAt: profileRow.updated_at,
     });
   }
 }

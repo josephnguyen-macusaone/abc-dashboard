@@ -15,11 +15,10 @@ import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/r
 import { LoginResponseDto, UserAuthDto, TokensDto } from '../../dto/auth/index.js';
 
 export class LoginUseCase {
-  constructor(userRepository, authService, tokenService, refreshTokenRepository) {
+  constructor(userRepository, authService, tokenService) {
     this.userRepository = userRepository;
     this.authService = authService;
     this.tokenService = tokenService;
-    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   /**
@@ -69,20 +68,6 @@ export class LoginUseCase {
       });
 
       const refreshToken = this.tokenService.generateRefreshToken({ userId: user.id });
-
-      // Persist refresh token hash for rotation and revocation
-      try {
-        const decodedRefresh = this.tokenService.verifyToken(refreshToken);
-        const expiresAt = decodedRefresh?.exp ? new Date(decodedRefresh.exp * 1000) : null;
-        const tokenHash = this.tokenService.hashToken(refreshToken);
-        await this.refreshTokenRepository.saveToken({
-          userId: user.id,
-          tokenHash,
-          expiresAt: expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        });
-      } catch (persistError) {
-        throw new Error(`Login failed: unable to persist refresh token (${persistError.message})`);
-      }
 
       // Return structured DTO response
       return new LoginResponseDto({

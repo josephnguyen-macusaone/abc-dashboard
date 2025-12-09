@@ -5,14 +5,14 @@
 import {
   ValidationException,
   InvalidCredentialsException,
+  InvalidRefreshTokenException,
 } from '../../../domain/exceptions/domain.exception.js';
 import { TokensDto } from '../../dto/auth/index.js';
 
 export class RefreshTokenUseCase {
-  constructor(userRepository, tokenService, refreshTokenRepository) {
+  constructor(userRepository, tokenService) {
     this.userRepository = userRepository;
     this.tokenService = tokenService;
-    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   /**
@@ -32,49 +32,34 @@ export class RefreshTokenUseCase {
       try {
         decoded = this.tokenService.verifyToken(refreshToken);
       } catch (_error) {
-        throw new InvalidCredentialsException('Invalid or expired refresh token');
+        throw new InvalidRefreshTokenException();
       }
 
-      // Ensure token exists in storage and is not revoked/expired
-      const tokenHash = this.tokenService.hashToken(refreshToken);
-      const storedToken = await this.refreshTokenRepository.findValidByHash(tokenHash);
-      if (!storedToken) {
-        throw new InvalidCredentialsException('Invalid or expired refresh token');
+      // Validate token type - ensure it's a refresh token
+      if (decoded.type !== 'refresh') {
+        throw new InvalidRefreshTokenException();
       }
 
       // Find user by ID from token
       const user = await this.userRepository.findById(decoded.userId);
       if (!user) {
-        throw new InvalidCredentialsException('User not found');
+        throw new InvalidCredentialsException();
+      }
+
+      // Check if account is still active
+      if (!user.isActive) {
+        throw new InvalidCredentialsException();
       }
 
       // Generate new access token
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
         email: user.email,
+        requiresPasswordChange: user.requiresPasswordChange,
       });
 
-      // Optionally generate a new refresh token (rotate refresh tokens)
+      // Generate new refresh token (token rotation for security)
       const newRefreshToken = this.tokenService.generateRefreshToken({ userId: user.id });
-
-      // Persist rotated refresh token and revoke the old one
-      try {
-        const decodedNewRefresh = this.tokenService.verifyToken(newRefreshToken);
-        const newRefreshHash = this.tokenService.hashToken(newRefreshToken);
-        const newExpiresAt = decodedNewRefresh?.exp
-          ? new Date(decodedNewRefresh.exp * 1000)
-          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-        await this.refreshTokenRepository.saveToken({
-          userId: user.id,
-          tokenHash: newRefreshHash,
-          expiresAt: newExpiresAt,
-        });
-
-        await this.refreshTokenRepository.revokeByHash(tokenHash, newRefreshHash);
-      } catch (persistError) {
-        throw new Error(`Refresh token rotation failed: ${persistError.message}`);
-      }
 
       // Return new tokens as DTO
       return {
@@ -82,7 +67,11 @@ export class RefreshTokenUseCase {
       };
     } catch (error) {
       // Re-throw domain exceptions as-is
-      if (error instanceof ValidationException || error instanceof InvalidCredentialsException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InvalidCredentialsException ||
+        error instanceof InvalidRefreshTokenException
+      ) {
         throw error;
       }
       // Wrap unexpected errors

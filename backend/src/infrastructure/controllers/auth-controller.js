@@ -10,6 +10,7 @@ import {
   InvalidCredentialsException,
   ValidationException,
   ResourceNotFoundException,
+  InvalidRefreshTokenException,
 } from '../../domain/exceptions/domain.exception.js';
 import { trackFailedLogin, resetFailedAttempts } from '../api/v1/middleware/security.middleware.js';
 
@@ -22,8 +23,7 @@ export class AuthController extends BaseController {
     requestPasswordResetWithGeneratedPasswordUseCase,
     resetPasswordUseCase,
     tokenService,
-    userProfileRepository,
-    refreshTokenRepository
+    userProfileRepository
   ) {
     super();
     this.loginUseCase = loginUseCase;
@@ -35,7 +35,6 @@ export class AuthController extends BaseController {
     this.resetPasswordUseCase = resetPasswordUseCase;
     this.tokenService = tokenService;
     this.userProfileRepository = userProfileRepository;
-    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   async login(req, res) {
@@ -138,20 +137,20 @@ export class AuthController extends BaseController {
       }
 
       const responseData = {
-          user: {
-            id: user.id || user._id?.toString(),
-            username: user.username,
-            email: user.email,
-            displayName: user.displayName,
-            role: user.role,
-            avatarUrl: user.avatarUrl || null,
-            bio: profile?.bio || null,
-            phone: user.phone || null,
-            isActive: user.isActive,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-          },
-          isAuthenticated: true,
+        user: {
+          id: user.id || user._id?.toString(),
+          username: user.username,
+          email: user.email,
+          displayName: user.displayName,
+          role: user.role,
+          avatarUrl: user.avatarUrl || null,
+          bio: profile?.bio || null,
+          phone: user.phone || null,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+        isAuthenticated: true,
       };
 
       logger.debug('Sending profile response', {
@@ -189,7 +188,11 @@ export class AuthController extends BaseController {
       return res.success(result, 'Token refreshed successfully');
     } catch (error) {
       // Handle domain exceptions
-      if (error instanceof InvalidCredentialsException || error instanceof ValidationException) {
+      if (
+        error instanceof InvalidCredentialsException ||
+        error instanceof ValidationException ||
+        error instanceof InvalidRefreshTokenException
+      ) {
         return res.status(error.statusCode).json(error.toResponse());
       }
 
@@ -246,12 +249,12 @@ export class AuthController extends BaseController {
         return sendErrorResponse(res, 'TOKEN_MISSING');
       }
 
-      if (!this.refreshTokenRepository) {
-        logger.warn('Refresh token repository not available during logout');
-      } else {
-        const userId = req.user.id || req.user._id?.toString();
-        await this.refreshTokenRepository.revokeAllForUser(userId);
-      }
+      // With JWT-based refresh tokens, logout is implicit through token expiration
+      // No database cleanup needed as refresh tokens are self-contained
+      logger.debug('User logout processed', {
+        correlationId: req.correlationId,
+        userId: req.user.id || req.user._id?.toString(),
+      });
 
       return res.success(null, 'Logout successful');
     } catch (error) {

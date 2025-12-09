@@ -113,7 +113,7 @@ describe('LoginUseCase', () => {
       ).rejects.toThrow(ValidationException);
       await expect(
         loginUseCase.execute({ email: 'test@example.com', password: 'password123' })
-      ).rejects.toThrow('Please verify your email before logging in');
+      ).rejects.toThrow('Your account has been deactivated. Please contact your administrator.');
     });
 
     it('should throw InvalidCredentialsException when password is invalid', async () => {

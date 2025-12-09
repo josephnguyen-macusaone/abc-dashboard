@@ -73,11 +73,30 @@ export class TokenService {
    */
   generateRefreshToken(payload) {
     try {
-      return jwt.sign(payload, this.jwtSecret, {
+      if (!payload || typeof payload !== 'object') {
+        throw new ValidationException('Token payload must be a valid object');
+      }
+
+      if (!payload.userId && !payload.id) {
+        throw new ValidationException('Token payload must contain userId or id');
+      }
+
+      // Add token type and additional metadata for refresh tokens
+      const refreshPayload = {
+        ...payload,
+        type: 'refresh',
+        tokenVersion: 1, // For future token invalidation
+        issuedAt: Date.now(),
+      };
+
+      return jwt.sign(refreshPayload, this.jwtSecret, {
         expiresIn: this.refreshTokenExpiresIn,
         issuer: this.jwtIssuer,
       });
     } catch (error) {
+      if (error instanceof ValidationException) {
+        throw error;
+      }
       throw new Error(`Failed to generate refresh token: ${error.message}`);
     }
   }

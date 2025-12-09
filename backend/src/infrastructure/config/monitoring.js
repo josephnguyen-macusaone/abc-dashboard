@@ -307,7 +307,8 @@ export const getHealthWithMetrics = async (req, res) => {
         port: process.env.PORT || 5000,
         nodeEnv: process.env.NODE_ENV || 'development',
         jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
-        mongodbUri: process.env.MONGODB_URI ? '✅ Set' : '❌ Missing',
+        databaseUrl:
+          process.env.DATABASE_URL || process.env.POSTGRES_HOST ? '✅ Set' : '❌ Missing',
         emailService: process.env.EMAIL_SERVICE || 'not configured',
         bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
       },
@@ -341,7 +342,8 @@ export const getHealthWithMetrics = async (req, res) => {
         port: process.env.PORT || 5000,
         nodeEnv: process.env.NODE_ENV || 'development',
         jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
-        mongodbUri: process.env.MONGODB_URI ? '✅ Set' : '❌ Missing',
+        databaseUrl:
+          process.env.DATABASE_URL || process.env.POSTGRES_HOST ? '✅ Set' : '❌ Missing',
         emailService: process.env.EMAIL_SERVICE || 'not configured',
         bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
       },

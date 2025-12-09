@@ -57,10 +57,22 @@ export function createUserRoutes(userController) {
    *     responses:
    *       200:
    *         description: Users retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserListResponse'
    *       401:
    *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.get(
     '/',
@@ -80,10 +92,28 @@ export function createUserRoutes(userController) {
    *     responses:
    *       200:
    *         description: Statistics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               allOf:
+   *                 - $ref: '#/components/schemas/BaseResponse'
+   *                 - type: object
+   *                   properties:
+   *                     data:
+   *                       type: object
+   *                       additionalProperties: true
    *       401:
    *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden - Admin only
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.get('/stats', userController.getUserStats.bind(userController));
 
@@ -164,50 +194,25 @@ export function createUserRoutes(userController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 message:
-   *                   type: string
-   *                   example: "User created successfully. Welcome email sent with temporary password."
-   *                 data:
-   *                   type: object
-   *                   properties:
-   *                     user:
-   *                       $ref: '#/components/schemas/User'
-   *                 timestamp:
-   *                   type: string
-   *                   format: date-time
+   *               $ref: '#/components/schemas/UserResponse'
    *       400:
    *         description: Validation error
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: false
-   *                 message:
-   *                   type: string
-   *                   example: "Validation failed"
-   *                 errors:
-   *                   type: array
-   *                   items:
-   *                     type: object
-   *                     properties:
-   *                       field:
-   *                         type: string
-   *                         example: "username"
-   *                       message:
-   *                         type: string
-   *                         example: "Username is required"
+   *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Unauthorized - Authentication required
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden - Insufficient permissions to create users with specified role
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post(
     '/',
@@ -233,12 +238,28 @@ export function createUserRoutes(userController) {
    *     responses:
    *       200:
    *         description: User retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserResponse'
    *       401:
    *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       404:
    *         description: User not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.get(
     '/:id',
@@ -279,14 +300,34 @@ export function createUserRoutes(userController) {
    *     responses:
    *       200:
    *         description: User updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserResponse'
    *       400:
    *         description: Validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       404:
    *         description: User not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.patch(
     '/:id',
@@ -312,12 +353,28 @@ export function createUserRoutes(userController) {
    *     responses:
    *       200:
    *         description: User deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/MessageResponse'
    *       401:
    *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       404:
    *         description: User not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.delete(
     '/:id',
@@ -355,14 +412,34 @@ export function createUserRoutes(userController) {
    *     responses:
    *       200:
    *         description: Staff member reassigned successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/MessageResponse'
    *       400:
    *         description: Validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       403:
    *         description: Forbidden - Admin only
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       404:
    *         description: User not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.patch(
     '/:id/reassign',

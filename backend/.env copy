@@ -1,0 +1,38 @@
+# Development Environment Configuration
+NODE_ENV=development
+
+# Database
+DATABASE_URL=postgresql://abc_user:abc_password@localhost:5432/abc_dashboard
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=abc_dashboard
+POSTGRES_USER=abc_user
+POSTGRES_PASSWORD=abc_password
+
+# JWT Configuration
+JWT_SECRET=abc_dashboard
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+JWT_ISSUER=abc-dashboard
+JWT_EMAIL_VERIFICATION_EXPIRES_IN=24h
+JWT_PASSWORD_RESET_EXPIRES_IN=10m
+
+# Email Configuration (MailHog for development)
+EMAIL_FROM=noreply@localhost
+EMAIL_FROM_NAME=ABC Dashboard (Dev)
+EMAIL_HOST=localhost
+EMAIL_PORT=1025
+EMAIL_SECURE=false
+EMAIL_SERVICE=mailhog
+EMAIL_USER=
+EMAIL_PASS=
+
+# Client URL
+CLIENT_URL=http://localhost:3000
+
+# Security
+BCRYPT_ROUNDS=12
+
+# Cache Configuration
+CACHE_USER_DATA_TTL=1800
+CACHE_API_RESPONSE_TTL=300

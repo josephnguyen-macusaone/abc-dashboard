@@ -1,8 +1,8 @@
 import os from 'os';
 import fs from 'fs';
-import mongoose from 'mongoose';
 import logger from './logger.js';
 import { cache } from './redis.js';
+import { getDB } from './database.js';
 
 class SystemMetrics {
   constructor() {
@@ -94,84 +94,104 @@ class SystemMetrics {
 }
 
 class DatabaseMetrics {
-  // MongoDB connection metrics
-  async getMongoDBMetrics() {
+  // PostgreSQL connection metrics
+  async getPostgreSQLMetrics() {
     try {
-      // Check if mongoose is connected
-      if (mongoose.connection.readyState !== 1) {
+      let db;
+      try {
+        db = getDB();
+      } catch (error) {
         return {
           connected: false,
-          readyState: mongoose.connection.readyState,
-          name: mongoose.connection.name || null,
-          host: mongoose.connection.host || null,
-          port: mongoose.connection.port || null,
+          error: 'Database not initialized',
         };
       }
 
-      const db = mongoose.connection.db;
-      if (!db) {
+      // Test connection
+      const result = await db.raw('SELECT 1 as connected');
+      const isConnected = result.rows && result.rows.length > 0;
+
+      if (!isConnected) {
         return {
           connected: false,
-          readyState: mongoose.connection.readyState,
-          name: mongoose.connection.name || null,
+          error: 'Connection test failed',
         };
       }
 
-      // Get database stats (this should always work if connected)
-      let stats = null;
-      try {
-        stats = await db.stats();
-      } catch (statsError) {
-        logger.warn('Could not get database stats:', statsError.message);
-      }
+      // Get database information
+      const dbInfo = await db.raw(`
+        SELECT 
+          current_database() as database_name,
+          current_user as current_user,
+          version() as version
+      `);
 
-      // Get server status (this might fail on some MongoDB versions/configurations)
-      let serverStatus = null;
-      try {
-        serverStatus = await db.admin().serverStatus();
-      } catch (serverStatusError) {
-        logger.warn('Could not get server status (this is optional):', serverStatusError.message);
-        // Server status is optional, continue without it
-      }
+      // Get table count
+      const tableCount = await db.raw(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+      `);
+
+      // Get database size
+      const dbSize = await db.raw(`
+        SELECT pg_size_pretty(pg_database_size(current_database())) as size
+      `);
+
+      // Get connection info
+      const connInfo = await db.raw(`
+        SELECT 
+          numbackends as active_connections,
+          xact_commit as transactions_committed,
+          xact_rollback as transactions_rollback,
+          blks_read as blocks_read,
+          blks_hit as blocks_hit,
+          tup_returned as rows_returned,
+          tup_fetched as rows_fetched,
+          tup_inserted as rows_inserted,
+          tup_updated as rows_updated,
+          tup_deleted as rows_deleted
+        FROM pg_stat_database 
+        WHERE datname = current_database()
+      `);
+
+      const stats = connInfo.rows[0] || {};
+      const cacheHitRatio =
+        stats.blocks_hit && stats.blocks_read
+          ? (
+              (parseInt(stats.blocks_hit) /
+                (parseInt(stats.blocks_hit) + parseInt(stats.blocks_read))) *
+              100
+            ).toFixed(2)
+          : null;
 
       return {
         connected: true,
-        readyState: mongoose.connection.readyState,
-        name: mongoose.connection.name,
-        host: mongoose.connection.host,
-        port: mongoose.connection.port,
-        databaseStats: stats
-          ? {
-              collections: stats.collections,
-              objects: stats.objects,
-              avgObjSize: stats.avgObjSize,
-              dataSize: stats.dataSize,
-              storageSize: stats.storageSize,
-              indexes: stats.indexes,
-              indexSize: stats.indexSize,
-              fileSize: stats.fileSize,
-            }
-          : null,
-        serverStatus: serverStatus
-          ? {
-              uptime: serverStatus.uptime,
-              connections: serverStatus.connections,
-              opcounters: serverStatus.opcounters,
-              network: serverStatus.network,
-              memory: serverStatus.memory,
-              asserts: serverStatus.asserts,
-            }
-          : null,
+        name: dbInfo.rows[0]?.database_name,
+        user: dbInfo.rows[0]?.current_user,
+        version:
+          dbInfo.rows[0]?.version?.split(' ')[0] + ' ' + dbInfo.rows[0]?.version?.split(' ')[1],
+        databaseStats: {
+          tables: parseInt(tableCount.rows[0]?.count || 0),
+          size: dbSize.rows[0]?.size,
+          activeConnections: parseInt(stats.active_connections || 0),
+          transactionsCommitted: parseInt(stats.transactions_committed || 0),
+          transactionsRollback: parseInt(stats.transactions_rollback || 0),
+          cacheHitRatio,
+          rowsReturned: parseInt(stats.rows_returned || 0),
+          rowsFetched: parseInt(stats.rows_fetched || 0),
+          rowsInserted: parseInt(stats.rows_inserted || 0),
+          rowsUpdated: parseInt(stats.rows_updated || 0),
+          rowsDeleted: parseInt(stats.rows_deleted || 0),
+        },
       };
     } catch (error) {
-      logger.warn('Could not get MongoDB metrics:', {
+      logger.warn('Could not get PostgreSQL metrics:', {
         message: error.message,
         stack: error.stack,
       });
       return {
-        connected: mongoose.connection.readyState === 1,
-        readyState: mongoose.connection.readyState,
-        name: mongoose.connection.name || null,
+        connected: false,
         error: error.message,
       };
     }
@@ -343,7 +363,7 @@ export const getComprehensiveMetrics = async () => {
     const results = await Promise.allSettled([
       Promise.resolve(systemMetrics.getSystemMetrics()),
       Promise.resolve(systemMetrics.getProcessMetrics()),
-      databaseMetrics.getMongoDBMetrics(),
+      databaseMetrics.getPostgreSQLMetrics(),
       cacheMetrics.getCacheMetrics(),
       Promise.resolve(applicationMetrics.getApplicationMetrics()),
     ]);

@@ -70,19 +70,18 @@ export const userSchemas = {
 
   /**
    * Create user schema
+   * Note: username is optional - auto-generated from email if not provided
    */
   createUser: Joi.object({
     username: Joi.string()
       .min(3)
       .max(30)
       .pattern(/^[a-zA-Z0-9_]+$/)
-      .required()
+      .allow('', null)
       .messages({
-        'string.min': 'Username must be at least 3 characters long',
+        'string.min': 'Username must be at least 3 characters long if provided',
         'string.max': 'Username cannot exceed 30 characters',
         'string.pattern.base': 'Username can only contain letters, numbers, and underscores',
-        'any.required': 'Username is required',
-        'string.empty': 'Username cannot be empty',
       }),
 
     email: Joi.string()
@@ -120,7 +119,7 @@ export const userSchemas = {
 
     phone: Joi.string()
       .pattern(/^[\+]?[1-9][\d]{0,15}$/)
-      .allow('')
+      .allow('', null)
       .messages({
         'string.pattern.base': 'Phone number must be in valid format',
       }),
@@ -128,7 +127,7 @@ export const userSchemas = {
     role: Joi.string().valid('admin', 'manager', 'staff').default('staff').messages({
       'any.only': 'Role must be one of: admin, manager, staff',
       'string.base': 'Role must be a string',
-      }),
+    }),
   }),
 
   /**

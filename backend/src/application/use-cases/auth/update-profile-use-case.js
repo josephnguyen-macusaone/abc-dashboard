@@ -116,7 +116,7 @@ export class UpdateProfileUseCase {
             await this.userProfileRepository.updateByUserId(userId, profileUpdates);
           } else {
             // Ensure profile record exists with default values
-            await userProfileRepository.updateByUserId(userId, {
+            await this.userProfileRepository.updateByUserId(userId, {
               bio: null,
               emailVerified: false,
             });

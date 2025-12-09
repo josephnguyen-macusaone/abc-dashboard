@@ -47,8 +47,16 @@ export function createAuthRoutes(authController) {
    *     responses:
    *       200:
    *         description: Login successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LoginResponse'
    *       401:
    *         description: Invalid credentials
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post(
     '/login',
@@ -73,20 +81,7 @@ export function createAuthRoutes(authController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                 data:
-   *                   type: object
-   *                   properties:
-   *                     user:
-   *                       type: object
-   *                       nullable: true
-   *                       description: User profile data if authenticated, null otherwise
-   *                     isAuthenticated:
-   *                       type: boolean
-   *                       description: Whether the user is authenticated
+   *               $ref: '#/components/schemas/ProfileResponse'
    */
   router.get('/profile', optionalAuth, authController.getProfile.bind(authController));
 
@@ -118,10 +113,22 @@ export function createAuthRoutes(authController) {
    *     responses:
    *       200:
    *         description: Password changed successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/MessageResponse'
    *       400:
    *         description: Validation error or weak password
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    *       401:
    *         description: Unauthorized or incorrect current password
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post(
     '/change-password',
@@ -130,18 +137,6 @@ export function createAuthRoutes(authController) {
     authController.changePassword.bind(authController)
   );
 
-  /**
-   * @swagger
-   * /auth/logout:
-   *   post:
-   *     summary: Logout user
-   *     tags: [Authentication]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Logout successful
-   */
   /**
    * @swagger
    * /auth/refresh:
@@ -162,8 +157,16 @@ export function createAuthRoutes(authController) {
    *     responses:
    *       200:
    *         description: Token refreshed successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/RefreshResponse'
    *       401:
    *         description: Invalid or expired refresh token
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post(
     '/refresh',
@@ -183,6 +186,16 @@ export function createAuthRoutes(authController) {
    *     responses:
    *       200:
    *         description: Logout successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/MessageResponse'
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post('/logout', authenticate, authController.logout.bind(authController));
 
@@ -211,14 +224,7 @@ export function createAuthRoutes(authController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 message:
-   *                   type: string
-   *                   example: "Password reset email sent if account exists"
+   *               $ref: '#/components/schemas/MessageResponse'
    */
   router.post(
     '/forgot-password',
@@ -251,14 +257,7 @@ export function createAuthRoutes(authController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 message:
-   *                   type: string
-   *                   example: "Password reset email sent if account exists"
+   *               $ref: '#/components/schemas/MessageResponse'
    */
   router.post(
     '/forgot-password-generated',
@@ -280,12 +279,12 @@ export function createAuthRoutes(authController) {
    *             type: object
    *             required:
    *               - token
-   *               - newPassword
+   *               - password
    *             properties:
    *               token:
    *                 type: string
    *                 description: Password reset token from email
-   *               newPassword:
+   *               password:
    *                 type: string
    *                 minLength: 8
    *                 description: New password
@@ -295,19 +294,13 @@ export function createAuthRoutes(authController) {
    *         content:
    *           application/json:
    *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 message:
-   *                   type: string
-   *                   example: "Password reset successfully"
-   *                 data:
-   *                   type: object
-   *                   description: Updated user information
+   *               $ref: '#/components/schemas/MessageResponse'
    *       400:
    *         description: Invalid or expired token, or validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post(
     '/reset-password',

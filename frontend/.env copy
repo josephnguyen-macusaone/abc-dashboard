@@ -1,0 +1,7 @@
+# Frontend Environment Configuration for Docker Deployment
+
+# Backend API base URL - for Docker deployment, API is proxied through Nginx on port 80
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+
+# Application environment
+NEXT_PUBLIC_APP_ENV=development

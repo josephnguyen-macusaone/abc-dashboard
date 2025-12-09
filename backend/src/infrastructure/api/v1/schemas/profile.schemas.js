@@ -18,13 +18,12 @@ export const profileSchemas = {
       'string.min': 'Display name cannot be empty',
       'string.max': 'Display name cannot exceed 100 characters',
     }),
-    bio: Joi.string().max(500).allow('').optional().messages({
+    bio: Joi.string().max(500).allow('', null).optional().messages({
       'string.max': 'Bio cannot exceed 500 characters',
-      'string.empty': 'Bio cannot be empty string, use null to clear',
     }),
     phone: Joi.string()
       .pattern(/^[\+]?[1-9][\d]{0,15}$/)
-      .allow('')
+      .allow('', null)
       .optional()
       .messages({
         'string.pattern.base': 'Please enter a valid phone number',

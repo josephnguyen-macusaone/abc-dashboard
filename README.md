@@ -25,7 +25,7 @@ nano .env  # Edit with your production values
 - 🔨 Build backend Docker container
 - ⚙️ Configure OpenLiteSpeed virtual host
 - 📋 Copy static files to OpenLiteSpeed document root
-- 🐳 Start backend services (MongoDB, Redis, API)
+- 🐳 Start backend services (PostgreSQL, Redis, API)
 - 🌐 Set up API proxy routing
 - 💚 Run comprehensive health checks
 
@@ -44,7 +44,8 @@ cd abc-dashboard
 cp .env.example .env
 cp frontend/.env.example frontend/.env
 
-# Initialize database (migrations and seeding)
+# Choose your database setup option (see Database Setup section below)
+# Then initialize database (migrations and seeding)
 docker-compose --profile setup up db-setup
 
 # Build and deploy services
@@ -62,15 +63,54 @@ docker-compose up -d
 - **Run migrations only:** `docker-compose run --rm backend npm run migrate:prod`
 - **Run seeding only:** `docker-compose run --rm backend npm run seed:prod`
 
+#### Database Setup Options
+
+Choose one of the following database setup methods:
+
+**Option A: Docker PostgreSQL (Recommended)**
+```bash
+# Start only PostgreSQL container (avoids port conflicts with local PostgreSQL)
+docker-compose up -d postgres
+
+# PostgreSQL will be available at localhost:5433 (external) / postgres:5432 (internal)
+# The container automatically creates the abc_user and abc_dashboard database
+```
+
+**Option B: Local PostgreSQL**
+```bash
+# If you have PostgreSQL installed locally, run the setup script
+./setup-database.sh
+
+# This creates the abc_user and abc_dashboard database in your local PostgreSQL
+# Then run migrations from the backend directory
+cd backend && npm run migrate
+```
+
+**Option C: Full Docker Stack**
+```bash
+# Start all services including PostgreSQL
+docker-compose up -d
+
+# Everything runs in Docker with proper networking
+```
+
 ### Option 3: Local Development
 
-**Prerequisites:** Node.js 20+, MongoDB, Redis (optional)
+**Prerequisites:** Node.js 20+, PostgreSQL, Redis (optional)
 
 ```bash
+# Database setup (choose one option)
+# Option 1: Use local PostgreSQL
+./setup-database.sh
+
+# Option 2: Use Docker PostgreSQL (run in another terminal)
+docker-compose up -d postgres
+
 # Backend setup (detailed in backend/README.md)
 cd backend
 npm install
 cp env/development.env .env  # Configure database connection
+npm run migrate  # Run database migrations
 npm run dev
 
 # Frontend setup (in another terminal)
@@ -100,7 +140,7 @@ After deployment, your application will be available at:
 ### Backend (Node.js/Express)
 
 - **Clean Architecture** with dependency injection
-- **MongoDB** with Mongoose ODM
+- **PostgreSQL** with Knex.js ORM
 - **Redis** caching (optional)
 - **JWT** authentication
 - **Role-based** access control

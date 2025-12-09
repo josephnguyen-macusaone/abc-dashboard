@@ -6,7 +6,13 @@
 }
 
 body {
-  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'SF Pro Display',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0d0d1a 100%);
   min-height: 100vh;
   color: #e2e8f0;
@@ -27,6 +33,12 @@ body {
   text-align: center;
   margin-bottom: 20px;
   position: relative;
+}
+
+.logo {
+  height: 60px;
+  width: auto;
+  margin-bottom: 8px;
 }
 
 .header h1 {
@@ -155,90 +167,15 @@ body {
   cursor: not-allowed;
 }
 
-/* Refresh button specific styles */
-.refresh-btn {
-  min-width: 110px;
-  justify-content: center;
-}
-
-.refresh-icon {
-  display: inline-block;
-  font-size: 1rem;
-  transition: transform 0.3s ease;
-}
-
-.refresh-icon.spinning {
-  animation: spin 1s linear infinite;
-}
-
-.refresh-text {
-  font-size: 0.9rem;
-}
-
-.refresh-btn.refreshing {
-  border-color: #60a5fa;
-  background: rgba(96, 165, 250, 0.1);
-}
-
-.refresh-btn.success {
-  border-color: #22c55e;
-  background: rgba(34, 197, 94, 0.1);
-  animation: successPulse 0.5s ease;
-}
-
-.refresh-btn.error {
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-  animation: errorShake 0.5s ease;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes successPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-  }
-}
-
-@keyframes errorShake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  10%,
-  30%,
-  50%,
-  70%,
-  90% {
-    transform: translateX(-3px);
-  }
-  20%,
-  40%,
-  60%,
-  80% {
-    transform: translateX(3px);
-  }
-}
-
 /* Dashboard grid */
 .dashboard {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 16px;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Card styles */
@@ -248,7 +185,9 @@ body {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .card:hover {
@@ -354,77 +293,6 @@ body {
   background: linear-gradient(90deg, #ef4444, #f87171);
 }
 
-/* Services Grid */
-.services-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.service-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  border: 1px solid #334155;
-  transition: all 0.2s ease;
-}
-
-.service-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: #475569;
-}
-
-.service-item.unavailable {
-  opacity: 0.6;
-}
-
-.service-icon {
-  font-size: 1.1rem;
-}
-
-.service-name {
-  flex: 1;
-  font-size: 0.8rem;
-  color: #cbd5e1;
-}
-
-.service-status {
-  font-size: 0.8rem;
-}
-
-.service-status.healthy {
-  color: #22c55e;
-  background: none;
-  border: none;
-  padding: 0;
-}
-
-.service-status.degraded {
-  color: #fbbf24;
-  background: none;
-  border: none;
-  padding: 0;
-}
-
-/* Last Updated */
-.last-updated {
-  text-align: center;
-  font-size: 0.8rem;
-  color: #64748b;
-  margin-top: 16px;
-}
-
-.auto-refresh {
-  margin-left: 16px;
-  padding: 2px 8px;
-  background: rgba(96, 165, 250, 0.1);
-  border-radius: 4px;
-  color: #60a5fa;
-}
-
 /* Bottom section */
 .bottom-section {
   position: fixed;
@@ -446,13 +314,9 @@ body {
   .dashboard {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .card.wide {
     grid-column: span 2;
-  }
-  
-  .services-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -460,7 +324,7 @@ body {
   .header h1 {
     font-size: 1.8rem;
   }
-  
+
   .health-score {
     position: static;
     margin: 16px auto 0;
@@ -469,7 +333,7 @@ body {
   .dashboard {
     grid-template-columns: 1fr;
   }
-  
+
   .card.wide {
     grid-column: span 1;
   }
@@ -483,10 +347,6 @@ body {
     align-items: center;
     gap: 8px;
   }
-  
-  .services-grid {
-    grid-template-columns: 1fr 1fr;
-  }
 
   .bottom-section {
     padding: 20px 15px 15px;
@@ -494,7 +354,4 @@ body {
 }
 
 @media (max-width: 480px) {
-  .services-grid {
-    grid-template-columns: 1fr;
-  }
 }

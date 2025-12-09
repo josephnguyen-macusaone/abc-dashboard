@@ -211,7 +211,7 @@ export function UserFormModal({
                   You do not have permission to create users
                 </p>
               )}
-            </div>
+          </div>
           )}
 
           {/* Password fields - show when editing or when passwordOnly is true */}

@@ -1,9 +1,6 @@
 import { UserRepository } from '../../infrastructure/repositories/user-repository.js';
 import { UserProfileRepository } from '../../infrastructure/repositories/user-profile-repository.js';
-import UserModel from '../../infrastructure/models/user-model.js';
-import UserProfileModel from '../../infrastructure/models/user-profile-model.js';
-import RefreshTokenModel from '../../infrastructure/models/refresh-token-model.js';
-import { RefreshTokenRepository } from '../../infrastructure/repositories/refresh-token-repository.js';
+import connectDB, { getDB } from '../../infrastructure/config/database.js';
 import { AuthController } from '../../infrastructure/controllers/auth-controller.js';
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
@@ -37,10 +34,21 @@ class Container {
   }
 
   // Singleton pattern for repositories
-  getUserRepository() {
+  async getUserRepository() {
     if (!this.instances.has('userRepository')) {
-      // Currently only supports MongoDB
-      this.instances.set('userRepository', new UserRepository(UserModel));
+      try {
+        let db = getDB();
+        this.instances.set('userRepository', new UserRepository(db));
+      } catch (error) {
+        if (error.message === 'Database not initialized. Call connectDB first.') {
+          // Initialize database connection if not already done
+          await connectDB();
+          const db = getDB();
+          this.instances.set('userRepository', new UserRepository(db));
+        } else {
+          throw error;
+        }
+      }
     }
     return this.instances.get('userRepository');
   }
@@ -69,11 +77,6 @@ class Container {
       tokenService.correlationId = correlationId;
     }
 
-    const refreshTokenRepo = this.instances.get('refreshTokenRepository');
-    if (refreshTokenRepo && refreshTokenRepo.setCorrelationId) {
-      refreshTokenRepo.setCorrelationId(correlationId);
-    }
-
     const emailService = this.instances.get('emailService');
     if (emailService) {
       emailService.correlationId = correlationId;
@@ -86,10 +89,21 @@ class Container {
     }
   }
 
-  getUserProfileRepository() {
+  async getUserProfileRepository() {
     if (!this.instances.has('userProfileRepository')) {
-      // Currently only supports MongoDB
-      this.instances.set('userProfileRepository', new UserProfileRepository(UserProfileModel));
+      try {
+        let db = getDB();
+        this.instances.set('userProfileRepository', new UserProfileRepository(db));
+      } catch (error) {
+        if (error.message === 'Database not initialized. Call connectDB first.') {
+          // Initialize database connection if not already done
+          await connectDB();
+          const db = getDB();
+          this.instances.set('userProfileRepository', new UserProfileRepository(db));
+        } else {
+          throw error;
+        }
+      }
     }
     return this.instances.get('userProfileRepository');
   }
@@ -108,13 +122,6 @@ class Container {
     return this.instances.get('tokenService');
   }
 
-  getRefreshTokenRepository() {
-    if (!this.instances.has('refreshTokenRepository')) {
-      this.instances.set('refreshTokenRepository', new RefreshTokenRepository(RefreshTokenModel));
-    }
-    return this.instances.get('refreshTokenRepository');
-  }
-
   getEmailService() {
     if (!this.instances.has('emailService')) {
       this.instances.set('emailService', new EmailService());
@@ -123,54 +130,49 @@ class Container {
   }
 
   // Use cases
-  getLoginUseCase() {
+  async getLoginUseCase() {
     return new LoginUseCase(
-      this.getUserRepository(),
+      await this.getUserRepository(),
       this.getAuthService(),
-      this.getTokenService(),
-      this.getRefreshTokenRepository()
+      this.getTokenService()
     );
   }
 
-  getRefreshTokenUseCase() {
-    return new RefreshTokenUseCase(
-      this.getUserRepository(),
-      this.getTokenService(),
-      this.getRefreshTokenRepository()
-    );
+  async getRefreshTokenUseCase() {
+    return new RefreshTokenUseCase(await this.getUserRepository(), this.getTokenService());
   }
 
-  getAuthUpdateProfileUseCase() {
-    return new AuthUpdateProfileUseCase(this.getUserRepository());
+  async getAuthUpdateProfileUseCase() {
+    return new AuthUpdateProfileUseCase(await this.getUserRepository());
   }
 
-  getChangePasswordUseCase() {
+  async getChangePasswordUseCase() {
     return new ChangePasswordUseCase(
-      this.getUserRepository(),
+      await this.getUserRepository(),
       this.getAuthService(),
       this.getEmailService()
     );
   }
 
-  getRequestPasswordResetUseCase() {
+  async getRequestPasswordResetUseCase() {
     return new RequestPasswordResetUseCase(
-      this.getUserRepository(),
+      await this.getUserRepository(),
       this.getTokenService(),
       this.getEmailService()
     );
   }
 
-  getRequestPasswordResetWithGeneratedPasswordUseCase() {
+  async getRequestPasswordResetWithGeneratedPasswordUseCase() {
     return new RequestPasswordResetWithGeneratedPasswordUseCase(
-      this.getUserRepository(),
+      await this.getUserRepository(),
       this.getAuthService(),
       this.getEmailService()
     );
   }
 
-  getResetPasswordUseCase() {
+  async getResetPasswordUseCase() {
     return new ResetPasswordUseCase(
-      this.getUserRepository(),
+      await this.getUserRepository(),
       this.getTokenService(),
       this.getAuthService(),
       this.getEmailService()
@@ -178,83 +180,82 @@ class Container {
   }
 
   // User use cases
-  getGetUsersUseCase() {
-    return new GetUsersUseCase(this.getUserRepository());
+  async getGetUsersUseCase() {
+    return new GetUsersUseCase(await this.getUserRepository());
   }
 
-  getCreateUserUseCase() {
+  async getCreateUserUseCase() {
     return new CreateUserUseCase(
-      this.getUserRepository(),
+      await this.getUserRepository(),
       this.getAuthService(),
       this.getEmailService()
     );
   }
 
-  getUpdateUserUseCase() {
-    return new UpdateUserUseCase(this.getUserRepository());
+  async getUpdateUserUseCase() {
+    return new UpdateUserUseCase(await this.getUserRepository());
   }
 
-  getDeleteUserUseCase() {
-    return new DeleteUserUseCase(this.getUserRepository());
+  async getDeleteUserUseCase() {
+    return new DeleteUserUseCase(await this.getUserRepository());
   }
 
-  getGetUserStatsUseCase() {
-    return new GetUserStatsUseCase(this.getUserRepository());
+  async getGetUserStatsUseCase() {
+    return new GetUserStatsUseCase(await this.getUserRepository());
   }
 
   // Profile Use Cases
-  getGetProfileUseCase() {
-    return new GetProfileUseCase(this.getUserProfileRepository());
+  async getGetProfileUseCase() {
+    return new GetProfileUseCase(await this.getUserProfileRepository());
   }
 
-  getProfileUpdateProfileUseCase() {
-    return new ProfileUpdateProfileUseCase(this.getUserProfileRepository());
+  async getProfileUpdateProfileUseCase() {
+    return new ProfileUpdateProfileUseCase(await this.getUserProfileRepository());
   }
 
-  getRecordLoginUseCase() {
-    return new RecordLoginUseCase(this.getUserProfileRepository());
+  async getRecordLoginUseCase() {
+    return new RecordLoginUseCase(await this.getUserProfileRepository());
   }
 
   // Controllers
-  getAuthController() {
+  async getAuthController() {
     return new AuthController(
-      this.getLoginUseCase(),
-      this.getRefreshTokenUseCase(),
-      this.getChangePasswordUseCase(),
-      this.getRequestPasswordResetUseCase(),
-      this.getRequestPasswordResetWithGeneratedPasswordUseCase(),
-      this.getResetPasswordUseCase(),
+      await this.getLoginUseCase(),
+      await this.getRefreshTokenUseCase(),
+      await this.getChangePasswordUseCase(),
+      await this.getRequestPasswordResetUseCase(),
+      await this.getRequestPasswordResetWithGeneratedPasswordUseCase(),
+      await this.getResetPasswordUseCase(),
       this.getTokenService(),
-      this.getUserProfileRepository(),
-      this.getRefreshTokenRepository()
+      await this.getUserProfileRepository()
     );
   }
 
-  getUserController() {
+  async getUserController() {
     return new UserController(
-      this.getGetUsersUseCase(),
-      this.getCreateUserUseCase(),
-      this.getUpdateUserUseCase(),
-      this.getDeleteUserUseCase(),
-      this.getGetUserStatsUseCase()
+      await this.getGetUsersUseCase(),
+      await this.getCreateUserUseCase(),
+      await this.getUpdateUserUseCase(),
+      await this.getDeleteUserUseCase(),
+      await this.getGetUserStatsUseCase()
     );
   }
 
-  getProfileController() {
+  async getProfileController() {
     return new ProfileController(
-      this.getGetProfileUseCase(),
-      this.getProfileUpdateProfileUseCase(),
-      this.getAuthUpdateProfileUseCase(),
-      this.getRecordLoginUseCase()
+      await this.getGetProfileUseCase(),
+      await this.getProfileUpdateProfileUseCase(),
+      await this.getAuthUpdateProfileUseCase(),
+      await this.getRecordLoginUseCase()
     );
   }
 
   // Middleware
-  getAuthMiddleware() {
+  async getAuthMiddleware() {
     if (!this.instances.has('authMiddleware')) {
       this.instances.set(
         'authMiddleware',
-        new AuthMiddleware(this.getTokenService(), this.getUserRepository())
+        new AuthMiddleware(this.getTokenService(), await this.getUserRepository())
       );
     }
     return this.instances.get('authMiddleware');
@@ -271,6 +272,11 @@ class Container {
 
   getOptionalAuthMiddleware() {
     return this.getAuthMiddleware().optionalAuth;
+  }
+
+  // Reset instances (useful for testing or reconfiguration)
+  reset() {
+    this.instances.clear();
   }
 }
 

@@ -5,12 +5,13 @@ import logger from '../config/logger.js';
 
 /**
  * User Repository Implementation
- * Implements the IUserRepository interface using Mongoose
+ * Implements the IUserRepository interface using PostgreSQL with Knex
  */
 export class UserRepository extends IUserRepository {
-  constructor(userModel, correlationId = null) {
+  constructor(db, correlationId = null) {
     super();
-    this.UserModel = userModel;
+    this.db = db;
+    this.tableName = 'users';
     this.correlationId = correlationId;
     this.operationId = correlationId ? `${correlationId}_repo` : null;
   }
@@ -24,14 +25,14 @@ export class UserRepository extends IUserRepository {
   async findById(id) {
     return withTimeout(
       async () => {
-        const userDoc = await this.UserModel.findById(id);
-        return userDoc ? this._toEntity(userDoc) : null;
+        const userRow = await this.db(this.tableName).where('id', id).first();
+        return userRow ? this._toEntity(userRow) : null;
       },
       TimeoutPresets.DATABASE,
       'user_findById',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User findById timed out', {
             correlationId: this.correlationId,
             userId: id,
@@ -48,8 +49,10 @@ export class UserRepository extends IUserRepository {
     }
 
     try {
-      const userDoc = await this.UserModel.findOne({ email: email.toLowerCase() });
-      return userDoc ? this._toEntity(userDoc) : null;
+      const userRow = await this.db(this.tableName)
+        .whereRaw('LOWER(email) = ?', [email.toLowerCase()])
+        .first();
+      return userRow ? this._toEntity(userRow) : null;
     } catch (error) {
       logger.error('User findByEmail error', {
         correlationId: this.correlationId,
@@ -67,14 +70,16 @@ export class UserRepository extends IUserRepository {
 
     return withTimeout(
       async () => {
-        const userDoc = await this.UserModel.findOne({ username: username.toLowerCase() });
-        return userDoc ? this._toEntity(userDoc) : null;
+        const userRow = await this.db(this.tableName)
+          .whereRaw('LOWER(username) = ?', [username.toLowerCase()])
+          .first();
+        return userRow ? this._toEntity(userRow) : null;
       },
       TimeoutPresets.DATABASE,
       'user_findByUsername',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User findByUsername timed out', {
             correlationId: this.correlationId,
             username,
@@ -90,50 +95,83 @@ export class UserRepository extends IUserRepository {
       page = 1,
       limit = 10,
       filters = {},
-      sortBy = 'createdAt',
+      sortBy = 'created_at',
       sortOrder = 'desc',
     } = options;
 
-    const query = {};
+    // Map camelCase to snake_case for sorting
+    const sortColumnMap = {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      displayName: 'display_name',
+      email: 'email',
+      username: 'username',
+      role: 'role',
+      isActive: 'is_active',
+    };
+
+    const sortColumn = sortColumnMap[sortBy] || sortBy;
+    const offset = (page - 1) * limit;
+
+    let query = this.db(this.tableName);
+    let countQuery = this.db(this.tableName);
 
     // Apply filters
     if (filters.email) {
-      query.email = { $regex: filters.email, $options: 'i' };
+      query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+      countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
     }
     if (filters.username) {
-      query.username = { $regex: filters.username, $options: 'i' };
+      query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+      countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
     }
     if (filters.displayName) {
-      query.displayName = { $regex: filters.displayName, $options: 'i' };
+      query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+      countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
     }
     if (filters.hasAvatar !== undefined) {
-      query.avatarUrl = filters.hasAvatar ? { $exists: true, $ne: '' } : { $exists: false };
+      if (filters.hasAvatar) {
+        query = query.whereNotNull('avatar_url').whereNot('avatar_url', '');
+        countQuery = countQuery.whereNotNull('avatar_url').whereNot('avatar_url', '');
+      } else {
+        query = query.where((qb) => {
+          qb.whereNull('avatar_url').orWhere('avatar_url', '');
+        });
+        countQuery = countQuery.where((qb) => {
+          qb.whereNull('avatar_url').orWhere('avatar_url', '');
+        });
+      }
     }
-    // Bio filtering is now handled separately since bio is in user_profiles collection
-    let bioFilterUsers = null;
+
+    // Bio filtering - need to join with user_profiles
     if (filters.hasBio !== undefined) {
-      // Import UserProfileModel for bio filtering
-      const { default: UserProfileModel } = await import('../models/user-profile-model.js');
-      const bioQuery = filters.hasBio
-        ? { bio: { $exists: true, $ne: '' } }
-        : { bio: { $exists: false } };
-      const bioProfiles = await UserProfileModel.find(bioQuery, { userId: 1 });
-      bioFilterUsers = bioProfiles.map((p) => p.userId?.toString()).filter(Boolean);
+      if (filters.hasBio) {
+        query = query
+          .join('user_profiles', 'users.id', 'user_profiles.user_id')
+          .whereNotNull('user_profiles.bio')
+          .whereNot('user_profiles.bio', '');
+        countQuery = countQuery
+          .join('user_profiles', 'users.id', 'user_profiles.user_id')
+          .whereNotNull('user_profiles.bio')
+          .whereNot('user_profiles.bio', '');
+      } else {
+        query = query.leftJoin('user_profiles', 'users.id', 'user_profiles.user_id').where((qb) => {
+          qb.whereNull('user_profiles.bio').orWhere('user_profiles.bio', '');
+        });
+        countQuery = countQuery
+          .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+          .where((qb) => {
+            qb.whereNull('user_profiles.bio').orWhere('user_profiles.bio', '');
+          });
+      }
     }
 
-    // Apply bio filter if set
-    if (bioFilterUsers !== null) {
-      query._id = { $in: bioFilterUsers };
-    }
-
-    const skip = (page - 1) * limit;
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
-    const [users, total] = await Promise.all([
-      this.UserModel.find(query).sort(sort).skip(skip).limit(limit),
-      this.UserModel.countDocuments(query),
+    const [users, countResult] = await Promise.all([
+      query.select('users.*').orderBy(`users.${sortColumn}`, sortOrder).offset(offset).limit(limit),
+      countQuery.count('users.id as count').first(),
     ]);
 
+    const total = parseInt(countResult?.count || 0);
     const totalPages = Math.ceil(total / limit);
 
     return {
@@ -150,26 +188,30 @@ export class UserRepository extends IUserRepository {
       throw new Error('Missing required user data fields');
     }
 
-    const userDoc = new this.UserModel(userData);
-    const savedDoc = await userDoc.save();
-    return this._toEntity(savedDoc);
+    const dbData = this._toDbFormat(userData);
+    const [savedRow] = await this.db(this.tableName).insert(dbData).returning('*');
+
+    return this._toEntity(savedRow);
   }
 
   async update(id, updates) {
     return withTimeout(
       async () => {
-        const updatedDoc = await this.UserModel.findByIdAndUpdate(
-          id,
-          { ...updates, updatedAt: new Date() },
-          { new: true }
-        );
-        return updatedDoc ? this._toEntity(updatedDoc) : null;
+        const dbUpdates = this._toDbFormat(updates);
+        dbUpdates.updated_at = new Date();
+
+        const [updatedRow] = await this.db(this.tableName)
+          .where('id', id)
+          .update(dbUpdates)
+          .returning('*');
+
+        return updatedRow ? this._toEntity(updatedRow) : null;
       },
       TimeoutPresets.DATABASE,
       'user_update',
       {
         correlationId: this.correlationId,
-        onTimeout: (error) => {
+        onTimeout: () => {
           logger.error('User update timed out', {
             correlationId: this.correlationId,
             userId: id,
@@ -182,40 +224,48 @@ export class UserRepository extends IUserRepository {
   }
 
   async delete(id) {
-    const result = await this.UserModel.findByIdAndDelete(id);
-    return !!result;
+    const result = await this.db(this.tableName).where('id', id).del();
+    return result > 0;
   }
 
   async emailExists(email, excludeId = null) {
-    const query = { email: email.toLowerCase() };
+    let query = this.db(this.tableName).whereRaw('LOWER(email) = ?', [email.toLowerCase()]);
+
     if (excludeId) {
-      query._id = { $ne: excludeId };
+      query = query.whereNot('id', excludeId);
     }
-    const count = await this.UserModel.countDocuments(query);
-    return count > 0;
+
+    const result = await query.count('id as count').first();
+    return parseInt(result?.count || 0) > 0;
   }
 
   async getUserStats() {
-    // Import UserProfileModel for bio stats
-    const { default: UserProfileModel } = await import('../models/user-profile-model.js');
-
     const [totalUsers, usersWithAvatars, usersWithBio, usersWithPhone, recentRegistrations] =
       await Promise.all([
-        this.UserModel.countDocuments(),
-        this.UserModel.countDocuments({ avatarUrl: { $exists: true, $ne: '' } }),
-        UserProfileModel.countDocuments({ bio: { $exists: true, $ne: '' } }),
-        this.UserModel.countDocuments({ phone: { $exists: true, $ne: null } }),
-        this.UserModel.countDocuments({
-          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Last 30 days
-        }),
+        this.db(this.tableName).count('id as count').first(),
+        this.db(this.tableName)
+          .whereNotNull('avatar_url')
+          .whereNot('avatar_url', '')
+          .count('id as count')
+          .first(),
+        this.db('user_profiles')
+          .whereNotNull('bio')
+          .whereNot('bio', '')
+          .count('id as count')
+          .first(),
+        this.db(this.tableName).whereNotNull('phone').count('id as count').first(),
+        this.db(this.tableName)
+          .where('created_at', '>=', this.db.raw("NOW() - INTERVAL '30 days'"))
+          .count('id as count')
+          .first(),
       ]);
 
     return {
-      totalUsers,
-      usersWithAvatars,
-      usersWithBio,
-      usersWithPhone,
-      recentRegistrations,
+      totalUsers: parseInt(totalUsers?.count || 0),
+      usersWithAvatars: parseInt(usersWithAvatars?.count || 0),
+      usersWithBio: parseInt(usersWithBio?.count || 0),
+      usersWithPhone: parseInt(usersWithPhone?.count || 0),
+      recentRegistrations: parseInt(recentRegistrations?.count || 0),
     };
   }
 
@@ -225,38 +275,69 @@ export class UserRepository extends IUserRepository {
   async updateUserStatus(userId, statusData) {
     const updateData = {};
     if (statusData.isActive !== undefined) {
-      updateData.isActive = statusData.isActive;
+      updateData.is_active = statusData.isActive;
     }
+    updateData.updated_at = new Date();
 
-    const userDoc = await this.UserModel.findByIdAndUpdate(userId, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const [userRow] = await this.db(this.tableName)
+      .where('id', userId)
+      .update(updateData)
+      .returning('*');
 
-    return userDoc ? this._toEntity(userDoc) : null;
+    return userRow ? this._toEntity(userRow) : null;
   }
 
-  _toEntity(userDoc) {
-    if (!userDoc) {
-      throw new Error('User document is null or undefined');
+  /**
+   * Convert database row to entity (snake_case to camelCase)
+   */
+  _toEntity(userRow) {
+    if (!userRow) {
+      throw new Error('User row is null or undefined');
     }
 
     return new User({
-      id: userDoc._id?.toString(),
-      username: userDoc.username,
-      hashedPassword: userDoc.hashedPassword,
-      email: userDoc.email,
-      displayName: userDoc.displayName,
-      role: userDoc.role,
-      avatarUrl: userDoc.avatarUrl,
-      phone: userDoc.phone,
-      isActive: userDoc.isActive || false,
-      isFirstLogin: userDoc.isFirstLogin ?? true,
-      langKey: userDoc.langKey || 'en',
-      createdAt: userDoc.createdAt,
-      updatedAt: userDoc.updatedAt,
-      createdBy: userDoc.createdBy,
-      lastModifiedBy: userDoc.lastModifiedBy,
+      id: userRow.id,
+      username: userRow.username,
+      hashedPassword: userRow.hashed_password,
+      email: userRow.email,
+      displayName: userRow.display_name,
+      role: userRow.role,
+      avatarUrl: userRow.avatar_url,
+      phone: userRow.phone,
+      isActive: userRow.is_active || false,
+      isFirstLogin: userRow.is_first_login ?? true,
+      requiresPasswordChange: userRow.requires_password_change || false,
+      langKey: userRow.lang_key || 'en',
+      managedBy: userRow.managed_by,
+      createdBy: userRow.created_by,
+      createdAt: userRow.created_at,
+      updatedAt: userRow.updated_at,
+      lastModifiedBy: userRow.last_modified_by,
     });
+  }
+
+  /**
+   * Convert entity/updates to database format (camelCase to snake_case)
+   */
+  _toDbFormat(data) {
+    const dbData = {};
+
+    if (data.username !== undefined) dbData.username = data.username.toLowerCase();
+    if (data.hashedPassword !== undefined) dbData.hashed_password = data.hashedPassword;
+    if (data.email !== undefined) dbData.email = data.email.toLowerCase();
+    if (data.displayName !== undefined) dbData.display_name = data.displayName;
+    if (data.role !== undefined) dbData.role = data.role;
+    if (data.avatarUrl !== undefined) dbData.avatar_url = data.avatarUrl;
+    if (data.phone !== undefined) dbData.phone = data.phone;
+    if (data.isActive !== undefined) dbData.is_active = data.isActive;
+    if (data.isFirstLogin !== undefined) dbData.is_first_login = data.isFirstLogin;
+    if (data.requiresPasswordChange !== undefined)
+      dbData.requires_password_change = data.requiresPasswordChange;
+    if (data.langKey !== undefined) dbData.lang_key = data.langKey;
+    if (data.managedBy !== undefined) dbData.managed_by = data.managedBy;
+    if (data.createdBy !== undefined) dbData.created_by = data.createdBy;
+    if (data.lastModifiedBy !== undefined) dbData.last_modified_by = data.lastModifiedBy;
+
+    return dbData;
   }
 }

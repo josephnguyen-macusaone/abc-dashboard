@@ -1,13 +1,15 @@
 // Ensure joi is loaded first to avoid import timing issues
 import 'joi';
 
+/* global URL */
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import connectDB from './src/infrastructure/config/database.js';
-import v1Routes from './src/infrastructure/routes/index.js';
+import { createRoutes } from './src/infrastructure/routes/index.js';
 import { errorHandler } from './src/infrastructure/api/v1/middleware/error-handler.middleware.js';
 import { correlationIdMiddleware } from './src/infrastructure/api/v1/middleware/correlation-id.middleware.js';
 import { requestLogger } from './src/infrastructure/api/v1/middleware/request-logger.middleware.js';
@@ -40,22 +42,21 @@ const performStartupChecks = async () => {
     database: false,
   };
 
-  // Check MongoDB connection
+  // Check PostgreSQL connection
   try {
-    logger.startup('Checking MongoDB connection...');
+    logger.startup('Checking PostgreSQL connection...');
     await connectDB();
     checks.database = true;
   } catch (error) {
-    logger.error('MongoDB connection check failed', {
+    logger.error('PostgreSQL connection check failed', {
       error: error.message,
       willRetry: true,
     });
   }
 
   // Log startup summary
-  const dbType = config.DATABASE_TYPE === 'postgresql' ? 'PostgreSQL' : 'MongoDB';
   const dbStatus = checks.database ? 'Connected' : 'Failed';
-  logger.startup(`Startup Health Check Summary - ${dbType}: ${dbStatus}, Cache: In-Memory`);
+  logger.startup(`Startup Health Check Summary - PostgreSQL: ${dbStatus}, Cache: In-Memory`);
 
   return checks;
 };
@@ -93,7 +94,45 @@ const corsOptions =
         credentials: true,
       }
     : {
-        origin: config.CLIENT_URL,
+        origin(origin, callback) {
+          // Allow requests with no origin (mobile apps, curl, server-side requests, etc.)
+          if (!origin) {
+            return callback(null, true);
+          }
+
+          // Allow the configured client URL if set
+          if (config.CLIENT_URL && origin === config.CLIENT_URL) {
+            return callback(null, true);
+          }
+
+          // In production, allow same-origin requests (when frontend and backend are on same domain)
+          // Extract domain from origin and compare with current host
+          try {
+            const originUrl = new URL(origin);
+            const hostUrl = new URL(config.CLIENT_URL || 'http://localhost:3000');
+
+            // Allow if same domain (protocol + hostname + port)
+            if (originUrl.origin === hostUrl.origin) {
+              return callback(null, true);
+            }
+
+            // For HTTPS domains, also allow HTTP localhost for development access
+            if (originUrl.protocol === 'https:' && originUrl.hostname === hostUrl.hostname) {
+              return callback(null, true);
+            }
+
+            // Allow portal.abcsalon.us specifically for production
+            if (origin === 'https://portal.abcsalon.us') {
+              return callback(null, true);
+            }
+          } catch (error) {
+            // Invalid URL format, reject
+            return callback(new Error('Invalid origin'));
+          }
+
+          // Reject other origins in production
+          return callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
       };
 
@@ -124,6 +163,32 @@ app.use(responseHelpersMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// API Documentation with balanced CSP for Swagger UI functionality
+app.use('/api-docs', (req, res, next) => {
+  // Balanced CSP that allows Swagger UI search/filter while maintaining security
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https:",
+      "connect-src 'self' http://localhost:5000",
+      "frame-src 'none'",
+      "object-src 'none'",
+    ].join('; ')
+  );
+  next();
+});
+
+// Serve swagger spec as JSON
+app.get('/swagger-spec.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(swaggerSpec);
+});
+
 // API Documentation
 app.use(
   '/api-docs',
@@ -152,30 +217,10 @@ app.get('/api/v1/health', getHealthWithMetrics);
 // Serve dashboard HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'dashboard.html'));
-}); // Routes
-
-// API Routes
-app.use('/api/v1', v1Routes);
+});
 
 // Serve static files from public directory
 app.use(express.static(path.join(process.cwd(), 'public')));
-
-// Error handling middleware
-app.use(errorHandler);
-
-// 404 handler
-app.use('*', (req, res) => {
-  logger.withRequest(req).warn('Route not found', {
-    method: req.method,
-    url: req.originalUrl,
-  });
-
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-    correlationId: req.correlationId,
-  });
-});
 
 // Start server with health checks
 const startServer = async () => {
@@ -185,14 +230,37 @@ const startServer = async () => {
 
     // Only start server if critical services are available
     if (!healthChecks.database) {
-      logger.error('CRITICAL: Cannot start server without MongoDB connection');
-      logger.error('SUGGESTION: Please ensure MongoDB is running and accessible');
+      logger.error('CRITICAL: Cannot start server without PostgreSQL connection');
+      logger.error('SUGGESTION: Please ensure PostgreSQL is running and accessible');
       logger.error('TROUBLESHOOTING:');
-      logger.error('   - Check if MongoDB service is running: net start MongoDB');
-      logger.error('   - Verify connection string in environment variables');
-      logger.error('   - Ensure MongoDB is bound to correct IP (0.0.0.0 for remote access)');
+      logger.error('   - Check if PostgreSQL service is running');
+      logger.error(
+        '   - Verify connection string in environment variables (DATABASE_URL or POSTGRES_*)'
+      );
+      logger.error('   - Ensure PostgreSQL is accepting connections on the configured host/port');
       process.exit(1);
     }
+
+    // Create and apply API routes
+    const v1Routes = await createRoutes();
+    app.use('/api/v1', v1Routes);
+
+    // Error handling middleware (MUST be after routes)
+    app.use(errorHandler);
+
+    // 404 handler (MUST be last)
+    app.use('*', (req, res) => {
+      logger.withRequest(req).warn('Route not found', {
+        method: req.method,
+        url: req.originalUrl,
+      });
+
+      res.status(404).json({
+        success: false,
+        message: 'Route not found',
+        correlationId: req.correlationId,
+      });
+    });
 
     // Start the HTTP server
     server = app.listen(PORT, () => {

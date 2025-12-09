@@ -69,6 +69,12 @@ export class InvalidTokenException extends DomainException {
   }
 }
 
+export class InvalidRefreshTokenException extends DomainException {
+  constructor() {
+    super('INVALID_TOKEN');
+  }
+}
+
 /**
  * Authorization Exceptions
  */
