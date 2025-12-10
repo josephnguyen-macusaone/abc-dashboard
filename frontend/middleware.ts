@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ROUTE_CONFIGS, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
+import { ROUTE_CONFIGS, AUTH_ROUTES, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
 export function middleware(request: NextRequest) {
@@ -12,6 +12,31 @@ export function middleware(request: NextRequest) {
   });
 
   const { pathname } = request.nextUrl;
+
+  // ==========================================================================
+  // SECURITY: Block malformed Server Action requests from bots/scanners
+  // These are external bots sending POST requests with invalid "Next-Action: x" headers
+  // ==========================================================================
+  const nextActionHeader = request.headers.get('next-action');
+  if (nextActionHeader) {
+    // Valid Server Action IDs are 40-character hex hashes (SHA-1)
+    // Invalid ones like "x", "test", or random strings are bot probes
+    const isValidActionId = /^[a-f0-9]{40}$/i.test(nextActionHeader);
+
+    if (!isValidActionId) {
+      // Silently reject invalid Server Action requests (don't log to reduce noise)
+      return new NextResponse(
+        JSON.stringify({ error: 'Invalid request' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // This app doesn't use Server Actions - block ALL Server Action requests
+    return new NextResponse(
+      JSON.stringify({ error: 'Not found' }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
   middlewareLogger.debug('Processing request', {
     pathname,
@@ -119,6 +144,19 @@ export function middleware(request: NextRequest) {
       }
     }
 
+    // Check if user needs email verification
+    if (isAuthenticated && user && !user.isActive) {
+      logger.security('Unverified user access attempt', {
+        correlationId,
+        pathname,
+        userId: user.id,
+        userEmail: user.email,
+        redirectTo: '/verify-email'
+      });
+      const verifyUrl = new URL('/verify-email', request.url);
+      verifyUrl.searchParams.set('email', user.email || '');
+      return NextResponse.redirect(verifyUrl);
+    }
 
     middlewareLogger.debug('Route access granted', {
       pathname,

@@ -11,72 +11,6 @@ if (!Joi) {
 
 export const authSchemas = {
   /**
-   * User registration schema
-   */
-  register: Joi.object({
-    username: Joi.string()
-      .min(3)
-      .max(30)
-      .pattern(/^[a-zA-Z0-9_]+$/)
-      .allow('')
-      .optional()
-      .messages({
-        'string.min': 'Username must be at least 3 characters long',
-        'string.max': 'Username cannot exceed 30 characters',
-        'string.pattern.base': 'Username can only contain letters, numbers, and underscores',
-        'string.empty': 'Username cannot be empty',
-      }),
-
-    email: Joi.string()
-      .email({ tlds: { allow: false } }) // Don't allow top-level domains for security
-      .required()
-      .messages({
-        'string.email': 'Please provide a valid email address',
-        'any.required': 'Email is required',
-        'string.empty': 'Email cannot be empty',
-      }),
-
-    password: Joi.string()
-      .min(8)
-      .max(128)
-      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/) // At least one lowercase, uppercase, and number
-      .required()
-      .messages({
-        'string.min': 'Password must be at least 8 characters long',
-        'string.max': 'Password cannot exceed 128 characters',
-        'string.pattern.base':
-          'Password must contain at least one lowercase letter, one uppercase letter, and one number',
-        'any.required': 'Password is required',
-        'string.empty': 'Password cannot be empty',
-      }),
-
-    firstName: Joi.string().trim().min(1).max(50).required().messages({
-      'string.min': 'First name cannot be empty',
-      'string.max': 'First name cannot exceed 50 characters',
-      'any.required': 'First name is required',
-      'string.empty': 'First name cannot be empty',
-    }),
-
-    lastName: Joi.string().trim().min(1).max(50).required().messages({
-      'string.min': 'Last name cannot be empty',
-      'string.max': 'Last name cannot exceed 50 characters',
-      'any.required': 'Last name is required',
-      'string.empty': 'Last name cannot be empty',
-    }),
-
-    avatarUrl: Joi.string().uri().allow('').messages({
-      'string.uri': 'Avatar URL must be a valid URI',
-    }),
-
-    phone: Joi.string()
-      .pattern(/^[\+]?[1-9][\d]{0,15}$/)
-      .allow('')
-      .messages({
-        'string.pattern.base': 'Phone number must be in valid format',
-      }),
-  }),
-
-  /**
    * User login schema
    */
   login: Joi.object({
@@ -99,17 +33,22 @@ export const authSchemas = {
    * Email verification/confirmation schema
    * Accepts either token (for registration verification) or action (for authenticated user confirmation)
    */
-  verifyEmail: Joi.object().keys({
-    token: Joi.string().messages({
-      'string.empty': 'Verification token cannot be empty',
+  verifyEmail: Joi.object()
+    .keys({
+      token: Joi.string().messages({
+        'string.empty': 'Verification token cannot be empty',
+      }),
+      action: Joi.string().valid('confirm').messages({
+        'any.only': 'Action must be "confirm"',
+      }),
+    })
+    .xor('token', 'action')
+    .messages({
+      'object.xor':
+        'Either token (for verification) or action (for confirmation) must be provided, but not both',
+      'object.missing':
+        'Either token (for verification) or action (for confirmation) must be provided',
     }),
-    action: Joi.string().valid('confirm').messages({
-      'any.only': 'Action must be "confirm"',
-    }),
-  }).xor('token', 'action').messages({
-    'object.xor': 'Either token (for verification) or action (for confirmation) must be provided, but not both',
-    'object.missing': 'Either token (for verification) or action (for confirmation) must be provided',
-  }),
 
   /**
    * Password reset request schema

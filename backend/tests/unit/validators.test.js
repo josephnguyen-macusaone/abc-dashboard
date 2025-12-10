@@ -33,48 +33,6 @@ describe('AuthValidator', () => {
     });
   });
 
-  describe('validateRegister', () => {
-    it('should pass for valid registration input', () => {
-      expect(
-        AuthValidator.validateRegister({
-          username: 'testuser',
-          email: 'test@example.com',
-          password: 'ValidPass123',
-        })
-      ).toBe(true);
-    });
-
-    it('should throw for username too short', () => {
-      expect(() =>
-        AuthValidator.validateRegister({
-          username: 'ab',
-          email: 'test@example.com',
-          password: 'ValidPass123',
-        })
-      ).toThrow(ValidationException);
-    });
-
-    it('should throw for username with invalid characters', () => {
-      expect(() =>
-        AuthValidator.validateRegister({
-          username: 'test@user',
-          email: 'test@example.com',
-          password: 'ValidPass123',
-        })
-      ).toThrow(ValidationException);
-    });
-
-    it('should throw for weak password', () => {
-      expect(() =>
-        AuthValidator.validateRegister({
-          username: 'testuser',
-          email: 'test@example.com',
-          password: 'weakpass',
-        })
-      ).toThrow(ValidationException);
-    });
-  });
-
   describe('validatePasswordChange', () => {
     it('should pass for valid password change', () => {
       expect(

@@ -2,8 +2,6 @@ import { httpClient } from '@/infrastructure/api/client';
 import {
   LoginRequestDto,
   LoginResponseDto,
-  RegisterRequestDto,
-  RegisterResponseDto,
   AuthStatusResponseDto,
   ApiResponse,
   AuthTokensDto,
@@ -37,22 +35,6 @@ export class AuthApiService {
     }
   }
 
-  /**
-   * Register new user
-   */
-  static async register(userData: RegisterRequestDto): Promise<RegisterResponseDto> {
-    try {
-      const response = await httpClient.post<ApiResponse<RegisterResponseDto>>('/auth/register', userData);
-
-      if (!response.data) {
-        throw new Error('Register response missing data');
-      }
-
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
 
   /**
    * Get current user status
@@ -236,7 +218,6 @@ export class AuthApiService {
 // Export singleton instance methods for convenience
 export const authApi = {
   login: AuthApiService.login,
-  register: AuthApiService.register,
   getStatus: AuthApiService.getStatus,
   refreshToken: AuthApiService.refreshToken,
   logout: AuthApiService.logout,

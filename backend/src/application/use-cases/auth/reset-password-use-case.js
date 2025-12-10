@@ -7,6 +7,7 @@ import {
   ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
+import { config } from '../../../infrastructure/config/config.js';
 
 export class ResetPasswordUseCase {
   constructor(userRepository, tokenService, authService, emailService = null) {
@@ -80,7 +81,7 @@ export class ResetPasswordUseCase {
             user.email,
             {
               displayName: user.displayName,
-              loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+              loginUrl: `${config.CLIENT_URL}/login`
             }
           );
         }

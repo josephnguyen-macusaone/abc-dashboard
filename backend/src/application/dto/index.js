@@ -11,9 +11,7 @@ export {
   TokensDto,
   UserAuthDto,
   LoginResponseDto,
-  RegisterResponseDto,
   LoginRequestDto,
-  RegisterRequestDto,
   ChangePasswordRequestDto,
   RefreshTokenRequestDto,
 } from './auth/index.js';

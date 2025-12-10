@@ -37,19 +37,6 @@ export interface LoginResponseDto {
   tokens: AuthTokensDto;
 }
 
-export interface RegisterRequestDto {
-  username: string;
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role?: UserRole;
-}
-
-export interface RegisterResponseDto {
-  user: UserDto;
-  tokens: AuthTokensDto;
-}
 
 export interface AuthStatusResponseDto {
   user: UserDto;

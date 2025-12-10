@@ -49,7 +49,7 @@ export class LoginUseCase {
       // Verify password with timeout
       const isPasswordValid = await withTimeout(
         () => this.authService.verifyPassword(password, user.hashedPassword),
-        TimeoutPresets.QUICK, // Password verification should be fast
+        TimeoutPresets.NORMAL, // Increased timeout for bcrypt operations (10 seconds)
         'password_verification'
       );
       if (!isPasswordValid) {

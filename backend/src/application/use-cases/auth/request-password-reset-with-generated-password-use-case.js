@@ -4,6 +4,7 @@
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../infrastructure/config/logger.js';
+import { config } from '../../../infrastructure/config/config.js';
 
 export class RequestPasswordResetWithGeneratedPasswordUseCase {
   constructor(userRepository, authService, emailService) {
@@ -63,7 +64,7 @@ export class RequestPasswordResetWithGeneratedPasswordUseCase {
 
       // Send email with generated password
       try {
-        const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
+        const loginUrl = `${config.CLIENT_URL}/login`;
 
         await this.emailService.sendPasswordResetWithGeneratedPassword(user.email, {
           displayName: user.displayName || user.email.split('@')[0],

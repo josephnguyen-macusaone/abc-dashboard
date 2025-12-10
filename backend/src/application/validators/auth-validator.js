@@ -31,54 +31,6 @@ export class AuthValidator {
   }
 
   /**
-   * Validate registration input
-   * @param {Object} input - Registration input data
-   * @throws {ValidationException} If validation fails
-   */
-  static validateRegister(input) {
-    const errors = [];
-
-    // Username validation
-    if (!input.username || typeof input.username !== 'string') {
-      errors.push({ field: 'username', message: 'Username is required' });
-    } else if (input.username.length < 3) {
-      errors.push({ field: 'username', message: 'Username must be at least 3 characters' });
-    } else if (input.username.length > 30) {
-      errors.push({ field: 'username', message: 'Username must not exceed 30 characters' });
-    } else if (!/^[a-zA-Z0-9_]+$/.test(input.username)) {
-      errors.push({
-        field: 'username',
-        message: 'Username can only contain letters, numbers, and underscores',
-      });
-    }
-
-    // Email validation
-    if (!input.email || typeof input.email !== 'string') {
-      errors.push({ field: 'email', message: 'Email is required' });
-    } else if (!this.isValidEmail(input.email)) {
-      errors.push({ field: 'email', message: 'Invalid email format' });
-    }
-
-    // Password validation
-    if (!input.password || typeof input.password !== 'string') {
-      errors.push({ field: 'password', message: 'Password is required' });
-    } else {
-      const passwordValidation = this.validatePassword(input.password);
-      if (!passwordValidation.isValid) {
-        errors.push(
-          ...passwordValidation.errors.map((msg) => ({ field: 'password', message: msg }))
-        );
-      }
-    }
-
-    if (errors.length > 0) {
-      throw new ValidationException(errors.map((e) => e.message).join(', '));
-    }
-
-    return true;
-  }
-
-  /**
    * Validate password change input
    * @param {Object} input - Password change input data
    * @throws {ValidationException} If validation fails

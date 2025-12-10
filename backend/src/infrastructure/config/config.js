@@ -26,7 +26,7 @@ export const config = {
     (process.env.NODE_ENV === 'production'
       ? 'https://portal.abcsalon.us'
       : 'http://localhost:3000'),
-  BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 14, // Increased from 12 for better security
+  BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS) || 12, // Optimized for performance and security balance
 
   // Email configuration
   EMAIL_SERVICE:

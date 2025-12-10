@@ -143,7 +143,7 @@ class Container {
   }
 
   async getAuthUpdateProfileUseCase() {
-    return new AuthUpdateProfileUseCase(await this.getUserRepository());
+    return new AuthUpdateProfileUseCase(await this.getUserRepository(), await this.getUserProfileRepository());
   }
 
   async getChangePasswordUseCase() {
