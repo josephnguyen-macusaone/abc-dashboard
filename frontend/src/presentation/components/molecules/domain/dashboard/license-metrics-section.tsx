@@ -14,6 +14,7 @@ interface LicenseMetricsSectionProps {
   initialDateTo?: Date | string;
   onDateRangeChange?: (values: { range: DateRange; rangeCompare?: DateRange }) => void;
   isLoading?: boolean;
+  totalCount?: number;
 }
 
 export function LicenseMetricsSection({
@@ -23,10 +24,11 @@ export function LicenseMetricsSection({
   initialDateTo,
   onDateRangeChange,
   isLoading = false,
+  totalCount,
 }: LicenseMetricsSectionProps) {
   const stats = useMemo(
-    () => buildLicenseStatsCards(licenses, dateRange),
-    [licenses, dateRange],
+    () => buildLicenseStatsCards(licenses, dateRange, totalCount),
+    [licenses, dateRange, totalCount],
   );
 
   return (

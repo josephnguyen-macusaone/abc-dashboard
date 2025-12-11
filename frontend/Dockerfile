@@ -18,13 +18,19 @@ CMD ["npm", "run", "dev"]
 # Production build stage
 FROM base AS builder
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+# Server Actions need a stable key across build and runtime; fail fast if missing
+RUN test -n "$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY" || (echo "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is required for Server Actions" && exit 1)
 RUN npm run build
 
 # Production runtime stage - run Next.js server (needed for Server Actions)
 FROM node:20-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
 
 # Install only production dependencies
 COPY package*.json ./

@@ -41,6 +41,21 @@ export interface LicenseTableSectionProps {
    * Loading state
    */
   isLoading?: boolean;
+  /**
+   * Optional server page count for pagination
+   */
+  pageCount?: number;
+  /**
+   * Callback when table query changes (pagination/sort/filter)
+   */
+  onQueryChange?: (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    status?: string;
+    dba?: string;
+  }) => void;
 }
 
 export function LicenseTableSection({
@@ -50,6 +65,8 @@ export function LicenseTableSection({
   licenses,
   dateRange,
   isLoading = false,
+  pageCount,
+  onQueryChange,
 }: LicenseTableSectionProps) {
   const filteredLicenses = useMemo(
     () => filterLicensesByDateRange(licenses, dateRange),
@@ -74,6 +91,8 @@ export function LicenseTableSection({
       <LicensesDataTable
         data={filteredLicenses}
         isLoading={isLoading}
+        pageCount={pageCount}
+        onQueryChange={onQueryChange}
       />
     </div>
   );

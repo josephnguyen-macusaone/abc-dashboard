@@ -1,6 +1,6 @@
 # License Management (backend)
 
-> Status: backend APIs not yet implemented; frontend currently uses mock data and UI scaffolding. This guide captures the planned backend model, endpoints, and operational notes so implementation can align with the existing dashboard UI.
+> Status: mock-only. Current `/api/v1/licenses` responses come from an in-memory store (seeded); PostgreSQL persistence is not yet wired. Frontend presently uses DataTable only while grid editing is disabled.
 
 ## Scope
 

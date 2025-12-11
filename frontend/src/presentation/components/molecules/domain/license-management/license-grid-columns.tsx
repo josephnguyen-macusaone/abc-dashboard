@@ -23,14 +23,14 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
     },
     {
-      id: "dbA",
-      accessorKey: "dbA",
+      id: "dba",
+      accessorKey: "dba",
       header: "DBA",
       size: 150,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
-        const dbA = row.getValue(id) as string;
-        return dbA.toLowerCase().includes(value.toLowerCase());
+        const dba = row.getValue(id) as string;
+        return dba.toLowerCase().includes(value.toLowerCase());
       },
       meta: {
         label: "DBA",

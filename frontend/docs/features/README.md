@@ -9,6 +9,7 @@ This section covers feature-specific implementations, workflows, and user-facing
 | **[Authentication](./authentication.md)** | User authentication and authorization | Login, registration, JWT, role-based access |
 | **[User Management](./user-management.md)** | User CRUD operations and admin features | User creation, editing, deletion, role management |
 | **[Dashboard](./dashboard.md)** | Dashboard analytics and metrics | License metrics, charts, data visualization |
+| **[License Management](./license-management.md)** | Current license UI/flows (mock-backed) | DataTable-only, mock data, planned grid + Postgres |
 
 ## 🔐 Authentication Features
 

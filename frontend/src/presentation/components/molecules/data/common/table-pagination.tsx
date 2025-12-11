@@ -28,9 +28,9 @@ export function TablePagination<TData>({
   ...props
 }: TablePaginationProps<TData>) {
   const { pageIndex, pageSize } = table.getState().pagination;
-  const filteredRows = table.getFilteredRowModel().rows.length;
-  const pageStart = pageIndex * pageSize + 1;
-  const pageEnd = Math.min(pageStart + pageSize - 1, filteredRows);
+  const totalRows = (table.options.meta as any)?.totalRows ?? table.getFilteredRowModel().rows.length;
+  const pageStart = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
+  const pageEnd = Math.min(pageStart + pageSize - 1, totalRows);
 
   return (
     <div
@@ -41,7 +41,7 @@ export function TablePagination<TData>({
       {...props}
     >
       <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
-        Showing {pageStart} to {pageEnd} of {filteredRows} entries
+        Showing {pageStart} to {pageEnd} of {totalRows} entries
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">

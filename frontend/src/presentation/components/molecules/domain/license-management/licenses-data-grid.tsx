@@ -29,8 +29,17 @@ interface LicensesDataGridProps {
   height?: number;
   className?: string;
   onSave?: (data: LicenseRecord[]) => Promise<void>;
-  onAddRow?: () => LicenseRecord;
+  onAddRow?: () => LicenseRecord | Promise<LicenseRecord>;
   onDeleteRows?: (rows: LicenseRecord[], indices: number[]) => Promise<void>;
+  pageCount?: number;
+  totalCount?: number;
+  onQueryChange?: (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    filters?: Record<string, unknown>;
+  }) => void;
 }
 
 export function LicensesDataGrid({
@@ -41,6 +50,9 @@ export function LicensesDataGrid({
   onSave,
   onAddRow,
   onDeleteRows,
+  pageCount,
+  totalCount,
+  onQueryChange,
 }: LicensesDataGridProps) {
   const [data, setData] = React.useState<LicenseRecord[]>(initialData);
   const [hasChanges, setHasChanges] = React.useState(false);
@@ -59,17 +71,10 @@ export function LicensesDataGrid({
     setHasChanges(true);
   }, []);
 
-  const handleRowAdd = React.useCallback(() => {
-    if (onAddRow) {
-      const newRow = onAddRow();
-      setData((prev) => [...prev, newRow]);
-      setHasChanges(true);
-      return { rowIndex: data.length, columnId: "dbA" };
-    }
-    // Default new row
-    const newRow: LicenseRecord = {
+  const handleRowAdd = React.useCallback(async () => {
+    const fallback: LicenseRecord = {
       id: data.length + 1,
-      dbA: "",
+      dba: "",
       zip: "",
       startDay: new Date().toISOString().split("T")[0],
       status: "pending",
@@ -85,9 +90,20 @@ export function LicensesDataGrid({
       agentsCost: 0,
       notes: "",
     };
+
+    let newRow = fallback;
+    if (onAddRow) {
+      try {
+        const result = onAddRow();
+        newRow = result instanceof Promise ? await result : result;
+      } catch {
+        newRow = fallback;
+      }
+    }
+
     setData((prev) => [...prev, newRow]);
     setHasChanges(true);
-    return { rowIndex: data.length, columnId: "dbA" };
+    return { rowIndex: data.length, columnId: "dba" };
   }, [data.length, onAddRow]);
 
   const handleRowsDelete = React.useCallback(
@@ -134,6 +150,12 @@ export function LicensesDataGrid({
     enableSearch: true,
     enablePaste: true,
     autoFocus: true,
+    pageCount: pageCount ?? -1,
+    totalRows: totalCount,
+    manualPagination: !!onQueryChange,
+    manualSorting: !!onQueryChange,
+    manualFiltering: !!onQueryChange,
+    onQueryChange,
   });
 
   // Loading state

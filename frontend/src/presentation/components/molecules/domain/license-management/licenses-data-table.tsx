@@ -21,20 +21,29 @@ interface LicensesDataTableProps {
   data: LicenseRecord[];
   pageCount?: number;
   isLoading?: boolean;
+  onQueryChange?: (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    status?: string;
+    dba?: string;
+  }) => void;
 }
 
 export function LicensesDataTable({
   data,
-  pageCount: initialPageCount = -1,
+  pageCount: serverPageCount = -1,
   isLoading = false,
+  onQueryChange,
 }: LicensesDataTableProps) {
   const columns = React.useMemo(() => getLicenseTableColumns(), []);
 
   const [currentPageSize, setCurrentPageSize] = React.useState(20);
 
-  const pageCount = React.useMemo(() =>
-    Math.ceil(data.length / currentPageSize),
-    [data.length, currentPageSize]
+  const pageCount = React.useMemo(
+    () => (serverPageCount >= 0 ? serverPageCount : Math.ceil(data.length / currentPageSize)),
+    [serverPageCount, data.length, currentPageSize]
   );
 
   const { table } = useDataTable({
@@ -54,7 +63,29 @@ export function LicensesDataTable({
         notes: true,
       },
     },
+    manualPagination: !!onQueryChange,
+    manualSorting: !!onQueryChange,
+    manualFiltering: !!onQueryChange,
   });
+
+  React.useEffect(() => {
+    if (!onQueryChange) return;
+    const { pagination, sorting, columnFilters } = table.getState();
+    const activeSort = sorting?.[0];
+    const filterLookup = columnFilters?.reduce<Record<string, any>>((acc, filter) => {
+      acc[filter.id] = filter.value;
+      return acc;
+    }, {});
+
+    onQueryChange({
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+      sortBy: activeSort?.id,
+      sortOrder: activeSort?.desc ? "desc" : "asc",
+      status: Array.isArray(filterLookup?.status) ? filterLookup.status[0] : filterLookup?.status,
+      dba: Array.isArray(filterLookup?.dba) ? filterLookup.dba[0] : filterLookup?.dba,
+    });
+  }, [table, onQueryChange]);
 
   // Update page size when table page size changes
   React.useEffect(() => {

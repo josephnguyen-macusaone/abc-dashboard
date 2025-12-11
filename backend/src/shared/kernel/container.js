@@ -4,6 +4,8 @@ import connectDB, { getDB } from '../../infrastructure/config/database.js';
 import { AuthController } from '../../infrastructure/controllers/auth-controller.js';
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
+import { LicenseController } from '../../infrastructure/controllers/license-controller.js';
+import { licenseStore } from '../../infrastructure/data/license-store.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
@@ -143,7 +145,10 @@ class Container {
   }
 
   async getAuthUpdateProfileUseCase() {
-    return new AuthUpdateProfileUseCase(await this.getUserRepository(), await this.getUserProfileRepository());
+    return new AuthUpdateProfileUseCase(
+      await this.getUserRepository(),
+      await this.getUserProfileRepository()
+    );
   }
 
   async getChangePasswordUseCase() {
@@ -248,6 +253,13 @@ class Container {
       await this.getAuthUpdateProfileUseCase(),
       await this.getRecordLoginUseCase()
     );
+  }
+
+  async getLicenseController() {
+    if (!this.instances.has('licenseController')) {
+      this.instances.set('licenseController', new LicenseController(licenseStore));
+    }
+    return this.instances.get('licenseController');
   }
 
   // Middleware

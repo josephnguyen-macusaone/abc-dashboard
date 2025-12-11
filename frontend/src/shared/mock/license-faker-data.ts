@@ -35,7 +35,7 @@ function generateLicenseRecord(id: number): LicenseRecord {
 
   return {
     id,
-    dbA: faker.company.name(),
+    dba: faker.company.name(),
     zip: faker.location.zipCode('#####'),
     startDay: startDay.toISOString().split('T')[0],
     status,
@@ -72,7 +72,7 @@ export function createEmptyLicense(existingIds: number[]): LicenseRecord {
   const nextId = Math.max(...existingIds, 0) + 1;
   return {
     id: nextId,
-    dbA: '',
+    dba: '',
     zip: '',
     startDay: new Date().toISOString().split('T')[0],
     status: 'pending',

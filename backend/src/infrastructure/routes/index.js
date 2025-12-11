@@ -2,6 +2,7 @@ import express from 'express';
 import { createAuthRoutes } from './auth-routes.js';
 import { createUserRoutes } from './user-routes.js';
 import { createProfileRoutes } from './profile-routes.js';
+import { createLicenseRoutes } from './license-routes.js';
 import { awilixContainer } from '../../shared/kernel/container.js';
 
 /**
@@ -23,6 +24,11 @@ export const createRoutes = async () => {
   // Profile routes
   const profileController = await awilixContainer.getProfileController();
   router.use('/', createProfileRoutes(profileController));
+
+  // License routes (mock-backed for initial integration)
+  const licenseController = await awilixContainer.getLicenseController();
+  const authMiddleware = await awilixContainer.getAuthMiddleware();
+  router.use('/licenses', createLicenseRoutes(licenseController, authMiddleware));
 
   return router;
 };

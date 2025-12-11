@@ -67,6 +67,8 @@ jobs:
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
+     # Only push images from protected branches or manual dispatch
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
     permissions:
       contents: read
       packages: write
@@ -123,7 +125,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./infrastructure/docker/frontend.Dockerfile
+          file: ./frontend/Dockerfile
+          build-args: |
+            NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}

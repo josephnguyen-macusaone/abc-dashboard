@@ -96,20 +96,20 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       enableColumnFilter: false,
     },
     {
-      id: "dbA",
-      accessorKey: "dbA",
+      id: "dba",
+      accessorKey: "dba",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="DBA" />
       ),
       cell: ({ row }) => (
         <span className="font-medium truncate max-w-[150px]">
-          {row.getValue("dbA")}
+          {row.getValue("dba")}
         </span>
       ),
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
-        const dbA = row.getValue(id) as string;
-        return dbA.toLowerCase().includes(value.toLowerCase());
+        const dba = row.getValue(id) as string;
+        return dba.toLowerCase().includes(value.toLowerCase());
       },
       meta: {
         label: "DBA",

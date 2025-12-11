@@ -162,6 +162,18 @@ interface UseDataGridProps<TData>
   enableSearch?: boolean;
   enablePaste?: boolean;
   readOnly?: boolean;
+  pageCount?: number;
+  manualPagination?: boolean;
+  manualSorting?: boolean;
+  manualFiltering?: boolean;
+  totalRows?: number;
+  onQueryChange?: (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    filters?: Record<string, unknown>;
+  }) => void;
 }
 
 function useDataGrid<TData>({
@@ -171,6 +183,12 @@ function useDataGrid<TData>({
   rowHeight: rowHeightProp = DEFAULT_ROW_HEIGHT,
   dir: dirProp,
   initialState,
+  pageCount = -1,
+  manualPagination = false,
+  manualSorting = false,
+  manualFiltering = false,
+  totalRows,
+  onQueryChange,
   ...props
 }: UseDataGridProps<TData>) {
   const dir = useDirection(dirProp);
@@ -1770,7 +1788,14 @@ function useDataGrid<TData>({
       getFilteredRowModel: getMemoizedFilteredRowModel,
       getSortedRowModel: getMemoizedSortedRowModel,
       getPaginationRowModel: getMemoizedPaginationRowModel,
-      meta: tableMeta,
+      pageCount,
+      manualPagination,
+      manualSorting,
+      manualFiltering,
+      meta: {
+        ...tableMeta,
+        totalRows,
+      },
     };
   }, [
     propsRef,
@@ -1787,6 +1812,11 @@ function useDataGrid<TData>({
     getMemoizedSortedRowModel,
     getMemoizedPaginationRowModel,
     tableMeta,
+    pageCount,
+    manualPagination,
+    manualSorting,
+    manualFiltering,
+    totalRows,
   ]);
 
   const table = useReactTable(tableOptions);
@@ -1821,6 +1851,26 @@ function useDataGrid<TData>({
   if (!rowVirtualizerRef.current) {
     rowVirtualizerRef.current = rowVirtualizer;
   }
+
+  // Notify parent of query changes when manual modes are enabled
+  React.useEffect(() => {
+    if (!onQueryChange) return;
+
+    const { pagination: pg, sorting: sort, columnFilters: filters } = table.getState();
+    const activeSort = sort?.[0];
+    const filterMap = filters?.reduce<Record<string, unknown>>((acc, curr) => {
+      acc[curr.id] = curr.value;
+      return acc;
+    }, {});
+
+    onQueryChange({
+      page: (pg?.pageIndex ?? 0) + 1,
+      limit: pg?.pageSize ?? 10,
+      sortBy: activeSort?.id,
+      sortOrder: activeSort?.desc ? "desc" : "asc",
+      filters: filterMap,
+    });
+  }, [table, onQueryChange]);
 
   const onScrollToRow = React.useCallback(
     async (opts: Partial<CellPosition>) => {

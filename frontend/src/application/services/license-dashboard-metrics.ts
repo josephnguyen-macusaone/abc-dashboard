@@ -79,6 +79,7 @@ export function filterLicensesByDateRange(
 export function buildLicenseStatsCards(
   licenses: LicenseRecord[],
   range?: LicenseDateRange,
+  _totalCount?: number, // kept for API compatibility
 ): StatsCardConfig[] {
   const now = new Date();
   const currentMonthStart = startOfMonth(now);
@@ -138,7 +139,7 @@ export function buildLicenseStatsCards(
     currentMonthLicenses.length > 0 ? licenseIncomeThisMonth / currentMonthLicenses.length : 0;
   const estimatedNextMonthIncome = licenseIncomeThisMonth + averagePayment * newLicensesThisMonth;
 
-  return [
+  const cards: StatsCardConfig[] = [
     {
       id: 'total-active-licenses',
       label: 'Total Active Licenses',
@@ -238,4 +239,6 @@ export function buildLicenseStatsCards(
       },
     },
   ];
+
+  return cards;
 }

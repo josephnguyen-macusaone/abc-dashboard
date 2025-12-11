@@ -11,7 +11,7 @@ export type LicenseTerm = 'monthly' | 'yearly';
 // License Record Interface
 export interface LicenseRecord {
   id: number;
-  dbA: string; // Database/Account identifier
+  dba: string; // Database/Account identifier
   zip: string;
   startDay: string; // ISO date string
   status: LicenseStatus;

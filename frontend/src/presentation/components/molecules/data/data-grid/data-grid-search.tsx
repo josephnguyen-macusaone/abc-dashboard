@@ -16,7 +16,7 @@ interface DataGridSearchProps<TData>
 export function DataGridSearch<TData>({
   table,
   placeholder = "Search...",
-  columnId = "dbA",
+  columnId = "dba",
   className,
   ...props
 }: DataGridSearchProps<TData>) {

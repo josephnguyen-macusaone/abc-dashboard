@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { Typography } from '@/presentation/components/atoms';
-import { LicensesDataGrid } from '@/presentation/components/molecules/domain/license-management';
+import { LicensesDataTable } from '@/presentation/components/molecules/domain/license-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { cn } from '@/shared/utils';
 import type { LicenseRecord } from '@/shared/types';
@@ -30,7 +30,7 @@ interface LicenseManagementProps {
   /** Callback for saving license changes */
   onSaveLicenses?: (licenses: LicenseRecord[]) => Promise<void>;
   /** Callback for adding a new license row */
-  onAddLicense?: () => LicenseRecord;
+  onAddLicense?: () => LicenseRecord | Promise<LicenseRecord>;
   /** Callback for deleting license rows */
   onDeleteLicenses?: (licenses: LicenseRecord[], indices: number[]) => Promise<void>;
   /** Current date range filter */
@@ -64,10 +64,10 @@ export function LicenseManagement({
   }, [onSaveLicenses]);
 
   // Add row handler
-  const handleAddRow = useCallback((): LicenseRecord => {
-    return onAddLicense?.() || {
+  const handleAddRow = useCallback(async (): Promise<LicenseRecord> => {
+    const fallback: LicenseRecord = {
       id: licenses.length + 1,
-      dbA: '',
+      dba: '',
       zip: '',
       startDay: new Date().toISOString().split('T')[0],
       status: 'pending',
@@ -83,6 +83,20 @@ export function LicenseManagement({
       agentsCost: 0,
       notes: '',
     };
+
+    if (!onAddLicense) {
+      return fallback;
+    }
+
+    const result = onAddLicense();
+    if (result instanceof Promise) {
+      try {
+        return await result;
+      } catch {
+        return fallback;
+      }
+    }
+    return result;
   }, [licenses.length, onAddLicense]);
 
   // Delete rows handler
@@ -114,9 +128,6 @@ export function LicenseManagement({
     });
   }, [licenses, dateRange]);
 
-  // Remount grid when filter window changes to avoid stale virtualization state
-  const gridKey = `${dateRange?.from?.toString() ?? 'all'}-${dateRange?.to?.toString() ?? 'all'}-${filteredLicenses.length}`;
-
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6', className)}>
       {/* Header */}
@@ -140,16 +151,8 @@ export function LicenseManagement({
         )}
       </div>
 
-      {/* Licenses Data Grid */}
-      <LicensesDataGrid
-        key={gridKey}
-        data={filteredLicenses}
-        isLoading={isLoading}
-        height={650}
-        onSave={handleSave}
-        onAddRow={handleAddRow}
-        onDeleteRows={handleDeleteRows}
-      />
+      {/* Licenses Data Table (simpler DOM to avoid removeChild errors) */}
+      <LicensesDataTable data={filteredLicenses} isLoading={isLoading} />
     </div>
   );
 }
