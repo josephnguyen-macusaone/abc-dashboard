@@ -24,8 +24,71 @@ const COMMANDS = {
   send: 'Test email sending functionality',
   templates: 'Test email templates',
   health: 'Check email service health',
-  all: 'Run all email tests'
+  all: 'Run all email tests',
 };
+
+function displayCurrentConfig() {
+  console.log('📋 Current Email Configuration:');
+  console.log(`   Service: ${config.EMAIL_SERVICE || 'Not set'}`);
+  console.log(`   Host: ${config.EMAIL_HOST || 'Not set'}`);
+  console.log(`   Port: ${config.EMAIL_PORT || 'Not set'}`);
+  console.log(`   Secure: ${config.EMAIL_SECURE}`);
+  console.log(
+    `   From: ${config.EMAIL_FROM_NAME || 'ABC Dashboard'} <${config.EMAIL_FROM || 'Not set'}>`
+  );
+  console.log(`   User: ${config.EMAIL_USER ? 'Set (masked)' : 'Not set'}`);
+  console.log(`   Pass: ${config.EMAIL_PASS ? 'Set (masked)' : 'Not set'}\n`);
+}
+
+function validateEmailFrom(issues) {
+  if (!config.EMAIL_FROM) {
+    issues.push('❌ EMAIL_FROM is required for email service');
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(config.EMAIL_FROM)) {
+    issues.push('❌ EMAIL_FROM must be a valid email address');
+  }
+}
+
+function validateMailHogConfig(issues) {
+  if (config.EMAIL_HOST !== 'localhost' && config.EMAIL_HOST !== 'mailhog') {
+    issues.push('⚠️  EMAIL_HOST should be localhost or mailhog for MailHog');
+  }
+  if (config.EMAIL_PORT !== 1025) {
+    issues.push('⚠️  EMAIL_PORT should be 1025 for MailHog SMTP');
+  }
+  if (config.EMAIL_SECURE !== false) {
+    issues.push('⚠️  EMAIL_SECURE should be false for MailHog');
+  }
+}
+
+function validateGoogleWorkspaceConfig(issues) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!config.EMAIL_USER) {
+    issues.push('❌ EMAIL_USER is required for Google Workspace');
+  } else if (!emailRegex.test(config.EMAIL_USER)) {
+    issues.push('❌ EMAIL_USER must be a valid email address');
+  }
+
+  if (!config.EMAIL_PASS) {
+    issues.push('❌ EMAIL_PASS (App Password) is required for Google Workspace');
+  } else if (config.EMAIL_PASS.length !== 16 || config.EMAIL_PASS.includes(' ')) {
+    issues.push('⚠️  EMAIL_PASS should be a 16-character App Password without spaces');
+  }
+
+  if (config.EMAIL_HOST !== 'smtp.gmail.com') {
+    issues.push('⚠️  EMAIL_HOST should be smtp.gmail.com for Google Workspace');
+  }
+  if (config.EMAIL_PORT !== 587) {
+    issues.push('⚠️  EMAIL_PORT should be 587 for Google Workspace (TLS)');
+  }
+  if (config.EMAIL_SECURE !== false) {
+    issues.push('⚠️  EMAIL_SECURE should be false for Google Workspace (uses STARTTLS)');
+  }
+}
 
 /**
  * Display help information
@@ -49,58 +112,26 @@ function showHelp() {
 async function testConfig() {
   console.log('🔍 Testing Email Configuration...\n');
 
+  displayCurrentConfig();
+
   const issues = [];
 
-  // Basic configuration checks
   if (!config.EMAIL_SERVICE) {
     issues.push('❌ EMAIL_SERVICE is required');
-  } else {
-    console.log(`✅ EMAIL_SERVICE: ${config.EMAIL_SERVICE}`);
   }
 
-  if (!config.EMAIL_FROM) {
-    issues.push('❌ EMAIL_FROM is required');
-  } else {
-    console.log(`✅ EMAIL_FROM: ${config.EMAIL_FROM}`);
-  }
+  validateEmailFrom(issues);
 
   // Service-specific validation
-  console.log('🔍 Service Configuration:');
   switch (config.EMAIL_SERVICE) {
     case 'mailhog':
-      console.log('   ✅ MailHog (Development) - Local email testing');
-      console.log(`   📧 SMTP: ${config.EMAIL_HOST}:${config.EMAIL_PORT}`);
-      console.log(`   🌐 Web UI: http://localhost:8025`);
-
-      // Validate MailHog settings
-      if (config.EMAIL_HOST !== 'localhost' && config.EMAIL_HOST !== 'mailhog') {
-        issues.push('⚠️  EMAIL_HOST should be localhost or mailhog for MailHog');
-      }
-      if (config.EMAIL_PORT !== 1025) {
-        issues.push('⚠️  EMAIL_PORT should be 1025 for MailHog SMTP');
-      }
-      if (config.EMAIL_SECURE !== false) {
-        issues.push('⚠️  EMAIL_SECURE should be false for MailHog');
-      }
-
-      if (issues.length === 0) {
-        console.log('   ✅ MailHog configuration validated');
-      }
+      console.log('🔍 Validating MailHog configuration...');
+      validateMailHogConfig(issues);
       break;
 
     case 'google-workspace':
-      console.log('   ✅ Google Workspace (Production) - Gmail SMTP');
-      console.log(`   📧 Account: ${config.EMAIL_USER || 'Not configured'}`);
-      console.log(`   🌐 SMTP: ${config.EMAIL_HOST}:${config.EMAIL_PORT}`);
-
-      if (!config.EMAIL_USER) issues.push('❌ EMAIL_USER required for Google Workspace');
-      if (!config.EMAIL_PASS) issues.push('❌ EMAIL_PASS required for Google Workspace');
-      if (config.EMAIL_HOST !== 'smtp.gmail.com') issues.push('⚠️  EMAIL_HOST should be smtp.gmail.com');
-      if (config.EMAIL_PORT !== 587) issues.push('⚠️  EMAIL_PORT should be 587');
-
-      if (!issues.length) {
-        console.log('   ✅ Google Workspace configuration validated');
-      }
+      console.log('🔍 Validating Google Workspace configuration...');
+      validateGoogleWorkspaceConfig(issues);
       break;
 
     default:
@@ -114,7 +145,8 @@ async function testConfig() {
     return true;
   } else {
     console.log('\n❌ Configuration issues found:');
-    issues.forEach(issue => console.log(`   ${issue}`));
+    issues.forEach((issue) => console.log(`   ${issue}`));
+    console.log('\n🔧 Fix these issues and run this test again.');
     return false;
   }
 }
@@ -180,7 +212,11 @@ async function testSending() {
       </div>
     `;
 
-    const result = await emailService.sendEmail(recipient, 'ABC Dashboard - Email Suite Test', testEmail);
+    const result = await emailService.sendEmail(
+      recipient,
+      'ABC Dashboard - Email Suite Test',
+      testEmail
+    );
 
     console.log('✅ Email sent successfully!');
     console.log(`   Message ID: ${result.messageId}`);
@@ -206,7 +242,10 @@ async function testSending() {
       console.log('1. Make sure MailHog is running: mailhog');
       console.log('2. Check MailHog web interface: http://localhost:8025');
       console.log('3. Verify EMAIL_HOST=localhost and EMAIL_PORT=1025 in your .env');
-    } else if (config.EMAIL_SERVICE === 'google-workspace' || config.EMAIL_HOST === 'smtp.gmail.com') {
+    } else if (
+      config.EMAIL_SERVICE === 'google-workspace' ||
+      config.EMAIL_HOST === 'smtp.gmail.com'
+    ) {
       console.log('1. Verify Google Workspace account has 2FA enabled');
       console.log('2. Check that EMAIL_USER and EMAIL_PASS are set correctly');
       console.log('3. Ensure EMAIL_PASS is an App Password, not your regular password');
@@ -244,19 +283,28 @@ async function testTemplates() {
       loginUrl: 'https://app.com/login',
       displayName: 'Test User',
       temporaryPassword: 'TempPass123!',
-      resetUrl: 'https://app.com/reset?token=test123'
+      resetUrl: 'https://app.com/reset?token=test123',
     };
 
     console.log('Testing welcome email template...');
-    const welcomeResult = await emailService.sendWelcomeWithPassword('template-test@example.com', testUser);
+    const welcomeResult = await emailService.sendWelcomeWithPassword(
+      'template-test@example.com',
+      testUser
+    );
     console.log('✅ Welcome email sent');
 
     console.log('Testing verification email template...');
-    const verifyResult = await emailService.sendEmailVerification('template-test@example.com', testUser);
+    const verifyResult = await emailService.sendEmailVerification(
+      'template-test@example.com',
+      testUser
+    );
     console.log('✅ Verification email sent');
 
     console.log('Testing password reset email template...');
-    const resetResult = await emailService.sendPasswordResetEmail('template-test@example.com', testUser);
+    const resetResult = await emailService.sendPasswordResetEmail(
+      'template-test@example.com',
+      testUser
+    );
     console.log('✅ Password reset email sent');
 
     console.log('\n🎉 All email templates tested successfully!');
@@ -308,20 +356,20 @@ async function runAllTests() {
     config: false,
     health: false,
     send: false,
-    templates: false
+    templates: false,
   };
 
   // Test configuration first
-  console.log('=' * 50);
+  console.log('='.repeat(50));
   results.config = await testConfig();
 
   // Test health
-  console.log('\n' + '=' * 50);
+  console.log('\n' + '='.repeat(50));
   results.health = await checkHealth();
 
   // Test sending (only if config and health passed)
   if (results.config && results.health) {
-    console.log('\n' + '=' * 50);
+    console.log('\n' + '='.repeat(50));
     results.send = await testSending();
   } else {
     console.log('\n⚠️  Skipping email sending test due to configuration/health issues');
@@ -329,14 +377,14 @@ async function runAllTests() {
 
   // Test templates (only if config passed)
   if (results.config) {
-    console.log('\n' + '=' * 50);
+    console.log('\n' + '='.repeat(50));
     results.templates = await testTemplates();
   } else {
     console.log('\n⚠️  Skipping template testing due to configuration issues');
   }
 
   // Summary
-  console.log('\n' + '=' * 50);
+  console.log('\n' + '='.repeat(50));
   console.log('📊 Email Testing Suite Results:');
   Object.entries(results).forEach(([test, passed]) => {
     console.log(`   ${test.padEnd(10)}: ${passed ? '✅ PASSED' : '❌ FAILED'}`);
@@ -399,7 +447,7 @@ async function main() {
 }
 
 // Run the suite
-main().catch(error => {
+main().catch((error) => {
   console.error('💥 Email testing suite crashed:', error);
   process.exit(1);
 });

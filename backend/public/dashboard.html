@@ -332,6 +332,12 @@
         return '';
       }
 
+      function getScoreClass(score) {
+        if (score >= 90) return 'healthy';
+        if (score >= 70) return 'warning';
+        return 'critical';
+      }
+
       // Update dashboard on page load and every 10 seconds
       updateDashboard();
 

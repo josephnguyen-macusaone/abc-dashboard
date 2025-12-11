@@ -26,7 +26,10 @@ function generateLicenseRecord(id: number): LicenseRecord {
   const plan = faker.helpers.arrayElement(PLANS);
   const term = faker.helpers.arrayElement(TERMS);
   const agentCount = faker.number.int({ min: 1, max: 10 });
-  const startDay = faker.date.between({ from: '2023-01-01', to: '2024-12-01' });
+  const today = new Date();
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  const startDay = faker.date.between({ from: oneYearAgo, to: today });
   const smsPurchased = faker.number.int({ min: 100, max: 5000 });
   const smsSent = faker.number.int({ min: 0, max: smsPurchased });
 
@@ -36,8 +39,8 @@ function generateLicenseRecord(id: number): LicenseRecord {
     zip: faker.location.zipCode('#####'),
     startDay: startDay.toISOString().split('T')[0],
     status,
-    cancelDate: status === 'cancel' 
-      ? faker.date.between({ from: startDay, to: new Date() }).toISOString().split('T')[0] 
+    cancelDate: status === 'cancel'
+      ? faker.date.between({ from: startDay, to: today }).toISOString().split('T')[0]
       : undefined,
     plan,
     term,

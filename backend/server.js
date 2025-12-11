@@ -19,6 +19,12 @@ import {
   injectionProtection,
   createRateLimit,
 } from './src/infrastructure/api/v1/middleware/security.middleware.js';
+import {
+  cacheTrackingMiddleware,
+  userActivityMiddleware,
+  securityMetricsMiddleware,
+  performanceMiddleware,
+} from './src/infrastructure/api/v1/middleware/metrics.middleware.js';
 import logger from './src/infrastructure/config/logger.js';
 import { config } from './src/infrastructure/config/config.js';
 import swaggerSpec from './src/infrastructure/config/swagger.js';
@@ -156,6 +162,12 @@ app.use(requestLogger);
 // API monitoring middleware
 app.use(monitorMiddleware);
 
+// Metrics collection middleware
+app.use(cacheTrackingMiddleware);
+app.use(userActivityMiddleware);
+app.use(securityMetricsMiddleware);
+app.use(performanceMiddleware);
+
 // Response helpers middleware (adds res.paginated, res.success, etc.)
 app.use(responseHelpersMiddleware);
 
@@ -213,6 +225,13 @@ app.use(
 // Health check endpoint
 app.get('/api/v1/health', getHealthWithMetrics);
 
+// Favicon (serve existing logo as lightweight icon)
+app.get('/favicon.ico', (_req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'assets', 'logo_dark.svg'), {
+    headers: { 'Content-Type': 'image/svg+xml' },
+  });
+});
+
 // Root dashboard
 // Serve dashboard HTML file
 app.get('/', (req, res) => {
@@ -249,7 +268,7 @@ const startServer = async () => {
     app.use(errorHandler);
 
     // 404 handler (MUST be last)
-    app.use('*', (req, res) => {
+    app.use((req, res) => {
       logger.withRequest(req).warn('Route not found', {
         method: req.method,
         url: req.originalUrl,

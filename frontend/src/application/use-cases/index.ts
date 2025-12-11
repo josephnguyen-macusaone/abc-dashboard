@@ -2,15 +2,40 @@
 // This provides a single import point for all use case classes
 
 // Authentication use cases
-export { LoginUseCase } from './auth/login-usecase';
-export { LogoutUseCase } from './auth/logout-usecase';
-export { UpdateProfileUseCase, type UpdateProfileDTO } from './auth/update-profile-usecase';
-export { GetProfileUseCase } from './auth/get-profile-usecase';
+export {
+  LoginUseCase,
+  createLoginUseCase,
+  type LoginUseCaseContract,
+} from './auth/login-usecase';
+export {
+  LogoutUseCase,
+  createLogoutUseCase,
+  type LogoutUseCaseContract,
+} from './auth/logout-usecase';
+export {
+  UpdateProfileUseCase,
+  createUpdateProfileUseCase,
+  type UpdateProfileUseCaseContract,
+  type UpdateProfileDTO,
+} from './auth/update-profile-usecase';
+export {
+  GetProfileUseCase,
+  createGetProfileUseCase,
+  type GetProfileUseCaseContract,
+} from './auth/get-profile-usecase';
 
 // User management use cases
 export { CreateUserUseCase } from './user/create-user-usecase';
 export { UpdateUserUseCase } from './user/update-user-usecase';
 export { DeleteUserUseCase } from './user/delete-user-usecase';
-export { GetUsersUseCase } from './user/get-users-usecase';
-export { SearchUsersUseCase } from './user/search-users-usecase';
+export {
+  GetUsersUseCase,
+  createGetUsersUseCase,
+  type GetUsersUseCaseContract,
+} from './user/get-users-usecase';
+export {
+  SearchUsersUseCase,
+  createSearchUsersUseCase,
+  type SearchUsersUseCaseContract,
+} from './user/search-users-usecase';
 export { GetUserStatsUseCase } from './user/get-user-stats-usecase';

@@ -207,28 +207,6 @@ User must enter new secure password
 - Current password not required when `requiresPasswordChange` is true
 - Clear error messages for validation failures
 
-## Testing Strategy
-
-### Unit Tests
-
-- Password generation algorithm
-- Flag setting/clearing logic
-- Token payload verification
-- Email template rendering
-
-### Integration Tests
-
-- Complete password reset flow
-- Login with temporary password
-- Forced password change redirect
-- Email delivery verification
-
-### End-to-End Tests
-
-- User journey from forgot password to dashboard
-- Error scenarios and edge cases
-- Email content verification
-
 ## Migration Considerations
 
 ### Existing Users

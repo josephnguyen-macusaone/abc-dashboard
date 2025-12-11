@@ -8,7 +8,24 @@ import { cn } from "@/shared/utils"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> & {
+    label?: string
+  }
+>(({ children, label, ...props }, ref) => {
+  const ariaLabel = label ?? props['aria-label'] ?? undefined
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={ref}
+      aria-label={ariaLabel}
+      {...props}
+    >
+      {children}
+    </DropdownMenuPrimitive.Trigger>
+  )
+})
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
 

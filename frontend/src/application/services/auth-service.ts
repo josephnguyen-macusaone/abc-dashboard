@@ -1,10 +1,25 @@
-import { LoginUseCase, LogoutUseCase, UpdateProfileUseCase, GetProfileUseCase, UpdateProfileDTO } from '@/application/use-cases';
+import {
+  type LoginUseCaseContract,
+  type LogoutUseCaseContract,
+  type UpdateProfileUseCaseContract,
+  type GetProfileUseCaseContract,
+  UpdateProfileDTO,
+} from '@/application/use-cases';
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthResult, User, AuthTokens } from '@/domain/entities/user-entity';
 import { useAuthStore } from '@/infrastructure/stores/auth-store';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import { getErrorMessage } from '@/infrastructure/api/errors';
+import { useErrorToastMapper } from '@/shared/utils/toast-mapper';
+
+export interface AuthPorts {
+  login: LoginUseCaseContract;
+  logout: LogoutUseCaseContract;
+  updateProfile: UpdateProfileUseCaseContract;
+  getProfile: GetProfileUseCaseContract;
+}
 
 /**
  * Application Service: Authentication
@@ -14,13 +29,11 @@ export class AuthService {
   private readonly logger = logger.createChild({
     component: 'AuthService',
   });
+  private readonly errorToast = useErrorToastMapper();
 
   constructor(
     private readonly authRepository: IAuthRepository,
-    private readonly loginUseCase: LoginUseCase,
-    private readonly logoutUseCase: LogoutUseCase,
-    private readonly updateProfileUseCase: UpdateProfileUseCase,
-    private readonly getProfileUseCase: GetProfileUseCase
+    private readonly ports: AuthPorts
   ) {}
 
   /**
@@ -30,12 +43,13 @@ export class AuthService {
     const correlationId = generateCorrelationId();
 
     try {
-      const result = await this.loginUseCase.execute(email, password);
+      const result = await this.ports.login.execute(email, password, correlationId);
       if (!result.isAuthenticated) {
         throw new Error('Invalid email or password');
       }
       return result;
     } catch (error) {
+      this.errorToast.showErrorToast(error, 'Login failed');
       this.logger.error(`Login error`, {
         correlationId,
         email,
@@ -53,14 +67,43 @@ export class AuthService {
     const correlationId = generateCorrelationId();
 
     try {
-      await this.logoutUseCase.execute();
+      await this.ports.logout.execute();
     } catch (error) {
-      this.logger.error(`Logout error`, {
+      this.errorToast.showWarningToast('Logout encountered an issue', getErrorMessage(error));
+      this.logger.warn(`Logout error (continuing logout locally)`, {
         correlationId,
         operation: 'logout_error',
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+    }
+  }
+
+  /**
+   * Rehydrate auth state from storage and fetch profile when needed
+   */
+  async rehydrateAuth(): Promise<boolean> {
+    const authStore = useAuthStore.getState();
+    await authStore.initialize();
+
+    if (authStore.isAuthenticated) {
+      return true;
+    }
+
+    const token = authStore.token;
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const profile = await this.ports.getProfile.execute();
+      authStore.setUser(profile);
+      authStore.setToken(token);
+      return true;
+    } catch (error) {
+      this.logger.warn('Auth rehydrate failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
     }
   }
 
@@ -86,6 +129,7 @@ export class AuthService {
 
       return tokens;
     } catch (error) {
+      this.errorToast.showErrorToast(error, 'Token refresh failed');
       this.logger.error(`Token refresh error`, {
         correlationId,
         userId: currentUser?.id,
@@ -123,10 +167,11 @@ export class AuthService {
     }
 
     try {
-      const profileData = await this.getProfileUseCase.execute();
+      const profileData = await this.ports.getProfile.execute();
       authStore.setUser(profileData);
       return profileData;
     } catch (error) {
+      this.errorToast.showWarningToast('Failed to fetch current user', getErrorMessage(error));
       this.logger.warn('Failed to fetch current user', {
         error: error instanceof Error ? error.message : String(error),
       });
@@ -141,7 +186,7 @@ export class AuthService {
     const correlationId = generateCorrelationId();
 
     try {
-      const profileData = await this.getProfileUseCase.execute();
+      const profileData = await this.ports.getProfile.execute();
       return profileData;
     } catch (error) {
       this.logger.error(`Get complete profile error`, {
@@ -165,6 +210,7 @@ export class AuthService {
     try {
       await this.authRepository.changePassword(currentPassword, newPassword);
     } catch (error) {
+      this.errorToast.showErrorToast(error, 'Password change failed');
       this.logger.error(`Password change failed`, {
         correlationId,
         userId: currentUser?.id,
@@ -182,9 +228,10 @@ export class AuthService {
     const correlationId = generateCorrelationId();
 
     try {
-      const updatedUser = await this.updateProfileUseCase.execute(updates);
+      const updatedUser = await this.ports.updateProfile.execute(updates);
       return updatedUser;
     } catch (error) {
+      this.errorToast.showErrorToast(error, 'Profile update failed');
       this.logger.error(`Profile update error`, {
         correlationId,
         updates: Object.keys(updates),

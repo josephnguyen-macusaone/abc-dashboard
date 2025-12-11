@@ -12,7 +12,7 @@ import {
 import { useQueryState } from "nuqs";
 import * as React from "react";
 
-import { DataTableRangeFilter } from "@/presentation/components/molecules/data-table/data-table-range-filter";
+import { DataTableRangeFilter } from "./data-table-range-filter";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Calendar } from "@/presentation/components/atoms/primitives/calendar";
 import {
@@ -610,9 +610,8 @@ function onFilterInputRender<TData>({
       <div
         id={inputId}
         role="status"
-        aria-label={`${column.columnDef.meta?.label} filter is ${
-          filter.operator === "isEmpty" ? "empty" : "not empty"
-        }`}
+        aria-label={`${column.columnDef.meta?.label} filter is ${filter.operator === "isEmpty" ? "empty" : "not empty"
+          }`}
         aria-live="polite"
         className="h-full w-16 rounded-none border bg-transparent px-1.5 py-0.5 text-muted-foreground dark:bg-input/30"
       />
@@ -792,8 +791,8 @@ function onFilterInputRender<TData>({
       const displayValue =
         filter.operator === "isBetween" && dateValue.length === 2
           ? `${formatDate(new Date(Number(dateValue[0])))} - ${formatDate(
-              new Date(Number(dateValue[1])),
-            )}`
+            new Date(Number(dateValue[1])),
+          )}`
           : dateValue[0]
             ? formatDate(new Date(Number(dateValue[0])))
             : "Pick date...";
@@ -828,21 +827,21 @@ function onFilterInputRender<TData>({
                 selected={
                   dateValue.length === 2
                     ? {
-                        from: new Date(Number(dateValue[0])),
-                        to: new Date(Number(dateValue[1])),
-                      }
+                      from: new Date(Number(dateValue[0])),
+                      to: new Date(Number(dateValue[1])),
+                    }
                     : {
-                        from: new Date(),
-                        to: new Date(),
-                      }
+                      from: new Date(),
+                      to: new Date(),
+                    }
                 }
                 onSelect={(date) => {
                   onFilterUpdate(filter.filterId, {
                     value: date
                       ? [
-                          (date.from?.getTime() ?? "").toString(),
-                          (date.to?.getTime() ?? "").toString(),
-                        ]
+                        (date.from?.getTime() ?? "").toString(),
+                        (date.to?.getTime() ?? "").toString(),
+                      ]
                       : [],
                   });
                 }}

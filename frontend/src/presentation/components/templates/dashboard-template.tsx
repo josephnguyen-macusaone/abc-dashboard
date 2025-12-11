@@ -1,8 +1,8 @@
 'use client';
 
 import { LoadingOverlay } from '@/presentation/components/atoms';
-import { DashboardHeader, MobileOverlay, NavigationItem } from '@/presentation/components/molecules';
-import { Sidebar } from '@/presentation/components/organisms';
+import { NavigationItem } from '@/presentation/components/molecules';
+import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useState } from 'react';
@@ -130,7 +130,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   return (
     <div className="flex h-screen w-full bg-background">
       {/* Sidebar */}
-      <Sidebar
+      <AppSidebar
         isOpen={sidebarOpen}
         navigationItems={navigationItems}
         currentPath={currentPath}
@@ -150,7 +150,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
       {/* Main content */}
       <div className="flex flex-1 flex-col lg:pl-0 min-w-0">
         {/* Top bar */}
-        <DashboardHeader
+        <AppHeader
           sidebarOpen={sidebarOpen}
           onSidebarToggle={handleSidebarToggle}
         />

@@ -10,7 +10,7 @@ graph TB
     B --> C{Service Type}
 
     C -->|Development| D[MailHog Service]
-    C -->|Production| E[SendGrid API]
+    C -->|Production| E[Mailjet API]
     C -->|Production| F[Google Workspace SMTP]
 
     D --> G[Local Email Testing]
@@ -46,7 +46,7 @@ classDiagram
         +sendPasswordResetConfirmationEmail(to, data)
         +verifyConnection()
         +getHealthStatus()
-        -_validateSendGridConfig()
+        -_validateMailjetConfig()
         -_validateGoogleWorkspaceConfig()
         -_mapEmailError(error)
     }
@@ -58,123 +58,36 @@ classDiagram
         +sendTemplatedEmail(template, email, data)
     }
 
-    class SendGridClient {
-        +send(msg)
-        +setApiKey(key)
-    }
-
-    EmailService --> EmailConfig
-    EmailConfig --> SendGridClient : for sendgrid service
-
-    style EmailService fill:#e1f5fe
-    style EmailConfig fill:#f3e5f5
-    style SendGridClient fill:#fff3e0
 ```
 
-### Service Flow Architecture
+Supported services
 
-```mermaid
-flowchart TD
-    A[Email Request] --> B{Service Type}
+- MailHog (development)
+- Google Workspace SMTP (primary production)
+- Mailjet SMTP (optional production/backup)
+- Legacy Gmail SMTP (fallback only)
+- Generic SMTP (custom)
 
-    B -->|mailhog| C[MailHog Transporter]
-    B -->|sendgrid| D[SendGrid API Client]
-    B -->|google-workspace| E[SMTP Transporter]
+Service selection (EMAIL_SERVICE)
 
-    C --> F[Local Delivery]
-    D --> G[SendGrid API]
-    E --> H[Gmail SMTP]
+- mailhog → localhost:1025, insecure, no auth
+- google-workspace → smtp.gmail.com:587, STARTTLS, EMAIL_USER/EMAIL_PASS (App Password)
+- mailjet → in-v3.mailjet.com (or EMAIL_HOST override), 587/465, EMAIL_USER/EMAIL_PASS
+- gmail → legacy Gmail SMTP
+- smtp (or unset) → generic SMTP using EMAIL_HOST/EMAIL_PORT/EMAIL_SECURE
 
-    F --> I[MailHog Web UI]
-    G --> J[SendGrid Dashboard]
-    H --> K[Gmail Sent Items]
+Environment variables
 
-    L[Error Handler] --> B
-    M[Circuit Breaker] --> B
-    N[Retry Logic] --> B
-    O[Health Monitor] --> B
+- EMAIL_SERVICE: mailhog | google-workspace | mailjet | gmail | smtp
+- EMAIL_HOST / EMAIL_PORT / EMAIL_SECURE: override defaults when needed
+- EMAIL_USER / EMAIL_PASS: required for authenticated SMTP (Workspace/Mailjet/Gmail)
+- EMAIL_FROM / EMAIL_FROM_NAME: sender identity
 
-    style A fill:#e1f5fe
-    style B fill:#fff3e0
-    style L fill:#ffebee
-    style M fill:#ffebee
-    style N fill:#ffebee
-    style O fill:#e8f5e8
-```
+Comparison (typical usage)
 
-## Email Service Comparison
-
-| Feature              | MailHog       | Google Workspace |
-| -------------------- | ------------- | ---------------- |
-| **Environment**      | Development   | Production       |
-| **Delivery Method**  | Local Storage | SMTP             |
-| **Daily Limit**      | Unlimited     | 500 → 10K        |
-| **Setup Complexity** | Low           | Medium           |
-| **Cost**             | Free          | Free → $18/user  |
-| **Analytics**        | Basic         | Basic            |
-| **Deliverability**   | N/A           | Good             |
-| **API Access**       | No            | No               |
-| **Production Ready** | ❌            | ✅               |
-
-```mermaid
-pie title Email Service Usage Distribution
-    "MailHog (Development)" : 90
-    "Google Workspace (Production)" : 10
-```
-
-## Service Configuration
-
-### Environment Variables
-
-```mermaid
-mindmap
-  root((Email Config))
-    Development
-      EMAIL_SERVICE = mailhog
-      EMAIL_HOST = localhost
-      EMAIL_PORT = 1025
-      EMAIL_SECURE = false
-    SendGrid
-      EMAIL_SERVICE = sendgrid
-      SENDGRID_API_KEY = SG.xxxxx
-      EMAIL_FROM = noreply@domain.com
-    Google Workspace
-      EMAIL_SERVICE = google-workspace
-      EMAIL_HOST = smtp.gmail.com
-      EMAIL_PORT = 587
-      EMAIL_USER = user@domain.com
-      EMAIL_PASS = app-password
-      EMAIL_SECURE = false
-```
-
-### Service Selection Logic
-
-```mermaid
-flowchart TD
-    A[Application Start] --> B{EMAIL_SERVICE}
-    B -->|mailhog| C[Load MailHog Config]
-    B -->|sendgrid| D[Load SendGrid Config]
-    B -->|google-workspace| E[Load Google Workspace Config]
-    B -->|gmail| F[Load Legacy Gmail Config]
-
-    C --> G[Create Nodemailer Transporter]
-    D --> H[Initialize SendGrid Client]
-    E --> I[Create Nodemailer Transporter]
-    F --> J[Create Nodemailer Transporter]
-
-    G --> K[Validate Connection]
-    H --> L[Validate API Key]
-    I --> M[Validate Credentials]
-    J --> N[Validate Credentials]
-
-    K --> O[Service Ready]
-    L --> O
-    M --> O
-    N --> O
-
-    style A fill:#e1f5fe
-    style O fill:#e8f5e8
-```
+- MailHog: dev-only, no deliverability, free
+- Google Workspace: production, good deliverability, requires App Password
+- Mailjet: production-capable, API keys via SMTP auth, analytics via Mailjet dashboard
 
 ## Setup Instructions
 
@@ -198,7 +111,7 @@ flowchart TD
     C --> C2[EMAIL_HOST=localhost]
     C --> C3[EMAIL_PORT=1025]
 
-    D --> D1[npm run test:email-config]
+    D --> D1[npm run test:email:config]
     D --> D2[Create test user]
 
     E --> E1[Open localhost:8025]
@@ -230,7 +143,7 @@ flowchart TD
     C --> C3[EMAIL_PASS=16-char-password]
     C --> C4[EMAIL_FROM=noreply@domain.com]
 
-    D --> D1[npm run test:email-config]
+    D --> D1[npm run test:email:config]
     D --> D2[Validate SMTP connection]
 
     E --> E1[Create user via API]
@@ -331,14 +244,14 @@ graph TB
     A --> E[Click Rate]
     A --> F[Spam Complaints]
 
-    B --> B1[SendGrid: Real-time]
+    B --> B1[Mailjet: Real-time]
     B --> B2[Google: Basic]
     B --> B3[MailHog: N/A]
 
     C --> C1[Hard Bounces]
     C --> C2[Soft Bounces]
 
-    D --> D1[SendGrid: Tracked]
+    D --> D1[Mailjet: Tracked]
     D --> D2[Google: Manual]
 
     G[Alerts] --> H[High Bounce Rate]
@@ -356,7 +269,7 @@ graph TB
 ```mermaid
 bar
     title Email Service Performance (messages/second)
-    x-axis ["MailHog", "Google Workspace", "SendGrid"]
+    x-axis ["MailHog", "Google Workspace", "Mailjet"]
     y-axis Performance 0 --> 100
     bar [100, 50, 80]
 ```
@@ -368,8 +281,8 @@ flowchart TD
     A[Email Volume Growth] --> B{Volume Level}
 
     B -->|Low < 500/day| C[Google Workspace Free]
-    B -->|Medium < 10K/day| D[SendGrid Paid]
-    B -->|High > 10K/day| E[SendGrid Enterprise]
+    B -->|Medium < 10K/day| D[Mailjet Paid]
+    B -->|High > 10K/day| E[Mailjet Enterprise]
 
     C --> F[App Password Auth]
     D --> G[API Key Auth]
@@ -411,7 +324,7 @@ EMAIL_PORT=1025
 EMAIL_SECURE=false
 ```
 
-#### Production - SendGrid (.env)
+#### Production - Mailjet (.env)
 
 ```bash
 NODE_ENV=production
@@ -419,11 +332,12 @@ MONGODB_URI=mongodb://prod-server/abc_dashboard
 JWT_SECRET=prod-secret-key
 CLIENT_URL=https://yourdomain.com
 
-# Email - SendGrid
-EMAIL_SERVICE=sendgrid
+# Email - Mailjet
+EMAIL_SERVICE=mailjet
 EMAIL_FROM=noreply@yourdomain.com
 EMAIL_FROM_NAME=ABC Dashboard
-SENDGRID_API_KEY=SG.your-production-api-key
+EMAIL_USER=your-mailjet-api-key
+EMAIL_PASS=your-mailjet-secret-key
 ```
 
 #### Production - Google Workspace (.env)
@@ -451,11 +365,11 @@ EMAIL_PASS=abcd-efgh-ijkl-mnop
 
 ```mermaid
 flowchart TD
-    A[Run Test] --> B[npm run test:email-config]
+    A[Run Test] --> B[npm run test:email:config]
     B --> C{Service Type}
 
     C -->|mailhog| D[Validate Local Config]
-    C -->|sendgrid| E[Validate API Key]
+    C -->|mailjet| E[Validate API Key]
     C -->|google-workspace| F[Validate SMTP]
 
     D --> G[Check Port 1025]
@@ -478,7 +392,7 @@ flowchart TD
 
 ```bash
 # Test email configuration
-npm run test:email-config
+npm run test:email:config
 
 # Test user registration (triggers welcome email)
 curl -X POST http://localhost:5000/api/v1/users \
@@ -500,7 +414,7 @@ flowchart TD
     A[Email Not Sending] --> B{Which Service?}
 
     B -->|MailHog| C[Check localhost:1025]
-    B -->|SendGrid| D[Check API Key]
+    B -->|Mailjet| D[Check API Key]
     B -->|Google Workspace| E[Check App Password]
 
     C --> C1[Is MailHog running?]
@@ -529,14 +443,14 @@ flowchart TD
 
 ### Error Code Reference
 
-| Service  | Error Code   | Meaning             | Solution                      |
-| -------- | ------------ | ------------------- | ----------------------------- |
-| SendGrid | 401          | Invalid API Key     | Regenerate API key            |
-| SendGrid | 403          | Sender Not Verified | Verify sender email           |
-| SendGrid | 429          | Rate Limited        | Implement exponential backoff |
-| Google   | 535          | Auth Failed         | Check App Password            |
-| Google   | 550          | Quota Exceeded      | Wait or upgrade               |
-| General  | ECONNREFUSED | Connection Failed   | Check network/firewall        |
+| Service | Error Code   | Meaning             | Solution                      |
+| ------- | ------------ | ------------------- | ----------------------------- |
+| Mailjet | 401          | Invalid API Key     | Regenerate API key            |
+| Mailjet | 403          | Sender Not Verified | Verify sender email           |
+| Mailjet | 429          | Rate Limited        | Implement exponential backoff |
+| Google  | 535          | Auth Failed         | Check App Password            |
+| Google  | 550          | Quota Exceeded      | Wait or upgrade               |
+| General | ECONNREFUSED | Connection Failed   | Check network/firewall        |
 
 ## Migration Between Services
 
@@ -546,15 +460,15 @@ flowchart TD
 flowchart TD
     A[Current Service] --> B{Target Service}
 
-    B -->|MailHog → SendGrid| C[Update .env]
+    B -->|MailHog → Mailjet| C[Update .env]
     B -->|MailHog → Google| D[Update .env]
-    B -->|SendGrid → Google| E[Update .env]
-    B -->|Google → SendGrid| F[Update .env]
+    B -->|Mailjet → Google| E[Update .env]
+    B -->|Google → Mailjet| F[Update .env]
 
-    C --> G[Set SENDGRID_API_KEY]
-    D --> H[Set EMAIL_USER/PASS]
-    E --> I[Remove API key, add SMTP]
-    F --> J[Remove SMTP, add API key]
+    C --> G[Set EMAIL_USER/EMAIL_PASS]
+    D --> H[Set EMAIL_USER/EMAIL_PASS]
+    E --> I[Set App Password SMTP creds]
+    F --> J[Set EMAIL_USER/EMAIL_PASS]
 
     G --> K[Test Configuration]
     H --> K
@@ -584,7 +498,7 @@ flowchart TD
 ```mermaid
 graph LR
     A[Authentication] --> B[MailHog]
-    A --> C[SendGrid]
+    A --> C[Mailjet]
     A --> D[Google Workspace]
 
     B --> E[No Auth Required]
@@ -608,7 +522,7 @@ graph LR
 ### Best Practices
 
 - 🔐 **Store credentials securely** (environment variables, secret managers)
-- 🔄 **Rotate API keys regularly** (SendGrid, App Passwords)
+- 🔄 **Rotate API keys regularly** (Mailjet, App Passwords)
 - 📊 **Monitor for anomalies** (unusual sending patterns)
 - 🚨 **Set up alerts** (high bounce rates, auth failures)
 - 📝 **Log email activities** (GDPR compliance)
@@ -643,7 +557,7 @@ roadmap
 
 ```bash
 # Test configuration
-npm run test:email-config
+npm run test:email:config
 
 # Start development server
 npm run dev
@@ -657,18 +571,17 @@ curl http://localhost:5000/api/v1/health
 
 ### ENV
 
-- `EMAIL_SERVICE`: `mailhog` | `sendgrid` | `google-workspace`
-- `SENDGRID_API_KEY`: SendGrid API key (SG.xxxxx)
+- `EMAIL_SERVICE`: `mailhog` | `mailjet` | `google-workspace`
 - `EMAIL_HOST`: SMTP host
 - `EMAIL_PORT`: SMTP port
-- `EMAIL_USER`: SMTP username
-- `EMAIL_PASS`: SMTP password/App Password
+- `EMAIL_USER`: SMTP username (Mailjet API Key, Workspace account email)
+- `EMAIL_PASS`: SMTP password (Mailjet Secret Key, Workspace App Password)
 - `EMAIL_FROM`: Sender email address
 
 ### Support Contacts
 
 - **MailHog**: Community forums
-- **SendGrid**: support.sendgrid.com
+- **Mailjet**: support.mailjet.com
 - **Google Workspace**: support.google.com/workspace
 
 ---

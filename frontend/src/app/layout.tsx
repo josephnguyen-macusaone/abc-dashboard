@@ -16,6 +16,7 @@ const archivo = Archivo({
   display: "swap",
   variable: "--font-archivo",
   weight: ["400", "500", "600", "700", "800", "900"],
+  preload: false,
 });
 
 // Configure Inter font for body/UI text

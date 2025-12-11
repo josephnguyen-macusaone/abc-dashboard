@@ -220,7 +220,7 @@ CACHE_API_RESPONSE_TTL=300
 
 ```bash
 # Test email configuration
-npm run test:email-config
+npm run test:email:config
 
 # Start application
 npm run dev

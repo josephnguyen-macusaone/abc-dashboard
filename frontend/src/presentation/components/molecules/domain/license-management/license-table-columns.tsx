@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
-import { DataTableColumnHeader } from "@/presentation/components/molecules/data-table";
+import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
 import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/shared/types";
 
 // Status options for filter

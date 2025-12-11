@@ -1,51 +1,42 @@
-# Multi-stage build: Development and Production in one Dockerfile
+# Multi-stage build: development runner + production Next.js server
 FROM node:20-alpine AS base
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all deps for building (includes dev deps for type checks)
 RUN npm ci
 
-# Copy source code
 COPY . .
 
-# Development stage
+# Development stage (kept for local convenience)
 FROM base AS development
-
-# Expose port 3000 for development
 EXPOSE 3000
-
-# Set environment to development
 ENV NODE_ENV=development
-
-# Start development server
 CMD ["npm", "run", "dev"]
 
 # Production build stage
 FROM base AS builder
-
-# Build the application
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
-# Production stage - Nginx for serving static files
-FROM nginx:alpine AS production
+# Production runtime stage - run Next.js server (needed for Server Actions)
+FROM node:20-alpine AS production
+WORKDIR /app
+ENV NODE_ENV=production
 
-# Copy built application from builder stage
-COPY --from=builder /app/out /usr/share/nginx/html
+# Install only production dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Copy custom nginx configuration if needed
-# COPY nginx.conf /etc/nginx/nginx.conf
+# Copy the standalone server build produced by Next.js
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
-# Expose port 80
-EXPOSE 80
-
-# Health check for production
+EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+  CMD wget -qO- http://localhost:3000/ || exit 1
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server.js"]

@@ -58,6 +58,14 @@ export function UserManagement({
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete'>('list');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  const handleDateRangeUpdate = useCallback(
+    (values: { range: { from?: Date; to?: Date } }) => {
+      onDateRangeChange?.(values);
+      onLoadUsers?.({});
+    },
+    [onDateRangeChange, onLoadUsers]
+  );
+
   // Reload users handler (called after CRUD operations)
   const handleLoadUsers = useCallback(async () => {
     await onLoadUsers?.({});
@@ -187,7 +195,7 @@ export function UserManagement({
             <DateRangeFilterCard
               initialDateFrom={dateRange?.from}
               initialDateTo={dateRange?.to}
-              onUpdate={onDateRangeChange}
+              onUpdate={handleDateRangeUpdate}
               align="end"
             />
           )}
@@ -198,7 +206,7 @@ export function UserManagement({
       <div className="mb-5">
         <UserStatsCards
           users={users}
-          isLoading={false}
+          isLoading={isLoading}
           onRoleFilter={onRoleFilter}
         />
       </div>
@@ -212,7 +220,7 @@ export function UserManagement({
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
         onCreateUser={PermissionUtils.canCreateUser(currentUser.role) ? handleCreateUser : undefined}
-        isLoading={false}
+        isLoading={isLoading}
       />
     </div>
   );

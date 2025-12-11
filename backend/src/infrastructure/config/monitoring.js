@@ -251,8 +251,8 @@ export const getHealthWithMetrics = async (req, res) => {
       database: {
         connected: comprehensiveMetrics.database?.connected,
         name: comprehensiveMetrics.database?.name,
-        collections: comprehensiveMetrics.database?.databaseStats?.collections,
-        objects: comprehensiveMetrics.database?.databaseStats?.objects,
+        collections: comprehensiveMetrics.database?.databaseStats?.tables || 0,
+        objects: comprehensiveMetrics.database?.databaseStats?.rowsReturned || 0,
       },
 
       // Cache health

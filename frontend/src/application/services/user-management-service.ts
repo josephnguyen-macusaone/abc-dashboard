@@ -11,8 +11,8 @@ import {
   CreateUserUseCase,
   UpdateUserUseCase,
   DeleteUserUseCase,
-  GetUsersUseCase,
-  SearchUsersUseCase,
+  type GetUsersUseCaseContract,
+  type SearchUsersUseCaseContract,
   GetUserStatsUseCase
 } from '@/application/use-cases';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
@@ -30,8 +30,8 @@ export class UserManagementService {
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
-    private readonly getUsersUseCase: GetUsersUseCase,
-    private readonly searchUsersUseCase: SearchUsersUseCase,
+    private readonly getUsersUseCase: GetUsersUseCaseContract,
+    private readonly searchUsersUseCase: SearchUsersUseCaseContract,
     private readonly getUserStatsUseCase: GetUserStatsUseCase
   ) {}
 

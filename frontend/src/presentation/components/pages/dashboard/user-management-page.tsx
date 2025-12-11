@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/presentation/contexts/auth-context';
-import { useUser } from '@/presentation/contexts/user-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User, UserRole } from '@/domain/entities/user-entity';
@@ -10,6 +9,7 @@ import { UserListParams } from '@/application/dto/user-dto';
 import { SortBy, SortOrder } from '@/shared/types';
 import { DashboardTemplate } from '@/presentation/components/templates';
 import { logger } from '@/shared/utils';
+import { useUserStore, selectUsers, selectUserLoading } from '@/infrastructure/stores/user-store';
 
 /**
  * UserManagementPage
@@ -24,10 +24,12 @@ import { logger } from '@/shared/utils';
  */
 export function UserManagementPage() {
   const { user: currentUser } = useAuth();
-  const { getUsers, loading } = useUser();
   const { error: showError } = useToast();
 
-  const [users, setUsers] = useState<User[]>([]);
+  const users = useUserStore(selectUsers);
+  const loadingUsers = useUserStore(selectUserLoading);
+  const fetchUsers = useUserStore(state => state.fetchUsers);
+
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
 
@@ -46,13 +48,12 @@ export function UserManagementPage() {
         sortOrder: SortOrder.DESC, // Latest users first
       };
 
-      const result = await getUsers(params);
-      setUsers(result.users || []);
+      await fetchUsers(params);
     } catch (error) {
       logger.error('Error loading users', { error });
       showError?.('Failed to load users');
     }
-  }, [getUsers, showError]);
+  }, [fetchUsers, showError]);
 
   // Load users on mount (prevent duplicate calls in React Strict Mode)
   useEffect(() => {
@@ -127,7 +128,7 @@ export function UserManagementPage() {
     <UserManagement
       currentUser={currentUser}
       users={filteredUsers}
-      isLoading={loading.getUsers}
+      isLoading={loadingUsers}
       onLoadUsers={loadUsers}
       dateRange={dateRange}
       onDateRangeChange={handleDateRangeChange}

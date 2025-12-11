@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Generate a standalone server build so Docker can run `next start`
+  output: "standalone",
   // Disable trailing slashes to prevent routing issues
   trailingSlash: false,
 

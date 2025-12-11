@@ -114,6 +114,9 @@ export function LicenseManagement({
     });
   }, [licenses, dateRange]);
 
+  // Remount grid when filter window changes to avoid stale virtualization state
+  const gridKey = `${dateRange?.from?.toString() ?? 'all'}-${dateRange?.to?.toString() ?? 'all'}-${filteredLicenses.length}`;
+
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6', className)}>
       {/* Header */}
@@ -139,6 +142,7 @@ export function LicenseManagement({
 
       {/* Licenses Data Grid */}
       <LicensesDataGrid
+        key={gridKey}
         data={filteredLicenses}
         isLoading={isLoading}
         height={650}

@@ -8,7 +8,7 @@ The ABC Dashboard backend follows Clean Architecture principles, organizing code
 graph TB
     %% External Systems
     subgraph "External Systems"
-        DB[(MongoDB)]
+        DB[(PostgreSQL)]
         Email[Email Service]
         Cache[(Redis Cache)]
         Client[Frontend Client]
@@ -23,7 +23,7 @@ graph TB
         end
 
         subgraph "Data Access"
-            Models[MongoDB Models]
+            Migrations[Knex Migrations]
             InfraRepo[Infrastructure<br/>Repositories]
         end
 
@@ -86,14 +86,14 @@ graph TB
     ProfileUC --> DomainRepo
 
     InfraRepo --> DomainRepo
-    Models --> InfraRepo
+    Migrations --> InfraRepo
 
     Controllers --> DTOs
     AuthUC --> Validators
 
     EmailSvc --> Email
     AuthSvc --> Cache
-    Models --> DB
+    InfraRepo --> DB
 
     Kernel -.-> Controllers
     Kernel -.-> AuthUC
@@ -106,7 +106,7 @@ graph TB
     classDef shared fill:#fff3e0,stroke:#e65100
     classDef external fill:#fce4ec,stroke:#880e4f
 
-    class Routes,Controllers,Middleware,Models,InfraRepo,EmailSvc,AuthSvc,TokenSvc outer
+    class Routes,Controllers,Middleware,Migrations,InfraRepo,EmailSvc,AuthSvc,TokenSvc outer
     class AuthUC,UserUC,ProfileUC,DTOs,Validators,Interfaces middle
     class User,UserProfile,DomainSvc,DomainRepo inner
     class Kernel,Utils,Constants,HttpUtils shared
@@ -133,7 +133,7 @@ graph TB
 
 - **Controllers**: HTTP request handlers and response formatting
 - **Routes**: URL routing and middleware composition
-- **Models**: Database schema definitions (MongoDB/Mongoose)
+- **Database Access**: Knex migrations and repositories targeting PostgreSQL
 - **Repositories**: Data access implementations
 - **Services**: External service adapters (Email, JWT, Auth)
 - **Middleware**: Cross-cutting concerns (Auth, Logging, Security)
@@ -205,10 +205,10 @@ Database/External Services
 
 - **Runtime**: Node.js with ES6 modules
 - **Web Framework**: Express.js
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: PostgreSQL via Knex
 - **Authentication**: JWT tokens with refresh tokens
 - **Validation**: Joi schemas
-- **Email**: Nodemailer
+- **Email**: Nodemailer (MailHog, Google Workspace, Mailjet)
 - **Security**: Helmet, CORS, rate limiting
 - **Documentation**: Swagger/OpenAPI
 - **Testing**: Jest with Supertest

@@ -79,22 +79,21 @@ EMAIL_SERVICE=mailhog
 
 You have two production email options:
 
-1. **SendGrid** (Recommended for high-volume, better analytics)
+1. **Mailjet** (Recommended for high-volume, better analytics)
 2. **Google Workspace SMTP** (Free option, good for low-volume)
 
-### SendGrid Setup (Recommended)
+### Mailjet Setup (Recommended)
 
-SendGrid is a dedicated transactional email service with excellent deliverability, analytics, and scalability.
+Mailjet is a dedicated transactional email service with excellent deliverability, analytics, and scalability.
 
-#### SendGrid Account Setup
+#### Mailjet Account Setup
 
-1. **Sign up for SendGrid**: Visit <https://sendgrid.com> and create a free account
+1. **Sign up for Mailjet**: Visit <https://mailjet.com> and create a free account
 2. **Verify your account**: Complete email verification process
-3. **Create API Key**:
+3. **Create SMTP credentials**:
    - Go to Settings → API Keys
-   - Click "Create API Key"
-   - Choose "Full Access" or "Restricted Access" (recommended)
-   - Copy the API key (starts with `SG.`)
+   - Create a key pair (API Key and Secret Key)
+   - Use the API Key as `EMAIL_USER` and Secret Key as `EMAIL_PASS`
 
 #### Single Sender Verification
 
@@ -105,14 +104,15 @@ SendGrid is a dedicated transactional email service with excellent deliverabilit
 #### Env Config
 
 ```bash
-# Production Email Configuration - SendGrid
+# Production Email Configuration - Mailjet
 EMAIL_FROM=noreply@yourdomain.com
 EMAIL_FROM_NAME=ABC Dashboard
-SENDGRID_API_KEY=SG.your-sendgrid-api-key-here
-EMAIL_SERVICE=sendgrid
+EMAIL_SERVICE=mailjet
+EMAIL_USER=your-mailjet-api-key
+EMAIL_PASS=your-mailjet-secret-key
 ```
 
-### SendGrid Features
+### Mailjet Features
 
 | Feature        | Free Plan | Paid Plans   |
 | -------------- | --------- | ------------ |
@@ -227,15 +227,16 @@ EMAIL_PASS=abcd-efgh-ijkl-mnop  # Your 16-character App Password
 EMAIL_SERVICE=google-workspace
 ```
 
-#### Production (SendGrid - Recommended)
+#### Production (Mailjet - Recommended)
 
 ```bash
-# Production Email Configuration - SendGrid
+# Production Email Configuration - Mailjet
 NODE_ENV=production
 EMAIL_FROM=noreply@yourdomain.com
 EMAIL_FROM_NAME=ABC Dashboard
-SENDGRID_API_KEY=SG.your-sendgrid-api-key-here
-EMAIL_SERVICE=sendgrid
+EMAIL_SERVICE=mailjet
+EMAIL_USER=your-mailjet-api-key
+EMAIL_PASS=your-mailjet-secret-key
 ```
 
 ## Environment Detection
@@ -249,8 +250,8 @@ EMAIL_PORT: 1025;
 EMAIL_SERVICE: 'mailhog';
 
 // Production (NODE_ENV === 'production')
-if (EMAIL_SERVICE === 'sendgrid') {
-  // Uses SendGrid API with enhanced error handling and analytics
+if (EMAIL_SERVICE === 'mailjet') {
+  // Uses Mailjet API with enhanced error handling and analytics
   // No SMTP host/port needed - uses API calls
 } else if (EMAIL_SERVICE === 'google-workspace') {
   EMAIL_HOST: 'smtp.gmail.com';
@@ -378,7 +379,7 @@ Error: TLS connection failed
 2. Check that port 587 is not blocked by firewall
 3. Try disabling VPN if connection issues persist
 
-### Common SendGrid Issues
+### Common Mailjet Issues
 
 #### API Key Authentication Failed
 
@@ -401,7 +402,7 @@ Error: The from address does not match a verified Sender Identity
 
 **Solutions**:
 
-1. Verify the sender email in SendGrid dashboard
+1. Verify the sender email in Mailjet dashboard
 2. Check Settings → Sender Authentication
 3. Add the email to verified senders
 4. For domain verification, add DNS records
@@ -414,9 +415,9 @@ Error: You've exceeded your daily/monthly email limit
 
 **Solutions**:
 
-1. Check your SendGrid plan limits
-2. Upgrade your SendGrid plan if needed
-3. Monitor usage in SendGrid dashboard
+1. Check your Mailjet plan limits
+2. Upgrade your Mailjet plan if needed
+3. Monitor usage in Mailjet dashboard
 4. Implement rate limiting in your application
 
 #### Invalid Recipients
@@ -430,7 +431,7 @@ Error: Does not contain a valid address
 1. Validate email addresses before sending
 2. Check for typos in recipient addresses
 3. Remove invalid email formats
-4. Use SendGrid's email validation API
+4. Use Mailjet's email validation API
 
 #### IP Not Whitelisted (if applicable)
 
@@ -442,7 +443,7 @@ Error: IP address not allowed
 
 1. Check if IP restrictions are enabled
 2. Add your server's IP to the whitelist
-3. Or disable IP restrictions in SendGrid settings
+3. Or disable IP restrictions in Mailjet settings
 
 ### Connection Issues
 

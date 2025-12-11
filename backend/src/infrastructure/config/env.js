@@ -47,11 +47,19 @@ const loadEnvironmentConfig = () => {
   // Try environment-specific file first, then fallback to standard .env
   if (fs.existsSync(envFile)) {
     startupLogger.startup(`Loading environment config: ${envFile} (NODE_ENV=${nodeEnv})`);
+    // Suppress dotenv output
+    const originalStdoutWrite = process.stdout.write;
+    process.stdout.write = () => {};
     dotenv.config({ path: envFile });
+    process.stdout.write = originalStdoutWrite;
     loadedFrom = envFile;
   } else if (fs.existsSync(standardEnvFile)) {
     startupLogger.startup(`Loading environment config: ${standardEnvFile} (NODE_ENV=${nodeEnv})`);
+    // Suppress dotenv output
+    const originalStdoutWrite = process.stdout.write;
+    process.stdout.write = () => {};
     dotenv.config({ path: standardEnvFile });
+    process.stdout.write = originalStdoutWrite;
     loadedFrom = standardEnvFile;
   } else {
     startupLogger.warn(`Environment files not found: ${envFile} or ${standardEnvFile}`);
@@ -59,7 +67,11 @@ const loadEnvironmentConfig = () => {
       `Make sure you have created the environment file or set environment variables manually`
     );
     startupLogger.startup(`Loading environment variables from system`);
+    // Suppress dotenv output
+    const originalStdoutWrite = process.stdout.write;
+    process.stdout.write = () => {};
     dotenv.config(); // Load from process.env
+    process.stdout.write = originalStdoutWrite;
   }
 
   // Validate critical environment variables

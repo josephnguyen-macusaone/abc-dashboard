@@ -43,8 +43,12 @@ export const validateQuery = (schema) => (req, res, next) => {
     return sendErrorResponse(res, 'INVALID_INPUT', { details: errors });
   }
 
-  // Replace req.query with validated data
-  req.query = value;
+  // Do not reassign req.query (getter-only in some routers). Store validated data separately
+  // and merge into existing query object for downstream handlers.
+  req.validatedQuery = value;
+  if (req.query && typeof req.query === 'object') {
+    Object.assign(req.query, value);
+  }
   next();
 };
 

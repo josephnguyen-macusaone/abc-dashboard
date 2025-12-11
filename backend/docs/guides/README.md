@@ -20,17 +20,17 @@ Step-by-step guides for configuring and setting up specific features and integra
 2. [User Management System](./user-management-system.md) - Understand user roles
 3. Test with [Email Service Overview](./email-service-overview.md)
 
-### Production Setup (SendGrid)
-
-1. [Email Setup Guide](./email-setup-guide.md) - Configure SendGrid
-2. [Email Service Overview](./email-service-overview.md) - Understand service features
-3. [User Management System](./user-management-system.md) - Set up user management
-
 ### Production Setup (Google Workspace)
 
 1. [Google Workspace Domain Setup](./google-workspace-domain-setup.md) - Domain verification
 2. [Email Setup Guide](./email-setup-guide.md) - Configure SMTP
 3. [Email Service Overview](./email-service-overview.md) - Service comparison
+
+### Production Setup (Mailjet - optional)
+
+1. [Email Setup Guide](./email-setup-guide.md) - Configure Mailjet SMTP
+2. [Email Service Overview](./email-service-overview.md) - Service comparison
+3. [User Management System](./user-management-system.md) - Set up user management
 
 ## 🛠️ Configuration Testing
 
@@ -38,7 +38,7 @@ After following any guide, test your configuration:
 
 ```bash
 # Test email configuration
-npm run test:email-config
+npm run test:email:config
 
 # Test email sending
 npm run test:email:send
@@ -57,15 +57,15 @@ npm run test:users
 
 ### Production - Recommended
 
-- **SendGrid**: Cloud email service with advanced features
-- **Setup Time**: 15 minutes
-- **Use Case**: Production applications
+- **Google Workspace**: SMTP via Gmail with domain verification (App Password)
+- **Setup Time**: ~45 minutes
+- **Use Case**: Primary production
 
-### Production - Free Alternative
+### Production - Alternative
 
-- **Google Workspace**: SMTP via Gmail with domain verification
-- **Setup Time**: 45 minutes
-- **Use Case**: Small production applications
+- **Mailjet**: SMTP with API-key auth and dashboard analytics
+- **Setup Time**: ~30 minutes
+- **Use Case**: Optional production/backup
 
 ## 👥 User Management
 

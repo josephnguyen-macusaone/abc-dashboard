@@ -1,6 +1,10 @@
 // Knex configuration file for CLI commands
 import dotenv from 'dotenv';
+// Suppress dotenv output
+const originalStdoutWrite = process.stdout.write;
+process.stdout.write = () => {};
 dotenv.config();
+process.stdout.write = originalStdoutWrite;
 
 const config = {
   development: {

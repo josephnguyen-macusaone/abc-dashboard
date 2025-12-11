@@ -287,3 +287,9 @@ export const useUserStore = create<UserState>()(
     }
   )
 );
+
+// Selectors to encourage consistent derived access
+export const selectUsers = (state: { users: User[] }) => state.users;
+export const selectUserFilters = (state: { filters: UserFilters }) => state.filters;
+export const selectUserPagination = (state: { pagination: PaginationState }) => state.pagination;
+export const selectUserLoading = (state: { loading: boolean }) => state.loading;

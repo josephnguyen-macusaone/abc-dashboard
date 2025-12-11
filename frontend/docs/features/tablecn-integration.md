@@ -16,7 +16,7 @@ This document outlines the plan to fully adopt **tablecn** into our frontend app
 src/components/data-table/
 ├── data-table.tsx              # Main table wrapper component
 ├── data-table-toolbar.tsx      # Toolbar with filters, search, view options
-├── data-table-pagination.tsx   # Pagination controls with page size selector
+├── data/table-common/table-pagination.tsx   # Shared pagination controls (re-exported as DataTablePagination)
 ├── data-table-column-header.tsx # Sortable/hideable column headers
 ├── data-table-view-options.tsx  # Column visibility toggle (View menu)
 ├── data-table-faceted-filter.tsx # Multi-select filter with badges
@@ -118,7 +118,7 @@ src/config/
 
 1. **`data-table.tsx`** - Main table component
 2. **`data-table-toolbar.tsx`** - Filter toolbar
-3. **`data-table-pagination.tsx`** - Pagination controls
+3. **`data/table-common/table-pagination.tsx`** - Shared pagination controls (re-exported as `DataTablePagination`)
 4. **`data-table-column-header.tsx`** - Column header with sort/hide
 5. **`data-table-view-options.tsx`** - Column visibility popover
 6. **`data-table-faceted-filter.tsx`** - Multi-select filter

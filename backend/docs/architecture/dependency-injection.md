@@ -228,7 +228,7 @@ getEmailService() {
 ### Repository Registration
 
 ```javascript
-// Repository singletons (currently MongoDB only)
+// Repository singletons (PostgreSQL via Knex)
 getUserRepository() {
   if (!this.instances.has('userRepository')) {
     this.instances.set('userRepository', new UserRepository(UserModel));
@@ -603,15 +603,15 @@ class Container {
 class Container {
   getUserRepository() {
     if (!this.instances.has('userRepository')) {
-      // Factory pattern for different databases
-      const dbType = config.DATABASE_TYPE;
+      // Factory pattern for different databases (PostgreSQL default)
+      const dbType = config.DATABASE_TYPE || 'postgresql';
 
       switch (dbType) {
-        case 'mongodb':
-          this.instances.set('userRepository', new MongoUserRepository(UserModel));
-          break;
         case 'postgresql':
           this.instances.set('userRepository', new PostgresUserRepository(UserTable));
+          break;
+        case 'mongodb':
+          this.instances.set('userRepository', new MongoUserRepository(UserModel));
           break;
         default:
           throw new Error(`Unsupported database type: ${dbType}`);
@@ -682,9 +682,3 @@ class Container {
 - Lazy initialization for expensive resources
 - Connection pooling for databases
 - Cache frequently used instances
-
-### 5. Testing Strategy
-
-- Test with real container in integration tests
-- Mock dependencies in unit tests
-- Use test-specific container configurations

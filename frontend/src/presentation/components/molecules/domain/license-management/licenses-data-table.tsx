@@ -11,7 +11,7 @@ import {
   DataTable,
   DataTableToolbar,
   DataTableSkeleton,
-} from "@/presentation/components/molecules/data-table";
+} from "@/presentation/components/molecules/data/data-table";
 import { useDataTable } from "@/presentation/hooks";
 import { Typography } from "@/presentation/components/atoms";
 import { getLicenseTableColumns } from "./license-table-columns";

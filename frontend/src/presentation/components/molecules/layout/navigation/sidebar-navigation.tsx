@@ -27,6 +27,24 @@ export function SidebarNavigation({
   onNavigate,
   className,
 }: SidebarNavigationProps) {
+  const isItemActive = (path: string, itemHref: string) => {
+    const currentUrl = new URL(path, 'http://localhost');
+    const itemUrl = new URL(itemHref, 'http://localhost');
+
+    if (currentUrl.pathname !== itemUrl.pathname) return false;
+
+    const currentSection = currentUrl.searchParams.get('section');
+    const itemSection = itemUrl.searchParams.get('section');
+
+    // If the item targets a specific section, match that section and ignore other params
+    if (itemSection) {
+      return currentSection === itemSection;
+    }
+
+    // For base links without section, require same path and no section selected
+    return !currentSection;
+  };
+
   const filteredItems = items.filter((item) => {
     // Show admin-only items only to admins
     if (item.adminOnly && !isAdmin) return false;
@@ -41,7 +59,7 @@ export function SidebarNavigation({
       <nav className="space-y-0.5 py-4" role="navigation" aria-label="Main navigation">
         {filteredItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentPath === item.href;
+          const isActive = isItemActive(currentPath, item.href);
           return (
             <NavigationButton
               key={item.name}

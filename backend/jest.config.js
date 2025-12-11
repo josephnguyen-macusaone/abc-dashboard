@@ -20,7 +20,6 @@ export default {
     '!src/infrastructure/config/database.js',
     '!src/infrastructure/config/logger.js',
     '!src/**/index.js',
-    '!src/**/bootstrap/**',
   ],
 
   coverageDirectory: 'coverage',

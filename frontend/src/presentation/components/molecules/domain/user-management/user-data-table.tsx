@@ -10,7 +10,7 @@ import { UserPlus, Users } from "lucide-react";
 import {
   DataTable,
   DataTableToolbar,
-} from "@/presentation/components/molecules/data-table";
+} from "@/presentation/components/molecules/data/data-table";
 import { useDataTable } from "@/presentation/hooks";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";

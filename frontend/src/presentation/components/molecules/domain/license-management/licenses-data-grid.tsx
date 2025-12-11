@@ -15,7 +15,7 @@ import {
   DataGridSortMenu,
   DataGridRowHeightMenu,
   DataGridViewMenu,
-} from "@/presentation/components/molecules/data-grid";
+} from "@/presentation/components/molecules/data/data-grid";
 import { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";

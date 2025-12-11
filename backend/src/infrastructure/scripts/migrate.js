@@ -5,7 +5,11 @@ import knex from 'knex';
 import knexConfig from '../../../knexfile.js';
 
 // Load environment variables
+// Suppress dotenv output
+const originalStdoutWrite = process.stdout.write;
+process.stdout.write = () => {};
 dotenv.config();
+process.stdout.write = originalStdoutWrite;
 
 const command = process.argv[2];
 const argument = process.argv[3];

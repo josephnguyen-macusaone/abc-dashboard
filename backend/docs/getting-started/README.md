@@ -17,8 +17,8 @@ Welcome to the comprehensive documentation for the ABC Dashboard Backend API. Th
 ### Prerequisites
 
 - Node.js 20+
-- MongoDB 6+
-- npm 8+
+- PostgreSQL 14+ (local or Docker)
+- npm 10+
 
 ### Basic Setup
 
@@ -33,7 +33,7 @@ cp .env.example .env
 # Run database migrations
 npm run migrate
 
-# Seed with test data
+# Seed with test data (optional)
 npm run seed
 
 # Start development server
@@ -43,20 +43,27 @@ npm run dev
 ### Email Configuration
 
 ```bash
-# Test email configuration
-npm run test:email-config
+# Validate email configuration
+npm run test:email:config
 
 # For MailHog (development)
 EMAIL_SERVICE=mailhog
 
-# For SendGrid (production)
-EMAIL_SERVICE=sendgrid
-SENDGRID_API_KEY=SG.your-api-key
-
 # For Google Workspace (production)
 EMAIL_SERVICE=google-workspace
 EMAIL_USER=your-email@domain.com
-EMAIL_PASS=your-app-password
+EMAIL_PASS=your-app-password   # App Password (2FA required)
+EMAIL_FROM=alerts@yourdomain.com
+EMAIL_FROM_NAME="ABC Dashboard"
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+
+# For Mailjet (production)
+EMAIL_SERVICE=mailjet
+EMAIL_USER=your-mailjet-api-key
+EMAIL_PASS=your-mailjet-secret-key
+EMAIL_FROM=alerts@yourdomain.com
+EMAIL_FROM_NAME="ABC Dashboard"
 ```
 
 ## 🏗️ Architecture Overview
@@ -72,12 +79,12 @@ graph TB
     C --> G[Profile Management]
 
     F --> H{Multi-Provider Support}
-    H --> I[SendGrid API]
-    H --> J[Google Workspace SMTP]
+    H --> I[Google Workspace SMTP]
+    H --> J[Mailjet SMTP]
     H --> K[MailHog Local]
 
     D --> L[JWT Tokens]
-    E --> M[MongoDB]
+    E --> M[(PostgreSQL)]
     G --> M
 
     N[Monitoring] --> C
@@ -95,17 +102,17 @@ The email service supports multiple providers with automatic failover and compre
 
 ### Service Comparison
 
-| Feature              | MailHog     | SendGrid         | Google Workspace |
-| -------------------- | ----------- | ---------------- | ---------------- |
-| **Environment**      | Development | Production       | Production       |
-| **Daily Limit**      | Unlimited   | 100 → 100K+      | 500 → 10K        |
-| **Setup Complexity** | Low         | Medium           | Medium           |
-| **Cost**             | Free        | Free → $89/month | Free → $18/user  |
-| **Analytics**        | Basic       | Advanced         | Basic            |
+| Feature              | MailHog     | Google Workspace | Mailjet    |
+| -------------------- | ----------- | ---------------- | ---------- |
+| **Environment**      | Development | Production       | Production |
+| **Daily Limit**      | Unlimited   | 500 → 10K        | Plan-based |
+| **Setup Complexity** | Low         | Medium           | Medium     |
+| **Cost**             | Free        | Free → $18/user  | Paid tiers |
+| **Analytics**        | Basic       | Basic            | Dashboard  |
 
 ### Key Features
 
-- ✅ **Multi-provider support** (SendGrid, Google Workspace, MailHog)
+- ✅ **Multi-provider support** (MailHog, Google Workspace, Mailjet)
 - ✅ **Automatic failover** and circuit breaker pattern
 - ✅ **Comprehensive error handling** with service-specific error codes
 - ✅ **Rate limiting** and quota management
@@ -121,13 +128,13 @@ The email service supports multiple providers with automatic failover and compre
 1. **Start MailHog**: `mailhog` (SMTP on localhost:1025, Web UI on localhost:8025)
 2. **Configure environment**: `EMAIL_SERVICE=mailhog`
 3. **Test emails**: Visit localhost:8025 to view captured emails
-4. **Run tests**: `npm run test:email-config`
+4. **Run tests**: `npm run test:email:config`
 
 ### Production Deployment
 
-1. **Choose email provider** (SendGrid recommended for production)
+1. **Choose email provider** (Google Workspace primary, Mailjet optional)
 2. **Configure credentials** in environment variables
-3. **Test configuration**: `npm run test:email-config`
+3. **Test configuration**: `npm run test:email:config`
 4. **Deploy and monitor** email delivery rates
 
 ## 📊 Monitoring & Analytics
@@ -136,7 +143,7 @@ The email service supports multiple providers with automatic failover and compre
 
 - Email delivery rates
 - Bounce rates
-- Open rates (SendGrid only)
+- Open rates (if supported by provider)
 - API response times
 - Error rates by service
 - Quota usage
@@ -159,13 +166,13 @@ curl http://localhost:5000/api/v1/health/email
 
 ```bash
 # Check configuration
-npm run test:email-config
+npm run test:email:config
 
 # Check application logs
 tail -f logs/app.log | grep -i email
 
 # Verify service credentials
-# SendGrid: Check API key format (SG.xxxxx)
+# Mailjet: Verify API Key/Secret Key
 # Google Workspace: Verify App Password is correct
 ```
 
@@ -178,16 +185,16 @@ tail -f logs/app.log | grep -i email
 
 #### Rate Limiting
 
-- SendGrid: Check account limits and upgrade if needed
 - Google Workspace: Free accounts limited to 500/day
+- Mailjet: Respect plan limits; enable backoff on 429s
 - Implement queuing for high-volume scenarios
 
 ### Support Resources
 
 | Service              | Support Channel              | Response Time |
 | -------------------- | ---------------------------- | ------------- |
-| **SendGrid**         | support.sendgrid.com         | < 24 hours    |
 | **Google Workspace** | support.google.com/workspace | < 24 hours    |
+| **Mailjet**          | support.mailjet.com          | < 24 hours    |
 | **MailHog**          | GitHub Issues                | Community     |
 | **ABC Dashboard**    | Internal Documentation       | Immediate     |
 
@@ -204,7 +211,7 @@ tail -f logs/app.log | grep -i email
 
 ### Authentication Methods
 
-- **SendGrid**: API Key authentication
+- **Mailjet**: API Key / Secret Key (SMTP auth)
 - **Google Workspace**: App Password (2FA required)
 - **MailHog**: No authentication (development only)
 
@@ -243,7 +250,6 @@ roadmap
     title Email Service Roadmap
     section Q1 2025
       Enhanced error handling and monitoring :done, 2025-01-01, 2025-03-31
-      SendGrid integration :done, 2025-01-15, 2025-03-15
       Google Workspace integration :done, 2025-01-15, 2025-03-15
     section Q2 2025
       Email analytics dashboard :planned, 2025-04-01, 2025-06-30
@@ -268,8 +274,8 @@ roadmap
 ### Contact Information
 
 - **Technical Support**: Internal development team
-- **SendGrid Support**: <https://support.sendgrid.com>
 - **Google Workspace Support**: <https://support.google.com/workspace>
+- **Mailjet Support**: <https://support.mailjet.com>
 - **Documentation Issues**: Create GitHub issue
 
 ---

@@ -1,5 +1,5 @@
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
-import { DataTableSkeleton } from "@/presentation/components/molecules/data-table/data-table-skeleton";
+import { DataTableSkeleton } from "@/presentation/components/molecules/data/data-table/data-table-skeleton";
 import { cn } from "@/shared/utils";
 
 interface UserManagementSkeletonProps extends React.ComponentProps<"div"> {

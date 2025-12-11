@@ -285,7 +285,7 @@ classDiagram
 
 ### Repository Implementations
 
-Infrastructure repositories implement domain interfaces using MongoDB/Mongoose.
+Infrastructure repositories implement domain interfaces using PostgreSQL via Knex.
 
 ```mermaid
 classDiagram
@@ -299,7 +299,7 @@ classDiagram
     }
 
     class UserRepository {
-        +UserModel
+        +knex
         +findById(id)
         +findByEmail(email)
         +save(user)
@@ -315,7 +315,7 @@ classDiagram
     }
 
     class UserProfileRepository {
-        +UserProfileModel
+        +knex
         +findByUserId(userId)
         +save(userProfile)
         +updateByUserId(userId, updates)
@@ -324,40 +324,36 @@ classDiagram
     IUserRepository <|.. UserRepository : implements
     IUserProfileRepository <|.. UserProfileRepository : implements
 
-    UserRepository --> UserModel : uses
-    UserProfileRepository --> UserProfileModel : uses
+    UserRepository --> knex : uses
+    UserProfileRepository --> knex : uses
 ```
 
-### MongoDB Models
-
-Mongoose models define schema and provide query methods.
+### PostgreSQL Tables & Queries
 
 ```javascript
-// User Model
-const userSchema = new mongoose.Schema(
-  {
-    username: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    hashedPassword: { type: String, required: true },
-    displayName: { type: String, required: true },
-    role: {
-      type: String,
-      enum: Object.values(ROLES),
-      default: ROLES.STAFF,
-    },
-    // ... other fields
-  },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
-);
+// Migration excerpt (Knex)
+export async function up(knex) {
+  await knex.schema.createTable('users', (table) => {
+    table.uuid('id').primary();
+    table.string('email').notNullable().unique();
+    table.string('username').notNullable().unique();
+    table.string('hashed_password').notNullable();
+    table.string('display_name').notNullable();
+    table.string('role').notNullable().defaultTo('staff');
+    table.timestamps(true, true);
+  });
+}
 
-// Indexes for performance
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
-userSchema.index({ role: 1 });
+// Repository excerpt
+class UserRepository {
+  constructor(knex) {
+    this.knex = knex;
+  }
+
+  async findByEmail(email) {
+    return this.knex('users').where({ email }).first();
+  }
+}
 ```
 
 ## External Services

@@ -1,7 +1,8 @@
-import nodemailer from 'nodemailer';
 import handlebars from 'handlebars';
 import { config } from '../../infrastructure/config/config.js';
 import logger from '../../infrastructure/config/logger.js';
+import { createEmailTransporter } from '../../infrastructure/email/transporter.js';
+import { renderEmailTemplate } from '../../infrastructure/email/templates.js';
 import { withServiceRetry, withTimeout } from '../utils/reliability/retry.js';
 import { withCircuitBreaker } from '../utils/reliability/circuit-breaker.js';
 import { executeWithDegradation } from '../utils/reliability/graceful-degradation.js';
@@ -22,6 +23,7 @@ export class EmailService {
     this.isHealthy = true;
     this.lastHealthCheck = null;
     this.operationId = null;
+    this.templateCache = new Map();
   }
 
   /**
@@ -29,83 +31,7 @@ export class EmailService {
    */
   createTransporter() {
     try {
-      let transporterConfig;
-
-      // Google Workspace SMTP configuration
-      if (config.EMAIL_SERVICE === 'google-workspace') {
-        logger.info('Initializing Google Workspace SMTP transporter', {
-          correlationId: this.correlationId,
-          host: config.EMAIL_HOST,
-          port: config.EMAIL_PORT,
-        });
-
-        transporterConfig = {
-          host: config.EMAIL_HOST,
-          port: config.EMAIL_PORT,
-          secure: false, // Use TLS (STARTTLS) for Google Workspace
-          auth: {
-            user: config.EMAIL_USER,
-            pass: config.EMAIL_PASS, // App Password
-          },
-          tls: {
-            ciphers: 'SSLv3',
-            rejectUnauthorized: false, // Allow during development
-          },
-          // Connection pooling for better performance
-          pool: true,
-          maxConnections: 5,
-          maxMessages: 100,
-          // Connection timeouts
-          connectionTimeout: 30000, // 30 seconds for Google Workspace
-          greetingTimeout: 10000, // 10 seconds
-          socketTimeout: 60000, // 60 seconds
-        };
-      } else if (config.EMAIL_SERVICE === 'mailjet') {
-        logger.info('Initializing Mailjet SMTP transporter', {
-          correlationId: this.correlationId,
-          host: config.EMAIL_HOST || 'in-v3.mailjet.com',
-          port: config.EMAIL_PORT || 587,
-        });
-
-        if (!config.EMAIL_USER || !config.EMAIL_PASS) {
-          throw new ValidationException(
-            'Mailjet requires EMAIL_USER (API Key) and EMAIL_PASS (Secret Key)'
-          );
-        }
-
-        transporterConfig = {
-          host: config.EMAIL_HOST || 'in-v3.mailjet.com',
-          port: config.EMAIL_PORT || 587,
-          secure: config.EMAIL_SECURE === true || config.EMAIL_SECURE === 'true',
-          auth: {
-            user: config.EMAIL_USER,
-            pass: config.EMAIL_PASS,
-          },
-          pool: true,
-          maxConnections: 5,
-          maxMessages: 100,
-        };
-      } else {
-        // Standard SMTP configuration (MailHog, generic SMTP)
-        transporterConfig = {
-          host: config.EMAIL_HOST,
-          port: config.EMAIL_PORT,
-          secure: config.EMAIL_SECURE,
-          auth:
-            config.EMAIL_USER && config.EMAIL_PASS
-              ? {
-                  user: config.EMAIL_USER,
-                  pass: config.EMAIL_PASS,
-                }
-              : undefined,
-          // Add connection timeout
-          connectionTimeout: 10000, // 10 seconds
-          greetingTimeout: 5000, // 5 seconds
-          socketTimeout: 30000, // 30 seconds
-        };
-      }
-
-      const transporter = nodemailer.createTransport(transporterConfig);
+      const transporter = createEmailTransporter(config, { correlationId: this.correlationId });
 
       // Add error event listeners
       transporter.on('error', (error) => {
@@ -140,126 +66,14 @@ export class EmailService {
    * @param {Object} data - Template data including role and manager info
    */
   async sendWelcomeWithPassword(to, data) {
-    const subject = 'Welcome to ABC Dashboard - Your Account Details';
-    const template = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to ABC Dashboard</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
-          <tr>
-            <td style="padding: 40px 20px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-
-          <!-- Header -->
-                <tr>
-                  <td style="background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%); padding: 40px 30px; text-align: center;">
-                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">ABC Salon</h1>
-                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #ffffff; opacity: 0.9;">Welcome Aboard!</p>
-                  </td>
-                </tr>
-
-          <!-- Main Content -->
-                <tr>
-                  <td style="padding: 40px 30px;">
-                    <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #262627; text-align: center;">Welcome to ABC Dashboard</h2>
-                    <p style="margin: 0 0 24px 0; font-size: 16px; color: #525252; line-height: 1.6; text-align: center;">
-              Hi {{displayName}}, your account has been created with the role: <strong>{{role}}</strong>
-                    </p>
-
-            <!-- Account Details -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="background-color: #F8FAFC; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                            <tr>
-                              <td style="padding-bottom: 12px;"><strong>Email:</strong> {{{email}}}</td>
-                            </tr>
-                            <tr>
-                              <td style="padding-bottom: 12px;"><strong>Temporary Password:</strong>
-                                <span style="background-color: #E5E7EB; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace;">{{password}}</span>
-                              </td>
-                            </tr>
-              {{#if managerName}}
-                            <tr>
-                              <td><strong>Manager:</strong> {{managerName}}</td>
-                            </tr>
-              {{/if}}
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-
-            <!-- Security Notice -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-                          <p style="margin: 0; font-size: 14px; color: #F57C00;">
-                            ⚠️ <strong>Important:</strong> This is a temporary password. You must change it on first login.
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-
-            <!-- CTA Button -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 32px 0;">
-                      <tr>
-                        <td style="text-align: center;">
-                          <a href="{{{loginUrl}}}" style="display: inline-block; background-color: #22C55E; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Login to ABC Dashboard
-              </a>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Steps -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="background-color: #F8FAFC; padding: 20px; border-radius: 8px;">
-                          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #262627;">Quick Start:</h3>
-                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">1. Click "Login to ABC Dashboard" above</p>
-                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">2. Use your email and temporary password</p>
-                          <p style="margin: 0; font-size: 14px; color: #374151;">3. Change your password when prompted</p>
-                        </td>
-                      </tr>
-                    </table>
-
-            {{#if managerName}}
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
-                      <tr>
-                        <td style="background-color: #EFF6FF; border: 1px solid #BFDBFE; padding: 16px; border-radius: 8px;">
-                          <p style="margin: 0; font-size: 14px; color: #1E40AF;">
-                            👔 <strong>Manager:</strong> {{managerName}} - Contact them for support.
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-            {{/if}}
-                  </td>
-                </tr>
-
-          <!-- Footer -->
-                <tr>
-                  <td style="background-color: #F8FAFC; padding: 30px; text-align: center; border-top: 1px solid #E2E8F0;">
-                    <p style="margin: 0; font-size: 14px; color: #64748B;">© 2025 ABC Salon. All rights reserved.</p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
+    const { subject, html, text } = renderEmailTemplate('welcomeWithPassword', {
+      ...data,
+      email: data.email || to,
+    });
 
     return executeWithDegradation(
       'email_service',
-      () => this.sendEmail(to, subject, template, data),
+      () => this.sendEmail(to, subject, html, {}, { text, templateName: 'welcomeWithPassword' }),
       (error) => this.handleEmailDegradation('welcome_email', { to, subject, data }, error),
       { operation: 'sendWelcomeWithPassword', to, correlationId: this.correlationId }
     );
@@ -274,7 +88,7 @@ export class EmailService {
    * @param {Object} options - Additional options
    */
   async sendEmail(to, subject, template, data = {}, options = {}) {
-    const { priority = 'normal', correlationId = this.correlationId } = options;
+    const { priority = 'normal', correlationId = this.correlationId, text, templateName } = options;
 
     // Validate inputs
     if (!to || !subject || !template) {
@@ -286,8 +100,8 @@ export class EmailService {
     }
 
     try {
-      // Compile template
-      const compiledTemplate = handlebars.compile(template);
+      // Compile template with cache
+      const compiledTemplate = this._getCompiledTemplate(template, templateName);
       const html = compiledTemplate(data);
 
       const mailOptions = {
@@ -295,6 +109,7 @@ export class EmailService {
         to,
         subject,
         html,
+        text,
         priority, // high, normal, low
         headers: correlationId ? { 'X-Correlation-ID': correlationId } : undefined,
       };
@@ -374,6 +189,17 @@ export class EmailService {
       // Wrap unexpected errors
       throw new ExternalServiceUnavailableException('Email delivery service');
     }
+  }
+
+  _getCompiledTemplate(template, cacheKey) {
+    const key = cacheKey || template;
+    const existing = this.templateCache.get(key);
+    if (existing) {
+      return existing;
+    }
+    const compiled = handlebars.compile(template);
+    this.templateCache.set(key, compiled);
+    return compiled;
   }
 
   /**
@@ -660,370 +486,18 @@ export class EmailService {
    * @param {Object} data - Template data including displayName, temporaryPassword, and loginUrl
    */
   async sendPasswordResetWithGeneratedPassword(to, data) {
-    const subject = 'Your Temporary Password - ABC Dashboard';
-    const template = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Your Temporary Password - ABC Dashboard</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
-
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
-          body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #FAFAFA;
-            color: #262627;
-            line-height: 1.6;
-          }
-
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-
-          .header {
-            background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%);
-            padding: 40px 30px;
-            text-align: center;
-          }
-
-          .logo {
-            font-family: 'Archivo', sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            color: #FFFFFF;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 8px;
-          }
-
-          .header-text {
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.9;
-          }
-
-          .content {
-            padding: 40px 30px;
-          }
-
-          .main-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #262627;
-            margin-bottom: 16px;
-            text-align: center;
-          }
-
-          .greeting {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 12px;
-          }
-
-          .description {
-            font-size: 16px;
-            color: #525252;
-            margin-bottom: 32px;
-            line-height: 1.6;
-          }
-
-          .password-section {
-            background: linear-gradient(135deg, #FFF3CD 0%, #FEF3C7 100%);
-            border: 1px solid #FCD34D;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-            text-align: center;
-          }
-
-          .password-section h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #92400E;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .password-section h3:before {
-            content: "🔑";
-            margin-right: 8px;
-          }
-
-          .password-display {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            background-color: #FFFFFF;
-            border: 2px solid #FCD34D;
-            padding: 12px 20px;
-            border-radius: 8px;
-            display: inline-block;
-            letter-spacing: 1px;
-            margin: 8px 0;
-          }
-
-          .security-notice {
-            background: linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%);
-            border: 1px solid #FCA5A5;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-
-          .security-notice h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #DC2626;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-          }
-
-          .security-notice h4:before {
-            content: "⚠️";
-            margin-right: 8px;
-          }
-
-          .security-notice p {
-            font-size: 14px;
-            color: #DC2626;
-            margin: 0;
-          }
-
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
-            color: #FFFFFF;
-            text-decoration: none;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            text-align: center;
-            margin: 24px 0;
-            box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.39);
-            transition: all 0.2s ease;
-          }
-
-          .cta-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px 0 rgba(34, 197, 94, 0.5);
-          }
-
-          .steps-section {
-            background-color: #F8FAFC;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-          }
-
-          .steps-section h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-          }
-
-          .steps-section h3:before {
-            content: "🚀";
-            margin-right: 8px;
-          }
-
-          .steps-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-          }
-
-          .step-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            font-size: 15px;
-            color: #374151;
-          }
-
-          .step-number {
-            background: linear-gradient(135deg, #0B80D8 0%, #075985 100%);
-            color: #FFFFFF;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 12px;
-            margin-right: 12px;
-            flex-shrink: 0;
-            margin-top: 2px;
-          }
-
-          .footer {
-            background-color: #F8FAFC;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #E2E8F0;
-          }
-
-          .footer-text {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 8px;
-          }
-
-          .footer-brand {
-            font-family: 'Archivo', sans-serif;
-            font-weight: 600;
-            color: #262627;
-            font-size: 16px;
-          }
-
-          @media (max-width: 600px) {
-            .container {
-              margin: 10px;
-              border-radius: 8px;
-            }
-
-            .header {
-              padding: 30px 20px;
-            }
-
-            .logo {
-              font-size: 24px;
-            }
-
-            .header-text {
-              font-size: 16px;
-            }
-
-            .content {
-              padding: 30px 20px;
-            }
-
-            .main-title {
-              font-size: 20px;
-            }
-
-            .password-section {
-              padding: 20px;
-            }
-
-            .password-display {
-              font-size: 16px;
-              padding: 10px 16px;
-            }
-
-            .cta-button {
-              padding: 14px 24px;
-              font-size: 15px;
-              display: block;
-              width: 100%;
-            }
-
-            .steps-section {
-              padding: 20px;
-            }
-
-            .footer {
-              padding: 20px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <!-- Header -->
-          <div class="header">
-            <div class="logo">${this.getLogoSVG()}</div>
-            <div class="header-text">Password Reset</div>
-          </div>
-
-          <!-- Main Content -->
-          <div class="content">
-            <div class="title">Your Temporary Password</div>
-            <div class="subtitle">
-              Hi {{displayName}}, we've generated a temporary password for your ABC Dashboard account.
-            </div>
-
-            <!-- Password Section -->
-            <div class="password-section">
-              <h3>Your Temporary Password</h3>
-              <div class="password-display">{{temporaryPassword}}</div>
-              <p style="font-size: 14px; color: #92400E; margin-top: 12px;">
-                Copy this password and keep it safe. You'll need to change it after logging in.
-              </p>
-            </div>
-
-            <!-- Security Notice -->
-            <div class="security-notice">
-              <h4>Important Security Information</h4>
-              <p>This temporary password was generated specifically for your account. For your security, you must change this password immediately after your first login.</p>
-            </div>
-
-            <!-- CTA Button -->
-            <div style="text-align: center;">
-              <a href="{{{loginUrl}}}" class="cta-button">
-                Login to ABC Dashboard
-              </a>
-            </div>
-
-            <!-- Quick Steps -->
-            <div class="steps-section">
-              <h3>What to do next:</h3>
-              <ol class="steps-list">
-                <li class="step-item">
-                  <div class="step-number">1</div>
-                  <div>Click "Login to ABC Dashboard" above or go to your login page</div>
-                </li>
-                <li class="step-item">
-                  <div class="step-number">2</div>
-                  <div>Use your email address and the temporary password shown above</div>
-                </li>
-                <li class="step-item">
-                  <div class="step-number">3</div>
-                  <div>You'll be prompted to change your password immediately</div>
-                </li>
-                <li class="step-item">
-                  <div class="step-number">4</div>
-                  <div>Choose a strong, memorable password for future logins</div>
-                </li>
-              </ol>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="footer">
-            <div class="footer-text">ABC Dashboard Team</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    const { subject, html, text } = renderEmailTemplate('passwordResetWithGeneratedPassword', {
+      ...data,
+      email: data.email || to,
+    });
 
     return executeWithDegradation(
       'email_service',
-      () => this.sendEmail(to, subject, template, data),
+      () =>
+        this.sendEmail(to, subject, html, {}, {
+          text,
+          templateName: 'passwordResetWithGeneratedPassword',
+        }),
       (error) =>
         this.handleEmailDegradation(
           'password_reset_with_generated_password',
@@ -1040,341 +514,24 @@ export class EmailService {
    * @param {Object} data - Template data including displayName
    */
   async sendPasswordResetConfirmationEmail(to, data) {
-    const subject = 'Password Reset Successful - ABC Dashboard';
-    const template = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Password Reset Successful - ABC Dashboard</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
-
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
-          body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #FAFAFA;
-            color: #262627;
-            line-height: 1.6;
-          }
-
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-
-          .header {
-            background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
-            padding: 40px 30px;
-            text-align: center;
-          }
-
-          .logo {
-            font-family: 'Archivo', sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            color: #FFFFFF;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 8px;
-          }
-
-          .header-text {
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.9;
-          }
-
-          .content {
-            padding: 40px 30px;
-          }
-
-          .main-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #262627;
-            margin-bottom: 16px;
-            text-align: center;
-          }
-
-          .greeting {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 12px;
-          }
-
-          .description {
-            font-size: 16px;
-            color: #525252;
-            margin-bottom: 32px;
-            line-height: 1.6;
-          }
-
-          .success-icon {
-            text-align: center;
-            margin: 24px 0;
-          }
-
-          .success-icon div {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 36px;
-            color: #FFFFFF;
-            margin-bottom: 16px;
-          }
-
-          .success-message {
-            background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
-            border: 1px solid #BBF7D0;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-            text-align: center;
-          }
-
-          .success-message h3 {
-            font-size: 20px;
-            font-weight: 600;
-            color: #166534;
-            margin-bottom: 8px;
-          }
-
-          .success-message p {
-            font-size: 16px;
-            color: #166534;
-            margin: 0;
-          }
-
-          .security-notice {
-            background: linear-gradient(135deg, #FFF3CD 0%, #FEF3C7 100%);
-            border: 1px solid #FCD34D;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-
-          .security-notice h4 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #92400E;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-          }
-
-          .security-notice h4:before {
-            content: "🛡️";
-            margin-right: 8px;
-          }
-
-          .security-notice p {
-            font-size: 14px;
-            color: #92400E;
-            margin: 0;
-          }
-
-          .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #0B80D8 0%, #075985 100%);
-            color: #FFFFFF;
-            text-decoration: none;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            text-align: center;
-            margin: 24px 0;
-            box-shadow: 0 4px 14px 0 rgba(11, 128, 216, 0.39);
-            transition: all 0.2s ease;
-          }
-
-          .cta-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px 0 rgba(11, 128, 216, 0.5);
-          }
-
-          .details-section {
-            background-color: #F8FAFC;
-            border-radius: 12px;
-            padding: 24px;
-            margin: 24px 0;
-          }
-
-          .details-section h3 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #262627;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-          }
-
-          .details-section h3:before {
-            content: "ℹ️";
-            margin-right: 8px;
-          }
-
-          .details-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-          }
-
-          .detail-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            font-size: 15px;
-            color: #374151;
-          }
-
-          .detail-icon {
-            background: linear-gradient(135deg, #0B80D8 0%, #075985 100%);
-            color: #FFFFFF;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 12px;
-            margin-right: 12px;
-            flex-shrink: 0;
-            margin-top: 2px;
-          }
-
-          .footer {
-            background-color: #F8FAFC;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #E2E8F0;
-          }
-
-          .footer-text {
-            font-size: 14px;
-            color: #64748B;
-            margin-bottom: 8px;
-          }
-
-          .footer-brand {
-            font-family: 'Archivo', sans-serif;
-            font-weight: 600;
-            color: #262627;
-            font-size: 16px;
-          }
-
-          @media (max-width: 600px) {
-            .container {
-              margin: 10px;
-              border-radius: 8px;
-            }
-
-            .header {
-              padding: 30px 20px;
-            }
-
-            .logo {
-              font-size: 24px;
-            }
-
-            .header-text {
-              font-size: 16px;
-            }
-
-            .content {
-              padding: 30px 20px;
-            }
-
-            .main-title {
-              font-size: 20px;
-            }
-
-            .success-message {
-              padding: 20px;
-            }
-
-            .cta-button {
-              padding: 14px 24px;
-              font-size: 15px;
-              display: block;
-              width: 100%;
-            }
-
-            .details-section {
-              padding: 20px;
-            }
-
-            .footer {
-              padding: 20px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <!-- Header -->
-          <div class="header">
-            <div class="logo">${this.getLogoSVG()}</div>
-            <div class="header-text">Password Reset Complete</div>
-          </div>
-
-          <!-- Main Content -->
-          <div class="content">
-            <div class="title">Password Reset Complete</div>
-
-            <div style="text-align: center; margin: 24px 0;">
-              <div style="width: 60px; height: 60px; background-color: #22C55E; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; color: #FFFFFF;">✓</div>
-            </div>
-
-            <div style="text-align: center; margin: 20px 0;">
-              <p style="font-size: 16px; color: #262627;">Hi {{displayName}}, your password has been successfully reset!</p>
-            </div>
-
-            <!-- CTA Button -->
-            <div style="text-align: center;">
-              <a href="{{{loginUrl}}}" style="background-color: #0B80D8; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block; margin: 20px 0;">
-                Login to ABC Dashboard
-              </a>
-            </div>
-
-            <!-- Security Notice -->
-            <div style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 14px; border-radius: 6px; margin: 20px 0;">
-              <p style="color: #F57C00; margin: 0;">If you didn't request this password reset, please contact support immediately.</p>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="footer">
-            <div class="footer-text">ABC Dashboard Team</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    const { subject, html, text } = renderEmailTemplate('passwordResetConfirmation', {
+      ...data,
+      email: data.email || to,
+    });
 
     return executeWithDegradation(
       'email_service',
-      () => this.sendEmail(to, subject, template, data),
+      () =>
+        this.sendEmail(to, subject, html, {}, {
+          text,
+          templateName: 'passwordResetConfirmation',
+        }),
       (error) =>
-        this.handleEmailDegradation('password_reset_confirmation', { to, subject, data }, error),
+        this.handleEmailDegradation(
+          'password_reset_confirmation',
+          { to, subject, data },
+          error
+        ),
       { operation: 'sendPasswordResetConfirmationEmail', to, correlationId: this.correlationId }
     );
   }
@@ -1385,106 +542,24 @@ export class EmailService {
    * @param {Object} data - Template data including resetUrl and displayName
    */
   async sendPasswordResetEmail(to, data) {
-    const subject = 'Reset Your Password - ABC Dashboard';
-    const template = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reset Your Password - ABC Dashboard</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
-          <tr>
-            <td style="padding: 40px 20px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                
-          <!-- Header -->
-                <tr>
-                  <td style="background: linear-gradient(135deg, #FF885C 0%, #F88800 50%, #CC4700 100%); padding: 40px 30px; text-align: center;">
-                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">ABC Salon</h1>
-                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #ffffff; opacity: 0.9;">Password Reset</p>
-                  </td>
-                </tr>
-
-          <!-- Main Content -->
-                <tr>
-                  <td style="padding: 40px 30px;">
-                    <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #262627; text-align: center;">Reset Your Password</h2>
-                    <p style="margin: 0 0 24px 0; font-size: 16px; color: #525252; line-height: 1.6; text-align: center;">
-              Hi {{displayName}}, we received a request to reset your ABC Dashboard password.
-                    </p>
-
-            <!-- Security Notice -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="background-color: #FFF8E1; border: 1px solid #FFE082; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-                          <p style="margin: 0; font-size: 14px; color: #F57C00;">
-                            ⏱️ This link expires in <strong>10 minutes</strong> for security.
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-
-            <!-- CTA Button -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 32px 0;">
-                      <tr>
-                        <td style="text-align: center;">
-                          <a href="{{{resetUrl}}}" style="display: inline-block; background-color: #F66600; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Reset Password
-              </a>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Steps -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="background-color: #F8FAFC; padding: 20px; border-radius: 8px;">
-                          <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #262627;">What to do:</h3>
-                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">1. Click the "Reset Password" button above</p>
-                          <p style="margin: 0 0 8px 0; font-size: 14px; color: #374151;">2. Enter your new password (minimum 8 characters)</p>
-                          <p style="margin: 0; font-size: 14px; color: #374151;">3. Confirm your new password</p>
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    <!-- Security Notice -->
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
-                      <tr>
-                        <td style="background-color: #FEF2F2; border: 1px solid #FECACA; padding: 16px; border-radius: 8px;">
-                          <p style="margin: 0; font-size: 13px; color: #991B1B;">
-                            🔒 If you didn't request this password reset, you can safely ignore this email.
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-          <!-- Footer -->
-                <tr>
-                  <td style="background-color: #F8FAFC; padding: 30px; text-align: center; border-top: 1px solid #E2E8F0;">
-                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748B;">© 2025 ABC Salon. All rights reserved.</p>
-                    <p style="margin: 0; font-size: 12px; color: #94A3B8;">
-                      This email was sent to {{{email}}}
-                    </p>
-                  </td>
-                </tr>
-                
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
+    const { subject, html, text } = renderEmailTemplate('passwordReset', {
+      ...data,
+      email: data.email || to,
+    });
 
     return executeWithDegradation(
       'email_service',
-      () => this.sendEmail(to, subject, template, data),
-      (error) => this.handleEmailDegradation('password_reset', { to, subject, data }, error),
+      () =>
+        this.sendEmail(to, subject, html, {}, {
+          text,
+          templateName: 'passwordReset',
+        }),
+      (error) =>
+        this.handleEmailDegradation(
+          'password_reset',
+          { to, subject, data },
+          error
+        ),
       { operation: 'sendPasswordResetEmail', to, correlationId: this.correlationId }
     );
   }

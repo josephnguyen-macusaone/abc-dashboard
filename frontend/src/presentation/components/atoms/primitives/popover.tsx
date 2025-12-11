@@ -7,7 +7,18 @@ import { cn } from "@/shared/utils"
 
 const Popover = PopoverPrimitive.Root
 
-const PopoverTrigger = PopoverPrimitive.Trigger
+const PopoverTrigger = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger> & { label?: string }
+>(({ children, label, ...props }, ref) => {
+  const ariaLabel = label ?? props['aria-label'] ?? undefined
+  return (
+    <PopoverPrimitive.Trigger ref={ref} aria-label={ariaLabel} {...props}>
+      {children}
+    </PopoverPrimitive.Trigger>
+  )
+})
+PopoverTrigger.displayName = PopoverPrimitive.Trigger.displayName
 
 const PopoverAnchor = PopoverPrimitive.Anchor
 

@@ -37,8 +37,7 @@ export function Logo({
         <Image
           src={logoSrc}
           alt="Logo"
-          width={width}
-          height={height}
+          style={{ width: `${width}px`, height: `${height}px` }}
           priority
         />
       </div>

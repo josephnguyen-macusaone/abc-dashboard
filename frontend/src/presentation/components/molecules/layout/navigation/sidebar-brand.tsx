@@ -18,7 +18,7 @@ export function SidebarBrand({ onClick, className }: SidebarBrandProps) {
       <Logo
         variant={theme === 'dark' ? 'dark' : 'light'}
         width={120}
-        height={40}
+        height={64}
         className="mx-auto"
       />
     </div>

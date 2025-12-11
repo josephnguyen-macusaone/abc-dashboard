@@ -31,6 +31,11 @@ export const emailTemplates = {
         <div style="${cardStyles}">
           <h2 style="margin: 0 0 8px 0; font-size: 22px;">Welcome, ${data.displayName}!</h2>
           <p style="margin: 0 0 16px 0; color: #475569;">Your account has been created. Use the details below to sign in and change your password on first login.</p>
+          ${
+            data.role
+              ? `<p style="margin: 0 0 12px 0; color: #334155;">Assigned role: <strong>${data.role}</strong></p>`
+              : ''
+          }
 
           <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin:16px 0;">
             <p style="margin:0 0 8px 0;"><strong>Email:</strong> ${data.email}</p>
@@ -65,6 +70,7 @@ export const emailTemplates = {
 Welcome, ${data.displayName}!
 
 Your account has been created. Use the details below to sign in and change your password on first login.
+${data.role ? `Role: ${data.role}` : ''}
 
 Email: ${data.email}
 Username: ${data.username}

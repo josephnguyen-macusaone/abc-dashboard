@@ -9,15 +9,15 @@ graph TB
     subgraph "Production Environment"
         LoadBalancer[Load Balancer<br/>Nginx/HAProxy]
         AppServers[Application Servers<br/>PM2/Node.js]
-        Database[(MongoDB<br/>Replica Set)]
+        Database[(PostgreSQL<br/>HA / Managed)]
         Cache[(Redis<br/>Cluster)]
-        Email[Email Service<br/>SMTP/SendGrid]
+        Email[Email Service<br/>SMTP]
         Monitoring[Monitoring<br/>Prometheus/Grafana]
     end
 
     subgraph "Development Environment"
         DevServer[Dev Server<br/>Node.js --watch]
-        DevDB[(Local MongoDB)]
+        DevDB[(Local PostgreSQL)]
         DevCache[(Local Redis)]
         MailHog[MailHog<br/>Email Testing]
     end
@@ -81,7 +81,7 @@ graph TD
     subgraph "Environment Variables"
         NodeEnv[NODE_ENV]
         Port[PORT]
-        Database[MONGODB_URI]
+        Database[DATABASE_URL/POSTGRES_*]
         JWT[JWT_SECRET]
         Email[EMAIL_*]
         Cache[CACHE_*]
@@ -121,8 +121,13 @@ NODE_ENV=development
 PORT=5000
 CLIENT_URL=http://localhost:3000
 
-# Database
-MONGODB_URI=mongodb://localhost:27017/abc_dashboard_dev
+# Database (local Postgres)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=abc_dashboard_dev
+POSTGRES_USER=abc_user
+POSTGRES_PASSWORD=abc_password
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
 
 # JWT
 JWT_SECRET=abc_dashboard_dev
@@ -153,8 +158,13 @@ NODE_ENV=production
 PORT=5000
 CLIENT_URL=https://yourdomain.com
 
-# Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/abc_dashboard_prod
+# Database (managed Postgres)
+POSTGRES_HOST=your-rds-hostname
+POSTGRES_PORT=5432
+POSTGRES_DB=abc_dashboard_prod
+POSTGRES_USER=abc_app
+POSTGRES_PASSWORD=change-me
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
 
 # JWT (Use strong secrets!)
 JWT_SECRET=your-production-jwt-secret-here
@@ -163,13 +173,13 @@ JWT_REFRESH_EXPIRES_IN=7d
 JWT_EMAIL_VERIFICATION_EXPIRES_IN=24h
 JWT_PASSWORD_RESET_EXPIRES_IN=10m
 
-# Email (Production service)
-EMAIL_SERVICE=smtp
-EMAIL_HOST=smtp.sendgrid.net
+# Email (Production service - Google Workspace)
+EMAIL_SERVICE=google-workspace
+EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_SECURE=true
-EMAIL_USER=your-sendgrid-user
-EMAIL_PASS=your-sendgrid-password
+EMAIL_SECURE=false
+EMAIL_USER=alerts@yourdomain.com          # Workspace account
+EMAIL_PASS=your-app-password             # 16-char App Password
 EMAIL_FROM=noreply@yourdomain.com
 
 # Redis Cache
@@ -191,41 +201,41 @@ CACHE_API_RESPONSE_TTL=600
 graph TB
     subgraph "Docker Compose Stack"
         API[API Container<br/>Node.js App]
-        MongoDB[MongoDB Container<br/>Database]
+        Postgres[PostgreSQL Container<br/>Database]
         Redis[Redis Container<br/>Cache]
         MailHog[MailHog Container<br/>Email Testing]
     end
 
     subgraph "Docker Images"
-        BaseImage[Base Image<br/>node:18-alpine]
+        BaseImage[Base Image<br/>node:20-alpine]
         AppImage[App Image<br/>abc-dashboard-backend]
-        MongoImage[Mongo Image<br/>mongo:6]
+        PostgresImage[Postgres Image<br/>postgres:15-alpine]
         RedisImage[Redis Image<br/>redis:7-alpine]
     end
 
     subgraph "Volumes"
-        MongoData[mongodb_data<br/>Database Persistence]
+        PostgresData[postgres_data<br/>Database Persistence]
         RedisData[redis_data<br/>Cache Persistence]
     end
 
-    API --> MongoDB
+    API --> Postgres
     API --> Redis
     API --> MailHog
 
     AppImage --> BaseImage
-    MongoDB --> MongoImage
+    Postgres --> PostgresImage
     Redis --> RedisImage
 
-    MongoDB --> MongoData
+    Postgres --> PostgresData
     Redis --> RedisData
 
     classDef containers fill:#e3f2fd,stroke:#1565c0
     classDef images fill:#e8f5e8,stroke:#2e7d32
     classDef volumes fill:#fff3e0,stroke:#ef6c00
 
-    class API,MongoDB,Redis,MailHog containers
-    class BaseImage,AppImage,MongoImage,RedisImage images
-    class MongoData,RedisData volumes
+    class API,Postgres,Redis,MailHog containers
+    class BaseImage,AppImage,PostgresImage,RedisImage images
+    class PostgresData,RedisData volumes
 ```
 
 ### Building Docker Images
@@ -243,16 +253,18 @@ docker build --target production -t abc-dashboard-backend:prod .
 ```yaml
 version: '3.8'
 services:
-  mongodb:
-    image: mongo:6
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongodb_data:/data/db
+  postgres:
+    image: postgres:15-alpine
     environment:
-      MONGO_INITDB_DATABASE: abc_dashboard
+      POSTGRES_DB: abc_dashboard
+      POSTGRES_USER: abc_user
+      POSTGRES_PASSWORD: abc_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      test: ['CMD-SHELL', 'pg_isready -U abc_user']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -282,14 +294,19 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      MONGODB_URI: mongodb://mongodb:27017/abc_dashboard
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: abc_dashboard
+      POSTGRES_USER: abc_user
+      POSTGRES_PASSWORD: abc_password
+      DATABASE_URL: postgresql://abc_user:abc_password@postgres:5432/abc_dashboard
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-production-secret
-      EMAIL_SERVICE: smtp
+      EMAIL_SERVICE: mailhog
       EMAIL_HOST: mailhog
       EMAIL_PORT: 1025
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -303,7 +320,7 @@ services:
       start_period: 40s
 
 volumes:
-  mongodb_data:
+  postgres_data:
   redis_data:
 ```
 
@@ -332,8 +349,8 @@ docker-compose up -d --scale api=3
 
 ```bash
 # Required software
-Node.js >= 18
-MongoDB >= 6
+Node.js >= 20
+PostgreSQL >= 14
 Redis (optional)
 Git
 
@@ -343,8 +360,8 @@ npm install
 # Copy environment file
 cp env/development.env .env
 
-# Start MongoDB locally or use Docker
-docker run -d -p 27017:27017 --name mongodb mongo:6
+# Start PostgreSQL locally or use Docker
+docker run -d -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=abc_password -e POSTGRES_USER=abc_user -e POSTGRES_DB=abc_dashboard postgres:15-alpine
 
 # Start Redis (optional)
 docker run -d -p 6379:6379 --name redis redis:7-alpine
@@ -430,7 +447,7 @@ graph TD
 
     subgraph "Infrastructure"
         Server[Application Server]
-        Database[(MongoDB)]
+        Database[(PostgreSQL)]
         Cache[(Redis)]
         Email[Email Service]
     end
@@ -710,28 +727,22 @@ jobs:
 
 ## Database Management
 
-### MongoDB Setup
+### PostgreSQL Setup
 
 ```bash
-# Connect to MongoDB
-mongosh mongodb://localhost:27017/abc_dashboard
+# Connect to PostgreSQL
+psql postgresql://abc_user:abc_password@localhost:5432/abc_dashboard
 
 # Create database and user (production)
-use abc_dashboard
-db.createUser({
-  user: 'app_user',
-  pwd: 'secure_password',
-  roles: ['readWrite']
-})
-
-# Enable authentication
-mongod --auth --dbpath /data/db
+CREATE DATABASE abc_dashboard;
+CREATE USER abc_app WITH ENCRYPTED PASSWORD 'secure_password';
+GRANT ALL PRIVILEGES ON DATABASE abc_dashboard TO abc_app;
 
 # Backup database
-mongodump --db abc_dashboard --out /backup/$(date +%Y%m%d_%H%M%S)
+pg_dump \"$DATABASE_URL\" > /backup/$(date +%Y%m%d_%H%M%S).sql
 
 # Restore database
-mongorestore --db abc_dashboard /backup/backup_directory
+psql \"$DATABASE_URL\" < /backup/backup.sql
 ```
 
 ### Database Migration Strategy
@@ -935,14 +946,14 @@ server {
 #### Database Connection Issues
 
 ```bash
-# Check MongoDB connection
-mongosh --eval "db.runCommand({ping: 1})"
+# Check PostgreSQL connection
+pg_isready -h localhost -p 5432 -U abc_user
 
-# Check MongoDB logs
-docker logs mongodb
+# Check PostgreSQL logs
+docker logs postgres
 
 # Reset database connection
-docker-compose restart mongodb
+docker-compose restart postgres
 ```
 
 #### Application Startup Issues
@@ -952,7 +963,7 @@ docker-compose restart mongodb
 pm2 logs abc-dashboard-backend
 
 # Check environment variables
-printenv | grep -E "(NODE_ENV|PORT|MONGO|JWT)"
+printenv | grep -E "(NODE_ENV|PORT|POSTGRES|DATABASE_URL|JWT)"
 
 # Validate configuration
 node -e "require('./src/infrastructure/config/config.js')"
@@ -981,7 +992,7 @@ curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:5000/api/v1/health"
 node --prof server.js
 
 # Check database performance
-db.serverStatus().metrics
+psql \"$DATABASE_URL\" -c \"SELECT now(), numbackends, xact_commit, blks_hit FROM pg_stat_database WHERE datname = current_database();\"
 ```
 
 ## Backup and Recovery
@@ -995,11 +1006,11 @@ db.serverStatus().metrics
 BACKUP_DIR="/backups/$(date +%Y%m%d)"
 mkdir -p $BACKUP_DIR
 
-# MongoDB backup
-docker exec mongodb mongodump --db abc_dashboard --out /backup
+# PostgreSQL backup
+docker exec postgres pg_dump -U abc_user -d abc_dashboard > $BACKUP_DIR/abc_dashboard.sql
 
 # Compress backup
-tar -czf $BACKUP_DIR/mongodb_backup.tar.gz -C /backup abc_dashboard
+tar -czf $BACKUP_DIR/postgres_backup.tar.gz -C $BACKUP_DIR abc_dashboard.sql
 
 # Upload to cloud storage (optional)
 # aws s3 cp $BACKUP_DIR/mongodb_backup.tar.gz s3://your-backup-bucket/
@@ -1011,7 +1022,7 @@ find /backups -type f -name "*.tar.gz" -mtime +7 -delete
 ### Disaster Recovery
 
 1. **Stop the application**: `pm2 stop abc-dashboard-backend`
-2. **Restore database**: `mongorestore --db abc_dashboard /path/to/backup`
+2. **Restore database**: `psql \"$DATABASE_URL\" < /path/to/backup/abc_dashboard.sql`
 3. **Verify data integrity**: Run health checks and test queries
 4. **Restart application**: `pm2 start abc-dashboard-backend`
 5. **Monitor logs**: Check for any errors during startup
@@ -1033,7 +1044,7 @@ graph TD
     end
 
     subgraph "Shared Services"
-        DB[(MongoDB<br/>Replica Set)]
+        DB[(PostgreSQL<br/>HA Cluster)]
         Cache[(Redis<br/>Cluster)]
         Queue[(Message Queue)]
     end

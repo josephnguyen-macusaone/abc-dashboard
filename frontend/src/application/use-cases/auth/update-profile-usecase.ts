@@ -15,31 +15,44 @@ export interface UpdateProfileDTO {
  * Application Use Case: Update Profile
  * Handles the business logic for updating user profile information
  */
-export class UpdateProfileUseCase {
-  private readonly logger = logger.createChild({
+export interface UpdateProfileUseCaseContract {
+  execute: (updates: UpdateProfileDTO) => Promise<User>;
+}
+
+export function createUpdateProfileUseCase(
+  authRepository: IAuthRepository
+): UpdateProfileUseCaseContract {
+  const useCaseLogger = logger.createChild({
     component: 'UpdateProfileUseCase',
   });
 
+  return {
+    async execute(updates: UpdateProfileDTO): Promise<User> {
+      const correlationId = generateCorrelationId();
+      try {
+        return await authRepository.updateProfile(updates);
+      } catch (error) {
+        useCaseLogger.error(`Failed to update profile`, {
+          correlationId,
+          updates: Object.keys(updates),
+          operation: 'update_profile_usecase_error',
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
+    },
+  };
+}
+
+/**
+ * Backward-compatible class wrapper.
+ */
+export class UpdateProfileUseCase implements UpdateProfileUseCaseContract {
+  private readonly useCase = createUpdateProfileUseCase(this.authRepository);
+
   constructor(private readonly authRepository: IAuthRepository) {}
 
-  /**
-   * Execute update profile use case
-   */
-  async execute(updates: UpdateProfileDTO): Promise<User> {
-    const correlationId = generateCorrelationId();
-
-    try {
-      const updatedUser = await this.authRepository.updateProfile(updates);
-
-      return updatedUser;
-    } catch (error) {
-      this.logger.error(`Failed to update profile`, {
-        correlationId,
-        updates: Object.keys(updates),
-        operation: 'update_profile_usecase_error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+  execute(updates: UpdateProfileDTO): Promise<User> {
+    return this.useCase.execute(updates);
   }
 }

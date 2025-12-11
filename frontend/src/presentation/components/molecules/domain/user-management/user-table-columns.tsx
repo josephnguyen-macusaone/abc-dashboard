@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { User2, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import * as React from "react";
 
-import { DataTableColumnHeader } from "@/presentation/components/molecules/data-table";
+import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { RoleBadge, StatusBadge } from "@/presentation/components/molecules/domain/user-management";
 import {

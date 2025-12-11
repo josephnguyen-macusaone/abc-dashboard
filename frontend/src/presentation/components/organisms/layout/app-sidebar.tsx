@@ -8,7 +8,7 @@ import {
 } from '@/presentation/components/molecules';
 import { cn } from '@/shared/utils';
 
-export interface SidebarProps {
+export interface AppSidebarProps {
   isOpen: boolean;
   navigationItems: NavigationItem[];
   currentPath: string;
@@ -23,7 +23,7 @@ export interface SidebarProps {
   className?: string;
 }
 
-export function Sidebar({
+export function AppSidebar({
   isOpen,
   navigationItems,
   currentPath,
@@ -36,7 +36,7 @@ export function Sidebar({
   onProfileClick,
   onLogout,
   className,
-}: SidebarProps) {
+}: AppSidebarProps) {
   const handleBrandClick = () => {
     onNavigate('/dashboard');
   };

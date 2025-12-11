@@ -11,7 +11,7 @@ export * from './error-handling';
 export * from './auth';
 
 // User profile components
-export * from './user';
+export * from './user-profile';
 
 // User management components
 export * from './user-management';

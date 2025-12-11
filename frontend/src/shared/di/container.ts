@@ -7,17 +7,23 @@ import { UserRepository } from '@/infrastructure/repositories/user-repository';
 
 // Use Cases
 import {
-  LoginUseCase,
-  LogoutUseCase,
-  UpdateProfileUseCase,
-  GetProfileUseCase
+  createLoginUseCase,
+  type LoginUseCaseContract,
+  createLogoutUseCase,
+  type LogoutUseCaseContract,
+  createUpdateProfileUseCase,
+  type UpdateProfileUseCaseContract,
+  createGetProfileUseCase,
+  type GetProfileUseCaseContract,
 } from '@/application/use-cases/auth';
 import {
   CreateUserUseCase,
   UpdateUserUseCase,
   DeleteUserUseCase,
-  GetUsersUseCase,
-  SearchUsersUseCase,
+  createGetUsersUseCase,
+  type GetUsersUseCaseContract,
+  createSearchUsersUseCase,
+  type SearchUsersUseCaseContract,
   GetUserStatsUseCase
 } from '@/application/use-cases/user';
 
@@ -31,16 +37,16 @@ class DependencyContainer {
   private _userRepository?: UserRepository;
 
   // Use Cases (Application Layer)
-  private _loginUseCase?: LoginUseCase;
-  private _logoutUseCase?: LogoutUseCase;
-  private _updateProfileUseCase?: UpdateProfileUseCase;
-  private _getProfileUseCase?: GetProfileUseCase;
+  private _loginUseCase?: LoginUseCaseContract;
+  private _logoutUseCase?: LogoutUseCaseContract;
+  private _updateProfileUseCase?: UpdateProfileUseCaseContract;
+  private _getProfileUseCase?: GetProfileUseCaseContract;
 
   private _createUserUseCase?: CreateUserUseCase;
   private _updateUserUseCase?: UpdateUserUseCase;
   private _deleteUserUseCase?: DeleteUserUseCase;
-  private _getUsersUseCase?: GetUsersUseCase;
-  private _searchUsersUseCase?: SearchUsersUseCase;
+  private _getUsersUseCase?: GetUsersUseCaseContract;
+  private _searchUsersUseCase?: SearchUsersUseCaseContract;
   private _getUserStatsUseCase?: GetUserStatsUseCase;
 
   // Services (Application Layer)
@@ -63,30 +69,30 @@ class DependencyContainer {
   }
 
   // Use Case getters
-  get loginUseCase(): LoginUseCase {
+  get loginUseCase(): LoginUseCaseContract {
     if (!this._loginUseCase) {
-      this._loginUseCase = new LoginUseCase(this.authRepository);
+      this._loginUseCase = createLoginUseCase(this.authRepository);
     }
     return this._loginUseCase;
   }
 
-  get logoutUseCase(): LogoutUseCase {
+  get logoutUseCase(): LogoutUseCaseContract {
     if (!this._logoutUseCase) {
-      this._logoutUseCase = new LogoutUseCase(this.authRepository);
+      this._logoutUseCase = createLogoutUseCase(this.authRepository);
     }
     return this._logoutUseCase;
   }
 
-  get updateProfileUseCase(): UpdateProfileUseCase {
+  get updateProfileUseCase(): UpdateProfileUseCaseContract {
     if (!this._updateProfileUseCase) {
-      this._updateProfileUseCase = new UpdateProfileUseCase(this.authRepository);
+      this._updateProfileUseCase = createUpdateProfileUseCase(this.authRepository);
     }
     return this._updateProfileUseCase;
   }
 
-  get getProfileUseCase(): GetProfileUseCase {
+  get getProfileUseCase(): GetProfileUseCaseContract {
     if (!this._getProfileUseCase) {
-      this._getProfileUseCase = new GetProfileUseCase(this.authRepository);
+      this._getProfileUseCase = createGetProfileUseCase(this.authRepository);
     }
     return this._getProfileUseCase;
   }
@@ -112,16 +118,16 @@ class DependencyContainer {
     return this._deleteUserUseCase;
   }
 
-  get getUsersUseCase(): GetUsersUseCase {
+  get getUsersUseCase(): GetUsersUseCaseContract {
     if (!this._getUsersUseCase) {
-      this._getUsersUseCase = new GetUsersUseCase(this.userRepository);
+      this._getUsersUseCase = createGetUsersUseCase(this.userRepository);
     }
     return this._getUsersUseCase;
   }
 
-  get searchUsersUseCase(): SearchUsersUseCase {
+  get searchUsersUseCase(): SearchUsersUseCaseContract {
     if (!this._searchUsersUseCase) {
-      this._searchUsersUseCase = new SearchUsersUseCase(this.userRepository);
+      this._searchUsersUseCase = createSearchUsersUseCase(this.userRepository);
     }
     return this._searchUsersUseCase;
   }
@@ -136,12 +142,17 @@ class DependencyContainer {
   // Service getters
   get authService(): AuthService {
     if (!this._authService) {
+      const logoutPort = this.logoutUseCase;
+      const updateProfilePort = this.updateProfileUseCase;
+      const getProfilePort = this.getProfileUseCase;
       this._authService = new AuthService(
         this.authRepository,
-        this.loginUseCase,
-        this.logoutUseCase,
-        this.updateProfileUseCase,
-        this.getProfileUseCase
+        {
+          login: this.loginUseCase,
+          logout: logoutPort,
+          updateProfile: updateProfilePort,
+          getProfile: getProfilePort,
+        }
       );
     }
     return this._authService;

@@ -69,7 +69,9 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('Frontend: Adding auth header for request:', config.url, 'Token length:', token.length);
+            if (process.env.NODE_ENV === 'development') {
+              console.debug('Adding auth header for request:', config.url, 'Token length:', token.length);
+            }
           } else {
             console.log('Frontend: No token found for request:', config.url);
           }
@@ -84,14 +86,16 @@ class HttpClient {
         }
 
         // Log outgoing request with trace information
-        logger.api(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
-          correlationId,
-          url: config.url,
-          method: config.method,
-          traceId: trace.traceId,
-          spanId: trace.spanId,
-          category: 'api-details',
-        });
+        if (process.env.NODE_ENV === 'development') {
+          logger.api(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
+            correlationId,
+            url: config.url,
+            method: config.method,
+            traceId: trace.traceId,
+            spanId: trace.spanId,
+            category: 'api-details',
+          });
+        }
 
         return config;
       },
@@ -114,15 +118,17 @@ class HttpClient {
         const trace = (response.config as any)?.trace;
 
         // Log successful response with trace information
-        logger.api(`Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-          correlationId,
-          status: response.status,
-          duration: Date.now() - ((response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime || Date.now()),
-          url: response.config.url,
-          traceId: trace?.traceId,
-          spanId: trace?.spanId,
-          category: 'api-details' as const,
-        });
+        if (process.env.NODE_ENV === 'development') {
+          logger.api(`Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+            correlationId,
+            status: response.status,
+            duration: Date.now() - ((response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime || Date.now()),
+            url: response.config.url,
+            traceId: trace?.traceId,
+            spanId: trace?.spanId,
+            category: 'api-details' as const,
+          });
+        }
 
         return response;
       },

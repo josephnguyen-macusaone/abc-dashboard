@@ -10,7 +10,6 @@ export {
 export {
   UserStatsCards,
   StatsCards,
-  UserFormModal,
   RoleBadge,
   StatusBadge,
   UsersDataTable,
@@ -20,7 +19,6 @@ export {
   type UserStatsCardsProps,
   type StatsCardsProps,
   type StatsCardConfig,
-  type UserFormModalProps,
   type RoleBadgeProps,
   type StatusBadgeProps
 } from './user-management';

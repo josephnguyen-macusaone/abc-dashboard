@@ -1,14 +1,15 @@
 "use client";
 
 import type { Column, Table } from "@tanstack/react-table";
-import { Search, X } from "lucide-react";
 import * as React from "react";
+import { X } from "lucide-react";
 
-import { DataTableFacetedFilter } from "@/presentation/components/molecules/data-table/data-table-faceted-filter";
-import { DataTableSliderFilter } from "@/presentation/components/molecules/data-table/data-table-slider-filter";
-import { DataTableViewOptions } from "@/presentation/components/molecules/data-table/data-table-view-options";
+import { DataTableFacetedFilter } from "./data-table-faceted-filter";
+import { DataTableSliderFilter } from "./data-table-slider-filter";
+import { DataTableViewOptions } from "./data-table-view-options";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
+import { SearchBar } from "@/presentation/components/molecules";
 import { cn } from "@/shared/utils";
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {
@@ -42,21 +43,21 @@ export function DataTableToolbar<TData>({
       )}
       {...props}
     >
-        {columns.map((column) => (
-          <DataTableToolbarFilter key={column.id} column={column} />
-        ))}
-        {isFiltered && (
-          <Button
-            aria-label="Reset filters"
-            variant="outline"
-            size="sm"
-            className="border-dashed"
-            onClick={onReset}
-          >
-            <X />
-            Reset
-          </Button>
-        )}
+      {columns.map((column) => (
+        <DataTableToolbarFilter key={column.id} column={column} />
+      ))}
+      {isFiltered && (
+        <Button
+          aria-label="Reset filters"
+          variant="outline"
+          size="sm"
+          className="border-dashed"
+          onClick={onReset}
+        >
+          <X />
+          Reset
+        </Button>
+      )}
       <div className="flex items-center gap-2 ml-auto">
         {children}
         <DataTableViewOptions table={table} align="end" />
@@ -80,15 +81,14 @@ function DataTableToolbarFilter<TData>({
     switch (columnMeta.variant) {
       case "text":
         return (
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={columnMeta.placeholder ?? columnMeta.label}
-              value={(column.getFilterValue() as string) ?? ""}
-              onChange={(event) => column.setFilterValue(event.target.value)}
-              className="h-8 w-40 pl-8 lg:w-56"
-            />
-          </div>
+          <SearchBar
+            placeholder={columnMeta.placeholder ?? columnMeta.label}
+            value={(column.getFilterValue() as string) ?? ""}
+            onValueChange={(val) => column.setFilterValue(val)}
+            allowClear
+            className="w-40 lg:w-56"
+            inputClassName="h-8"
+          />
         );
 
       case "number":

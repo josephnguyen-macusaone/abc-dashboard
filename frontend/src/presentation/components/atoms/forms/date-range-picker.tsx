@@ -553,17 +553,13 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
           <Button
             onClick={() => {
               setIsOpen(false);
-              // Clear the date range by setting empty values
-              const emptyRange = { from: new Date(), to: undefined };
-              setRange(emptyRange);
-              setRangeCompare(undefined);
+              // Treat clear as removing filters: notify with empty range and reset visuals
               setSelectedPreset(undefined);
-              if (onUpdate) {
-                onUpdate({
-                  range: { from: new Date(), to: undefined }, // Send empty range to clear filters
-                  rangeCompare: undefined,
-                });
-              }
+              setRangeCompare(undefined);
+              onUpdate?.({
+                range: { from: undefined as unknown as Date, to: undefined },
+                rangeCompare: undefined,
+              });
             }}
             variant="outline"
             size="sm"
@@ -571,30 +567,30 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
             Clear
           </Button>
           <div className="flex gap-2">
-          <Button
-            onClick={() => {
-              setIsOpen(false);
-              resetValues();
-            }}
-            variant="ghost"
+            <Button
+              onClick={() => {
+                setIsOpen(false);
+                resetValues();
+              }}
+              variant="ghost"
               size="sm"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              setIsOpen(false);
-              if (
-                !areRangesEqual(range, openedRangeRef.current) ||
-                !areRangesEqual(rangeCompare, openedRangeCompareRef.current)
-              ) {
-                onUpdate?.({ range, rangeCompare });
-              }
-            }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsOpen(false);
+                if (
+                  !areRangesEqual(range, openedRangeRef.current) ||
+                  !areRangesEqual(rangeCompare, openedRangeCompareRef.current)
+                ) {
+                  onUpdate?.({ range, rangeCompare });
+                }
+              }}
               size="sm"
-          >
-            Update
-          </Button>
+            >
+              Update
+            </Button>
           </div>
         </div>
       </PopoverContent>

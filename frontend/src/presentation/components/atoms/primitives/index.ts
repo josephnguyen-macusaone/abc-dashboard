@@ -13,6 +13,7 @@ export * from './separator';
 export * from './skeleton';
 export * from './slider';
 export * from './sortable';
+export * from './scroll-area';
 export * from './table';
 export * from './tabs';
 export * from './toaster';

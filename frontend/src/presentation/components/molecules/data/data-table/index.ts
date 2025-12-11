@@ -1,5 +1,5 @@
 export { DataTable } from "./data-table";
-export { DataTablePagination } from "./data-table-pagination";
+export { TablePagination as DataTablePagination } from "../common/table-pagination";
 export { DataTableColumnHeader } from "./data-table-column-header";
 export { DataTableToolbar } from "./data-table-toolbar";
 export { DataTableAdvancedToolbar } from "./data-table-advanced-toolbar";

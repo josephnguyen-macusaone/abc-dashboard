@@ -26,7 +26,7 @@ docker-compose --profile dev up -d
 # Build and run
 docker build -t abc-dashboard-backend .
 docker run -p 5000:5000 \
-  -e MONGODB_URI=mongodb://your-host \
+  -e DATABASE_URL=postgresql://abc_user:abc_password@db:5432/abc_dashboard \
   -e JWT_SECRET=your-secret \
   abc-dashboard-backend
 ```
@@ -90,14 +90,14 @@ npm run migrate
 npm run seed
 
 # Backup database
-mongodump --db abc_dashboard --out backup/$(date +%Y%m%d_%H%M%S)
+pg_dump \"$DATABASE_URL\" > backup/$(date +%Y%m%d_%H%M%S).sql
 ```
 
 ### Email Service Maintenance
 
 ```bash
 # Test email configuration
-npm run test:email-config
+npm run test:email:config
 
 # Test email sending
 npm run test:email:send
@@ -131,22 +131,22 @@ cat .env
 # Check logs
 pm2 logs
 
-# Test database connection
-npm run test:db
+# Check database status
+npm run db:status
 ```
 
 #### Email Not Sending
 
 ```bash
 # Test email configuration
-npm run test:email-config
+npm run test:email:config
 
 # Check email service logs
 tail -f logs/app.log | grep email
 
 # Verify credentials
-# SendGrid: Check API key format
-# Google Workspace: Verify app password
+# Google Workspace: Verify App Password
+# Mailjet: Verify API Key and Secret Key
 ```
 
 #### High Memory Usage
@@ -168,7 +168,7 @@ npm run test:memory
 
 - **Indexes**: Ensure proper indexes on frequently queried fields
 - **Connection Pool**: Configure appropriate connection pool size
-- **Query Optimization**: Use MongoDB explain() for slow queries
+- **Query Optimization**: Use `EXPLAIN ANALYZE` for slow PostgreSQL queries
 
 #### Application Optimization
 

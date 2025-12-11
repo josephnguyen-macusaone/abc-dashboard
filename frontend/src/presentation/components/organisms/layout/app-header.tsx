@@ -5,17 +5,17 @@ import { Breadcrumb, ThemeSwitcher } from '@/presentation/components/molecules';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/utils';
 
-export interface DashboardHeaderProps {
+export interface AppHeaderProps {
   sidebarOpen: boolean;
   onSidebarToggle: () => void;
   className?: string;
 }
 
-export function DashboardHeader({
+export function AppHeader({
   sidebarOpen,
   onSidebarToggle,
   className,
-}: DashboardHeaderProps) {
+}: AppHeaderProps) {
   return (
     <header
       className={cn(

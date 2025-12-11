@@ -1,4 +1,2 @@
-// Layout and navigation components
-export { DashboardHeader, type DashboardHeaderProps } from './dashboard-header';
-export { MobileOverlay, type MobileOverlayProps } from './mobile-overlay';
+// Layout navigation components (header/overlay moved to organisms/layout)
 export * from './navigation';

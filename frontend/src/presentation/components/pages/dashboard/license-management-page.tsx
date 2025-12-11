@@ -41,7 +41,9 @@ export function LicenseManagementPage() {
   );
 
   const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
-    setDateRange(values.range);
+    const nextRange = values.range;
+    const hasRange = nextRange?.from || nextRange?.to;
+    setDateRange(hasRange ? nextRange : undefined);
   }, []);
 
   if (!currentUser) {

@@ -8,5 +8,5 @@ export { DataGridSortMenu } from "./data-grid-sort-menu";
 export { DataGridRowHeightMenu } from "./data-grid-row-height-menu";
 export { DataGridSearch } from "./data-grid-search";
 export { DataGridViewMenu } from "./data-grid-view-menu";
-export { DataGridPagination } from "./data-grid-pagination";
+export { TablePagination as DataGridPagination } from "../common/table-pagination";
 export * from "./data-grid-cell-variants";
