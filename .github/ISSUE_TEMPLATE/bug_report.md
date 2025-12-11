@@ -1,6 +1,6 @@
 ---
 name: 🐞 Bug Report
-about: Report a Flutter-related bug to help us improve
+about: Report a bug to help us improve
 title: "[Bug] <short description>"
 labels: bug
 assignees: ''
@@ -14,8 +14,8 @@ A clear and concise description of the bug you're experiencing.
 
 ### 🔁 Reproduction Steps
 Please list the minimal steps to reproduce the bug:
-1. `flutter clean`
-2. Run `flutter pub get`
+1. `npm ci` (backend or frontend as applicable)
+2. Run the app or tests
 3. Navigate to '...'
 4. Click on '...'
 5. Observe the error

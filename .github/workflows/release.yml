@@ -7,89 +7,37 @@ on:
 
 jobs:
   build:
-    name: Build & Release
-    runs-on: macos-latest
+    name: Build & Release (Node/Next)
+    runs-on: ubuntu-latest
 
     steps:
-      #1 Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v5
 
-        #2 Setup Java
-      - name: Set Up Java
-        uses: actions/setup-java@v5.0.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          distribution: 'oracle'
-          java-version: '17'
+          node-version: 18
+          cache: npm
 
-        #3 Setup Flutter
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+      - name: Install Backend Deps
+        working-directory: backend
+        run: npm ci
 
-        #4 Install Dependencies
-      - name: Install Dependencies
-        run: flutter pub get
+      - name: Install Frontend Deps
+        working-directory: frontend
+        run: npm ci
 
-        #5 Setup Keystore
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+      - name: Build Backend Docker image
+        run: docker build -f backend/Dockerfile -t abc-backend:${{ github.sha }} .
 
-      - name: Create key.properties
-        run: |
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "storeFile=keystore.jks" >> android/key.properties
+      - name: Build Frontend Docker image
+        run: docker build -f frontend/Dockerfile -t abc-frontend:${{ github.sha }} .
 
-      #6 Building APK
-      - name: Build APK
-        run: flutter build apk --flavor dev --release -t lib/main_prod.dart
-
-        #7 Building App Bundle (aab)
-      - name: Build appBundle
-        run: flutter build appbundle --flavor dev --release -t lib/main_prod.dart
-
-        #9 Upload Artifacts
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v5
-        with:
-          name: Releases
-          path: |
-            build/app/outputs/flutter-apk/app-dev-release.apk
-            build/app/outputs/bundle/devRelease/app-dev-release.aab
-
-        #10 Extract Version
-      - name: Extract version from pubspec.yaml
-        id: extract_version
-        run: |
-          version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
-          echo "VERSION=$version" >> $GITHUB_ENV
-
-        #11 Check if Tag Exists
-      - name: Check if Tag Exists
-        id: check_tag
-        run: |
-          if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "TAG_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "TAG_EXISTS=false" >> $GITHUB_ENV
-          fi
-
-        #12 Modify Tag if it Exists
-      - name: Modify Tag
-        if: env.TAG_EXISTS == 'true'
-        id: modify_tag
-        run: |
-          new_version="${{ env.VERSION }}-build-${{ github.run_number }}"
-          echo "VERSION=$new_version" >> $GITHUB_ENV
-
-        #13 Create Release
-      - name: Create Release
+      - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/app/outputs/flutter-apk/app-dev-release.apk,build/app/outputs/bundle/devRelease/app-dev-release.aab"
-          tag: v${{ env.VERSION }}
-          token: ${{ secrets.TOKEN }}
+          tag: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: "Backend and Frontend Docker images built for ${{ github.ref_name }}"
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -47,14 +47,29 @@ src/
 
 ## Quick Start
 
-**Prerequisites**: Node.js 20+, MongoDB 6+, npm 8+
+**Prerequisites**: Node.js 20+, PostgreSQL 14+, npm 8+
 
 ```bash
 npm install
 cp .env.example .env
-npm run migrate
-npm run seed
+npm run migrate           # Knex migrations (PostgreSQL)
+npm run seed              # Seed test data
 npm run dev
+```
+
+### Required Environment Variables (PostgreSQL)
+
+Set these in your `.env` (replacing with your values):
+
+```
+DATABASE_TYPE=postgres
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/abc_dashboard
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=abc_dashboard
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+PORT=5000
 ```
 
 **URLs**:

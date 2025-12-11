@@ -1,6 +1,6 @@
 ---
 name: 💡 Feature Request
-about: Suggest a new Flutter feature or improvement
+about: Suggest a new feature or improvement
 title: "[Feature] <short description>"
 labels: enhancement
 assignees: ''
