@@ -117,80 +117,129 @@ export class UserRepository extends IUserRepository {
     let query = this.db(this.tableName);
     let countQuery = this.db(this.tableName);
 
-    // Apply filters
+    // ========================================================================
+    // ENHANCED: Multi-field Search (Phase 2.1)
+    // Search across email, displayName, username, and phone
+    // ========================================================================
     if (filters.search) {
-      // Full-text search across displayName and email only
       const searchTerm = `%${filters.search}%`;
-      query = query.where((qb) => {
-        qb.whereRaw('email ILIKE ?', [searchTerm])
-          .orWhereRaw('display_name ILIKE ?', [searchTerm]);
-      });
-      countQuery = countQuery.where((qb) => {
-        qb.whereRaw('email ILIKE ?', [searchTerm])
-          .orWhereRaw('display_name ILIKE ?', [searchTerm]);
-      });
-    } else {
-      // Individual field filters (only if no general search)
-      if (filters.email) {
-        query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
-        countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
-      }
-      if (filters.username) {
-        query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
-        countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
-      }
-      if (filters.displayName) {
-        query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
-        countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
-      }
-    }
-    if (filters.role) {
-      query = query.where('role', filters.role);
-      countQuery = countQuery.where('role', filters.role);
-    }
-    if (filters.isActive !== undefined) {
-      query = query.where('is_active', filters.isActive);
-      countQuery = countQuery.where('is_active', filters.isActive);
-    }
-    if (filters.managedBy) {
-      query = query.where('managed_by', filters.managedBy);
-      countQuery = countQuery.where('managed_by', filters.managedBy);
-    }
-    if (filters.hasAvatar !== undefined) {
-      if (filters.hasAvatar) {
-        query = query.whereNotNull('avatar_url').whereNot('avatar_url', '');
-        countQuery = countQuery.whereNotNull('avatar_url').whereNot('avatar_url', '');
+
+      // Determine search field if specified
+      if (filters.searchField) {
+        // Single field search
+        const fieldMap = {
+          email: 'email',
+          displayName: 'display_name',
+          username: 'username',
+          phone: 'phone',
+        };
+        const dbField = fieldMap[filters.searchField];
+
+        if (dbField) {
+          query = query.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+          countQuery = countQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+        }
       } else {
+        // Multi-field search (default): search across all fields
         query = query.where((qb) => {
-          qb.whereNull('avatar_url').orWhere('avatar_url', '');
+          qb.whereRaw('email ILIKE ?', [searchTerm])
+            .orWhereRaw('display_name ILIKE ?', [searchTerm])
+            .orWhereRaw('username ILIKE ?', [searchTerm])
+            .orWhereRaw('phone ILIKE ?', [searchTerm]);
         });
         countQuery = countQuery.where((qb) => {
-          qb.whereNull('avatar_url').orWhere('avatar_url', '');
+          qb.whereRaw('email ILIKE ?', [searchTerm])
+            .orWhereRaw('display_name ILIKE ?', [searchTerm])
+            .orWhereRaw('username ILIKE ?', [searchTerm])
+            .orWhereRaw('phone ILIKE ?', [searchTerm]);
         });
       }
     }
 
-    // Bio filtering - need to join with user_profiles
-    if (filters.hasBio !== undefined) {
-      if (filters.hasBio) {
-        query = query
-          .join('user_profiles', 'users.id', 'user_profiles.user_id')
-          .whereNotNull('user_profiles.bio')
-          .whereNot('user_profiles.bio', '');
-        countQuery = countQuery
-          .join('user_profiles', 'users.id', 'user_profiles.user_id')
-          .whereNotNull('user_profiles.bio')
-          .whereNot('user_profiles.bio', '');
-      } else {
-        query = query.leftJoin('user_profiles', 'users.id', 'user_profiles.user_id').where((qb) => {
-          qb.whereNull('user_profiles.bio').orWhere('user_profiles.bio', '');
-        });
-        countQuery = countQuery
-          .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
-          .where((qb) => {
-            qb.whereNull('user_profiles.bio').orWhere('user_profiles.bio', '');
-          });
-      }
+    // ========================================================================
+    // Individual field filters (can now work alongside general search)
+    // ========================================================================
+    if (filters.email && !filters.search) {
+      query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+      countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+    }
+    if (filters.username && !filters.search) {
+      query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+      countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+    }
+    if (filters.displayName && !filters.search) {
+      query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+      countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+    }
+    if (filters.phone && !filters.search) {
+      query = query.whereRaw('phone ILIKE ?', [`%${filters.phone}%`]);
+      countQuery = countQuery.whereRaw('phone ILIKE ?', [`%${filters.phone}%`]);
+    }
+
+    // ========================================================================
+    // ENHANCED: Date Range Filters (Phase 2.2)
+    // ========================================================================
+
+    // Created date range
+    if (filters.createdAtFrom) {
+      const fromDate = new Date(filters.createdAtFrom);
+      query = query.where('created_at', '>=', fromDate);
+      countQuery = countQuery.where('created_at', '>=', fromDate);
+    }
+    if (filters.createdAtTo) {
+      const toDate = new Date(filters.createdAtTo);
+      // Set to end of day
+      toDate.setHours(23, 59, 59, 999);
+      query = query.where('created_at', '<=', toDate);
+      countQuery = countQuery.where('created_at', '<=', toDate);
+    }
+
+    // Updated date range
+    if (filters.updatedAtFrom) {
+      const fromDate = new Date(filters.updatedAtFrom);
+      query = query.where('updated_at', '>=', fromDate);
+      countQuery = countQuery.where('updated_at', '>=', fromDate);
+    }
+    if (filters.updatedAtTo) {
+      const toDate = new Date(filters.updatedAtTo);
+      toDate.setHours(23, 59, 59, 999);
+      query = query.where('updated_at', '<=', toDate);
+      countQuery = countQuery.where('updated_at', '<=', toDate);
+    }
+
+    // Last login date range
+    if (filters.lastLoginFrom) {
+      const fromDate = new Date(filters.lastLoginFrom);
+      query = query.where('last_login_at', '>=', fromDate);
+      countQuery = countQuery.where('last_login_at', '>=', fromDate);
+    }
+    if (filters.lastLoginTo) {
+      const toDate = new Date(filters.lastLoginTo);
+      toDate.setHours(23, 59, 59, 999);
+      query = query.where('last_login_at', '<=', toDate);
+      countQuery = countQuery.where('last_login_at', '<=', toDate);
+    }
+
+    // ========================================================================
+    // EXISTING: Advanced Filters (Phase 2.3 - Already implemented)
+    // ========================================================================
+
+    // Role filter
+    if (filters.role) {
+      query = query.where('role', filters.role);
+      countQuery = countQuery.where('role', filters.role);
+    }
+
+    // Active status filter
+    if (filters.isActive !== undefined) {
+      query = query.where('is_active', filters.isActive);
+      countQuery = countQuery.where('is_active', filters.isActive);
+    }
+
+    // Managed by filter
+    if (filters.managedBy) {
+      query = query.where('managed_by', filters.managedBy);
+      countQuery = countQuery.where('managed_by', filters.managedBy);
     }
 
     const [users, countResult] = await Promise.all([

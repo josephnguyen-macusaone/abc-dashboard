@@ -1,6 +1,6 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 
-const STATUS_VALUES = ['active', 'cancel', 'pending', 'expired'];
+const STATUS_VALUES = ['draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'];
 const PLAN_VALUES = ['Basic', 'Premium', 'Enterprise'];
 const TERM_VALUES = ['monthly', 'yearly'];
 
@@ -33,36 +33,175 @@ export class LicenseValidator {
       sortOrder: ['asc', 'desc'].includes(query.sortOrder) ? query.sortOrder : 'desc',
     };
 
+    // ========================================================================
+    // Multi-field Search (Phase 2.1)
+    // ========================================================================
+    if (query.search) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.search = query.search.toString();
+
+      // Search field selector (optional)
+      if (query.searchField && ['key', 'dba', 'product', 'plan'].includes(query.searchField)) {
+        sanitized.filters.searchField = query.searchField;
+      }
+    }
+
+    // ========================================================================
+    // Individual Field Filters
+    // ========================================================================
+    if (query.key) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.key = query.key.toString();
+    }
+    if (query.dba) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.dba = query.dba.toString();
+    }
+    if (query.product) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.product = query.product.toString();
+    }
+    if (query.plan) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.plan = query.plan.toString();
+    }
+
+    // ========================================================================
+    // Status and Term Filters
+    // ========================================================================
     if (query.status) {
       if (!STATUS_VALUES.includes(query.status)) {
-        throw new ValidationException('Invalid status value');
+        throw new ValidationException(
+          `Invalid status value. Must be one of: ${STATUS_VALUES.join(', ')}`
+        );
       }
-      sanitized.status = query.status;
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.status = query.status;
     }
 
-    // Search parameter searches DBA field
-    if (query.search) {
-      sanitized.search = query.search.toString();
-    } else if (query.dba) {
-      // Legacy dba filter (for backward compatibility)
-      sanitized.dba = query.dba.toString();
+    if (query.term) {
+      if (!TERM_VALUES.includes(query.term)) {
+        throw new ValidationException(
+          `Invalid term value. Must be one of: ${TERM_VALUES.join(', ')}`
+        );
+      }
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.term = query.term;
     }
 
+    // ========================================================================
+    // Date Range Filters (Phase 2.2)
+    // ========================================================================
+    if (query.startsAtFrom) {
+      const date = new Date(query.startsAtFrom);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.startsAtFrom = date.toISOString();
+      }
+    }
+    if (query.startsAtTo) {
+      const date = new Date(query.startsAtTo);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.startsAtTo = date.toISOString();
+      }
+    }
+    if (query.expiresAtFrom) {
+      const date = new Date(query.expiresAtFrom);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.expiresAtFrom = date.toISOString();
+      }
+    }
+    if (query.expiresAtTo) {
+      const date = new Date(query.expiresAtTo);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.expiresAtTo = date.toISOString();
+      }
+    }
+    if (query.updatedAtFrom) {
+      const date = new Date(query.updatedAtFrom);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.updatedAtFrom = date.toISOString();
+      }
+    }
+    if (query.updatedAtTo) {
+      const date = new Date(query.updatedAtTo);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.updatedAtTo = date.toISOString();
+      }
+    }
+
+    // ========================================================================
+    // Advanced Filters (Phase 2.3)
+    // ========================================================================
+    if (query.zip) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.zip = query.zip.toString();
+    }
+
+    if (query.seatsMin !== undefined) {
+      const min = parseInt(query.seatsMin, 10);
+      if (!isNaN(min) && min >= 0) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.seatsMin = min;
+      }
+    }
+    if (query.seatsMax !== undefined) {
+      const max = parseInt(query.seatsMax, 10);
+      if (!isNaN(max) && max >= 0) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.seatsMax = max;
+      }
+    }
+
+    if (query.utilizationMin !== undefined) {
+      const min = parseFloat(query.utilizationMin);
+      if (!isNaN(min) && min >= 0 && min <= 100) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.utilizationMin = min;
+      }
+    }
+    if (query.utilizationMax !== undefined) {
+      const max = parseFloat(query.utilizationMax);
+      if (!isNaN(max) && max >= 0 && max <= 100) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.utilizationMax = max;
+      }
+    }
+
+    if (query.hasAvailableSeats !== undefined && typeof query.hasAvailableSeats === 'boolean') {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.hasAvailableSeats = query.hasAvailableSeats;
+    }
+
+    // ========================================================================
+    // Sorting
+    // ========================================================================
     const sortableFields = [
       'id',
+      'key',
+      'product',
+      'plan',
+      'status',
+      'term',
+      'seatsTotal',
+      'seatsUsed',
+      'utilizationPercent',
+      'startsAt',
+      'expiresAt',
       'dba',
       'zip',
-      'startDay',
-      'status',
-      'plan',
-      'term',
       'lastPayment',
-      'lastActive',
       'smsPurchased',
       'smsSent',
       'smsBalance',
       'agents',
       'agentsCost',
+      'notes',
       'createdAt',
       'updatedAt',
     ];
@@ -73,32 +212,67 @@ export class LicenseValidator {
   }
 
   static validateCreateInput(input) {
+    // Required fields for license creation
+    ensureString(input.key, 'key', 255);
+    if (!input.key || input.key.trim() === '') {
+      throw new ValidationException('key is required');
+    }
+
+    ensureString(input.product, 'product', 100);
+    if (!input.product || input.product.trim() === '') {
+      throw new ValidationException('product is required');
+    }
+
+    ensureString(input.plan, 'plan', 100);
+    if (!input.plan || input.plan.trim() === '') {
+      throw new ValidationException('plan is required');
+    }
+
+    // StartsAt is required and must be a valid date
+    if (!input.startsAt) {
+      throw new ValidationException('startsAt is required');
+    }
+    const startsAt = new Date(input.startsAt);
+    if (isNaN(startsAt.getTime())) {
+      throw new ValidationException('startsAt must be a valid date');
+    }
+
+    // SeatsTotal is required and must be positive
+    if (input.seatsTotal === undefined || input.seatsTotal === null) {
+      throw new ValidationException('seatsTotal is required');
+    }
+    if (typeof input.seatsTotal !== 'number' || input.seatsTotal < 1) {
+      throw new ValidationException('seatsTotal must be a number greater than 0');
+    }
+
+    // Optional validations
     ensureString(input.dba, 'dba', 255);
-    if (!input.dba) {
-      throw new ValidationException('dba is required');
-    }
-
     ensureString(input.zip, 'zip', 10);
-    ensureString(input.startDay, 'startDay');
-
-    if (!input.startDay) {
-      throw new ValidationException('startDay is required');
-    }
 
     if (input.status && !STATUS_VALUES.includes(input.status)) {
       throw new ValidationException(`status must be one of: ${STATUS_VALUES.join(', ')}`);
-    }
-
-    if (input.plan && !PLAN_VALUES.includes(input.plan)) {
-      throw new ValidationException(`plan must be one of: ${PLAN_VALUES.join(', ')}`);
     }
 
     if (input.term && !TERM_VALUES.includes(input.term)) {
       throw new ValidationException(`term must be one of: ${TERM_VALUES.join(', ')}`);
     }
 
-    if (input.status === 'cancel' && !input.cancelDate) {
-      throw new ValidationException('cancelDate is required when status is cancel');
+    // Expiry date must be after start date if provided
+    if (input.expiresAt) {
+      const expiresAt = new Date(input.expiresAt);
+      if (isNaN(expiresAt.getTime())) {
+        throw new ValidationException('expiresAt must be a valid date');
+      }
+      if (expiresAt <= startsAt) {
+        throw new ValidationException('expiresAt must be after startsAt');
+      }
+    }
+
+    if (input.cancelDate) {
+      const cancelDate = new Date(input.cancelDate);
+      if (isNaN(cancelDate.getTime())) {
+        throw new ValidationException('cancelDate must be a valid date');
+      }
     }
 
     ensureNumber(input.lastPayment, 'lastPayment');
@@ -110,37 +284,85 @@ export class LicenseValidator {
     if (input.agentsName && !Array.isArray(input.agentsName)) {
       throw new ValidationException('agentsName must be an array');
     }
+
+    ensureString(input.notes, 'notes');
   }
 
   static validateUpdateInput(input) {
-    // Reuse create validation for fields present
-    ensureString(input.dba, 'dba', 255);
-    ensureString(input.zip, 'zip', 10);
-    ensureString(input.startDay, 'startDay');
+    // Optional field validations (only validate if provided)
 
-    if (input.status && !STATUS_VALUES.includes(input.status)) {
+    if (input.key !== undefined) {
+      ensureString(input.key, 'key', 255);
+      if (input.key && input.key.trim() === '') {
+        throw new ValidationException('key cannot be empty');
+      }
+    }
+
+    if (input.product !== undefined) {
+      ensureString(input.product, 'product', 100);
+      if (input.product && input.product.trim() === '') {
+        throw new ValidationException('product cannot be empty');
+      }
+    }
+
+    if (input.plan !== undefined) {
+      ensureString(input.plan, 'plan', 100);
+      if (input.plan && input.plan.trim() === '') {
+        throw new ValidationException('plan cannot be empty');
+      }
+    }
+
+    if (input.status !== undefined && !STATUS_VALUES.includes(input.status)) {
       throw new ValidationException(`status must be one of: ${STATUS_VALUES.join(', ')}`);
     }
 
-    if (input.plan && !PLAN_VALUES.includes(input.plan)) {
-      throw new ValidationException(`plan must be one of: ${PLAN_VALUES.join(', ')}`);
-    }
-
-    if (input.term && !TERM_VALUES.includes(input.term)) {
+    if (input.term !== undefined && !TERM_VALUES.includes(input.term)) {
       throw new ValidationException(`term must be one of: ${TERM_VALUES.join(', ')}`);
     }
 
-    if (input.status === 'cancel' && input.cancelDate === undefined) {
-      throw new ValidationException('cancelDate is required when status is cancel');
+    // Date validations
+    if (input.startsAt !== undefined) {
+      const startsAt = new Date(input.startsAt);
+      if (isNaN(startsAt.getTime())) {
+        throw new ValidationException('startsAt must be a valid date');
+      }
     }
 
+    if (input.expiresAt !== undefined) {
+      const expiresAt = new Date(input.expiresAt);
+      if (isNaN(expiresAt.getTime())) {
+        throw new ValidationException('expiresAt must be a valid date');
+      }
+    }
+
+    if (input.cancelDate !== undefined) {
+      const cancelDate = new Date(input.cancelDate);
+      if (isNaN(cancelDate.getTime())) {
+        throw new ValidationException('cancelDate must be a valid date');
+      }
+    }
+
+    // Numeric validations
+    ensureNumber(input.seatsTotal, 'seatsTotal');
+    if (input.seatsTotal !== undefined && input.seatsTotal < 1) {
+      throw new ValidationException('seatsTotal must be greater than 0');
+    }
+
+    ensureNumber(input.seatsUsed, 'seatsUsed');
+    if (input.seatsUsed !== undefined && input.seatsUsed < 0) {
+      throw new ValidationException('seatsUsed cannot be negative');
+    }
+
+    ensureString(input.dba, 'dba', 255);
+    ensureString(input.zip, 'zip', 10);
     ensureNumber(input.lastPayment, 'lastPayment');
     ensureNumber(input.smsPurchased, 'smsPurchased');
     ensureNumber(input.smsSent, 'smsSent');
     ensureNumber(input.agents, 'agents');
     ensureNumber(input.agentsCost, 'agentsCost');
+    ensureString(input.notes, 'notes');
 
-    if (input.agentsName && !Array.isArray(input.agentsName)) {
+    if (input.agentsName !== undefined && !Array.isArray(input.agentsName)) {
       throw new ValidationException('agentsName must be an array');
     }
   }

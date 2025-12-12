@@ -23,17 +23,25 @@ export function createUserRoutes(userController) {
    * @swagger
    * /users:
    *   get:
-   *     summary: Get users with pagination and filtering
+   *     summary: Get users with pagination, filtering, and search
+   *     description: |
+   *       Retrieve a paginated list of users with support for:
+   *       - Multi-field search (email, displayName, username, phone)
+   *       - Date range filtering (created, updated, last login)
+   *       - Advanced filters (role, status, manager, avatar, bio)
+   *       - Sorting by multiple fields
    *     tags: [Users]
    *     security:
    *       - bearerAuth: []
    *     parameters:
+   *       # Pagination
    *       - in: query
    *         name: page
    *         schema:
    *           type: integer
    *           minimum: 1
    *           default: 1
+   *         description: Page number
    *       - in: query
    *         name: limit
    *         schema:
@@ -41,19 +49,115 @@ export function createUserRoutes(userController) {
    *           minimum: 1
    *           maximum: 100
    *           default: 10
+   *         description: Number of items per page
+   *
+   *       # Multi-field Search
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *           maxLength: 100
+   *         description: Search term (searches across email, displayName, username, phone by default)
+   *       - in: query
+   *         name: searchField
+   *         schema:
+   *           type: string
+   *           enum: [email, displayName, username, phone]
+   *         description: Limit search to a specific field
+   *
+   *       # Individual Field Filters
    *       - in: query
    *         name: email
    *         schema:
    *           type: string
+   *         description: Filter by email (partial match)
+   *       - in: query
+   *         name: username
+   *         schema:
+   *           type: string
+   *         description: Filter by username (partial match)
+   *       - in: query
+   *         name: displayName
+   *         schema:
+   *           type: string
+   *         description: Filter by display name (partial match)
+   *       - in: query
+   *         name: phone
+   *         schema:
+   *           type: string
+   *         description: Filter by phone number (partial match)
+   *
+   *       # Date Range Filters
+   *       - in: query
+   *         name: createdAtFrom
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Filter users created after this date (ISO 8601 format)
+   *       - in: query
+   *         name: createdAtTo
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Filter users created before this date (ISO 8601 format)
+   *       - in: query
+   *         name: updatedAtFrom
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Filter users updated after this date (ISO 8601 format)
+   *       - in: query
+   *         name: updatedAtTo
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Filter users updated before this date (ISO 8601 format)
+   *       - in: query
+   *         name: lastLoginFrom
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Filter users who logged in after this date (ISO 8601 format)
+   *       - in: query
+   *         name: lastLoginTo
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Filter users who logged in before this date (ISO 8601 format)
+   *
+   *       # Advanced Filters
    *       - in: query
    *         name: role
    *         schema:
    *           type: string
    *           enum: [admin, manager, staff]
+   *         description: Filter by user role
    *       - in: query
    *         name: isActive
    *         schema:
    *           type: boolean
+   *         description: Filter by active status
+   *       - in: query
+   *         name: managedBy
+   *         schema:
+   *           type: string
+   *         description: Filter by manager ID (for staff users)
+   *
+   *       # Sorting
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *           enum: [createdAt, updatedAt, email, username, displayName, role, isActive, lastLogin]
+   *           default: createdAt
+   *         description: Field to sort by
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *           default: desc
+   *         description: Sort direction
    *     responses:
    *       200:
    *         description: Users retrieved successfully

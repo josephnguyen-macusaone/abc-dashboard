@@ -21,3 +21,19 @@ export { UserResponseDto, UserListResponseDto, CreateUserRequestDto } from './us
 
 // Profile DTOs
 export { ProfileDto, UpdateProfileRequestDto } from './profile/index.js';
+
+// License DTOs
+export {
+  LicenseResponseDto,
+  LicenseListResponseDto,
+  CreateLicenseRequestDto,
+  LicenseAssignmentResponseDto,
+} from './license/index.js';
+
+// License DTOs
+export {
+  LicenseResponseDto,
+  LicenseListResponseDto,
+  CreateLicenseRequestDto,
+  LicenseAssignmentResponseDto,
+} from './license/index.js';

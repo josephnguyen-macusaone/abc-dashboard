@@ -12,8 +12,10 @@ if (!Joi) {
 export const userSchemas = {
   /**
    * Get users query parameters schema
+   * ENHANCED: Phase 2.1, 2.2, 2.3 - Multi-field search, date ranges, advanced filters
    */
   getUsers: Joi.object({
+    // Pagination
     page: Joi.number().integer().min(1).default(1).messages({
       'number.min': 'Page must be at least 1',
       'number.base': 'Page must be a number',
@@ -25,58 +27,111 @@ export const userSchemas = {
       'number.base': 'Limit must be a number',
     }),
 
-    search: Joi.string()
-      .min(1)
-      .max(100)
-      .messages({
-        'string.min': 'Search term must contain at least 1 character',
-        'string.max': 'Search term cannot exceed 100 characters',
-      }),
+    // ========================================================================
+    // ENHANCED: Multi-field Search (Phase 2.1)
+    // ========================================================================
+    search: Joi.string().min(1).max(100).messages({
+      'string.min': 'Search term must contain at least 1 character',
+      'string.max': 'Search term cannot exceed 100 characters',
+    }),
 
-    email: Joi.string()
-      .min(1)
-      .max(254)
-      .messages({
-        'string.min': 'Email search must contain at least 1 character',
-        'string.max': 'Email search cannot exceed 254 characters',
-      }),
+    searchField: Joi.string().valid('email', 'displayName', 'username', 'phone').messages({
+      'any.only': 'searchField must be one of: email, displayName, username, phone',
+    }),
 
-    username: Joi.string()
-      .min(3)
-      .max(30)
-      .pattern(/^[a-zA-Z0-9_]+$/)
-      .messages({
-        'string.min': 'Username must be at least 3 characters long',
-        'string.max': 'Username cannot exceed 30 characters',
-        'string.pattern.base': 'Username can only contain letters, numbers, and underscores',
-      }),
+    // Individual field filters
+    email: Joi.string().min(1).max(254).messages({
+      'string.min': 'Email search must contain at least 1 character',
+      'string.max': 'Email search cannot exceed 254 characters',
+    }),
+
+    username: Joi.string().min(1).max(30).messages({
+      'string.min': 'Username must be at least 1 character long',
+      'string.max': 'Username cannot exceed 30 characters',
+    }),
 
     displayName: Joi.string().min(1).max(100).messages({
       'string.min': 'Display name cannot be empty',
       'string.max': 'Display name cannot exceed 100 characters',
     }),
 
-    hasAvatar: Joi.boolean().messages({
-      'boolean.base': 'hasAvatar must be a boolean',
+    phone: Joi.string().min(1).max(20).messages({
+      'string.min': 'Phone search must contain at least 1 character',
+      'string.max': 'Phone search cannot exceed 20 characters',
     }),
 
-    hasBio: Joi.boolean().messages({
-      'boolean.base': 'hasBio must be a boolean',
+    // ========================================================================
+    // ENHANCED: Date Range Filters (Phase 2.2)
+    // ========================================================================
+
+    // Created date range
+    createdAtFrom: Joi.date().iso().messages({
+      'date.base': 'createdAtFrom must be a valid date',
+      'date.format': 'createdAtFrom must be in ISO 8601 format',
     }),
 
+    createdAtTo: Joi.date().iso().messages({
+      'date.base': 'createdAtTo must be a valid date',
+      'date.format': 'createdAtTo must be in ISO 8601 format',
+    }),
+
+    // Updated date range
+    updatedAtFrom: Joi.date().iso().messages({
+      'date.base': 'updatedAtFrom must be a valid date',
+      'date.format': 'updatedAtFrom must be in ISO 8601 format',
+    }),
+
+    updatedAtTo: Joi.date().iso().messages({
+      'date.base': 'updatedAtTo must be a valid date',
+      'date.format': 'updatedAtTo must be in ISO 8601 format',
+    }),
+
+    // Last login date range
+    lastLoginFrom: Joi.date().iso().messages({
+      'date.base': 'lastLoginFrom must be a valid date',
+      'date.format': 'lastLoginFrom must be in ISO 8601 format',
+    }),
+
+    lastLoginTo: Joi.date().iso().messages({
+      'date.base': 'lastLoginTo must be a valid date',
+      'date.format': 'lastLoginTo must be in ISO 8601 format',
+    }),
+
+    // ========================================================================
+    // ENHANCED: Advanced Filters (Phase 2.3)
+    // ========================================================================
+
+    // Role filter
     role: Joi.string().valid('admin', 'manager', 'staff').messages({
       'any.only': 'Role must be one of: admin, manager, staff',
     }),
 
+    // Active status filter
     isActive: Joi.boolean().messages({
       'boolean.base': 'isActive must be a boolean',
     }),
 
+    // Managed by filter
+    managedBy: Joi.string().messages({
+      'string.base': 'managedBy must be a string (user ID)',
+    }),
+
+    // Sorting
     sortBy: Joi.string()
-      .valid('createdAt', 'email', 'username', 'displayName', 'role', 'isActive', 'lastLogin')
+      .valid(
+        'createdAt',
+        'updatedAt',
+        'email',
+        'username',
+        'displayName',
+        'role',
+        'isActive',
+        'lastLogin'
+      )
       .default('createdAt')
       .messages({
-        'any.only': 'sortBy must be one of: createdAt, email, username, displayName, role, isActive, lastLogin',
+        'any.only':
+          'sortBy must be one of: createdAt, updatedAt, email, username, displayName, role, isActive, lastLogin',
       }),
 
     sortOrder: Joi.string().valid('asc', 'desc').default('desc').messages({

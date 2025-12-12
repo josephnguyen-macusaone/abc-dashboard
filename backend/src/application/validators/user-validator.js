@@ -157,17 +157,37 @@ export class UserValidator {
     const sanitized = {
       page: Math.max(1, parseInt(query.page) || 1),
       limit: Math.min(100, Math.max(1, parseInt(query.limit) || 10)),
-      sortBy: ['createdAt', 'username', 'email', 'displayName', 'role', 'isActive', 'lastLogin'].includes(query.sortBy)
+      sortBy: [
+        'createdAt',
+        'username',
+        'email',
+        'displayName',
+        'role',
+        'isActive',
+        'lastLogin',
+      ].includes(query.sortBy)
         ? query.sortBy
         : 'createdAt',
       sortOrder: ['asc', 'desc'].includes(query.sortOrder) ? query.sortOrder : 'desc',
     };
 
-    // Add filters if provided
+    // ========================================================================
+    // ENHANCED: Search filters (Phase 2.1)
+    // ========================================================================
     if (query.search) {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.search = query.search;
+
+      // Search field selector (optional)
+      if (
+        query.searchField &&
+        ['email', 'displayName', 'username', 'phone'].includes(query.searchField)
+      ) {
+        sanitized.filters.searchField = query.searchField;
+      }
     }
+
+    // Individual field filters
     if (query.email) {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.email = query.email;
@@ -180,21 +200,83 @@ export class UserValidator {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.displayName = query.displayName;
     }
+    if (query.phone) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.phone = query.phone;
+    }
+
+    // ========================================================================
+    // ENHANCED: Date range filters (Phase 2.2)
+    // ========================================================================
+
+    // Created date range
+    if (query.createdAtFrom) {
+      const date = new Date(query.createdAtFrom);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.createdAtFrom = date.toISOString();
+      }
+    }
+    if (query.createdAtTo) {
+      const date = new Date(query.createdAtTo);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.createdAtTo = date.toISOString();
+      }
+    }
+
+    // Updated date range
+    if (query.updatedAtFrom) {
+      const date = new Date(query.updatedAtFrom);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.updatedAtFrom = date.toISOString();
+      }
+    }
+    if (query.updatedAtTo) {
+      const date = new Date(query.updatedAtTo);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.updatedAtTo = date.toISOString();
+      }
+    }
+
+    // Last login date range
+    if (query.lastLoginFrom) {
+      const date = new Date(query.lastLoginFrom);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.lastLoginFrom = date.toISOString();
+      }
+    }
+    if (query.lastLoginTo) {
+      const date = new Date(query.lastLoginTo);
+      if (!isNaN(date.getTime())) {
+        sanitized.filters = sanitized.filters || {};
+        sanitized.filters.lastLoginTo = date.toISOString();
+      }
+    }
+
+    // ========================================================================
+    // ENHANCED: Advanced filters (Phase 2.3)
+    // ========================================================================
+
+    // Role filter
     if (query.role && this.VALID_ROLES.includes(query.role)) {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.role = query.role;
     }
+
+    // Active status filter
     if (query.isActive !== undefined && typeof query.isActive === 'boolean') {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.isActive = query.isActive;
     }
-    if (query.hasAvatar !== undefined && typeof query.hasAvatar === 'boolean') {
+
+    // Managed by filter
+    if (query.managedBy) {
       sanitized.filters = sanitized.filters || {};
-      sanitized.filters.hasAvatar = query.hasAvatar;
-    }
-    if (query.hasBio !== undefined && typeof query.hasBio === 'boolean') {
-      sanitized.filters = sanitized.filters || {};
-      sanitized.filters.hasBio = query.hasBio;
+      sanitized.filters.managedBy = query.managedBy;
     }
 
     return sanitized;
