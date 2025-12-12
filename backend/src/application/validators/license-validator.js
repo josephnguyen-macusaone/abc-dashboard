@@ -40,7 +40,11 @@ export class LicenseValidator {
       sanitized.status = query.status;
     }
 
-    if (query.dba) {
+    // Search parameter searches DBA field
+    if (query.search) {
+      sanitized.search = query.search.toString();
+    } else if (query.dba) {
+      // Legacy dba filter (for backward compatibility)
       sanitized.dba = query.dba.toString();
     }
 

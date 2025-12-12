@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { Typography } from '@/presentation/components/atoms';
-import { LicensesDataTable } from '@/presentation/components/molecules/domain/license-management';
+import { LicensesDataGrid } from '@/presentation/components/molecules/domain/license-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { cn } from '@/shared/utils';
 import type { LicenseRecord } from '@/shared/types';
@@ -26,7 +26,7 @@ interface LicenseManagementProps {
   /** Loading state for the license list */
   isLoading?: boolean;
   /** Callback to reload licenses (called after operations) */
-  onLoadLicenses?: () => Promise<void>;
+  onLoadLicenses?: (params?: { page?: number; limit?: number; search?: string; status?: string }) => Promise<void>;
   /** Callback for saving license changes */
   onSaveLicenses?: (licenses: LicenseRecord[]) => Promise<void>;
   /** Callback for adding a new license row */
@@ -37,6 +37,18 @@ interface LicenseManagementProps {
   dateRange?: { from?: Date; to?: Date };
   /** Callback when date range changes */
   onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
+  /** Pagination configuration */
+  pageCount?: number;
+  totalCount?: number;
+  /** Callback when table query changes (pagination/sort/filter/search) */
+  onQueryChange?: (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    search?: string;
+    status?: string;
+  }) => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -51,6 +63,9 @@ export function LicenseManagement({
   onDeleteLicenses,
   dateRange,
   onDateRangeChange,
+  pageCount,
+  totalCount,
+  onQueryChange,
   className
 }: LicenseManagementProps) {
   // Reload licenses handler (called after operations)
@@ -151,8 +166,18 @@ export function LicenseManagement({
         )}
       </div>
 
-      {/* Licenses Data Table (simpler DOM to avoid removeChild errors) */}
-      <LicensesDataTable data={filteredLicenses} isLoading={isLoading} />
+      {/* Licenses Data Grid with full CRUD functionality */}
+      <LicensesDataGrid
+        data={filteredLicenses}
+        isLoading={isLoading}
+        onSave={handleSave}
+        onAddRow={handleAddRow}
+        onDeleteRows={handleDeleteRows}
+        pageCount={pageCount}
+        totalCount={totalCount}
+        onQueryChange={onQueryChange}
+        onLoadLicenses={handleLoadLicenses}
+      />
     </div>
   );
 }

@@ -1,3 +1,26 @@
+// API Error Types - Export these first to ensure they're available
+export interface ApiErrorDto {
+  message: string;
+  code?: string;
+  status?: number;
+  details?: any;
+}
+
+export class ApiExceptionDto extends Error {
+  public readonly code?: string;
+  public readonly status?: number;
+  public readonly details?: any;
+
+  constructor(message: string, code?: string, status?: number, details?: any) {
+    super(message);
+    this.name = 'ApiException';
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
+// Other exports
 import { UserRole } from '@/domain/entities/user-entity';
 import { SortBy, SortOrder } from '@/shared/types';
 
@@ -109,6 +132,9 @@ export interface GetUsersQueryParamsDto {
   email?: string;
   username?: string;
   displayName?: string;
+  search?: string;
+  role?: string | string[];
+  isActive?: string | string[];
   hasAvatar?: boolean;
   hasBio?: boolean;
   sortBy?: SortBy;
@@ -117,14 +143,9 @@ export interface GetUsersQueryParamsDto {
 
 export interface UserStatsResponseDto {
   totalUsers: number;
-  activeUsers: number;
-  inactiveUsers: number;
-  usersByRole: {
-    admin: number;
-    manager: number;
-    staff: number;
-  };
-  recentUsers: number;
+  admin: number;
+  manager: number;
+  staff: number;
 }
 
 // Profile Update API DTOs
@@ -149,26 +170,4 @@ export interface ChangePasswordRequestDto {
 
 export interface ChangePasswordResponseDto {
   message: string;
-}
-
-// API Error Types
-export interface ApiErrorDto {
-  message: string;
-  code?: string;
-  status?: number;
-  details?: any;
-}
-
-export class ApiExceptionDto extends Error {
-  public readonly code?: string;
-  public readonly status?: number;
-  public readonly details?: any;
-
-  constructor(message: string, code?: string, status?: number, details?: any) {
-    super(message);
-    this.name = 'ApiException';
-    this.code = code;
-    this.status = status;
-    this.details = details;
-  }
 }

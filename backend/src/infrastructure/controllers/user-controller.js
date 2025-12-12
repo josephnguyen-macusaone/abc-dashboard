@@ -46,6 +46,7 @@ export class UserController {
         ...sanitizedQuery,
         filters: {
           ...permissionFilters,
+          search: req.query.search,
           email: req.query.email,
           username: req.query.username,
           displayName: req.query.displayName,

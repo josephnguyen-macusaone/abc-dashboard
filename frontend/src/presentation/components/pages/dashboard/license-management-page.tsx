@@ -10,55 +10,60 @@ import { toast } from "sonner";
 import { useAuth } from "@/presentation/contexts/auth-context";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
-import { fakerLicenses, createEmptyLicense } from "@/shared/mock/license-faker-data";
-import { licenseService } from "@/application/services/license-management-service";
+import { createEmptyLicense } from "@/shared/mock/license-faker-data";
+import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license-store";
 import type { LicenseRecord } from "@/shared/types";
 
 export function LicenseManagementPage() {
   const { user: currentUser } = useAuth();
 
-  const [licenses, setLicenses] = useState<LicenseRecord[]>(fakerLicenses);
-  const [isLoading, setIsLoading] = useState(false);
+  const licenses = useLicenseStore(selectLicenses);
+  const isLoading = useLicenseStore(selectLicenseLoading);
+  const licensePagination = useLicenseStore(selectLicensePagination);
+  const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
+  const createLicense = useLicenseStore(state => state.createLicense);
+  const updateLicense = useLicenseStore(state => state.updateLicense);
+  const deleteLicense = useLicenseStore(state => state.deleteLicense);
+  const bulkUpdateLicenses = useLicenseStore(state => state.bulkUpdateLicenses);
+  const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
+
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>();
 
-  const loadLicenses = useCallback(async () => {
-    setIsLoading(true);
+  const loadLicenses = useCallback(async (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
     try {
-      const response = await licenseService.list({ page: 1, limit: 100 });
-      if (response?.data) {
-        setLicenses(response.data);
-      }
+      await fetchLicenses({
+        page: params?.page || 1,
+        limit: params?.limit || 20,
+        search: params?.search,
+        status: params?.status as any,
+      });
     } catch (error) {
-      toast.error("Using mock license data (API unavailable)");
-      setLicenses(fakerLicenses);
-    } finally {
-      setIsLoading(false);
+      toast.error("Failed to load licenses");
     }
-  }, []);
+  }, [fetchLicenses]);
 
   useEffect(() => {
-    loadLicenses();
+    loadLicenses({ page: 1, limit: 20 });
   }, [loadLicenses]);
 
   const onSave = useCallback(
     async (data: LicenseRecord[]) => {
-      setIsLoading(true);
       try {
-        await licenseService.bulkUpdate(data);
-        setLicenses(data);
+        const updates = data.map(license => ({
+          ...license,
+        }));
+        await bulkUpdateLicenses(updates);
         toast.success("Licenses saved");
       } catch (error) {
         toast.error("Failed to save licenses");
-      } finally {
-        setIsLoading(false);
       }
     },
-    [],
+    [bulkUpdateLicenses],
   );
 
   const onAddRow = useCallback(async (): Promise<LicenseRecord> => {
     try {
-      const { data: payload } = await licenseService.addRow({
+      const newLicense = await createLicense({
         dba: "",
         zip: "",
         startDay: new Date().toISOString().split("T")[0],
@@ -73,25 +78,24 @@ export function LicenseManagementPage() {
         agentsCost: 0,
         notes: "",
       });
-      if (payload?.license) {
-        return payload.license;
-      }
+      return newLicense;
     } catch (error) {
       toast.error("Failed to add license row");
+      return createEmptyLicense(licenses.map((l) => l.id));
     }
-    return createEmptyLicense(licenses.map((l) => l.id));
-  }, [licenses]);
+  }, [createLicense, licenses]);
 
   const onDeleteRows = useCallback(
     async (rows: LicenseRecord[], _indices: number[]) => {
       try {
-        await licenseService.bulkDelete(rows.map((row) => row.id));
+        const ids = rows.map((row) => row.id);
+        await bulkDeleteLicenses(ids);
         toast.success("Deleted selected licenses");
       } catch (error) {
         toast.error("Failed to delete licenses");
       }
     },
-    [],
+    [bulkDeleteLicenses],
   );
 
   const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
@@ -110,6 +114,22 @@ export function LicenseManagementPage() {
     );
   }
 
+  const handleQueryChange = useCallback(async (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    search?: string;
+    status?: string;
+  }) => {
+    await loadLicenses({
+      page: params.page,
+      limit: params.limit,
+      search: params.search,
+      status: params.status,
+    });
+  }, [loadLicenses]);
+
   return (
     <LicenseManagement
       currentUser={currentUser}
@@ -121,6 +141,9 @@ export function LicenseManagementPage() {
       onDeleteLicenses={onDeleteRows}
       dateRange={dateRange}
       onDateRangeChange={onDateRangeChange}
+      onQueryChange={handleQueryChange}
+      pageCount={licensePagination.totalPages}
+      totalCount={licensePagination.total}
     />
   );
 }

@@ -7,6 +7,7 @@
 import * as React from "react";
 import { FileText, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { startTransition } from "react";
 
 import {
   DataGrid,
@@ -31,6 +32,7 @@ interface LicensesDataGridProps {
   onSave?: (data: LicenseRecord[]) => Promise<void>;
   onAddRow?: () => LicenseRecord | Promise<LicenseRecord>;
   onDeleteRows?: (rows: LicenseRecord[], indices: number[]) => Promise<void>;
+  onLoadLicenses?: (params?: { page?: number; limit?: number; search?: string; status?: string }) => Promise<void>;
   pageCount?: number;
   totalCount?: number;
   onQueryChange?: (params: {
@@ -38,7 +40,8 @@ interface LicensesDataGridProps {
     limit: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
-    filters?: Record<string, unknown>;
+    search?: string;
+    status?: string;
   }) => void;
 }
 
@@ -54,22 +57,80 @@ export function LicensesDataGrid({
   totalCount,
   onQueryChange,
 }: LicensesDataGridProps) {
+  // For license management (no onQueryChange), use data directly without complex sync
+  // For admin dashboard (with onQueryChange), use complex sync to handle pagination
+  const useComplexSync = !!onQueryChange;
   const [data, setData] = React.useState<LicenseRecord[]>(initialData);
   const [hasChanges, setHasChanges] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const dataVersionRef = React.useRef(0);
 
-  // Sync with initialData when it changes
+  // Only use complex sync refs when needed
+  const lastInitialDataRef = React.useRef<{ length: number; string: string }>(
+    useComplexSync ? {
+      length: initialData.length,
+      string: JSON.stringify(initialData)
+    } : { length: 0, string: '' }
+  );
+
+  // Sync with initialData when it changes, but only if we don't have unsaved changes and using complex sync
   React.useEffect(() => {
-    setData(initialData);
-    setHasChanges(false);
-  }, [initialData]);
+    if (!useComplexSync) {
+      // For simple mode, just set data directly and increment version to force remount
+      setData(initialData);
+      dataVersionRef.current += 1;
+      return;
+    }
+
+    // Complex sync logic for pagination scenarios
+    // Simple length check first - much faster and reliable
+    if (initialData.length !== lastInitialDataRef.current.length) {
+      if (hasChanges) {
+        // If data changed externally but we have changes, update the ref
+        lastInitialDataRef.current.length = initialData.length;
+        return;
+      }
+
+      // Use requestAnimationFrame to defer the update to the next animation frame
+      requestAnimationFrame(() => {
+        setData(initialData);
+        lastInitialDataRef.current.length = initialData.length;
+        dataVersionRef.current += 1;
+      });
+      return;
+    }
+
+    // If lengths match, do a more thorough check but less frequently
+    const currentInitialDataString = JSON.stringify(initialData);
+    const initialDataChanged = lastInitialDataRef.current.string !== currentInitialDataString;
+
+    if (initialDataChanged) {
+      if (hasChanges) {
+        // Update ref but don't sync data
+        lastInitialDataRef.current.string = currentInitialDataString;
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        setData(initialData);
+        lastInitialDataRef.current.string = currentInitialDataString;
+        lastInitialDataRef.current.length = initialData.length;
+        dataVersionRef.current += 1;
+      });
+    }
+  }, [initialData, hasChanges, useComplexSync]);
 
   const columns = React.useMemo(() => getLicenseGridColumns(), []);
 
   const handleDataChange = React.useCallback((newData: LicenseRecord[]) => {
     setData(newData);
     setHasChanges(true);
-  }, []);
+    // Update the ref to reflect current initialData state
+    lastInitialDataRef.current = {
+      length: initialData.length,
+      string: JSON.stringify(initialData)
+    };
+  }, [initialData]);
 
   const handleRowAdd = React.useCallback(async () => {
     const fallback: LicenseRecord = {
@@ -240,7 +301,12 @@ export function LicensesDataGrid({
             </div>
           )}
         </div>
-        <DataGrid {...gridState} height={height} stretchColumns />
+        <DataGrid
+          key={`licenses-data-grid-${dataVersionRef.current}`}
+          {...gridState}
+          height={height}
+          stretchColumns
+        />
       </div>
     </div>
   );

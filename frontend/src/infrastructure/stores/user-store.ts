@@ -95,10 +95,16 @@ export const useUserStore = create<UserState>()(
             const currentFilters = get().filters;
             const currentPagination = get().pagination;
 
+            // Only send page and limit from pagination, not metadata (total, totalPages, hasNext, hasPrev)
             const queryParams = {
               ...currentFilters,
-              ...currentPagination,
+              page: params.page ?? currentPagination.page,
+              limit: params.limit ?? currentPagination.limit,
               ...params,
+              // Convert boolean values to strings for API
+              isActive: params.isActive !== undefined
+                ? String(params.isActive)
+                : (typeof currentFilters.isActive === 'boolean' ? String(currentFilters.isActive) : currentFilters.isActive),
             };
 
             const response = await userApi.getUsers(queryParams);

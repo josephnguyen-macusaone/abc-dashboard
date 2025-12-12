@@ -14,18 +14,9 @@ export class GetUserStatsUseCase {
       return {
         stats: {
           totalUsers: stats.totalUsers,
-          usersWithAvatars: stats.usersWithAvatars,
-          usersWithBio: stats.usersWithBio,
-          usersWithPhone: stats.usersWithPhone,
-          recentRegistrations: stats.recentRegistrations,
-          profileCompletionRate:
-            stats.totalUsers > 0
-              ? Math.round(
-                  ((stats.usersWithAvatars + stats.usersWithBio + stats.usersWithPhone) /
-                    (stats.totalUsers * 3)) *
-                    100
-                )
-              : 0,
+          admin: stats.admin,
+          manager: stats.manager,
+          staff: stats.staff,
         },
       };
     } catch (error) {

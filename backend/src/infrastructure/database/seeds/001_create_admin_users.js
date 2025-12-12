@@ -153,6 +153,59 @@ export async function seed(knex) {
     },
   ];
 
+  // Generate additional managers and staff for testing pagination, search, and filtering
+  const additionalManagers = [];
+  const additionalStaff = [];
+
+  // Add 10 more managers
+  const managerDepartments = ['finance', 'marketing', 'operations', 'support', 'legal', 'product', 'engineering', 'design', 'security', 'analytics'];
+  for (let i = 0; i < 10; i++) {
+    const dept = managerDepartments[i];
+    additionalManagers.push({
+      username: `manager_${dept}`,
+      email: `${dept}.manager@example.com`,
+      password: 'Manager123!',
+      displayName: `${dept.charAt(0).toUpperCase() + dept.slice(1)} Manager`,
+      role: 'manager',
+      phone: `+1-555-${String(1000 + i).padStart(4, '0')}`,
+      profile: {
+        bio: `${dept.charAt(0).toUpperCase() + dept.slice(1)} department manager`,
+      },
+    });
+  }
+
+  // Add 90 more staff members (9 per manager)
+  const staffRoles = [
+    'Specialist', 'Coordinator', 'Analyst', 'Assistant', 'Representative',
+    'Engineer', 'Consultant', 'Administrator', 'Technician'
+  ];
+  
+  let staffIndex = 0;
+  for (const manager of additionalManagers) {
+    for (let j = 0; j < 9; j++) {
+      const role = staffRoles[j];
+      const dept = manager.username.replace('manager_', '');
+      additionalStaff.push({
+        username: `${dept}_staff_${j + 1}`,
+        email: `${dept}.staff${j + 1}@example.com`,
+        password: 'Staff123!',
+        displayName: `${dept.charAt(0).toUpperCase() + dept.slice(1)} ${role}`,
+        role: 'staff',
+        phone: `+1-555-${String(2000 + staffIndex).padStart(4, '0')}`,
+        profile: {
+          bio: `${dept.charAt(0).toUpperCase() + dept.slice(1)} ${role.toLowerCase()} in the ${dept} department`,
+        },
+        managedByUsername: manager.username,
+        isActive: staffIndex % 10 !== 0, // Make every 10th user inactive for testing
+      });
+      staffIndex++;
+    }
+  }
+
+  // Add original managers and staff to the expanded list
+  usersToCreate.push(...additionalManagers);
+  usersToCreate.push(...additionalStaff);
+
   // Create users in hierarchical order (admins first, then managers, then staff)
   const adminUsers = usersToCreate.filter((u) => u.role === 'admin');
   const managerUsers = usersToCreate.filter((u) => u.role === 'manager');
@@ -176,7 +229,7 @@ export async function seed(knex) {
         display_name: userData.displayName,
         role: userData.role,
         phone: userData.phone,
-        is_active: true, // All seed users are pre-activated
+        is_active: userData.isActive !== undefined ? userData.isActive : true, // Use provided isActive or default to true
         is_first_login: false, // Seed users don't need first login password change
         requires_password_change: false, // Seed users have proper passwords
       };

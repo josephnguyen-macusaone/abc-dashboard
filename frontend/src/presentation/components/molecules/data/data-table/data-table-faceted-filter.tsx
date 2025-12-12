@@ -29,6 +29,9 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   title?: string;
   options: Option[];
   multiple?: boolean;
+  manualFiltering?: boolean;
+  onFilterChange?: (values: string[]) => void;
+  initialValues?: string[];
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -36,33 +39,76 @@ export function DataTableFacetedFilter<TData, TValue>({
   title,
   options,
   multiple,
+  manualFiltering = false,
+  onFilterChange,
+  initialValues = [],
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const [open, setOpen] = React.useState(false);
 
+  // For manual filtering, manage selected values completely locally
+  const [selectedValues, setSelectedValues] = React.useState<Set<string>>(new Set(initialValues));
+
+  // For regular filtering, sync with column filter value
   const columnFilterValue = column?.getFilterValue();
-  const selectedValues = new Set(
-    Array.isArray(columnFilterValue) ? columnFilterValue : [],
-  );
+  React.useEffect(() => {
+    if (!manualFiltering && column) {
+      const filterValues = Array.isArray(columnFilterValue)
+        ? columnFilterValue
+        : columnFilterValue
+          ? [columnFilterValue]
+          : [];
+      setSelectedValues(new Set(filterValues));
+    }
+  }, [columnFilterValue, manualFiltering, column]);
+
+  // Reset function for manual filtering
+  React.useEffect(() => {
+    if (manualFiltering) {
+      setSelectedValues(new Set(initialValues));
+    }
+  }, [initialValues, manualFiltering]);
 
   const onItemSelect = React.useCallback(
     (option: Option, isSelected: boolean) => {
       if (!column) return;
 
-      if (multiple) {
+      if (manualFiltering) {
+        // For manual filtering, manage state locally and notify parent
         const newSelectedValues = new Set(selectedValues);
         if (isSelected) {
           newSelectedValues.delete(option.value);
         } else {
           newSelectedValues.add(option.value);
         }
+
+        setSelectedValues(newSelectedValues);
+
+        // Notify parent of filter changes
         const filterValues = Array.from(newSelectedValues);
-        column.setFilterValue(filterValues.length ? filterValues : undefined);
+        onFilterChange?.(filterValues);
+
+        if (!multiple) {
+          setOpen(false);
+        }
       } else {
-        column.setFilterValue(isSelected ? undefined : [option.value]);
-        setOpen(false);
+        // For regular filtering, use column filter values
+        if (multiple) {
+          const newSelectedValues = new Set(selectedValues);
+          if (isSelected) {
+            newSelectedValues.delete(option.value);
+          } else {
+            newSelectedValues.add(option.value);
+          }
+          const filterValues = Array.from(newSelectedValues);
+          column.setFilterValue(filterValues.length ? filterValues : undefined);
+        } else {
+          const newValue = isSelected ? undefined : [option.value];
+          column.setFilterValue(newValue);
+          setOpen(false);
+        }
       }
     },
-    [column, multiple, selectedValues],
+    [column, multiple, selectedValues, manualFiltering, onFilterChange],
   );
 
   const onReset = React.useCallback(

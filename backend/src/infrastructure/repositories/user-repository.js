@@ -108,6 +108,7 @@ export class UserRepository extends IUserRepository {
       username: 'username',
       role: 'role',
       isActive: 'is_active',
+      lastLogin: 'last_login_at',
     };
 
     const sortColumn = sortColumnMap[sortBy] || sortBy;
@@ -117,17 +118,43 @@ export class UserRepository extends IUserRepository {
     let countQuery = this.db(this.tableName);
 
     // Apply filters
-    if (filters.email) {
-      query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
-      countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+    if (filters.search) {
+      // Full-text search across displayName and email only
+      const searchTerm = `%${filters.search}%`;
+      query = query.where((qb) => {
+        qb.whereRaw('email ILIKE ?', [searchTerm])
+          .orWhereRaw('display_name ILIKE ?', [searchTerm]);
+      });
+      countQuery = countQuery.where((qb) => {
+        qb.whereRaw('email ILIKE ?', [searchTerm])
+          .orWhereRaw('display_name ILIKE ?', [searchTerm]);
+      });
+    } else {
+      // Individual field filters (only if no general search)
+      if (filters.email) {
+        query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+        countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+      }
+      if (filters.username) {
+        query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+        countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+      }
+      if (filters.displayName) {
+        query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+        countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+      }
     }
-    if (filters.username) {
-      query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
-      countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+    if (filters.role) {
+      query = query.where('role', filters.role);
+      countQuery = countQuery.where('role', filters.role);
     }
-    if (filters.displayName) {
-      query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
-      countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+    if (filters.isActive !== undefined) {
+      query = query.where('is_active', filters.isActive);
+      countQuery = countQuery.where('is_active', filters.isActive);
+    }
+    if (filters.managedBy) {
+      query = query.where('managed_by', filters.managedBy);
+      countQuery = countQuery.where('managed_by', filters.managedBy);
     }
     if (filters.hasAvatar !== undefined) {
       if (filters.hasAvatar) {
@@ -240,32 +267,18 @@ export class UserRepository extends IUserRepository {
   }
 
   async getUserStats() {
-    const [totalUsers, usersWithAvatars, usersWithBio, usersWithPhone, recentRegistrations] =
-      await Promise.all([
-        this.db(this.tableName).count('id as count').first(),
-        this.db(this.tableName)
-          .whereNotNull('avatar_url')
-          .whereNot('avatar_url', '')
-          .count('id as count')
-          .first(),
-        this.db('user_profiles')
-          .whereNotNull('bio')
-          .whereNot('bio', '')
-          .count('id as count')
-          .first(),
-        this.db(this.tableName).whereNotNull('phone').count('id as count').first(),
-        this.db(this.tableName)
-          .where('created_at', '>=', this.db.raw("NOW() - INTERVAL '30 days'"))
-          .count('id as count')
-          .first(),
-      ]);
+    const [totalUsers, adminCount, managerCount, staffCount] = await Promise.all([
+      this.db(this.tableName).count('id as count').first(),
+      this.db(this.tableName).where('role', 'admin').count('id as count').first(),
+      this.db(this.tableName).where('role', 'manager').count('id as count').first(),
+      this.db(this.tableName).where('role', 'staff').count('id as count').first(),
+    ]);
 
     return {
       totalUsers: parseInt(totalUsers?.count || 0),
-      usersWithAvatars: parseInt(usersWithAvatars?.count || 0),
-      usersWithBio: parseInt(usersWithBio?.count || 0),
-      usersWithPhone: parseInt(usersWithPhone?.count || 0),
-      recentRegistrations: parseInt(recentRegistrations?.count || 0),
+      admin: parseInt(adminCount?.count || 0),
+      manager: parseInt(managerCount?.count || 0),
+      staff: parseInt(staffCount?.count || 0),
     };
   }
 

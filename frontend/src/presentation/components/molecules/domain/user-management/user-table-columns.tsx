@@ -103,15 +103,8 @@ export function getUserTableColumns({
           </div>
         );
       },
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const displayName = row.getValue(id) as string;
-        return displayName.toLowerCase().includes(value.toLowerCase());
-      },
       meta: {
         label: "Name",
-        variant: "text",
-        placeholder: "Search users...",
       },
     },
     {
@@ -140,7 +133,6 @@ export function getUserTableColumns({
           {row.getValue("email")}
         </span>
       ),
-      // No filter - search by name instead
       meta: {
         label: "Email",
       },
@@ -198,6 +190,8 @@ export function getUserTableColumns({
       },
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
+        // This is for client-side filtering fallback only
+        // Server-side filtering is handled via onQueryChange
         const isActive = row.getValue(id) as boolean;
         const statusValue = isActive ? "true" : "false";
         return Array.isArray(value) ? value.includes(statusValue) : value === statusValue;

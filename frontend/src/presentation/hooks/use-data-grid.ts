@@ -173,6 +173,7 @@ interface UseDataGridProps<TData>
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     filters?: Record<string, unknown>;
+    search?: string;
   }) => void;
 }
 
@@ -1852,25 +1853,52 @@ function useDataGrid<TData>({
     rowVirtualizerRef.current = rowVirtualizer;
   }
 
+  // Use separate refs to track state changes without depending on table object
+  const pageIndexRef = React.useRef(table.getState().pagination.pageIndex);
+  const pageSizeRef = React.useRef(table.getState().pagination.pageSize);
+  const sortIdRef = React.useRef(table.getState().sorting?.[0]?.id);
+  const sortDescRef = React.useRef(table.getState().sorting?.[0]?.desc);
+  const searchQueryRef = React.useRef(searchQuery);
+
   // Notify parent of query changes when manual modes are enabled
   React.useEffect(() => {
     if (!onQueryChange) return;
 
-    const { pagination: pg, sorting: sort, columnFilters: filters } = table.getState();
+    const state = table.getState();
+    const { pagination: pg, sorting: sort, columnFilters: filters } = state;
     const activeSort = sort?.[0];
     const filterMap = filters?.reduce<Record<string, unknown>>((acc, curr) => {
       acc[curr.id] = curr.value;
       return acc;
     }, {});
 
-    onQueryChange({
-      page: (pg?.pageIndex ?? 0) + 1,
-      limit: pg?.pageSize ?? 10,
-      sortBy: activeSort?.id,
-      sortOrder: activeSort?.desc ? "desc" : "asc",
-      filters: filterMap,
-    });
-  }, [table, onQueryChange]);
+    // Check if any relevant state changed
+    const pageIndexChanged = pageIndexRef.current !== pg?.pageIndex;
+    const pageSizeChanged = pageSizeRef.current !== pg?.pageSize;
+    const sortIdChanged = sortIdRef.current !== activeSort?.id;
+    const sortDescChanged = sortDescRef.current !== activeSort?.desc;
+    const searchChanged = searchQueryRef.current !== searchQuery;
+
+    if (pageIndexChanged || pageSizeChanged || sortIdChanged || sortDescChanged || searchChanged) {
+      // Update refs
+      pageIndexRef.current = pg?.pageIndex ?? 0;
+      pageSizeRef.current = pg?.pageSize ?? 10;
+      sortIdRef.current = activeSort?.id;
+      sortDescRef.current = activeSort?.desc;
+      searchQueryRef.current = searchQuery;
+
+      const queryParams = {
+        page: (pg?.pageIndex ?? 0) + 1,
+        limit: pg?.pageSize ?? 10,
+        sortBy: activeSort?.id,
+        sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
+        filters: filterMap,
+        search: searchQuery,
+      };
+
+      onQueryChange(queryParams);
+    }
+  });
 
   const onScrollToRow = React.useCallback(
     async (opts: Partial<CellPosition>) => {

@@ -42,6 +42,7 @@ export interface UpdateUserDTO {
 export interface UserListParams {
   page?: number;
   limit?: number;
+  search?: string;
   email?: string;
   username?: string;
   displayName?: string;
@@ -69,14 +70,9 @@ export interface UserSearchQuery {
  */
 export interface UserStats {
   totalUsers: number;
-  activeUsers: number;
-  inactiveUsers: number;
-  usersByRole: {
-    admin: number;
-    manager: number;
-    staff: number;
-  };
-  recentUsers: number; // Users created in last 30 days
+  admin: number;
+  manager: number;
+  staff: number;
 }
 
 /**

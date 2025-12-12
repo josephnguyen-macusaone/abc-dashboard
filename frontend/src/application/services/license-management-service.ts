@@ -4,7 +4,8 @@ import type { LicenseRecord, LicenseStatus, LicenseTerm } from '@/shared/types';
 export interface LicenseListQuery {
   page?: number;
   limit?: number;
-  status?: LicenseStatus;
+  search?: string;
+  status?: string;
   dba?: string;
   sortBy?: keyof LicenseRecord;
   sortOrder?: 'asc' | 'desc';
@@ -12,17 +13,33 @@ export interface LicenseListQuery {
 
 export interface LicenseListResponse {
   success: boolean;
-  data: LicenseRecord[];
-  meta: {
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
+  message: string;
+  timestamp: string;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
   };
+  data: LicenseRecord[];
+}
+
+export interface LicenseBulkResponse {
+  success: boolean;
+  message: string;
+  data: LicenseRecord[];
+}
+
+export interface LicenseServiceContract {
+  list(params: LicenseListQuery): Promise<LicenseListResponse>;
+  getById(id: number): Promise<LicenseResponse>;
+  create(payload: Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>): Promise<LicenseResponse>;
+  update(id: number, payload: Partial<LicenseRecord>): Promise<LicenseResponse>;
+  bulkUpdate(updates: Partial<LicenseRecord>[]): Promise<LicenseBulkResponse>;
+  bulkCreate(licenses: Array<Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>>): Promise<LicenseBulkResponse>;
+  delete(id: number): Promise<{ success: boolean; message: string }>;
 }
 
 export interface LicenseResponse {
@@ -50,11 +67,11 @@ export const licenseService = {
   },
 
   async bulkUpdate(updates: Partial<LicenseRecord>[]) {
-    return httpClient.patch('/licenses/bulk', { updates });
+    return httpClient.patch<LicenseBulkResponse>('/licenses/bulk', { updates });
   },
 
   async bulkCreate(licenses: Array<Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>>) {
-    return httpClient.post('/licenses/bulk', { licenses });
+    return httpClient.post<LicenseBulkResponse>('/licenses/bulk', { licenses });
   },
 
   async addRow(payload: Partial<LicenseRecord>) {
@@ -66,6 +83,6 @@ export const licenseService = {
   },
 
   async delete(id: number) {
-    return httpClient.delete(`/licenses/${id}`);
+    return httpClient.delete<{ success: boolean; message: string }>(`/licenses/${id}`);
   },
 };

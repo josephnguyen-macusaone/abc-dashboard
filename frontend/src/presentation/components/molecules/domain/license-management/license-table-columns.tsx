@@ -106,16 +106,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           {row.getValue("dba")}
         </span>
       ),
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const dba = row.getValue(id) as string;
-        return dba.toLowerCase().includes(value.toLowerCase());
-      },
-      meta: {
-        label: "DBA",
-        variant: "text",
-        placeholder: "Search licenses...",
-      },
+      enableColumnFilter: false,
     },
     {
       id: "zip",
@@ -173,17 +164,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       size: 110,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const status = row.getValue(id) as string;
-        return Array.isArray(value) ? value.includes(status) : value === status;
-      },
-      meta: {
-        label: "Status",
-        variant: "multiSelect",
-        options: STATUS_OPTIONS,
-        icon: CircleDashed,
-      },
+      enableColumnFilter: false,
     },
     {
       id: "plan",
@@ -194,17 +175,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => (
         <Badge variant="outline">{row.getValue("plan")}</Badge>
       ),
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const plan = row.getValue(id) as string;
-        return Array.isArray(value) ? value.includes(plan) : value === plan;
-      },
-      meta: {
-        label: "Plan",
-        variant: "multiSelect",
-        options: PLAN_OPTIONS,
-        icon: Briefcase,
-      },
+      enableColumnFilter: false,
     },
     {
       id: "term",
@@ -219,17 +190,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       size: 100,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const term = row.getValue(id) as string;
-        return Array.isArray(value) ? value.includes(term) : value === term;
-      },
-      meta: {
-        label: "Term",
-        variant: "multiSelect",
-        options: TERM_OPTIONS,
-        icon: CalendarRange,
-      },
+      enableColumnFilter: false,
     },
     {
       id: "lastPayment",

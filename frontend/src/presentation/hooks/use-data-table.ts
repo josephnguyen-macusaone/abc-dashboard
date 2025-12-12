@@ -68,6 +68,7 @@ interface UseDataTableProps<TData>
   manualPagination?: boolean;
   manualSorting?: boolean;
   manualFiltering?: boolean;
+  totalRows?: number;
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
@@ -87,6 +88,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     manualPagination = false,
     manualSorting = false,
     manualFiltering = false,
+    totalRows,
     ...tableProps
   } = props;
   const pageKey = queryKeys?.page ?? PAGE_KEY;

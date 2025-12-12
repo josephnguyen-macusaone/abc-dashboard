@@ -157,13 +157,17 @@ export class UserValidator {
     const sanitized = {
       page: Math.max(1, parseInt(query.page) || 1),
       limit: Math.min(100, Math.max(1, parseInt(query.limit) || 10)),
-      sortBy: ['createdAt', 'username', 'email', 'displayName', 'role'].includes(query.sortBy)
+      sortBy: ['createdAt', 'username', 'email', 'displayName', 'role', 'isActive', 'lastLogin'].includes(query.sortBy)
         ? query.sortBy
         : 'createdAt',
       sortOrder: ['asc', 'desc'].includes(query.sortOrder) ? query.sortOrder : 'desc',
     };
 
     // Add filters if provided
+    if (query.search) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.search = query.search;
+    }
     if (query.email) {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.email = query.email;
@@ -172,9 +176,25 @@ export class UserValidator {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.username = query.username;
     }
+    if (query.displayName) {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.displayName = query.displayName;
+    }
     if (query.role && this.VALID_ROLES.includes(query.role)) {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.role = query.role;
+    }
+    if (query.isActive !== undefined && typeof query.isActive === 'boolean') {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.isActive = query.isActive;
+    }
+    if (query.hasAvatar !== undefined && typeof query.hasAvatar === 'boolean') {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.hasAvatar = query.hasAvatar;
+    }
+    if (query.hasBio !== undefined && typeof query.hasBio === 'boolean') {
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.hasBio = query.hasBio;
     }
 
     return sanitized;

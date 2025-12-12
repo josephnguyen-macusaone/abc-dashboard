@@ -41,6 +41,23 @@ interface UserManagementProps {
   onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
   /** Callback when role filter is applied */
   onRoleFilter?: (role: string | null) => void;
+  /** Currently active role filter for visual indication */
+  activeRoleFilter?: string | null;
+  /** Callback when table query changes (pagination/sort/filter) */
+  onQueryChange?: (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  }) => void;
+  /** Server page count for pagination */
+  pageCount?: number;
+  /** Total number of users */
+  totalCount?: number;
+  /** User statistics */
+  userStats?: any;
+  /** Loading state for stats */
+  isLoadingStats?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -53,6 +70,12 @@ export function UserManagement({
   dateRange,
   onDateRangeChange,
   onRoleFilter,
+  activeRoleFilter,
+  onQueryChange,
+  pageCount,
+  totalCount,
+  userStats,
+  isLoadingStats = false,
   className
 }: UserManagementProps) {
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete'>('list');
@@ -205,9 +228,10 @@ export function UserManagement({
       {/* Statistics */}
       <div className="mb-5">
         <UserStatsCards
-          users={users}
-          isLoading={isLoading}
+          userStats={userStats}
+          isLoading={isLoading || isLoadingStats}
           onRoleFilter={onRoleFilter}
+          activeRoleFilter={activeRoleFilter}
         />
       </div>
 
@@ -221,6 +245,9 @@ export function UserManagement({
         onDelete={handleDeleteUser}
         onCreateUser={PermissionUtils.canCreateUser(currentUser.role) ? handleCreateUser : undefined}
         isLoading={isLoading}
+        onQueryChange={onQueryChange}
+        pageCount={pageCount}
+        totalCount={totalCount}
       />
     </div>
   );

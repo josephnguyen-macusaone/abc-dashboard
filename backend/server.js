@@ -94,6 +94,11 @@ const corsOptions =
             return callback(null, true);
           }
 
+          // Allow frontend container access in Docker (matches any origin ending with :3000)
+          if (origin && origin.match(/:3000$/)) {
+            return callback(null, true);
+          }
+
           // Reject other origins in development
           return callback(new Error('Not allowed by CORS'));
         },

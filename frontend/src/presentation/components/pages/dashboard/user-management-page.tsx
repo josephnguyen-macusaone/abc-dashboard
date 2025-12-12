@@ -9,7 +9,7 @@ import { UserListParams } from '@/application/dto/user-dto';
 import { SortBy, SortOrder } from '@/shared/types';
 import { DashboardTemplate } from '@/presentation/components/templates';
 import { logger } from '@/shared/utils';
-import { useUserStore, selectUsers, selectUserLoading } from '@/infrastructure/stores/user-store';
+import { useUserStore, selectUsers, selectUserLoading, selectUserPagination } from '@/infrastructure/stores/user-store';
 
 /**
  * UserManagementPage
@@ -28,51 +28,133 @@ export function UserManagementPage() {
 
   const users = useUserStore(selectUsers);
   const loadingUsers = useUserStore(selectUserLoading);
+  const userPagination = useUserStore(selectUserPagination);
   const fetchUsers = useUserStore(state => state.fetchUsers);
+  const getUserStats = useUserStore(state => state.getUserStats);
 
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const [userStats, setUserStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   // Prevent duplicate API calls in React Strict Mode
   const hasLoadedRef = useRef(false);
 
+  // Handle pagination and filtering changes
+  const handleQueryChange = useCallback(async (params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    role?: string | string[];
+    displayName?: string;
+    search?: string;
+    isActive?: string | string[];
+  }) => {
+    try {
+      // Extract role from params or use current roleFilter
+      let roleParam: UserRole | undefined;
+      if (params.role !== undefined) {
+        // Handle both single value and array from column filters
+        const roleValue = Array.isArray(params.role) ? params.role[0] : params.role;
+        if (roleValue) {
+          roleParam = roleValue as UserRole;
+          // Update the roleFilter state to keep UI in sync
+          setRoleFilter(roleValue);
+        } else {
+          // Empty array or falsy value means clear filter
+          roleParam = undefined;
+          setRoleFilter(null);
+        }
+      } else {
+        roleParam = roleFilter as UserRole | undefined;
+      }
+
+      // Extract status/isActive filter
+      let isActiveParam: boolean | undefined;
+      if (params.isActive !== undefined) {
+        const statusValue = Array.isArray(params.isActive) ? params.isActive[0] : params.isActive;
+        if (statusValue === "true") {
+          isActiveParam = true;
+        } else if (statusValue === "false") {
+          isActiveParam = false;
+        } else {
+          isActiveParam = undefined;
+        }
+      }
+
+      const queryParams: UserListParams = {
+        page: params.page,
+        limit: params.limit,
+        email: params.search, // Use search as email filter
+        displayName: params.displayName,
+        role: roleParam,
+        isActive: isActiveParam,
+        sortBy: (params.sortBy as SortBy) || SortBy.CREATED_AT,
+        sortOrder: params.sortOrder === "desc" ? SortOrder.DESC : SortOrder.ASC,
+      };
+
+      await fetchUsers(queryParams);
+      // fetchUsers updates the pagination state in the store
+    } catch (error) {
+      logger.error('Error loading users with pagination', { error });
+      showError?.('Failed to load users');
+    }
+  }, [fetchUsers, showError, roleFilter]);
+
+  // Load user stats
+  const loadUserStats = useCallback(async () => {
+    try {
+      setLoadingStats(true);
+      const stats = await getUserStats();
+      setUserStats(stats);
+    } catch (error) {
+      logger.error('Error loading user stats', { error });
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [getUserStats]);
+
   // Load users on mount and when needed
-  const loadUsers = useCallback(async (filters?: { search?: string; role?: string }) => {
+  const loadUsers = useCallback(async (filters?: { role?: string }) => {
     try {
       const params: UserListParams = {
         page: 1,
-        limit: 100, // Get all users for now
-        email: filters?.search, // Search by email (supports partial matches via backend regex)
+        limit: 20, // Standard pagination
         role: filters?.role as UserRole | undefined, // Cast to UserRole enum
         sortBy: SortBy.CREATED_AT, // Sort by creation date
         sortOrder: SortOrder.DESC, // Latest users first
       };
 
       await fetchUsers(params);
+      // fetchUsers updates the pagination state in the store
     } catch (error) {
       logger.error('Error loading users', { error });
       showError?.('Failed to load users');
     }
   }, [fetchUsers, showError]);
 
-  // Load users on mount (prevent duplicate calls in React Strict Mode)
+  // Load users and stats on mount (prevent duplicate calls in React Strict Mode)
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
       loadUsers();
+      loadUserStats();
     }
-  }, [loadUsers]);
+  }, [loadUsers, loadUserStats]);
 
-  // Filter users by date range and role
+  // Reload users when role filter changes
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      loadUsers({ role: roleFilter || undefined });
+    }
+  }, [roleFilter, loadUsers]);
+
+  // Filter users by date range (role filtering is now handled server-side)
   const filteredUsers = useMemo(() => {
     let filtered = users;
 
-    // Apply role filter first
-    if (roleFilter) {
-      filtered = filtered.filter(user => user.role === roleFilter);
-    }
-
-    // Apply date range filter
+    // Apply date range filter only (role filtering is server-side)
     if (dateRange.from || dateRange.to) {
       filtered = filtered.filter(user => {
         if (!user.createdAt) return false;
@@ -94,7 +176,7 @@ export function UserManagementPage() {
     }
 
     return filtered;
-  }, [users, dateRange, roleFilter]);
+  }, [users, dateRange]);
 
   // Handle date range changes
   const handleDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
@@ -133,6 +215,12 @@ export function UserManagementPage() {
       dateRange={dateRange}
       onDateRangeChange={handleDateRangeChange}
       onRoleFilter={handleRoleFilter}
+      activeRoleFilter={roleFilter}
+      onQueryChange={handleQueryChange}
+      pageCount={userPagination.totalPages}
+      totalCount={userPagination.total}
+      userStats={userStats}
+      isLoadingStats={loadingStats}
     />
   );
 }

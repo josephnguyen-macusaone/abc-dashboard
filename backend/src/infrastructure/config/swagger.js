@@ -230,6 +230,158 @@ const swaggerDefinition = {
       MessageResponse: {
         allOf: [{ $ref: '#/components/schemas/BaseResponse' }],
       },
+      License: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'License unique identifier',
+            example: '64f8d9e4c5a1b2c3d4e5f678',
+          },
+          dba: {
+            type: 'string',
+            description: 'Doing Business As name',
+            maxLength: 255,
+            example: 'ABC Salon Services',
+          },
+          zip: {
+            type: 'string',
+            description: 'ZIP code',
+            maxLength: 10,
+            nullable: true,
+            example: '12345',
+          },
+          startDay: {
+            type: 'string',
+            description: 'License start date',
+            format: 'date',
+            example: '2024-01-15',
+          },
+          status: {
+            type: 'string',
+            enum: ['active', 'cancel', 'pending', 'expired'],
+            description: 'License status',
+            example: 'active',
+          },
+          plan: {
+            type: 'string',
+            enum: ['Basic', 'Premium', 'Enterprise'],
+            description: 'Subscription plan',
+            nullable: true,
+            example: 'Premium',
+          },
+          term: {
+            type: 'string',
+            enum: ['monthly', 'yearly'],
+            description: 'Billing term',
+            nullable: true,
+            example: 'monthly',
+          },
+          cancelDate: {
+            type: 'string',
+            description: 'Cancellation date (only present when status is cancel)',
+            format: 'date',
+            nullable: true,
+            example: '2024-12-31',
+          },
+          lastPayment: {
+            type: 'number',
+            description: 'Last payment amount',
+            minimum: 0,
+            nullable: true,
+            example: 99.99,
+          },
+          lastActive: {
+            type: 'string',
+            description: 'Last activity timestamp',
+            format: 'date-time',
+            nullable: true,
+            example: '2024-12-01T10:30:00.000Z',
+          },
+          smsPurchased: {
+            type: 'integer',
+            description: 'Number of SMS credits purchased',
+            minimum: 0,
+            nullable: true,
+            example: 1000,
+          },
+          smsSent: {
+            type: 'integer',
+            description: 'Number of SMS messages sent',
+            minimum: 0,
+            nullable: true,
+            example: 750,
+          },
+          smsBalance: {
+            type: 'integer',
+            description: 'Remaining SMS credits',
+            minimum: 0,
+            nullable: true,
+            example: 250,
+          },
+          agents: {
+            type: 'integer',
+            description: 'Number of agents/users',
+            minimum: 0,
+            nullable: true,
+            example: 5,
+          },
+          agentsCost: {
+            type: 'number',
+            description: 'Monthly cost for agents',
+            minimum: 0,
+            nullable: true,
+            example: 25.00,
+          },
+          agentsName: {
+            type: 'array',
+            description: 'Names of agents',
+            items: {
+              type: 'string',
+            },
+            nullable: true,
+            example: ['John Doe', 'Jane Smith'],
+          },
+          createdAt: {
+            type: 'string',
+            description: 'License creation timestamp',
+            format: 'date-time',
+            example: '2024-01-01T00:00:00.000Z',
+          },
+          updatedAt: {
+            type: 'string',
+            description: 'Last update timestamp',
+            format: 'date-time',
+            example: '2024-12-01T10:30:00.000Z',
+          },
+        },
+      },
+      LicenseListResponse: {
+        allOf: [
+          { $ref: '#/components/schemas/BaseResponse' },
+          { $ref: '#/components/schemas/MetaPagination' },
+          {
+            type: 'object',
+            properties: {
+              data: {
+                type: 'array',
+                items: { $ref: '#/components/schemas/License' },
+              },
+            },
+          },
+        ],
+      },
+      LicenseResponse: {
+        allOf: [
+          { $ref: '#/components/schemas/BaseResponse' },
+          {
+            type: 'object',
+            properties: {
+              data: { $ref: '#/components/schemas/License' },
+            },
+          },
+        ],
+      },
       Error: {
         type: 'object',
         properties: {
@@ -307,6 +459,7 @@ const options = {
     path.join(__dirname, '../routes/auth-routes.js'),
     path.join(__dirname, '../routes/user-routes.js'),
     path.join(__dirname, '../routes/profile-routes.js'),
+    path.join(__dirname, '../routes/license-routes.js'),
   ],
 };
 

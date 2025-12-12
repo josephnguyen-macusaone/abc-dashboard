@@ -11,18 +11,30 @@ import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
 import { SearchBar } from "@/presentation/components/molecules";
 import { cn } from "@/shared/utils";
+import { useDebouncedCallback } from "@/presentation/hooks/use-debounced-callback";
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
+  searchBar?: React.ReactNode;
+  onReset?: () => void;
+  hasActiveFilters?: boolean;
+  onManualFilterChange?: (columnId: string, values: string[]) => void;
+  initialFilterValues?: Record<string, string[]>;
 }
 
 export function DataTableToolbar<TData>({
   table,
   children,
+  searchBar,
+  onReset: customOnReset,
+  hasActiveFilters: externalHasActiveFilters,
+  onManualFilterChange,
+  initialFilterValues,
   className,
   ...props
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
+  const hasActiveFilters = externalHasActiveFilters !== undefined ? externalHasActiveFilters : isFiltered;
 
   const columns = React.useMemo(
     () => table.getAllColumns().filter((column) => column.getCanFilter()),
@@ -30,8 +42,14 @@ export function DataTableToolbar<TData>({
   );
 
   const onReset = React.useCallback(() => {
-    table.resetColumnFilters();
-  }, [table]);
+    if (customOnReset) {
+      customOnReset();
+    } else {
+      table.resetColumnFilters();
+      // Reset to first page when filters are cleared
+      table.setPageIndex(0);
+    }
+  }, [table, customOnReset]);
 
   return (
     <div
@@ -43,10 +61,26 @@ export function DataTableToolbar<TData>({
       )}
       {...props}
     >
+      {/* Search bar on the left */}
+      {searchBar && (
+        <div className="flex items-center">
+          {searchBar}
+        </div>
+      )}
+
+      {/* Filter components */}
       {columns.map((column) => (
-        <DataTableToolbarFilter key={column.id} column={column} />
+        <DataTableToolbarFilter
+          key={column.id}
+          column={column}
+          table={table}
+          onManualFilterChange={onManualFilterChange}
+          initialFilterValues={initialFilterValues}
+        />
       ))}
-      {isFiltered && (
+
+      {/* Reset button - always visible if there are active filters or if custom reset is provided */}
+      {(hasActiveFilters || !!customOnReset) && (
         <Button
           aria-label="Reset filters"
           variant="outline"
@@ -58,6 +92,8 @@ export function DataTableToolbar<TData>({
           Reset
         </Button>
       )}
+
+      {/* Additional actions on the right */}
       <div className="flex items-center gap-2 ml-auto">
         {children}
         <DataTableViewOptions table={table} align="end" />
@@ -68,12 +104,51 @@ export function DataTableToolbar<TData>({
 
 interface DataTableToolbarFilterProps<TData> {
   column: Column<TData>;
+  table: Table<TData>;
+  onManualFilterChange?: (columnId: string, values: string[]) => void;
+  initialFilterValues?: Record<string, string[]>;
 }
 
 function DataTableToolbarFilter<TData>({
   column,
+  table,
+  onManualFilterChange,
+  initialFilterValues,
 }: DataTableToolbarFilterProps<TData>) {
   const columnMeta = column.columnDef.meta;
+  const isManualFiltering = table?.options?.manualFiltering ?? false;
+
+  const [searchValue, setSearchValue] = React.useState<string>(
+    (column.getFilterValue() as string) ?? ""
+  );
+
+  // Debounce search for client-side text filters (300ms delay)
+  const debouncedSetFilter = useDebouncedCallback(
+    (value: string) => {
+      column.setFilterValue(value || undefined);
+    },
+    300
+  );
+
+  // For manual filtering, skip client-side filtering entirely
+  // The parent component should handle the filtering via onQueryChange
+  const handleSearchChange = React.useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      if (!isManualFiltering) {
+        // Only debounce for client-side filtering
+        debouncedSetFilter(value);
+      }
+      // For manual filtering, don't set column filter value - let parent handle via onQueryChange
+    },
+    [isManualFiltering, debouncedSetFilter]
+  );
+
+  // Sync local state with column filter value when it changes externally (e.g., reset button)
+  React.useEffect(() => {
+    const filterValue = (column.getFilterValue() as string) ?? "";
+    setSearchValue(filterValue);
+  }, [column.getFilterValue()]);
 
   const onFilterRender = React.useCallback(() => {
     if (!columnMeta?.variant) return null;
@@ -83,8 +158,8 @@ function DataTableToolbarFilter<TData>({
         return (
           <SearchBar
             placeholder={columnMeta.placeholder ?? columnMeta.label}
-            value={(column.getFilterValue() as string) ?? ""}
-            onValueChange={(val) => column.setFilterValue(val)}
+            value={searchValue}
+            onValueChange={handleSearchChange}
             allowClear
             className="w-40 lg:w-56"
             inputClassName="h-8"
@@ -126,6 +201,9 @@ function DataTableToolbarFilter<TData>({
             title={columnMeta.label ?? column.id}
             options={columnMeta.options ?? []}
             multiple={columnMeta.variant === "multiSelect"}
+            manualFiltering={isManualFiltering}
+            onFilterChange={isManualFiltering ? (values) => onManualFilterChange?.(column.id, values) : undefined}
+            initialValues={initialFilterValues?.[column.id] ?? []}
           />
         );
 

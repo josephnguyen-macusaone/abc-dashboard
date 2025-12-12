@@ -479,9 +479,12 @@ export class UserRepository implements IUserRepository {
       const apiResponse = await userApi.getUsers({
         page: params.page,
         limit: params.limit,
+        search: params.search,
         email: params.email,
         username: params.username,
         displayName: params.displayName,
+        role: params.role,
+        isActive: params.isActive !== undefined ? String(params.isActive) : undefined,
         hasAvatar: params.hasAvatar,
         sortBy: params.sortBy === 'role' ? SortBy.CREATED_AT : (params.sortBy as any), // Map 'role' to 'createdAt' as fallback
         sortOrder: params.sortOrder,
@@ -526,7 +529,9 @@ export class UserRepository implements IUserRepository {
         logger.start(correlationId, { cached: true });
         logger.success(correlationId, 0, {
           totalUsers: cachedStats.totalUsers,
-          activeUsers: cachedStats.activeUsers,
+          admin: cachedStats.admin,
+          manager: cachedStats.manager,
+          staff: cachedStats.staff,
           source: 'cache'
         });
         return cachedStats;
@@ -541,10 +546,9 @@ export class UserRepository implements IUserRepository {
 
       const stats: UserStats = {
         totalUsers: response.totalUsers,
-        activeUsers: response.activeUsers,
-        inactiveUsers: response.inactiveUsers,
-        usersByRole: response.usersByRole,
-        recentUsers: response.recentUsers,
+        admin: response.admin,
+        manager: response.manager,
+        staff: response.staff,
       };
 
       // Cache the result
@@ -552,7 +556,9 @@ export class UserRepository implements IUserRepository {
 
       logger.success(correlationId, duration, {
         totalUsers: stats.totalUsers,
-        activeUsers: stats.activeUsers
+        admin: stats.admin,
+        manager: stats.manager,
+        staff: stats.staff
       });
 
       return stats;

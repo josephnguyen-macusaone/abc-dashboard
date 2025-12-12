@@ -37,9 +37,19 @@ function buildLicense(input, now = new Date()) {
   };
 }
 
-function generateSeedLicenses(count = 50) {
+function generateSeedLicenses(count = 200) {
   const licenses = [];
   const now = new Date();
+
+  // Diverse company names for better search testing
+  const companyTypes = ['Corp', 'Inc', 'LLC', 'Ltd', 'Group', 'Solutions', 'Services', 'Technologies', 'Enterprises', 'Industries'];
+  const companyNames = [
+    'Acme', 'Global', 'Premier', 'Elite', 'Advanced', 'Pro', 'Mega', 'Super', 'Ultra', 'Prime',
+    'Alpha', 'Beta', 'Gamma', 'Delta', 'Omega', 'Sigma', 'Nova', 'Apex', 'Vertex', 'Summit',
+    'Pacific', 'Atlantic', 'Continental', 'National', 'International', 'Worldwide', 'Universal', 'Global', 'Regional', 'Local',
+    'Tech', 'Digital', 'Cloud', 'Data', 'Info', 'Net', 'Web', 'Cyber', 'Smart', 'Intelligent',
+    'Business', 'Corporate', 'Commercial', 'Professional', 'Enterprise', 'Industrial', 'Manufacturing', 'Retail', 'Wholesale', 'Distribution'
+  ];
 
   for (let i = 1; i <= count; i += 1) {
     const status = STATUS_VALUES[i % STATUS_VALUES.length];
@@ -51,17 +61,22 @@ function generateSeedLicenses(count = 50) {
     const smsPurchased = 500 + i * 5;
     const smsSent = Math.max(0, smsPurchased - i * 7);
 
+    // Generate diverse DBA names
+    const companyName = companyNames[i % companyNames.length];
+    const companyType = companyTypes[i % companyTypes.length];
+    const dba = `${companyName} ${companyType} ${i > 50 ? `#${Math.floor(i / 10)}` : ''}`.trim();
+
     licenses.push(
       buildLicense({
         id: i,
-        dba: `Demo Company ${i}`,
+        dba,
         zip: `9${String(1000 + i).padStart(4, '0')}`,
         startDay: start.toISOString().slice(0, 10),
         status,
         cancelDate: status === 'cancel' ? start.toISOString().slice(0, 10) : null,
         plan,
         term,
-        lastPayment: 99.99 + i,
+        lastPayment: 99.99 + i * 1.5,
         lastActive: now.toISOString().slice(0, 10),
         smsPurchased,
         smsSent,
@@ -79,19 +94,24 @@ function generateSeedLicenses(count = 50) {
 }
 
 export class LicenseStore {
-  constructor(seed = generateSeedLicenses()) {
+  constructor(seed = generateSeedLicenses(200)) {
     this.licenses = [...seed];
     this.nextId = this.licenses.length > 0 ? Math.max(...this.licenses.map((l) => l.id)) + 1 : 1;
   }
 
-  list({ page = 1, limit = 10, status, dba, sortBy = 'createdAt', sortOrder = 'desc' }) {
+  list({ page = 1, limit = 10, status, dba, search, sortBy = 'createdAt', sortOrder = 'desc' }) {
     let results = [...this.licenses];
 
     if (status) {
       results = results.filter((item) => item.status === status);
     }
 
-    if (dba) {
+    // Search parameter searches DBA field
+    if (search) {
+      const term = search.toLowerCase();
+      results = results.filter((item) => item.dba.toLowerCase().includes(term));
+    } else if (dba) {
+      // Legacy dba filter (for backward compatibility)
       const term = dba.toLowerCase();
       results = results.filter((item) => item.dba.toLowerCase().includes(term));
     }

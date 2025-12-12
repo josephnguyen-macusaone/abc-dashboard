@@ -39,3 +39,34 @@ export {
   type SearchUsersUseCaseContract,
 } from './user/search-users-usecase';
 export { GetUserStatsUseCase } from './user/get-user-stats-usecase';
+
+// License management use cases
+export {
+  GetLicensesUseCase,
+  createGetLicensesUseCase,
+  type GetLicensesUseCaseContract,
+} from './license/get-licenses-usecase';
+
+export {
+  CreateLicenseUseCase,
+  createCreateLicenseUseCase,
+  type CreateLicenseUseCaseContract,
+} from './license/create-license-usecase';
+
+export {
+  UpdateLicenseUseCase,
+  createUpdateLicenseUseCase,
+  type UpdateLicenseUseCaseContract,
+} from './license/update-license-usecase';
+
+export {
+  DeleteLicenseUseCase,
+  createDeleteLicenseUseCase,
+  type DeleteLicenseUseCaseContract,
+} from './license/delete-license-usecase';
+
+export {
+  BulkUpdateLicensesUseCase,
+  createBulkUpdateLicensesUseCase,
+  type BulkUpdateLicensesUseCaseContract,
+} from './license/bulk-update-licenses-usecase';

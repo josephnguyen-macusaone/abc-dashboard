@@ -25,6 +25,14 @@ export const userSchemas = {
       'number.base': 'Limit must be a number',
     }),
 
+    search: Joi.string()
+      .min(1)
+      .max(100)
+      .messages({
+        'string.min': 'Search term must contain at least 1 character',
+        'string.max': 'Search term cannot exceed 100 characters',
+      }),
+
     email: Joi.string()
       .min(1)
       .max(254)
@@ -56,11 +64,19 @@ export const userSchemas = {
       'boolean.base': 'hasBio must be a boolean',
     }),
 
+    role: Joi.string().valid('admin', 'manager', 'staff').messages({
+      'any.only': 'Role must be one of: admin, manager, staff',
+    }),
+
+    isActive: Joi.boolean().messages({
+      'boolean.base': 'isActive must be a boolean',
+    }),
+
     sortBy: Joi.string()
-      .valid('createdAt', 'email', 'username', 'displayName')
+      .valid('createdAt', 'email', 'username', 'displayName', 'role', 'isActive', 'lastLogin')
       .default('createdAt')
       .messages({
-        'any.only': 'sortBy must be one of: createdAt, email, username, displayName',
+        'any.only': 'sortBy must be one of: createdAt, email, username, displayName, role, isActive, lastLogin',
       }),
 
     sortOrder: Joi.string().valid('asc', 'desc').default('desc').messages({

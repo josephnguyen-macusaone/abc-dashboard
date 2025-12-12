@@ -7,7 +7,13 @@ import { USER_ROLES } from '@/shared/constants';
 
 // Legacy interface - kept for backward compatibility
 export interface UserStatsCardsProps {
-  users: User[];
+  users?: User[]; // Optional - for backward compatibility
+  userStats?: {
+    totalUsers: number;
+    admin: number;
+    manager: number;
+    staff: number;
+  };
   isLoading?: boolean;
   className?: string;
 }
@@ -87,7 +93,7 @@ export function StatsCards({
                   {stat.trend.direction === 'up' && '↗ '}
                   {stat.trend.direction === 'down' && '↘ '}
                   {stat.trend.direction === 'neutral' && '→ '}
-                  {Math.abs(stat.trend.value)}%
+                  {Math.abs(stat.trend.value).toFixed(2)}%
                 </span>
                 {stat.trend.label && (
                   <span className="text-body-xs text-foreground/70">
@@ -104,50 +110,62 @@ export function StatsCards({
 }
 
 // Legacy UserStatsCards - now uses the generic StatsCards internally
-export function UserStatsCards({ users, isLoading = false, className, onRoleFilter }: UserStatsCardsProps & { onRoleFilter?: (role: string | null) => void }) {
-  const totalUsers = users.length;
-  const admins = users.filter(u => u.role === USER_ROLES.ADMIN).length;
-  const managers = users.filter(u => u.role === USER_ROLES.MANAGER).length;
-  const staff = users.filter(u => u.role === USER_ROLES.STAFF).length;
+export function UserStatsCards({
+  userStats,
+  isLoading = false,
+  className,
+  onRoleFilter,
+  activeRoleFilter
+}: UserStatsCardsProps & {
+  onRoleFilter?: (role: string | null) => void;
+  activeRoleFilter?: string | null;
+}) {
+  // Use API stats when available, otherwise calculate from displayed users
+  const stats = userStats ?? {
+    totalUsers: 0,
+    admin: 0,
+    manager: 0,
+    staff: 0,
+  };
 
-  const stats: StatsCardConfig[] = [
+  const statsCards: StatsCardConfig[] = [
     {
       id: 'total-users',
       label: 'Total Users',
-      value: totalUsers,
+      value: stats.totalUsers,
       icon: Users,
-      color: 'text-blue-600',
+      color: activeRoleFilter === null ? 'text-primary' : 'text-blue-600',
       hoverColor: 'text-blue-700',
       onClick: onRoleFilter ? () => onRoleFilter(null) : undefined,
     },
     {
       id: 'admins',
       label: 'Admins',
-      value: admins,
+      value: stats.admin,
       icon: Crown,
-      color: 'text-purple-600',
+      color: activeRoleFilter === USER_ROLES.ADMIN ? 'text-primary' : 'text-purple-600',
       hoverColor: 'text-purple-700',
       onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.ADMIN) : undefined,
     },
     {
       id: 'managers',
       label: 'Managers',
-      value: managers,
+      value: stats.manager,
       icon: Shield,
-      color: 'text-orange-600',
+      color: activeRoleFilter === USER_ROLES.MANAGER ? 'text-primary' : 'text-orange-600',
       hoverColor: 'text-orange-700',
       onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.MANAGER) : undefined,
     },
     {
       id: 'staff',
       label: 'Staff',
-      value: staff,
+      value: stats.staff,
       icon: Shield,
-      color: 'text-green-600',
+      color: activeRoleFilter === USER_ROLES.STAFF ? 'text-primary' : 'text-green-600',
       hoverColor: 'text-green-700',
       onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.STAFF) : undefined,
     },
   ];
 
-  return <StatsCards stats={stats} isLoading={isLoading} className={className} onRoleFilter={onRoleFilter} />;
+  return <StatsCards stats={statsCards} isLoading={isLoading} className={className} onRoleFilter={onRoleFilter} />;
 }
