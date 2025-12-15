@@ -50,6 +50,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "status",
       header: "Status",
       size: 120,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const status = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(status) : value === status;
+      },
       meta: {
         label: "Status",
         cell: {

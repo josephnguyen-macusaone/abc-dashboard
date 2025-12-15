@@ -21,6 +21,13 @@ export interface PaginationState {
 export interface LicenseListResponse {
   licenses: LicenseRecord[];
   pagination: PaginationState;
+  stats?: {
+    total: number;
+    active: number;
+    expired: number;
+    pending: number;
+    cancel: number;
+  };
 }
 
 export interface CreateLicenseRequest {
@@ -116,9 +123,15 @@ export const useLicenseStore = create<LicenseState>()(
 
             const response = await licenseApi.getLicenses(queryParams);
 
+            // Use total from stats if available, otherwise from pagination
+            const total = response.stats?.total ?? response.pagination.total ?? 0;
+
             set({
               licenses: response.licenses,
-              pagination: response.pagination,
+              pagination: {
+                ...response.pagination,
+                total: total
+              },
               loading: false
             });
           } catch (error) {

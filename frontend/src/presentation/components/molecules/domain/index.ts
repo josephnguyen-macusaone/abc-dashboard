@@ -8,7 +8,6 @@ export {
 
 // User management components
 export {
-  UserStatsCards,
   StatsCards,
   RoleBadge,
   StatusBadge,
@@ -16,7 +15,6 @@ export {
   getUserTableColumns,
   ROLE_OPTIONS,
   STATUS_OPTIONS as USER_STATUS_OPTIONS,
-  type UserStatsCardsProps,
   type StatsCardsProps,
   type StatsCardConfig,
   type RoleBadgeProps,

@@ -41,7 +41,7 @@ interface LicensesDataGridProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    status?: string;
+    status?: string | string[];
   }) => void;
 }
 
@@ -217,6 +217,32 @@ export function LicensesDataGrid({
     toast.info("Changes discarded");
   }, [initialData]);
 
+  // Transform filters from data grid format to API format
+  const handleQueryChange = React.useCallback((params: {
+    page: number;
+    limit: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    filters?: Record<string, unknown>;
+    search?: string;
+  }) => {
+    if (!onQueryChange) return;
+
+    // Extract status filter from filters object
+    const statusFilter = params.filters?.status;
+    const status = Array.isArray(statusFilter) ? statusFilter : statusFilter ? String(statusFilter) : undefined;
+
+    // Call the parent's onQueryChange with transformed params
+    onQueryChange({
+      page: params.page,
+      limit: params.limit,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+      search: params.search,
+      status: status,
+    });
+  }, [onQueryChange]);
+
   const gridState = useDataGrid({
     data,
     columns,
@@ -232,7 +258,7 @@ export function LicensesDataGrid({
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange,
-    onQueryChange,
+    onQueryChange: handleQueryChange,
   });
 
   // Loading state

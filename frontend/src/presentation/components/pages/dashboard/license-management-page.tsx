@@ -120,15 +120,26 @@ export function LicenseManagementPage() {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    status?: string;
+    status?: string | string[];
   }) => {
-    await loadLicenses({
-      page: params.page,
-      limit: params.limit,
-      search: params.search,
-      status: params.status,
-    });
-  }, [loadLicenses]);
+    try {
+      // Convert status array to comma-separated string for API
+      const statusParam = Array.isArray(params.status) 
+        ? params.status.join(',') 
+        : params.status;
+
+      await fetchLicenses({
+        page: params.page,
+        limit: params.limit,
+        sortBy: params.sortBy,
+        sortOrder: params.sortOrder,
+        search: params.search,
+        status: statusParam as any,
+      });
+    } catch (error) {
+      toast.error("Failed to fetch licenses");
+    }
+  }, [fetchLicenses]);
 
   return (
     <LicenseManagement

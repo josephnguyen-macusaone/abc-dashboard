@@ -1,5 +1,7 @@
 import type { StatsCardConfig } from '@/presentation/components/molecules/domain/user-management';
 import type { LicenseRecord } from '@/shared/types';
+import type { DashboardMetrics, DashboardMetricsResponse } from '@/infrastructure/api/types';
+import { licenseApi } from '@/infrastructure/api/licenses';
 import {
   AlertTriangle,
   Building,
@@ -13,6 +15,133 @@ import {
 export interface LicenseDateRange {
   from?: Date;
   to?: Date;
+}
+
+/**
+ * Fetch dashboard metrics from the backend API
+ * This is the new preferred method that gets pre-calculated metrics from the server
+ */
+export async function fetchDashboardMetrics(
+  dateRange?: LicenseDateRange
+): Promise<DashboardMetricsResponse> {
+  const params: { startsAtFrom?: string; startsAtTo?: string } = {};
+
+  if (dateRange?.from) {
+    params.startsAtFrom = dateRange.from.toISOString();
+  }
+
+  if (dateRange?.to) {
+    params.startsAtTo = dateRange.to.toISOString();
+  }
+
+  return licenseApi.getDashboardMetrics(params);
+}
+
+/**
+ * Transform backend dashboard metrics to frontend StatsCardConfig format
+ * This converts the API response to the format expected by the UI components
+ */
+export function transformDashboardMetricsToCards(metrics: DashboardMetrics): StatsCardConfig[] {
+  const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+
+  const numberFormatter = new Intl.NumberFormat('en-US');
+
+  const formatCurrency = (value: number) => {
+    // Round to 2 decimal places and format as currency
+    const rounded = parseFloat(value.toFixed(2));
+    return currencyFormatter.format(rounded);
+  };
+  const formatNumber = (value: number) => {
+    // Round to 2 decimal places and format as number
+    const rounded = parseFloat(value.toFixed(2));
+    return numberFormatter.format(rounded);
+  };
+
+  return [
+    {
+      id: 'total-active-licenses',
+      label: 'Total Active Licenses',
+      value: formatNumber(metrics.totalActiveLicenses.value),
+      icon: Users,
+      trend: {
+        value: metrics.totalActiveLicenses.trend.value,
+        direction: metrics.totalActiveLicenses.trend.direction,
+        label: metrics.totalActiveLicenses.trend.label,
+      },
+    },
+    {
+      id: 'new-licenses-month',
+      label: 'New Licenses this month',
+      value: formatNumber(metrics.newLicensesThisMonth.value),
+      icon: TrendingUp,
+      trend: {
+        value: metrics.newLicensesThisMonth.trend.value,
+        direction: metrics.newLicensesThisMonth.trend.direction,
+        label: metrics.newLicensesThisMonth.trend.label,
+      },
+    },
+    {
+      id: 'licenses-income-month',
+      label: 'Total Licenses income this month',
+      value: formatCurrency(metrics.licenseIncomeThisMonth.value),
+      icon: DollarSign,
+      trend: {
+        value: metrics.licenseIncomeThisMonth.trend.value,
+        direction: metrics.licenseIncomeThisMonth.trend.direction,
+        label: metrics.licenseIncomeThisMonth.trend.label,
+      },
+    },
+    {
+      id: 'sms-income-month',
+      label: 'Total SMS income this month',
+      value: formatCurrency(metrics.smsIncomeThisMonth.value),
+      icon: Phone,
+      trend: {
+        value: metrics.smsIncomeThisMonth.trend.value,
+        direction: metrics.smsIncomeThisMonth.trend.direction,
+        label: metrics.smsIncomeThisMonth.trend.label,
+      },
+    },
+    {
+      id: 'total-inhouse-licenses',
+      label: 'Total In-house Licenses',
+      value: formatNumber(metrics.inHouseLicenses.value),
+      icon: Building,
+    },
+    {
+      id: 'total-agent-licenses',
+      label: 'Total Agent Licenses',
+      value: formatNumber(metrics.agentHeavyLicenses.value),
+      icon: User,
+    },
+    {
+      id: 'high-risk-licenses',
+      label: 'Total High Risk (7 days no active)',
+      value: formatNumber(metrics.highRiskLicenses.value),
+      icon: AlertTriangle,
+      trend: {
+        value: metrics.highRiskLicenses.trend.value,
+        direction: metrics.highRiskLicenses.trend.direction,
+        label: metrics.highRiskLicenses.trend.label,
+      },
+    },
+    {
+      id: 'estimate-next-month',
+      label: 'Estimate next month Licenses income',
+      value: formatCurrency(metrics.estimatedNextMonthIncome.value),
+      icon: TrendingUp,
+      trend: {
+        value: metrics.estimatedNextMonthIncome.trend.value,
+        direction: metrics.estimatedNextMonthIncome.trend.direction,
+        label: metrics.estimatedNextMonthIncome.trend.label,
+      },
+    },
+  ];
 }
 
 const smsRevenuePerMessage = 0.05; // 5 cents per SMS
@@ -52,11 +181,13 @@ function percentageChange(current: number, previous: number) {
 }
 
 function formatCurrency(value: number) {
-  return currencyFormatter.format(Math.round(value));
+  const rounded = parseFloat(value.toFixed(2));
+  return currencyFormatter.format(rounded);
 }
 
 function formatNumber(value: number) {
-  return numberFormatter.format(value);
+  const rounded = parseFloat(value.toFixed(2));
+  return numberFormatter.format(rounded);
 }
 
 export function filterLicensesByDateRange(

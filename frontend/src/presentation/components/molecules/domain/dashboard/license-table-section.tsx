@@ -1,10 +1,7 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
 import { Typography } from '@/presentation/components/atoms';
 import { LicensesDataTable } from '@/presentation/components/molecules/domain/license-management';
-import { SearchBar } from '@/presentation/components/molecules';
-import { useDebouncedCallback } from '@/presentation/hooks/use-debounced-callback';
 import { cn } from '@/shared/utils';
 import type { LicenseRecord } from '@/shared/types';
 
@@ -49,8 +46,7 @@ export interface LicenseTableSectionProps {
     limit: number;
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
-    status?: string;
-    dba?: string;
+    status?: string | string[];
     search?: string;
   }) => void;
 }
@@ -65,23 +61,6 @@ export function LicenseTableSection({
   totalRows,
   onQueryChange,
 }: LicenseTableSectionProps) {
-  // Search state for DBA search
-  const [searchInput, setSearchInput] = useState("");
-  const [searchValue, setSearchValue] = useState("");
-
-  // Debounce the search value update (500ms delay)
-  const debouncedSetSearch = useDebouncedCallback((value: string) => {
-    setSearchValue(value);
-  }, 500);
-
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchInput(value);
-    debouncedSetSearch(value);
-  }, [debouncedSetSearch]);
-
-  // Note: Date filtering is now handled server-side in the API call
-  const filteredLicenses = licenses;
-
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-3 px-6 pb-6', className)}>
       {/* Header */}
@@ -98,33 +77,11 @@ export function LicenseTableSection({
 
       {/* Licenses Data Grid */}
       <LicensesDataTable
-        data={filteredLicenses}
+        data={licenses}
         isLoading={isLoading}
         pageCount={pageCount}
         totalRows={totalRows}
-        hasActiveFilters={searchValue.trim() !== ""}
-        searchBar={
-          <SearchBar
-            placeholder="Search by DBA..."
-            value={searchInput}
-            onValueChange={handleSearchChange}
-            allowClear={false}
-            className="w-64"
-            inputClassName="h-8"
-          />
-        }
-        onReset={() => {
-          // Clear search state for DBA search
-          setSearchInput("");
-          debouncedSetSearch("");
-          setSearchValue("");
-        }}
-        onQueryChange={(params) => {
-          onQueryChange?.({
-            ...params,
-            search: searchValue, // Pass the debounced search value
-          });
-        }}
+        onQueryChange={onQueryChange}
       />
     </div>
   );

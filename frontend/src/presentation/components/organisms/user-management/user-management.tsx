@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Typography } from '@/presentation/components/atoms';
-import { UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
-import { UsersDataTable } from '@/presentation/components/molecules/domain/user-management';
+import { StatsCards, UsersDataTable, UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { UserManagementSkeleton } from './user-management-skeleton';
 import { UserCreateForm } from './user-create-form';

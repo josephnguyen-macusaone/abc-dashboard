@@ -1,9 +1,40 @@
 import { httpClient } from '@/infrastructure/api/client';
+import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
 
 /**
  * License Management API service
  */
 export class LicenseApiService {
+  /**
+   * Get dashboard metrics with optional date range filtering
+   */
+  static async getDashboardMetrics(params?: {
+    startsAtFrom?: string;
+    startsAtTo?: string;
+  }): Promise<DashboardMetricsResponse> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params?.startsAtFrom) {
+        queryParams.append('startsAtFrom', params.startsAtFrom);
+      }
+
+      if (params?.startsAtTo) {
+        queryParams.append('startsAtTo', params.startsAtTo);
+      }
+
+      const url = `/licenses/dashboard/metrics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const response = await httpClient.get<DashboardMetricsResponse>(url);
+
+      if (!response.success || !response.data) {
+        throw new Error('Dashboard metrics response missing data');
+      }
+
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
   /**
    * Get licenses with pagination and filtering
    */
@@ -16,6 +47,13 @@ export class LicenseApiService {
       totalPages: number;
       hasNext: boolean;
       hasPrev: boolean;
+    };
+    stats?: {
+      total: number;
+      active: number;
+      expired: number;
+      pending: number;
+      cancel: number;
     };
   }> {
     try {
@@ -47,7 +85,8 @@ export class LicenseApiService {
           totalPages: 0,
           hasNext: false,
           hasPrev: false
-        }
+        },
+        stats: response.meta?.stats
       };
     } catch (error) {
       throw error;
@@ -136,4 +175,5 @@ export const licenseApi = {
   deleteLicense: LicenseApiService.deleteLicense,
   bulkUpdateLicenses: LicenseApiService.bulkUpdateLicenses,
   bulkDeleteLicenses: LicenseApiService.bulkDeleteLicenses,
+  getDashboardMetrics: LicenseApiService.getDashboardMetrics,
 } as const;

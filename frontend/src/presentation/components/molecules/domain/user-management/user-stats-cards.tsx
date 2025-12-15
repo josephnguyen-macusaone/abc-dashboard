@@ -1,22 +1,9 @@
 'use client';
 
 import { Typography } from '@/presentation/components/atoms';
-import { Users, Crown, Shield } from 'lucide-react';
-import type { User } from '@/domain/entities/user-entity';
+import { UserStatsCardsProps } from '.';
+import { Crown, Shield, Users } from 'lucide-react';
 import { USER_ROLES } from '@/shared/constants';
-
-// Legacy interface - kept for backward compatibility
-export interface UserStatsCardsProps {
-  users?: User[]; // Optional - for backward compatibility
-  userStats?: {
-    total: number;
-    admin: number;
-    manager: number;
-    staff: number;
-  };
-  isLoading?: boolean;
-  className?: string;
-}
 
 // Generic stats configuration interface
 export interface StatsCardConfig {
@@ -40,7 +27,6 @@ export interface StatsCardsProps {
   isLoading?: boolean;
   className?: string;
   columns?: 2 | 3 | 4;
-  onRoleFilter?: (role: string | null) => void;
 }
 
 // Generic Stats Cards Component
@@ -49,12 +35,17 @@ export function StatsCards({
   isLoading = false,
   className,
   columns = 4,
-  onRoleFilter
 }: StatsCardsProps) {
   const gridCols = {
     2: 'grid-cols-2 md:grid-cols-2',
     3: 'grid-cols-2 md:grid-cols-3',
     4: 'grid-cols-2 md:grid-cols-4'
+  };
+
+  // Format trend values to 2 decimal places, removing trailing zeros
+  const formatTrendValue = (value: number): string => {
+    const rounded = parseFloat(value.toFixed(2));
+    return rounded.toString();
   };
 
   return (
@@ -93,7 +84,7 @@ export function StatsCards({
                   {stat.trend.direction === 'up' && '↗ '}
                   {stat.trend.direction === 'down' && '↘ '}
                   {stat.trend.direction === 'neutral' && '→ '}
-                  {Math.abs(stat.trend.value).toFixed(2)}%
+                  {formatTrendValue(Math.abs(stat.trend.value))}%
                 </span>
                 {stat.trend.label && (
                   <span className="text-body-xs text-foreground/70">
@@ -167,5 +158,5 @@ export function UserStatsCards({
     },
   ];
 
-  return <StatsCards stats={statsCards} isLoading={isLoading} className={className} onRoleFilter={onRoleFilter} />;
+  return <StatsCards stats={statsCards} isLoading={isLoading} className={className} />;
 }

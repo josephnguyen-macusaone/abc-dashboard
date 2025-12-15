@@ -166,4 +166,20 @@ export class LicenseController {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
+
+  getDashboardMetrics = async (req, res) => {
+    try {
+      const query = LicenseValidator.validateListQuery(req.query);
+      const metrics = await this.licenseService.getDashboardMetrics({
+        filters: query.filters,
+      });
+
+      return res.success(metrics, 'Dashboard metrics retrieved successfully');
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.badRequest(error.message);
+      }
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  };
 }

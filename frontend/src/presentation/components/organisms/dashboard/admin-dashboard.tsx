@@ -27,15 +27,21 @@ export function AdminDashboard({
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
 
   const defaultRange = useMemo<LicenseDateRange>(() => {
-    const to = new Date();
-    to.setHours(23, 59, 59, 999);
-    const from = new Date();
-    from.setDate(from.getDate() - 29);
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
     from.setHours(0, 0, 0, 0);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    to.setHours(23, 59, 59, 999);
     return { from, to };
   }, []);
 
   const [dateRange, setDateRange] = useState<LicenseDateRange>(defaultRange);
+
+  // Memoize the current dateRange to prevent unnecessary re-renders
+  const memoizedDateRange = useMemo(() => dateRange, [
+    dateRange?.from?.toISOString(),
+    dateRange?.to?.toISOString(),
+  ]);
 
   // Use store data or prop data
   const licenses = licensesProp ?? licensesFromStore;
@@ -45,7 +51,18 @@ export function AdminDashboard({
 
   const handleDateRangeChange = useCallback(
     (values: { range: DateRange; rangeCompare?: DateRange }) => {
-      setDateRange(values.range);
+      // If the range is cleared (from is undefined), reset to current month
+      if (!values.range.from) {
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        currentMonthStart.setHours(0, 0, 0, 0);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        currentMonthEnd.setHours(23, 59, 59, 999);
+
+        setDateRange({ from: currentMonthStart, to: currentMonthEnd });
+      } else {
+        setDateRange(values.range);
+      }
     },
     [],
   );
@@ -56,8 +73,7 @@ export function AdminDashboard({
     limit: number;
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
-    status?: string;
-    dba?: string;
+    status?: string | string[];
     search?: string;
   }) => {
     try {
@@ -67,7 +83,7 @@ export function AdminDashboard({
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
         status: params.status as any,
-        search: params.search || params.dba,
+        search: params.search,
       });
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
@@ -86,15 +102,16 @@ export function AdminDashboard({
   }, [licensesProp, fetchLicenses]);
 
   return (
-    <div className={`space-y-8 ${className || ''}`}>
+    <div className={`space-y-6 ${className || ''}`}>
       <LicenseMetricsSection
         licenses={licenses}
-        dateRange={dateRange}
+        dateRange={memoizedDateRange}
         initialDateFrom={defaultRange.from}
         initialDateTo={defaultRange.to}
         onDateRangeChange={handleDateRangeChange}
         isLoading={isLoadingLicenses}
         totalCount={totalCount}
+        useApiMetrics={true}
       />
       <LicenseTableSection
         licenses={licenses}

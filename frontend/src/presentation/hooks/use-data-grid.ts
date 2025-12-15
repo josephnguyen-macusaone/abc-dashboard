@@ -1899,6 +1899,7 @@ function useDataGrid<TData>({
       sortDescRef.current = activeSort?.desc;
       searchQueryRef.current = searchQuery;
 
+      // Call onQueryChange asynchronously to avoid setState during render
       const queryParams = {
         page: (pg?.pageIndex ?? 0) + 1,
         limit: pg?.pageSize ?? 10,
@@ -1908,7 +1909,10 @@ function useDataGrid<TData>({
         search: searchQuery,
       };
 
-      onQueryChange(queryParams);
+      // Use setTimeout to ensure this runs after render completes
+      setTimeout(() => {
+        onQueryChange(queryParams);
+      }, 0);
     }
   }, [onQueryChange, table, searchQuery]);
 

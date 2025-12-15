@@ -85,6 +85,7 @@ export function UsersDataTable({
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange,
     shallow: false,
+    clearOnDefault: true, // Remove default values from URL
     queryKeys: {},
     initialState: {
       pagination: { pageSize: 20, pageIndex: 0 },
@@ -192,6 +193,14 @@ export function UsersDataTable({
     }));
   }, []);
 
+  // Ensure table always has default sorting on mount
+  useEffect(() => {
+    const currentSorting = table.getState().sorting;
+    if (!currentSorting || currentSorting.length === 0) {
+      table.setSorting([{ id: "createdAt", desc: true }]);
+    }
+  }, [table]);
+
   // Track pagination, sorting, and filtering separately for reliable change detection
   const tablePageIndex = table.getState().pagination.pageIndex;
   const tablePageSize = table.getState().pagination.pageSize;
@@ -257,7 +266,7 @@ export function UsersDataTable({
     const searchChanged = currentSearch !== lastSearchRef.current;
     const currentPage = searchChanged ? 1 : tablePageIndex + 1;
 
-    // Build query params
+    // Build query params - ensure default sorting is desc for createdAt
     const queryParams: {
       page: number;
       limit: number;
@@ -269,8 +278,8 @@ export function UsersDataTable({
     } = {
       page: currentPage,
       limit: tablePageSize,
-      sortBy: activeSort?.id,
-      sortOrder: activeSort?.desc ? "desc" : "asc",
+      sortBy: activeSort?.id || "createdAt",
+      sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
     };
 
     // Add search value if present

@@ -90,12 +90,12 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="DBA" />
       ),
       cell: ({ row }) => (
-        <span className="font-medium truncate max-w-[150px]">
+        <span className="text-sm font-medium truncate max-w-[150px]">
           {row.getValue("dba")}
         </span>
       ),
       enableColumnFilter: false,
-      size: 350,
+      size: 280,
     },
     {
       id: "zip",
@@ -104,7 +104,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Zip Code" />
       ),
       cell: ({ row }) => (
-        <span className="text-center">{row.getValue("zip")}</span>
+        <span className="text-sm text-center">{row.getValue("zip")}</span>
       ),
       meta: {
         label: "Zip Code",
@@ -123,7 +123,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
         })() : '';
         return (
-          <span className="text-center">
+          <span className="text-sm text-center">
             {formattedDate}
           </span>
         );
@@ -154,7 +154,17 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       size: 110,
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const status = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(status) : value === status;
+      },
+      meta: {
+        label: "Status",
+        variant: "multiSelect",
+        options: STATUS_OPTIONS,
+        icon: CircleDashed,
+      },
     },
     {
       id: "plan",
@@ -177,7 +187,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => {
         const term = row.getValue("term") as LicenseTerm;
         return (
-          <span className="capitalize text-center">{term}</span>
+          <span className="text-sm capitalize text-center">{term}</span>
         );
       },
       size: 100,
@@ -190,7 +200,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Last Payment" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           ${row.getValue("lastPayment")}
         </span>
       ),
@@ -219,7 +229,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
         })() : '';
         return (
-          <span className="text-center text-sm">
+          <span className="text-sm text-center">
             {formattedDate}
           </span>
         );
@@ -243,7 +253,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="SMS Purchased" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           {row.getValue("smsPurchased")}
         </span>
       ),
@@ -259,7 +269,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="SMS Sent" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           {row.getValue("smsSent")}
         </span>
       ),
@@ -275,7 +285,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="SMS Balance" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           {row.getValue("smsBalance")}
         </span>
       ),
@@ -290,7 +300,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Agents" />
       ),
       cell: ({ row }) => (
-        <span className="text-center">{row.getValue("agents")}</span>
+        <span className="text-sm text-center">{row.getValue("agents")}</span>
       ),
       size: 90,
       meta: {
@@ -323,7 +333,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Agents Cost" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           ${row.getValue("agentsCost")}
         </span>
       ),
@@ -339,7 +349,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Notes" />
       ),
       cell: ({ row }) => (
-        <span className="truncate max-w-[200px]" title={row.getValue("notes")}>
+        <span className="text-sm truncate max-w-[200px]" title={row.getValue("notes")}>
           {row.getValue("notes")}
         </span>
       ),

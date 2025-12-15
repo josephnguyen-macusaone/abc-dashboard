@@ -103,7 +103,7 @@ export function getUserTableColumns({
           </div>
         );
       },
-      size: 200,
+      size: 240,
       meta: {
         label: "Name",
       },
@@ -119,7 +119,7 @@ export function getUserTableColumns({
           {row.getValue("username") || "-"}
         </span>
       ),
-      size: 120,
+      size: 160,
       meta: {
         label: "Username",
       },
@@ -135,7 +135,7 @@ export function getUserTableColumns({
           {row.getValue("email")}
         </span>
       ),
-      size: 250,
+      size: 240,
       meta: {
         label: "Email",
       },
@@ -173,7 +173,7 @@ export function getUserTableColumns({
         const role = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(role) : value === role;
       },
-      size: 100,
+      size: 160,
       meta: {
         label: "Role",
         variant: "multiSelect",
@@ -185,7 +185,7 @@ export function getUserTableColumns({
       id: "isActive",
       accessorKey: "isActive",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Status" />
+        <DataTableColumnHeader column={column} label="Status" className="text-center" />
       ),
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean;
@@ -195,8 +195,6 @@ export function getUserTableColumns({
       },
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
-        // This is for client-side filtering fallback only
-        // Server-side filtering is handled via onQueryChange
         const isActive = row.getValue(id) as boolean;
         const statusValue = isActive ? "true" : "false";
         return Array.isArray(value) ? value.includes(statusValue) : value === statusValue;
