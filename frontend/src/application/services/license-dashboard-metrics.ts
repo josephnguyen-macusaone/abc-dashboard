@@ -70,7 +70,7 @@ export function filterLicensesByDateRange(
     : undefined;
 
   return licenses.filter((license) => {
-    const startDate = parseDate(license.startDay);
+    const startDate = parseDate(license.startsAt);
     if (!startDate) return false;
     return isWithinRange(startDate, range.from, endDate);
   });

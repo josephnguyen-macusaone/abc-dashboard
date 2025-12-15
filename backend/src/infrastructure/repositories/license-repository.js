@@ -253,12 +253,12 @@ export class LicenseRepository extends ILicenseRepository {
       }
     }
 
-    const [licenses, countResult] = await Promise.all([
+    const [licenses, stats] = await Promise.all([
       query.orderBy(sortColumn, sortOrder).offset(offset).limit(limit),
-      countQuery.count('id as count').first(),
+      this.getLicenseStatsWithFilters(filters),
     ]);
 
-    const total = parseInt(countResult?.count || 0);
+    const total = stats.total || 0;
     const totalPages = Math.ceil(total / limit);
 
     return {
@@ -266,6 +266,7 @@ export class LicenseRepository extends ILicenseRepository {
       total,
       page,
       totalPages,
+      stats,
     };
   }
 
@@ -324,6 +325,131 @@ export class LicenseRepository extends ILicenseRepository {
 
     const result = await query.count('id as count').first();
     return parseInt(result?.count || 0) > 0;
+  }
+
+  async getLicenseStatsWithFilters(filters = {}) {
+    // Start with base query that applies the same filters as findLicenses
+    let baseQuery = this.db(this.licensesTable);
+
+    // Apply the same filters as findLicenses method
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+
+      if (filters.searchField) {
+        // Single field search
+        const fieldMap = {
+          key: 'key',
+          dba: 'dba',
+          product: 'product',
+          plan: 'plan',
+        };
+        const dbField = fieldMap[filters.searchField];
+
+        if (dbField) {
+          baseQuery = baseQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+        }
+      } else {
+        // Multi-field search (default): search across all fields
+        baseQuery = baseQuery.where((qb) => {
+          qb.whereRaw('key ILIKE ?', [searchTerm])
+            .orWhereRaw('dba ILIKE ?', [searchTerm])
+            .orWhereRaw('product ILIKE ?', [searchTerm])
+            .orWhereRaw('plan ILIKE ?', [searchTerm]);
+        });
+      }
+    }
+
+    // Individual field filters
+    if (filters.key && !filters.search) {
+      baseQuery = baseQuery.whereRaw('key ILIKE ?', [`%${filters.key}%`]);
+    }
+    if (filters.dba && !filters.search) {
+      baseQuery = baseQuery.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
+    }
+    if (filters.product && !filters.search) {
+      baseQuery = baseQuery.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
+    }
+    if (filters.plan && !filters.search) {
+      baseQuery = baseQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+    }
+
+    // Date range filters
+    if (filters.startsAtFrom) {
+      const fromDate = new Date(filters.startsAtFrom);
+      baseQuery = baseQuery.where('starts_at', '>=', fromDate);
+    }
+    if (filters.startsAtTo) {
+      const toDate = new Date(filters.startsAtTo);
+      toDate.setHours(23, 59, 59, 999);
+      baseQuery = baseQuery.where('starts_at', '<=', toDate);
+    }
+
+    if (filters.expiresAtFrom) {
+      const fromDate = new Date(filters.expiresAtFrom);
+      baseQuery = baseQuery.where('expires_at', '>=', fromDate);
+    }
+    if (filters.expiresAtTo) {
+      const toDate = new Date(filters.expiresAtTo);
+      toDate.setHours(23, 59, 59, 999);
+      baseQuery = baseQuery.where('expires_at', '<=', toDate);
+    }
+
+    if (filters.updatedAtFrom) {
+      const fromDate = new Date(filters.updatedAtFrom);
+      baseQuery = baseQuery.where('updated_at', '>=', fromDate);
+    }
+    if (filters.updatedAtTo) {
+      const toDate = new Date(filters.updatedAtTo);
+      toDate.setHours(23, 59, 59, 999);
+      baseQuery = baseQuery.where('updated_at', '<=', toDate);
+    }
+
+    // Advanced filters
+    if (filters.status) {
+      baseQuery = baseQuery.where('status', filters.status);
+    }
+    if (filters.term) {
+      baseQuery = baseQuery.where('term', filters.term);
+    }
+    if (filters.zip) {
+      baseQuery = baseQuery.where('zip', filters.zip);
+    }
+    if (filters.utilizationMin !== undefined) {
+      baseQuery = baseQuery.whereRaw('utilization_percent >= ?', [filters.utilizationMin]);
+    }
+    if (filters.utilizationMax !== undefined) {
+      baseQuery = baseQuery.whereRaw('utilization_percent <= ?', [filters.utilizationMax]);
+    }
+    if (filters.seatsMin !== undefined) {
+      baseQuery = baseQuery.where('seats_total', '>=', filters.seatsMin);
+    }
+    if (filters.seatsMax !== undefined) {
+      baseQuery = baseQuery.where('seats_total', '<=', filters.seatsMax);
+    }
+    if (filters.hasAvailableSeats !== undefined) {
+      if (filters.hasAvailableSeats) {
+        baseQuery = baseQuery.whereRaw('seats_used < seats_total');
+      } else {
+        baseQuery = baseQuery.whereRaw('seats_used >= seats_total');
+      }
+    }
+
+    // Calculate stats based on filtered query
+    const [totalCount, activeCount, expiredCount, pendingCount, cancelCount] = await Promise.all([
+      baseQuery.clone().count('id as count').first(),
+      baseQuery.clone().where('status', 'active').count('id as count').first(),
+      baseQuery.clone().where('status', 'expired').count('id as count').first(),
+      baseQuery.clone().where('status', 'pending').count('id as count').first(),
+      baseQuery.clone().where('status', 'cancel').count('id as count').first(),
+    ]);
+
+    return {
+      total: parseInt(totalCount?.count || 0),
+      active: parseInt(activeCount?.count || 0),
+      expired: parseInt(expiredCount?.count || 0),
+      pending: parseInt(pendingCount?.count || 0),
+      cancel: parseInt(cancelCount?.count || 0),
+    };
   }
 
   async getLicenseStats() {
@@ -781,5 +907,3 @@ export class LicenseRepository extends ILicenseRepository {
     });
   }
 }
-
-

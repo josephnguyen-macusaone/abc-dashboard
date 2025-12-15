@@ -30,7 +30,7 @@ Based on the provided mockup, the table contains the following columns:
 | 1 | No. | `id` | number | Row identifier |
 | 2 | DB A | `dbA` | string | Database A reference |
 | 3 | Zip | `zip` | string | ZIP code |
-| 4 | Start Day | `startDay` | date | Subscription start date |
+| 4 | Start Date | `startsAt` | date | Subscription start date |
 | 5 | Status | `status` | enum | Current status (Active/Cancel/Pending) |
 | 6 | Plan | `plan` | string | Subscription plan type |
 | 7 | Term | `term` | enum | Monthly/Yearly term |
@@ -90,7 +90,7 @@ export interface LicenseRecord {
   id: number;
   dbA: string;
   zip: string;
-  startDay: string;
+  startsAt: string;
   status: LicenseStatus;
   cancelDate?: string;
   plan: string;
@@ -130,7 +130,7 @@ export const mockLicenses: LicenseRecord[] = [
     id: 1,
     dbA: "ABC Corp",
     zip: "90210",
-    startDay: "2024-01-15",
+    startsAt: "2024-01-15",
     status: "active",
     plan: "Premium",
     term: "yearly",

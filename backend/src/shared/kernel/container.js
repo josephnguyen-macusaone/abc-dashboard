@@ -18,7 +18,6 @@ import { GetUsersUseCase } from '../../application/use-cases/users/get-users-use
 import { CreateUserUseCase } from '../../application/use-cases/users/create-user-use-case.js';
 import { UpdateUserUseCase } from '../../application/use-cases/users/update-user-use-case.js';
 import { DeleteUserUseCase } from '../../application/use-cases/users/delete-user-use-case.js';
-import { GetUserStatsUseCase } from '../../application/use-cases/users/get-user-stats-use-case.js';
 import { GetProfileUseCase } from '../../application/use-cases/profiles/get-profile-use-case.js';
 import { UpdateProfileUseCase as ProfileUpdateProfileUseCase } from '../../application/use-cases/profiles/update-profile-use-case.js';
 import { RecordLoginUseCase } from '../../application/use-cases/profiles/record-login-use-case.js';
@@ -257,10 +256,6 @@ class Container {
     return new DeleteUserUseCase(await this.getUserRepository());
   }
 
-  async getGetUserStatsUseCase() {
-    return new GetUserStatsUseCase(await this.getUserRepository());
-  }
-
   // Profile Use Cases
   async getGetProfileUseCase() {
     return new GetProfileUseCase(await this.getUserProfileRepository());
@@ -294,7 +289,7 @@ class Container {
       await this.getCreateUserUseCase(),
       await this.getUpdateUserUseCase(),
       await this.getDeleteUserUseCase(),
-      await this.getGetUserStatsUseCase()
+      await this.getUserRepository()
     );
   }
 

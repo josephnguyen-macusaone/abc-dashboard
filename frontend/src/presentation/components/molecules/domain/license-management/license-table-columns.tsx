@@ -84,18 +84,6 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       size: 40,
     },
     {
-      id: "id",
-      accessorKey: "id",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="No." />
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium text-center">{row.getValue("id")}</span>
-      ),
-      size: 70,
-      enableColumnFilter: false,
-    },
-    {
       id: "dba",
       accessorKey: "dba",
       header: ({ column }) => (
@@ -107,6 +95,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         </span>
       ),
       enableColumnFilter: false,
+      size: 350,
     },
     {
       id: "zip",
@@ -122,19 +111,20 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       },
     },
     {
-      id: "startDay",
-      accessorKey: "startDay",
+      id: "startsAt",
+      accessorKey: "startsAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="Start Date" />
       ),
       cell: ({ row }) => {
-        const date = row.getValue("startDay") as string;
+        const date = row.getValue("startsAt") as string;
+        const formattedDate = date ? (() => {
+          const d = new Date(date);
+          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+        })() : '';
         return (
           <span className="text-center">
-            {new Date(date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
+            {formattedDate}
           </span>
         );
       },
@@ -176,6 +166,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <Badge variant="outline">{row.getValue("plan")}</Badge>
       ),
       enableColumnFilter: false,
+      size: 120,
     },
     {
       id: "term",
@@ -223,13 +214,13 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       ),
       cell: ({ row }) => {
         const date = row.getValue("lastActive") as string;
+        const formattedDate = date ? (() => {
+          const d = new Date(date);
+          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+        })() : '';
         return (
           <span className="text-center text-sm">
-            {new Date(date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "2-digit",
-            })}
+            {formattedDate}
           </span>
         );
       },
@@ -239,6 +230,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         const filterDate = new Date(value as string);
         return date.toDateString() === filterDate.toDateString();
       },
+      size: 140,
       meta: {
         label: "Last Active",
         variant: "date",
@@ -319,7 +311,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           </span>
         );
       },
-      size: 200,
+      size: 250,
       meta: {
         label: "Agents Name",
       },
@@ -335,7 +327,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           ${row.getValue("agentsCost")}
         </span>
       ),
-      size: 130,
+      size: 140,
       meta: {
         label: "Agents Cost",
       },
@@ -351,7 +343,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           {row.getValue("notes")}
         </span>
       ),
-      size: 180,
+      size: 250,
       filterFn: (row, id, value) => {
         const notes = row.getValue(id) as string;
         return notes.toLowerCase().includes(value.toLowerCase());

@@ -7,11 +7,13 @@ import { PaginationDto } from '../common/pagination.dto.js';
 import { LicenseResponseDto } from './license-response.dto.js';
 
 export class LicenseListResponseDto extends BaseDto {
-  constructor({ licenses, pagination }) {
+  constructor({ licenses, pagination, total, stats }) {
     super();
     this.licenses = licenses;
     this.pagination =
       pagination instanceof PaginationDto ? pagination : new PaginationDto(pagination);
+    this.total = total;
+    this.stats = stats;
   }
 
   /**
@@ -41,10 +43,13 @@ export class LicenseListResponseDto extends BaseDto {
 
   /**
    * Get pagination meta
-   * @returns {Object} Pagination metadata
+   * @returns {Object} Pagination metadata with stats
    */
   getMeta() {
-    return { pagination: this.pagination };
+    return {
+      pagination: this.pagination.toJSON ? this.pagination.toJSON() : this.pagination,
+      stats: this.stats,
+    };
   }
 }
 

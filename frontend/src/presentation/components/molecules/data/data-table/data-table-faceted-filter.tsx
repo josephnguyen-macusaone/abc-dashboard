@@ -46,7 +46,8 @@ export function DataTableFacetedFilter<TData, TValue>({
   const [open, setOpen] = React.useState(false);
 
   // For manual filtering, manage selected values completely locally
-  const [selectedValues, setSelectedValues] = React.useState<Set<string>>(new Set(initialValues));
+  // Initialize from initialValues, but sync when initialValues change
+  const [selectedValues, setSelectedValues] = React.useState<Set<string>>(() => new Set(initialValues));
 
   // For regular filtering, sync with column filter value
   const columnFilterValue = column?.getFilterValue();
@@ -61,19 +62,38 @@ export function DataTableFacetedFilter<TData, TValue>({
     }
   }, [columnFilterValue, manualFiltering, column]);
 
-  // Reset function for manual filtering
+  // Track pending filter changes to notify parent after render
+  const pendingFilterChangeRef = React.useRef<string[] | null>(null);
+  const isUserInteractionRef = React.useRef(false);
+
+  // Notify parent of filter changes after render completes (only for user interactions)
+  React.useEffect(() => {
+    if (pendingFilterChangeRef.current !== null && manualFiltering && isUserInteractionRef.current) {
+      const values = pendingFilterChangeRef.current;
+      pendingFilterChangeRef.current = null;
+      isUserInteractionRef.current = false;
+      onFilterChange?.(values);
+    }
+  }, [selectedValues, manualFiltering, onFilterChange]);
+
+  // Sync initialValues for manual filtering - this ensures checkbox state matches parent state
+  // Only sync when initialValues actually changes (not on every render)
+  const prevInitialValuesRef = React.useRef<string>(JSON.stringify([...initialValues].sort()));
   React.useEffect(() => {
     if (manualFiltering) {
-      setSelectedValues(new Set(initialValues));
+      const currentValuesStr = JSON.stringify([...initialValues].sort());
+      if (currentValuesStr !== prevInitialValuesRef.current) {
+        prevInitialValuesRef.current = currentValuesStr;
+        setSelectedValues(new Set(initialValues));
+      }
     }
   }, [initialValues, manualFiltering]);
 
   const onItemSelect = React.useCallback(
     (option: Option, isSelected: boolean) => {
-      if (!column) return;
-
       if (manualFiltering) {
         // For manual filtering, manage state locally and notify parent
+        // Calculate new values first
         const newSelectedValues = new Set(selectedValues);
         if (isSelected) {
           newSelectedValues.delete(option.value);
@@ -81,16 +101,20 @@ export function DataTableFacetedFilter<TData, TValue>({
           newSelectedValues.add(option.value);
         }
 
+        // Mark this as a user interaction
+        isUserInteractionRef.current = true;
+
+        // Update local state
         setSelectedValues(newSelectedValues);
 
-        // Notify parent of filter changes
+        // Store pending filter change to notify parent after render
         const filterValues = Array.from(newSelectedValues);
-        onFilterChange?.(filterValues);
+        pendingFilterChangeRef.current = filterValues;
 
         if (!multiple) {
           setOpen(false);
         }
-      } else {
+      } else if (column) {
         // For regular filtering, use column filter values
         if (multiple) {
           const newSelectedValues = new Set(selectedValues);
@@ -101,22 +125,32 @@ export function DataTableFacetedFilter<TData, TValue>({
           }
           const filterValues = Array.from(newSelectedValues);
           column.setFilterValue(filterValues.length ? filterValues : undefined);
+          setSelectedValues(newSelectedValues);
         } else {
           const newValue = isSelected ? undefined : [option.value];
           column.setFilterValue(newValue);
+          setSelectedValues(isSelected ? new Set() : new Set([option.value]));
           setOpen(false);
         }
       }
     },
-    [column, multiple, selectedValues, manualFiltering, onFilterChange],
+    [column, multiple, manualFiltering, selectedValues],
   );
 
   const onReset = React.useCallback(
     (event?: React.MouseEvent) => {
       event?.stopPropagation();
-      column?.setFilterValue(undefined);
+
+      if (manualFiltering) {
+        // For manual filtering, clear local state and notify parent
+        setSelectedValues(new Set());
+        onFilterChange?.([]);
+      } else {
+        // For regular filtering, clear column filter
+        column?.setFilterValue(undefined);
+      }
     },
-    [column],
+    [column, manualFiltering, onFilterChange],
   );
 
   return (
@@ -191,7 +225,11 @@ export function DataTableFacetedFilter<TData, TValue>({
                 return (
                   <CommandItem
                     key={option.value}
-                    onSelect={() => onItemSelect(option, isSelected)}
+                    onSelect={() => {
+                      // Calculate isSelected from current state at click time, not render time
+                      const currentlySelected = selectedValues.has(option.value);
+                      onItemSelect(option, currentlySelected);
+                    }}
                   >
                     <div
                       className={cn(

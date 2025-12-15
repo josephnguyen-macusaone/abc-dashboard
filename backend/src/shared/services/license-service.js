@@ -10,6 +10,7 @@ import { DeleteLicenseUseCase } from '../../application/use-cases/licenses/delet
 import { AssignLicenseUseCase } from '../../application/use-cases/licenses/assign-license-use-case.js';
 import { RevokeLicenseAssignmentUseCase } from '../../application/use-cases/licenses/revoke-license-assignment-use-case.js';
 import { GetLicenseStatsUseCase } from '../../application/use-cases/licenses/get-license-stats-use-case.js';
+import logger from '../../infrastructure/config/logger.js';
 
 export class LicenseService extends ILicenseService {
   constructor(licenseRepository, userRepository) {

@@ -5,45 +5,9 @@ import { toast as sonnerToast } from 'sonner';
 import { XCircle, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react';
 
 /**
- * Toast Context - Enhanced Toast Management with Sonner
- *
- * Provides a centralized, feature-rich toast system with:
- * - Consistent styling and icons
- * - Loading states and promise handling
- * - Descriptions and action buttons
- * - Toast management (dismiss, clear all)
- *
- * Usage:
- * ```tsx
- * const { success, error, loading, promise, successWithDescription } = useToast();
- *
- * // Basic toasts
- * success('Operation completed!');
- * error('Something went wrong!');
- *
- * // Toasts with descriptions
- * successWithDescription('Account created', 'Welcome to our platform!');
- *
- * // Loading toasts
- * const loadingId = loading('Saving...');
- *
- * // Promise toasts (handles loading, success, error automatically)
- * await promise(
- *   apiCall(),
- *   {
- *     loading: 'Processing...',
- *     success: 'Done!',
- *     error: 'Failed!'
- *   }
- * );
- *
- * // Toast with action
- * success('File uploaded', {
- *   action: { label: 'View', onClick: () => router.push('/files') }
- * });
- * ```
+ * Toast Context - Toast Management
+ * Defines the contract for the toast context
  */
-
 interface ToastOptions {
   description?: string;
   duration?: number;

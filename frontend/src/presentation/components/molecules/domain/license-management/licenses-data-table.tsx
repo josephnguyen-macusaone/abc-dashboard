@@ -49,7 +49,7 @@ export function LicensesDataTable({
   const columns = React.useMemo(() => getLicenseTableColumns(), []);
 
   const [currentPageSize, setCurrentPageSize] = React.useState(20);
-  
+
   // Track previous query to avoid infinite loops
   const previousLicenseQueryRef = React.useRef<string>("");
 

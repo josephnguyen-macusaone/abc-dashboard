@@ -13,6 +13,7 @@ import { UserFormTemplate } from '@/presentation/components/templates';
 import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
+import { useUserStore, selectUserStats, selectUserLoading } from '@/infrastructure/stores/user-store';
 
 /**
  * UserManagement Component
@@ -39,10 +40,6 @@ interface UserManagementProps {
   dateRange?: { from?: Date; to?: Date };
   /** Callback when date range changes */
   onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
-  /** Callback when role filter is applied */
-  onRoleFilter?: (role: string | null) => void;
-  /** Currently active role filter for visual indication */
-  activeRoleFilter?: string | null;
   /** Callback when table query changes (pagination/sort/filter) */
   onQueryChange?: (params: {
     page: number;
@@ -54,10 +51,6 @@ interface UserManagementProps {
   pageCount?: number;
   /** Total number of users */
   totalCount?: number;
-  /** User statistics */
-  userStats?: any;
-  /** Loading state for stats */
-  isLoadingStats?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -69,24 +62,23 @@ export function UserManagement({
   onLoadUsers,
   dateRange,
   onDateRangeChange,
-  onRoleFilter,
-  activeRoleFilter,
   onQueryChange,
   pageCount,
   totalCount,
-  userStats,
-  isLoadingStats = false,
   className
 }: UserManagementProps) {
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete'>('list');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  // Get stats from store
+  const userStats = useUserStore(selectUserStats);
+  const isLoadingStats = useUserStore(selectUserLoading);
+
   const handleDateRangeUpdate = useCallback(
     (values: { range: { from?: Date; to?: Date } }) => {
       onDateRangeChange?.(values);
-      onLoadUsers?.({});
     },
-    [onDateRangeChange, onLoadUsers]
+    [onDateRangeChange]
   );
 
   // Reload users handler (called after CRUD operations)
@@ -111,7 +103,6 @@ export function UserManagement({
 
   // Form success/cancel handlers
   const handleFormSuccess = () => {
-    // Refresh the data and go back to list view
     handleLoadUsers();
     setCurrentView('list');
     setSelectedUser(null);
@@ -148,6 +139,10 @@ export function UserManagement({
       user.role
     );
   };
+
+  // Create user permission check
+  const canCreateUser = PermissionUtils.canCreateUser(currentUser.role);
+  const onCreateUserHandler = canCreateUser ? handleCreateUser : undefined;
 
   // Render different views
   if (currentView === 'create') {
@@ -226,12 +221,10 @@ export function UserManagement({
       </div>
 
       {/* Statistics */}
-      <div className="mb-5">
+      <div className="mb-4">
         <UserStatsCards
           userStats={userStats}
           isLoading={isLoading || isLoadingStats}
-          onRoleFilter={onRoleFilter}
-          activeRoleFilter={activeRoleFilter}
         />
       </div>
 
@@ -243,8 +236,7 @@ export function UserManagement({
         canDelete={canDeleteUser}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
-        onCreateUser={PermissionUtils.canCreateUser(currentUser.role) ? handleCreateUser : undefined}
-        isLoading={isLoading}
+        onCreateUser={onCreateUserHandler}
         onQueryChange={onQueryChange}
         pageCount={pageCount}
         totalCount={totalCount}

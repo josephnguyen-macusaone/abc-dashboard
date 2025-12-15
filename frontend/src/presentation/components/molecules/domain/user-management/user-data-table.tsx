@@ -5,20 +5,16 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus, Users } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
-import {
-  DataTable,
-  DataTableToolbar,
-} from "@/presentation/components/molecules/data/data-table";
+import { DataTable, DataTableToolbar } from "@/presentation/components/molecules/data/data-table";
 import { useDataTable } from "@/presentation/hooks";
-import { useDebouncedCallback } from "@/presentation/hooks/use-debounced-callback";
 import { Button } from "@/presentation/components/atoms/primitives/button";
-import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
 import { getUserTableColumns } from "./user-table-columns";
 import type { User } from "@/domain/entities/user-entity";
 import type { DataTableRowAction } from "@/shared/types/data-table";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface UsersDataTableProps {
   data: User[];
@@ -30,18 +26,19 @@ interface UsersDataTableProps {
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onCreateUser?: () => void;
-  isLoading?: boolean;
   onQueryChange?: (params: {
     page: number;
     limit: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    createdAtFrom?: string;
+    createdAtTo?: string;
   }) => void;
 }
 
 export function UsersDataTable({
   data,
-  pageCount: initialPageCount = -1, // Let table auto-calculate for client-side pagination
+  pageCount,
   totalCount,
   currentUser,
   canEdit,
@@ -49,14 +46,13 @@ export function UsersDataTable({
   onEdit,
   onDelete,
   onCreateUser,
-  isLoading = false,
   onQueryChange,
 }: UsersDataTableProps) {
   const [rowAction, setRowAction] =
-    React.useState<DataTableRowAction<User> | null>(null);
+    useState<DataTableRowAction<User> | null>(null);
 
   // Handle row actions
-  React.useEffect(() => {
+  useEffect(() => {
     if (rowAction) {
       if (rowAction.variant === "update") {
         onEdit(rowAction.row.original);
@@ -67,7 +63,7 @@ export function UsersDataTable({
     }
   }, [rowAction, onEdit, onDelete]);
 
-  const columns = React.useMemo(
+  const columns = useMemo(
     () =>
       getUserTableColumns({
         setRowAction,
@@ -79,41 +75,17 @@ export function UsersDataTable({
     [currentUser.id, currentUser.role, canEdit, canDelete],
   );
 
-  const [currentPageSize, setCurrentPageSize] = React.useState(20);
-
-  const pageCount = React.useMemo(() =>
-    Math.ceil(data.length / currentPageSize),
-    [data.length, currentPageSize]
-  );
-
-  // Track the last query to prevent infinite loops
-  const lastQueryRef = React.useRef<string>("");
-  const hasInitializedRef = React.useRef(false);
-
-  // Search state (for email search) - debounced to avoid excessive API calls
-  const [searchInput, setSearchInput] = React.useState("");
-  const [searchValue, setSearchValue] = React.useState("");
-
-  // Manual filter state for server-side filtering
-  const [manualFilterValues, setManualFilterValues] = React.useState<Record<string, string[]>>({});
-
-
-  // Handle manual filter changes
-  const handleManualFilterChange = React.useCallback((columnId: string, values: string[]) => {
-    setManualFilterValues(prev => ({
-      ...prev,
-      [columnId]: values
-    }));
-  }, []);
-
+  // Create the table instance using the data table hook (must be declared before use)
   const { table } = useDataTable({
     data,
     columns,
-    pageCount: onQueryChange ? initialPageCount : pageCount, // Use server pageCount when onQueryChange is provided
-    totalRows: onQueryChange ? totalCount : undefined, // Use totalCount for manual pagination
+    pageCount: onQueryChange ? pageCount : undefined,
+    totalRows: onQueryChange ? totalCount : undefined,
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
-    manualFiltering: !!onQueryChange, // Enable manual filtering for server-side filtering
+    manualFiltering: !!onQueryChange,
+    shallow: false,
+    queryKeys: {},
     initialState: {
       pagination: { pageSize: 20, pageIndex: 0 },
       sorting: [{ id: "createdAt", desc: true }],
@@ -123,82 +95,221 @@ export function UsersDataTable({
     },
   } as any); // Temporary type assertion to bypass TypeScript issue
 
-  // Create stable references to table state to avoid infinite re-renders
-  const tableState = React.useMemo(() => table.getState(), [
-    table.getState().pagination.pageIndex,
-    table.getState().pagination.pageSize,
-    table.getState().sorting,
-    table.getState().columnFilters,
-  ]);
+  // Track the last query to prevent infinite loops
+  const lastQueryRef = useRef<string>("");
+  const hasInitializedRef = useRef(false);
+  // Track last values for changes
+  const lastPageIndexRef = useRef<number>(0);
+  const lastPageSizeRef = useRef<number>(20);
+  const lastSortRef = useRef<string>("");
+  const lastFiltersRef = useRef<string>("");
+  const lastSearchRef = useRef<string>("");
+  const lastManualFiltersRef = useRef<string>("");
 
-  // Debounce the search value update (500ms delay)
-  const debouncedSetSearch = useDebouncedCallback((value: string) => {
-    setSearchValue(value);
-    // Reset to page 1 when searching
-    table.setPageIndex(0);
-  }, 500);
+  // Search states for better UX control
+  const [searchInput, setSearchInput] = useState(""); // What user types (immediate UI updates)
+  const [searchQuery, setSearchQuery] = useState(""); // What gets sent to API (debounced)
 
-  const handleSearchChange = React.useCallback((value: string) => {
-    setSearchInput(value);
-    debouncedSetSearch(value);
-  }, [debouncedSetSearch]);
+  // Manual filter state for server-side filtering
+  const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>({});
 
-  // Update page size when table page size changes
-  React.useEffect(() => {
-    const tablePageSize = table.getState().pagination.pageSize;
-    if (tablePageSize !== currentPageSize) {
-      setCurrentPageSize(tablePageSize);
+  // Initialize component and prevent initial API calls
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    const roleParam = urlParams.get('role');
+    const isActiveParam = urlParams.get('isActive');
+
+    if (searchParam) {
+      setSearchInput(searchParam);
+      setSearchQuery(searchParam);
+      // Mark that filtering has been performed when initializing from URL
+      hasPerformedFilteringRef.current = true;
     }
-  }, [table, currentPageSize]);
 
-  // Notify parent of query changes when manual modes are enabled
-  React.useEffect(() => {
+    if (roleParam) {
+      const roleValues = roleParam.includes(',') ? roleParam.split(',') : [roleParam];
+      setManualFilterValues(prev => ({ ...prev, role: roleValues }));
+      hasPerformedFilteringRef.current = true;
+    }
+
+    if (isActiveParam) {
+      const isActiveValues = isActiveParam.includes(',') ? isActiveParam.split(',') : [isActiveParam];
+      setManualFilterValues(prev => ({ ...prev, isActive: isActiveValues }));
+      hasPerformedFilteringRef.current = true;
+    }
+  }, []);
+
+  // Track filter actions to determine reset button visibility
+  // Use a ref to track if user has performed any filtering actions
+  const hasPerformedFilteringRef = useRef(false);
+
+  // Calculate if filters are currently active (for reset button visibility)
+  const hasActiveFilters = useMemo(() => {
+    const tableState = table.getState();
+
+    // Check search filters: user typing OR active API search
+    const hasSearchFilters = searchInput.trim() !== "" || searchQuery.trim() !== "";
+
+    // Check manual filter values (what user has selected)
+    const hasManualFilters = (
+      (manualFilterValues.role && manualFilterValues.role.length > 0) ||
+      (manualFilterValues.isActive && manualFilterValues.isActive.length > 0)
+    );
+
+    // Check table column filters
+    const hasTableFilters = tableState.columnFilters && tableState.columnFilters.length > 0;
+
+    // Check URL parameters for persisted filters
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrlFilters = (
+      urlParams.has('search') ||
+      urlParams.has('role') ||
+      urlParams.has('isActive') ||
+      urlParams.has('filters')
+    );
+
+    // Current active state - includes both API search and typing state
+    const currentlyActive = hasSearchFilters || hasManualFilters || hasTableFilters || hasUrlFilters;
+
+    // If we detect active filters, mark that filtering has been performed
+    if (currentlyActive) {
+      hasPerformedFilteringRef.current = true;
+    }
+
+    return currentlyActive;
+  }, [searchInput, searchQuery, manualFilterValues, table]);
+
+  // Reset button should show if there's any search activity
+  // Show when: user is typing, API search is active, or filtering has been performed
+  const shouldShowResetButton = searchInput.trim() !== "" || searchQuery.trim() !== "" || hasPerformedFilteringRef.current;
+
+  // Handle manual filter changes
+  const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
+    setManualFilterValues(prev => ({
+      ...prev,
+      [columnId]: values
+    }));
+  }, []);
+
+  // Track pagination, sorting, and filtering separately for reliable change detection
+  const tablePageIndex = table.getState().pagination.pageIndex;
+  const tablePageSize = table.getState().pagination.pageSize;
+  const tableSorting = table.getState().sorting;
+  const tableColumnFilters = table.getState().columnFilters;
+
+  const handleSearchChange = useCallback((value: string) => {
+    // Update input immediately for responsive UI (shows reset button)
+    setSearchInput(value);
+    // No automatic API calls - only on Enter key
+  }, []);
+
+  const handleSearchKeyDown = useCallback((event: React.KeyboardEvent) => {
+    // Enter triggers API call immediately and prevents form submission
+    if (event.key === 'Enter') {
+      event.preventDefault(); // Prevent any form submission
+      setSearchQuery(searchInput);
+    }
+  }, [searchInput]);
+
+  // Notify parent of query changes for sorting/filtering/pagination
+  useEffect(() => {
     if (!onQueryChange) return;
 
-    const { pagination: pg, sorting: sort, columnFilters } = tableState;
-    const activeSort = sort?.[0];
+    const activeSort = tableSorting?.[0];
 
-    // Use manual filter values for server-side filtering
-    const filters: Record<string, any> = { ...manualFilterValues };
+    // Check if pagination, sorting, or filtering changed
+    const currentSortString = JSON.stringify(tableSorting);
+    const currentFiltersString = JSON.stringify(tableColumnFilters);
+    const currentSearch = searchQuery.trim(); // Use the API query state
+    const currentManualFilters = JSON.stringify(manualFilterValues);
 
-    // Add search value if present
-    if (searchValue.trim()) {
-      filters.email = searchValue.trim();
+    // Initialize refs on first run
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      lastPageIndexRef.current = tablePageIndex;
+      lastPageSizeRef.current = tablePageSize;
+      lastSortRef.current = currentSortString;
+      lastFiltersRef.current = currentFiltersString;
+      lastSearchRef.current = currentSearch; // currentSearch is based on searchQuery
+      lastManualFiltersRef.current = currentManualFilters;
+
+      const initialQueryParams = {
+        page: tablePageIndex + 1,
+        limit: tablePageSize,
+        sortBy: activeSort?.id || "createdAt",
+        sortOrder: activeSort?.desc ? "desc" : "asc",
+      };
+      lastQueryRef.current = JSON.stringify(initialQueryParams);
+      return;
     }
 
+    const paginationChanged = tablePageIndex !== lastPageIndexRef.current ||
+      tablePageSize !== lastPageSizeRef.current;
+    const sortChanged = currentSortString !== lastSortRef.current;
+    const filtersChanged = currentFiltersString !== lastFiltersRef.current ||
+      currentSearch !== lastSearchRef.current ||
+      currentManualFilters !== lastManualFiltersRef.current;
 
+    if (!paginationChanged && !sortChanged && !filtersChanged) return;
+
+    // Check if search has changed to reset to page 1
+    const searchChanged = currentSearch !== lastSearchRef.current;
+    const currentPage = searchChanged ? 1 : tablePageIndex + 1;
+
+    // Build query params
     const queryParams: {
       page: number;
       limit: number;
       sortBy?: string;
       sortOrder?: "asc" | "desc";
-      [key: string]: any; // Allow dynamic filter keys
+      search?: string;
+      role?: string | string[];
+      isActive?: string | string[];
     } = {
-      page: pg?.pageIndex ? pg.pageIndex + 1 : 1,
-      limit: pg?.pageSize ?? 20,
+      page: currentPage,
+      limit: tablePageSize,
       sortBy: activeSort?.id,
       sortOrder: activeSort?.desc ? "desc" : "asc",
-      ...filters, // Include all column filter values as-is
     };
+
+    // Add search value if present
+    if (currentSearch) {
+      queryParams.search = currentSearch;
+    }
+
+    // Add manual filter values
+    if (manualFilterValues.role && manualFilterValues.role.length > 0) {
+      queryParams.role = manualFilterValues.role;
+    }
+
+    if (manualFilterValues.isActive && manualFilterValues.isActive.length > 0) {
+      queryParams.isActive = manualFilterValues.isActive;
+    }
 
     // Create a stable string representation for comparison
     const queryString = JSON.stringify(queryParams);
 
-    // Only call onQueryChange if the query actually changed
-    // And skip the initial render to avoid duplicate calls
+    // Call onQueryChange for any changes
     if (queryString !== lastQueryRef.current && hasInitializedRef.current) {
       lastQueryRef.current = queryString;
       onQueryChange(queryParams);
+
+      // If search changed and we forced page to 1, sync the table state
+      if (searchChanged && tablePageIndex !== 0) {
+        // Use setTimeout to avoid state update conflicts
+        setTimeout(() => table.setPageIndex(0), 0);
+      }
     }
 
-    // Mark as initialized after first run
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      lastQueryRef.current = queryString;
-    }
-  }, [tableState, searchValue, onQueryChange]);
-
-  // Loading is now handled at the UserManagement level
+    // Update refs after API call
+    lastPageIndexRef.current = tablePageIndex;
+    lastPageSizeRef.current = tablePageSize;
+    lastSortRef.current = currentSortString;
+    lastFiltersRef.current = currentFiltersString;
+    lastSearchRef.current = currentSearch;
+    lastManualFiltersRef.current = currentManualFilters;
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, manualFilterValues, onQueryChange]);
 
   return (
     <DataTable table={table}>
@@ -206,28 +317,30 @@ export function UsersDataTable({
         table={table}
         searchBar={
           <SearchBar
-            placeholder="Search by email..."
+            placeholder="Search..."
             value={searchInput}
             onValueChange={handleSearchChange}
-            allowClear
+            onKeyDown={handleSearchKeyDown}
+            allowClear={false}
             className="w-64"
             inputClassName="h-8"
           />
         }
         onReset={() => {
-          // For server-side filtering, clear everything
-
           // 1. Clear search state
           setSearchInput("");
-          debouncedSetSearch("");
-          setSearchValue("");
+          setSearchQuery("");
 
           // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
           setManualFilterValues({});
 
-          // 3. Reset to first page
+          // 3. Reset filtering tracking
+          hasPerformedFilteringRef.current = false;
+
+          // 4. Reset to first page (this will trigger URL update and API call)
           table.setPageIndex(0);
         }}
+        hasActiveFilters={shouldShowResetButton}
         onManualFilterChange={handleManualFilterChange}
         initialFilterValues={manualFilterValues}
       >
@@ -246,4 +359,3 @@ export function UsersDataTable({
     </DataTable>
   );
 }
-

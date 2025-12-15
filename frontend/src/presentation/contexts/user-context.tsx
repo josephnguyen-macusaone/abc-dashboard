@@ -4,13 +4,17 @@ import React, { createContext, useContext, ReactNode, useCallback } from 'react'
 import { container } from '@/shared/di/container';
 import { User, UserListParams, PaginatedUserList, UserStats, CreateUserDTO, UpdateUserDTO } from '@/application/dto/user-dto';
 
+
+/**
+ * User Context Type
+ * Defines the contract for the user context
+ */
 interface UserContextType {
   // Operations
   getUsers: (params: UserListParams) => Promise<PaginatedUserList>;
   createUser: (userData: CreateUserDTO) => Promise<User>;
   updateUser: (id: string, updates: UpdateUserDTO) => Promise<User>;
   deleteUser: (id: string) => Promise<void>;
-  getUserStats: () => Promise<UserStats>;
 
   // Loading states
   loading: {
@@ -18,7 +22,6 @@ interface UserContextType {
     createUser: boolean;
     updateUser: boolean;
     deleteUser: boolean;
-    getUserStats: boolean;
   };
 
   // Errors
@@ -27,7 +30,6 @@ interface UserContextType {
     createUser: string | null;
     updateUser: string | null;
     deleteUser: string | null;
-    getUserStats: string | null;
   };
 
   // Utility functions
@@ -58,7 +60,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     createUser: false,
     updateUser: false,
     deleteUser: false,
-    getUserStats: false,
   });
 
   // Error states
@@ -67,7 +68,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     createUser: null as string | null,
     updateUser: null as string | null,
     deleteUser: null as string | null,
-    getUserStats: null as string | null,
   });
 
   const executeWithErrorHandling = useCallback(async <T = any>(
@@ -122,13 +122,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     );
   }, [executeWithErrorHandling]);
 
-  const getUserStats = useCallback(async (): Promise<UserStats> => {
-    return executeWithErrorHandling(
-      () => userManagementService.getUserStats(),
-      'getUserStats',
-      'Failed to load user statistics'
-    );
-  }, [executeWithErrorHandling]);
 
   const clearError = useCallback((operation: keyof UserContextType['error']) => {
     setErrorStates(prev => ({ ...prev, [operation]: null }));
@@ -140,7 +133,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       createUser: null,
       updateUser: null,
       deleteUser: null,
-      getUserStats: null,
     });
   }, []);
 
@@ -150,7 +142,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     createUser,
     updateUser,
     deleteUser,
-    getUserStats,
 
     // Loading states
     loading: loadingStates,

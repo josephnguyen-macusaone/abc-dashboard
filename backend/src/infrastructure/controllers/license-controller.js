@@ -12,13 +12,8 @@ export class LicenseController {
       const query = LicenseValidator.validateListQuery(req.query);
       const result = await this.licenseService.getLicenses(query);
 
-      return res.paginated(
-        result.getData(),
-        result.pagination.page,
-        result.pagination.limit,
-        result.pagination.total,
-        'Licenses retrieved successfully'
-      );
+      // Use success with meta to include stats (like user controller)
+      return res.success(result.getData(), 'Licenses retrieved successfully', result.getMeta());
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);

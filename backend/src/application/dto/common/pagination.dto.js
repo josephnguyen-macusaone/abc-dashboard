@@ -5,12 +5,11 @@
 import { BaseDto } from './base.dto.js';
 
 export class PaginationDto extends BaseDto {
-  constructor({ page = 1, limit = 10, total = 0, totalPages = 0 }) {
+  constructor({ page = 1, limit = 10, totalPages = 0 }) {
     super();
     this.page = page;
     this.limit = limit;
-    this.total = total;
-    this.totalPages = totalPages || Math.ceil(total / limit);
+    this.totalPages = totalPages;
     this.hasNext = page < this.totalPages;
     this.hasPrev = page > 1;
   }
@@ -18,13 +17,13 @@ export class PaginationDto extends BaseDto {
   /**
    * Create pagination from query parameters
    * @param {Object} query - Request query object
-   * @param {number} total - Total count of items
+   * @param {number} totalPages - Total number of pages
    * @returns {PaginationDto}
    */
-  static fromQuery(query, total) {
+  static fromQuery(query, totalPages = 0) {
     const page = parseInt(query.page) || 1;
     const limit = parseInt(query.limit) || 10;
-    return new PaginationDto({ page, limit, total });
+    return new PaginationDto({ page, limit, totalPages });
   }
 }
 

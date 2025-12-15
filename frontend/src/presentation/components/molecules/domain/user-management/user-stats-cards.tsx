@@ -9,7 +9,7 @@ import { USER_ROLES } from '@/shared/constants';
 export interface UserStatsCardsProps {
   users?: User[]; // Optional - for backward compatibility
   userStats?: {
-    totalUsers: number;
+    total: number;
     admin: number;
     manager: number;
     staff: number;
@@ -122,7 +122,7 @@ export function UserStatsCards({
 }) {
   // Use API stats when available, otherwise calculate from displayed users
   const stats = userStats ?? {
-    totalUsers: 0,
+    total: 0,
     admin: 0,
     manager: 0,
     staff: 0,
@@ -132,7 +132,7 @@ export function UserStatsCards({
     {
       id: 'total-users',
       label: 'Total Users',
-      value: stats.totalUsers,
+      value: stats.total,
       icon: Users,
       color: activeRoleFilter === null ? 'text-primary' : 'text-blue-600',
       hoverColor: 'text-blue-700',

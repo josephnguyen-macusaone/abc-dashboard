@@ -73,10 +73,26 @@ export function LicensesDataGrid({
     } : { length: 0, string: '' }
   );
 
-  // Sync with initialData when it changes, but only if we don't have unsaved changes and using complex sync
+  // Track if component is mounted
+  const isMountedRef = React.useRef(false);
+
+  // Mark as mounted
   React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Sync with initialData when it changes, but only if we don't have unsaved changes
+  React.useEffect(() => {
+    // Skip on initial mount to avoid setState during render
+    if (!isMountedRef.current) {
+      return;
+    }
+
     if (!useComplexSync) {
-      // For simple mode, just set data directly and increment version to force remount
+      // For simple mode, set data directly on changes
       setData(initialData);
       dataVersionRef.current += 1;
       return;
@@ -137,7 +153,7 @@ export function LicensesDataGrid({
       id: data.length + 1,
       dba: "",
       zip: "",
-      startDay: new Date().toISOString().split("T")[0],
+      startsAt: new Date().toISOString().split("T")[0],
       status: "pending",
       plan: "Basic",
       term: "monthly",

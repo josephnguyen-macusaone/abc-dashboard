@@ -1854,11 +1854,12 @@ function useDataGrid<TData>({
   }
 
   // Use separate refs to track state changes without depending on table object
-  const pageIndexRef = React.useRef(table.getState().pagination.pageIndex);
-  const pageSizeRef = React.useRef(table.getState().pagination.pageSize);
-  const sortIdRef = React.useRef(table.getState().sorting?.[0]?.id);
-  const sortDescRef = React.useRef(table.getState().sorting?.[0]?.desc);
-  const searchQueryRef = React.useRef(searchQuery);
+  const pageIndexRef = React.useRef<number | undefined>(undefined);
+  const pageSizeRef = React.useRef<number | undefined>(undefined);
+  const sortIdRef = React.useRef<string | undefined>(undefined);
+  const sortDescRef = React.useRef<boolean | undefined>(undefined);
+  const searchQueryRef = React.useRef<string | undefined>(undefined);
+  const isInitializedRef = React.useRef(false);
 
   // Notify parent of query changes when manual modes are enabled
   React.useEffect(() => {
@@ -1871,6 +1872,17 @@ function useDataGrid<TData>({
       acc[curr.id] = curr.value;
       return acc;
     }, {});
+
+    // On first mount, just initialize refs without calling onQueryChange
+    if (!isInitializedRef.current) {
+      pageIndexRef.current = pg?.pageIndex ?? 0;
+      pageSizeRef.current = pg?.pageSize ?? 10;
+      sortIdRef.current = activeSort?.id;
+      sortDescRef.current = activeSort?.desc;
+      searchQueryRef.current = searchQuery;
+      isInitializedRef.current = true;
+      return;
+    }
 
     // Check if any relevant state changed
     const pageIndexChanged = pageIndexRef.current !== pg?.pageIndex;
@@ -1898,7 +1910,7 @@ function useDataGrid<TData>({
 
       onQueryChange(queryParams);
     }
-  });
+  }, [onQueryChange, table, searchQuery]);
 
   const onScrollToRow = React.useCallback(
     async (opts: Partial<CellPosition>) => {

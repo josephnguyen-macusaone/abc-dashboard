@@ -15,7 +15,6 @@ export interface UserFilters {
 export interface PaginationState {
   page: number;
   limit: number;
-  total: number;
   totalPages: number;
 }
 
@@ -54,6 +53,12 @@ interface UserState {
   error: string | null;
   filters: UserFilters;
   pagination: PaginationState;
+  stats: {
+    total: number;
+    admin: number;
+    manager: number;
+    staff: number;
+  } | null;
   selectedUsers: string[];
 
   // Actions
@@ -63,7 +68,6 @@ interface UserState {
   updateUser: (id: string, userData: UpdateUserRequest) => Promise<User>;
   deleteUser: (id: string) => Promise<void>;
   reassignStaff: (staffId: string, managerId: string) => Promise<User>;
-  getUserStats: () => Promise<any>;
   setFilters: (filters: UserFilters) => void;
   setPagination: (pagination: Partial<PaginationState>) => void;
   setSelectedUsers: (userIds: string[]) => void;
@@ -85,10 +89,24 @@ export const useUserStore = create<UserState>()(
         loading: false,
         error: null,
         filters: {},
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        pagination: { page: 1, limit: 10, totalPages: 0 },
+        stats: null,
         selectedUsers: [],
 
         fetchUsers: async (params = {}) => {
+          // Prevent concurrent API calls, but allow different page requests
+          const currentState = get();
+          if (currentState.loading) {
+            const currentPage = currentState.pagination.page;
+            const requestedPage = params.page ?? currentPage;
+            // Allow the call if it's for a different page (navigation)
+            if (requestedPage === currentPage) {
+              storeLogger.warn('Fetch users already in progress for same page, skipping duplicate call');
+              return;
+            }
+            storeLogger.info(`Allowing concurrent call for different page: ${requestedPage} (current: ${currentPage})`);
+          }
+
           try {
             set({ loading: true, error: null });
 
@@ -115,6 +133,7 @@ export const useUserStore = create<UserState>()(
             set({
               users,
               pagination: response.pagination,
+              stats: response.stats || null,
               loading: false
             });
           } catch (error) {
@@ -243,23 +262,6 @@ export const useUserStore = create<UserState>()(
           }
         },
 
-        getUserStats: async () => {
-          try {
-            set({ loading: true, error: null });
-
-            const stats = await userApi.getUserStats();
-
-            set({ loading: false });
-
-            return stats;
-          } catch (error) {
-            const errorMessage = getErrorMessage(error);
-            set({ error: errorMessage, loading: false });
-            storeLogger.error('Failed to fetch user stats', { error: errorMessage });
-            throw error;
-          }
-        },
-
         setFilters: (filters: UserFilters) => {
           set({ filters });
           storeLogger.debug('Filters updated', { filters });
@@ -283,7 +285,7 @@ export const useUserStore = create<UserState>()(
           loading: false,
           error: null,
           filters: {},
-          pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+          pagination: { page: 1, limit: 10, totalPages: 0 },
           selectedUsers: [],
         }),
       };
@@ -298,4 +300,5 @@ export const useUserStore = create<UserState>()(
 export const selectUsers = (state: { users: User[] }) => state.users;
 export const selectUserFilters = (state: { filters: UserFilters }) => state.filters;
 export const selectUserPagination = (state: { pagination: PaginationState }) => state.pagination;
+export const selectUserStats = (state: { stats: any }) => state.stats;
 export const selectUserLoading = (state: { loading: boolean }) => state.loading;

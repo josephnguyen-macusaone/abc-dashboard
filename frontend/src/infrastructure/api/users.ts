@@ -32,7 +32,7 @@ export class UserApiService {
       const response = await httpClient.get<{
         success: boolean;
         data: UserProfileDto[];
-        meta: { pagination: UsersListResponseDto['pagination'] };
+        meta: { pagination: UsersListResponseDto['pagination']; stats: any };
       }>(url);
 
       if (!response.success || !response.data) {
@@ -41,29 +41,14 @@ export class UserApiService {
 
       return {
         users: response.data,
-        pagination: response.meta?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
+        pagination: response.meta?.pagination || { page: 1, limit: 10, totalPages: 0 },
+        stats: response.meta?.stats
       };
     } catch (error) {
       throw error;
     }
   }
 
-  /**
-   * Get user statistics
-   */
-  static async getUserStats(): Promise<UserStatsResponseDto> {
-    try {
-      const response = await httpClient.get<ApiResponse<UserStatsResponseDto>>('/users/stats');
-
-      if (!response.data) {
-        throw new Error('Get user stats response missing data');
-      }
-
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
 
   /**
    * Get single user by ID
@@ -163,7 +148,6 @@ export class UserApiService {
 // Export singleton instance methods for convenience
 export const userApi = {
   getUsers: UserApiService.getUsers,
-  getUserStats: UserApiService.getUserStats,
   getUser: UserApiService.getUser,
   createUser: UserApiService.createUser,
   updateUser: UserApiService.updateUser,

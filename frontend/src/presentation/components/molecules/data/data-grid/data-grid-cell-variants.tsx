@@ -477,7 +477,7 @@ export function SelectCell<TData>({
 function formatDateForDisplay(dateStr: string) {
   if (!dateStr) return "";
   const date = new Date(dateStr);
-  return date.toLocaleDateString();
+  return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`;
 }
 
 export function DateCell<TData>({

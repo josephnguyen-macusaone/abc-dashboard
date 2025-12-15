@@ -13,7 +13,7 @@ export interface LicenseRecord {
   id: number;
   dba: string; // Database/Account identifier
   zip: string;
-  startDay: string; // ISO date string
+  startsAt: string; // ISO date string
   status: LicenseStatus;
   cancelDate?: string; // Required when status is 'cancel'
   plan: string;

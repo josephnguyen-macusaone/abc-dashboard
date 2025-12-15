@@ -499,16 +499,16 @@ export class UserRepository implements IUserRepository {
         pagination: {
           page: response.pagination.page,
           limit: response.pagination.limit,
-          total: response.pagination.total,
           totalPages: response.pagination.totalPages,
           hasNext: response.pagination.page < response.pagination.totalPages,
           hasPrev: response.pagination.page > 1,
         },
+        stats: response.stats,
       };
 
       logger.success(correlationId, duration, {
         count: users.length,
-        total: response.pagination.total,
+        total: response.stats?.total || 0,
         page: response.pagination.page
       });
 
@@ -518,52 +518,4 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async getUserStats(): Promise<UserStats> {
-    const correlationId = generateCorrelationId();
-    const logger = this.createOperationLogger('get_user_stats');
-
-    try {
-      // Check cache first
-      const cachedStats = this.getCachedStats();
-      if (cachedStats) {
-        logger.start(correlationId, { cached: true });
-        logger.success(correlationId, 0, {
-          totalUsers: cachedStats.totalUsers,
-          admin: cachedStats.admin,
-          manager: cachedStats.manager,
-          staff: cachedStats.staff,
-          source: 'cache'
-        });
-        return cachedStats;
-      }
-
-      logger.start(correlationId);
-
-      const startTime = Date.now();
-      const apiResponse = await userApi.getUserStats();
-      const response = this.validateApiResponse<UserStatsResponseDto>(apiResponse, 'getUserStats');
-      const duration = Date.now() - startTime;
-
-      const stats: UserStats = {
-        totalUsers: response.totalUsers,
-        admin: response.admin,
-        manager: response.manager,
-        staff: response.staff,
-      };
-
-      // Cache the result
-      this.setCachedStats(stats);
-
-      logger.success(correlationId, duration, {
-        totalUsers: stats.totalUsers,
-        admin: stats.admin,
-        manager: stats.manager,
-        staff: stats.staff
-      });
-
-      return stats;
-    } catch (error) {
-      throw this.handleApiError(error, 'get_user_stats', correlationId);
-    }
-  }
 }

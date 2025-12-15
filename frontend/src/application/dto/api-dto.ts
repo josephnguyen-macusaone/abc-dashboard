@@ -121,18 +121,25 @@ export interface UsersListResponseDto {
   pagination: {
     page: number;
     limit: number;
-    total: number;
     totalPages: number;
+  };
+  stats?: {
+    total: number;
+    admin: number;
+    manager: number;
+    staff: number;
   };
 }
 
 export interface GetUsersQueryParamsDto {
   page?: number;
   limit?: number;
+  search?: string;
+  searchField?: 'email' | 'displayName' | 'username' | 'phone';
   email?: string;
   username?: string;
   displayName?: string;
-  search?: string;
+  phone?: string;
   role?: string | string[];
   isActive?: string | string[];
   hasAvatar?: boolean;

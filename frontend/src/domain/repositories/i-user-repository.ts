@@ -47,10 +47,6 @@ export interface IUserRepository {
    */
   getUsers(params: UserListParams): Promise<PaginatedUserList>;
 
-  /**
-   * Get user statistics
-   */
-  getUserStats(): Promise<UserStats>;
 
   /**
    * Get current authenticated user

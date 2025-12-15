@@ -48,11 +48,7 @@ export interface DateRangePickerProps {
 }
 
 const formatDate = (date: Date, locale: string = 'en-us'): string => {
-  return date.toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`;
 };
 
 const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {

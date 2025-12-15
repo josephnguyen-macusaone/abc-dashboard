@@ -1,6 +1,13 @@
 import express from 'express';
 import { validateRequest } from '../middleware/validation-middleware.js';
 import { licenseSchemas } from '../api/v1/schemas/license.schemas.js';
+import {
+  checkLicenseCreationPermission,
+  checkLicenseAccessPermission,
+  checkLicenseAssignmentPermission,
+  checkLicenseRevocationPermission,
+  checkLicenseBulkOperationPermission,
+} from '../middleware/license-management.middleware.js';
 
 /**
  * License Routes
@@ -88,7 +95,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/', validateRequest(licenseSchemas.getLicenses), controller.getLicenses);
+  router.get(
+    '/',
+    checkLicenseAccessPermission('list'),
+    validateRequest(licenseSchemas.getLicenses),
+    controller.getLicenses
+  );
 
   /**
    * @swagger
@@ -133,7 +145,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/:id', validateRequest(licenseSchemas.licenseId, 'params'), controller.getLicenseById);
+  router.get(
+    '/:id',
+    checkLicenseAccessPermission('read'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    controller.getLicenseById
+  );
 
   /**
    * @swagger
@@ -233,7 +250,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/', validateRequest(licenseSchemas.createLicense), controller.createLicense);
+  router.post(
+    '/',
+    checkLicenseCreationPermission(),
+    validateRequest(licenseSchemas.createLicense),
+    controller.createLicense
+  );
 
   /**
    * @swagger
@@ -342,7 +364,13 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.put('/:id', validateRequest(licenseSchemas.licenseId, 'params'), validateRequest(licenseSchemas.updateLicense), controller.updateLicense);
+  router.put(
+    '/:id',
+    checkLicenseAccessPermission('update'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateRequest(licenseSchemas.updateLicense),
+    controller.updateLicense
+  );
 
   /**
    * @swagger
@@ -456,7 +484,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.patch('/bulk', validateRequest(licenseSchemas.bulkUpdateLicenses), controller.bulkUpdate);
+  router.patch(
+    '/bulk',
+    checkLicenseBulkOperationPermission(),
+    validateRequest(licenseSchemas.bulkUpdateLicenses),
+    controller.bulkUpdate
+  );
 
   /**
    * @swagger
@@ -569,7 +602,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/bulk', validateRequest(licenseSchemas.bulkCreateLicenses), controller.bulkCreate);
+  router.post(
+    '/bulk',
+    checkLicenseBulkOperationPermission(),
+    validateRequest(licenseSchemas.bulkCreateLicenses),
+    controller.bulkCreate
+  );
 
   /**
    * @swagger
@@ -625,7 +663,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/row', validateRequest(licenseSchemas.addLicenseRow), controller.addRow);
+  router.post(
+    '/row',
+    checkLicenseCreationPermission(),
+    validateRequest(licenseSchemas.addLicenseRow),
+    controller.addRow
+  );
 
   /**
    * @swagger
@@ -684,7 +727,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.delete('/bulk', validateRequest(licenseSchemas.bulkDeleteLicenses), controller.bulkDelete);
+  router.delete(
+    '/bulk',
+    checkLicenseBulkOperationPermission(),
+    validateRequest(licenseSchemas.bulkDeleteLicenses),
+    controller.bulkDelete
+  );
 
   /**
    * @swagger
@@ -721,7 +769,12 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.delete('/:id', validateRequest(licenseSchemas.licenseId, 'params'), controller.deleteLicense);
+  router.delete(
+    '/:id',
+    checkLicenseAccessPermission('delete'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    controller.deleteLicense
+  );
 
   return router;
 };

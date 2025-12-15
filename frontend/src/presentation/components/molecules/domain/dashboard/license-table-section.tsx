@@ -7,8 +7,6 @@ import { SearchBar } from '@/presentation/components/molecules';
 import { useDebouncedCallback } from '@/presentation/hooks/use-debounced-callback';
 import { cn } from '@/shared/utils';
 import type { LicenseRecord } from '@/shared/types';
-import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
-import type { LicenseDateRange } from '@/application/services/license-dashboard-metrics';
 
 export interface LicenseTableSectionProps {
   /**
@@ -31,14 +29,6 @@ export interface LicenseTableSectionProps {
    * License data to render
    */
   licenses: LicenseRecord[];
-  /**
-   * Shared date range filter (optional)
-   */
-  dateRange?: LicenseDateRange;
-  /**
-   * Callback when date range changes
-   */
-  onDateRangeChange?: (values: { range: DateRange; rangeCompare?: DateRange }) => void;
   /**
    * Loading state
    */
@@ -70,7 +60,6 @@ export function LicenseTableSection({
   title = 'License Management',
   description = 'Manage license records and subscriptions',
   licenses,
-  dateRange,
   isLoading = false,
   pageCount,
   totalRows,
@@ -119,7 +108,7 @@ export function LicenseTableSection({
             placeholder="Search by DBA..."
             value={searchInput}
             onValueChange={handleSearchChange}
-            allowClear
+            allowClear={false}
             className="w-64"
             inputClassName="h-8"
           />

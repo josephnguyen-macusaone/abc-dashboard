@@ -187,42 +187,6 @@ export function createUserRoutes(userController) {
 
   /**
    * @swagger
-   * /users/stats:
-   *   get:
-   *     summary: Get user statistics
-   *     tags: [Users]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Statistics retrieved successfully
-   *         content:
-   *           application/json:
-   *             schema:
-   *               allOf:
-   *                 - $ref: '#/components/schemas/BaseResponse'
-   *                 - type: object
-   *                   properties:
-   *                     data:
-   *                       type: object
-   *                       additionalProperties: true
-   *       401:
-   *         description: Unauthorized
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
-   *       403:
-   *         description: Forbidden - Admin only
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
-   */
-  router.get('/stats', userController.getUserStats.bind(userController));
-
-  /**
-   * @swagger
    * /users:
    *   post:
    *     summary: Create a new user
@@ -550,6 +514,164 @@ export function createUserRoutes(userController) {
     checkStaffReassignmentPermission,
     userController.reassignStaff.bind(userController)
   );
+
+  /**
+   * @swagger
+   * /users/bulk/activate:
+   *   post:
+   *     summary: Bulk activate users
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - ids
+   *             properties:
+   *               ids:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of user IDs to activate
+   *     responses:
+   *       200:
+   *         description: Users activated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               allOf:
+   *                 - $ref: '#/components/schemas/BaseResponse'
+   *                 - type: object
+   *                   properties:
+   *                     data:
+   *                       type: object
+   *                       properties:
+   *                         activated:
+   *                           type: integer
+   *                         failed:
+   *                           type: integer
+   *                         details:
+   *                           type: object
+   */
+  router.post('/bulk/activate', userController.bulkActivate.bind(userController));
+
+  /**
+   * @swagger
+   * /users/bulk/deactivate:
+   *   post:
+   *     summary: Bulk deactivate users
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - ids
+   *             properties:
+   *               ids:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of user IDs to deactivate
+   *     responses:
+   *       200:
+   *         description: Users deactivated successfully
+   */
+  router.post('/bulk/deactivate', userController.bulkDeactivate.bind(userController));
+
+  /**
+   * @swagger
+   * /users/bulk/delete:
+   *   post:
+   *     summary: Bulk delete users
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - ids
+   *             properties:
+   *               ids:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of user IDs to delete
+   *     responses:
+   *       200:
+   *         description: Users deleted successfully
+   */
+  router.post('/bulk/delete', userController.bulkDelete.bind(userController));
+
+  /**
+   * @swagger
+   * /users/export:
+   *   post:
+   *     summary: Export users to various formats
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               format:
+   *                 type: string
+   *                 enum: [csv, excel, pdf, json]
+   *                 default: csv
+   *               columns:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Column names to include in export
+   *               includeFilters:
+   *                 type: boolean
+   *                 default: true
+   *                 description: Whether to apply current filters
+   *     parameters:
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Search term (applied if includeFilters is true)
+   *       - in: query
+   *         name: role
+   *         schema:
+   *           type: string
+   *           enum: [admin, manager, staff]
+   *         description: Filter by role
+   *       - in: query
+   *         name: isActive
+   *         schema:
+   *           type: boolean
+   *         description: Filter by active status
+   *     responses:
+   *       200:
+   *         description: Export file downloaded successfully
+   *         content:
+   *           text/csv:
+   *             schema:
+   *               type: string
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  router.post('/export', userController.exportUsers.bind(userController));
 
   return router;
 }

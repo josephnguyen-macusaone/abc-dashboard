@@ -6,7 +6,6 @@ import { LucideIcon } from 'lucide-react';
 
 export interface NavigationButtonProps {
   name: string;
-  href: string;
   icon: LucideIcon;
   isActive: boolean;
   onClick: () => void;
@@ -15,7 +14,6 @@ export interface NavigationButtonProps {
 
 export function NavigationButton({
   name,
-  href,
   icon: Icon,
   isActive,
   onClick,

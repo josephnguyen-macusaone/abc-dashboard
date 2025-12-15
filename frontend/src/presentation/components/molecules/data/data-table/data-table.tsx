@@ -39,6 +39,7 @@ export function DataTable<TData>({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
+                    style={{ width: `${header.getSize()}px` }}
                   >
                     {header.isPlaceholder
                       ? null
@@ -60,7 +61,10 @@ export function DataTable<TData>({
                   className="even:bg-muted/20"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      style={{ width: `${cell.column.getSize()}px` }}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

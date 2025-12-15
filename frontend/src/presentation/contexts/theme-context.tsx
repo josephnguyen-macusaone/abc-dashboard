@@ -3,6 +3,10 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { THEMES } from '@/shared/constants';
 
+/**
+ * Theme Context Type
+ * Defines the contract for the theme context
+ */
 interface ThemeContextType {
   theme: (typeof THEMES)[keyof typeof THEMES];
   setTheme: (theme: (typeof THEMES)[keyof typeof THEMES]) => void;
