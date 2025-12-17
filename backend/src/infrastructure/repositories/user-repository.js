@@ -229,19 +229,29 @@ export class UserRepository extends IUserRepository {
     }
 
     // ========================================================================
-    // EXISTING: Advanced Filters (Phase 2.3 - Already implemented)
+    // Advanced Filters
     // ========================================================================
 
-    // Role filter
+    // Role filter - support single value or array
     if (filters.role) {
-      query = query.where('role', filters.role);
-      countQuery = countQuery.where('role', filters.role);
+      if (Array.isArray(filters.role)) {
+        query = query.whereIn('role', filters.role);
+        countQuery = countQuery.whereIn('role', filters.role);
+      } else {
+        query = query.where('role', filters.role);
+        countQuery = countQuery.where('role', filters.role);
+      }
     }
 
-    // Active status filter
+    // Active status filter - support single value or array
     if (filters.isActive !== undefined) {
-      query = query.where('is_active', filters.isActive);
-      countQuery = countQuery.where('is_active', filters.isActive);
+      if (Array.isArray(filters.isActive)) {
+        query = query.whereIn('is_active', filters.isActive);
+        countQuery = countQuery.whereIn('is_active', filters.isActive);
+      } else {
+        query = query.where('is_active', filters.isActive);
+        countQuery = countQuery.where('is_active', filters.isActive);
+      }
     }
 
     // Managed by filter
@@ -394,10 +404,18 @@ export class UserRepository extends IUserRepository {
 
     // Advanced filters
     if (filters.role) {
-      baseQuery = baseQuery.where('role', filters.role);
+      if (Array.isArray(filters.role)) {
+        baseQuery = baseQuery.whereIn('role', filters.role);
+      } else {
+        baseQuery = baseQuery.where('role', filters.role);
+      }
     }
-    if (typeof filters.isActive === 'boolean') {
-      baseQuery = baseQuery.where('is_active', filters.isActive);
+    if (filters.isActive !== undefined) {
+      if (Array.isArray(filters.isActive)) {
+        baseQuery = baseQuery.whereIn('is_active', filters.isActive);
+      } else {
+        baseQuery = baseQuery.where('is_active', filters.isActive);
+      }
     }
 
     // Calculate stats based on filtered query

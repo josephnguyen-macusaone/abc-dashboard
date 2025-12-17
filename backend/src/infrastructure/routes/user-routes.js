@@ -1,13 +1,14 @@
 import express from 'express';
 import { validateRequest, validateQuery } from '../middleware/validation-middleware.js';
 import { userSchemas } from '../api/v1/schemas/user.schemas.js';
-import { authenticate, authorizeSelf, authorize } from '../middleware/auth-middleware.js';
-import { PERMISSIONS } from '../../shared/constants/roles.js';
+import { authenticate } from '../middleware/auth-middleware.js';
 import {
   checkUserCreationPermission,
   checkUserAccessPermission,
   checkStaffReassignmentPermission,
 } from '../middleware/user-management.middleware.js';
+
+// Note: Comma-separated query parameter parsing is now handled by Joi schema validation
 
 /**
  * User Routes

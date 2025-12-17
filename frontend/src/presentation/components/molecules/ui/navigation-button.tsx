@@ -44,8 +44,7 @@ export function NavigationButton({
       >
         <Icon
           className={cn(
-            'h-4 w-4 shrink-0',
-            'group-hover:scale-110'
+            'h-4 w-4 shrink-0 mr-1',
           )}
         />
         {/* MAC USA ONE Typography: Label S for navigation items */}

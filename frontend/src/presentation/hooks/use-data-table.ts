@@ -321,6 +321,6 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     } as any,
   });
 
-  return { table, shallow, debounceMs, throttleMs };
+  return { table, shallow, debounceMs, throttleMs, setFilterValues };
 }
 

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useErrorHandler } from './error-context';
 import { User } from '@/domain/entities/user-entity';
 

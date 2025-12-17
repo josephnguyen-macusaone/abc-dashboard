@@ -5,24 +5,6 @@ import { userApi } from '@/infrastructure/api/users';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
 
-export interface UserFilters {
-  role?: UserRole;
-  isActive?: boolean;
-  search?: string;
-  managedBy?: string;
-}
-
-export interface PaginationState {
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface UserListResponse {
-  users: User[];
-  pagination: PaginationState;
-}
-
 export interface CreateUserRequest {
   username: string;
   email: string;
@@ -45,104 +27,34 @@ export interface UpdateUserRequest {
   managerId?: string;
 }
 
-interface UserState {
+interface UserFormState {
   // State
-  users: User[];
   currentUser: User | null;
   loading: boolean;
   error: string | null;
-  filters: UserFilters;
-  pagination: PaginationState;
-  stats: {
-    total: number;
-    admin: number;
-    manager: number;
-    staff: number;
-  } | null;
-  selectedUsers: string[];
 
   // Actions
-  fetchUsers: (params?: Partial<UserFilters & { page?: number; limit?: number }>) => Promise<void>;
   fetchUser: (id: string) => Promise<User | null>;
   createUser: (userData: CreateUserRequest) => Promise<User>;
   updateUser: (id: string, userData: UpdateUserRequest) => Promise<User>;
   deleteUser: (id: string) => Promise<void>;
   reassignStaff: (staffId: string, managerId: string) => Promise<User>;
-  setFilters: (filters: UserFilters) => void;
-  setPagination: (pagination: Partial<PaginationState>) => void;
-  setSelectedUsers: (userIds: string[]) => void;
   clearError: () => void;
   reset: () => void;
 }
 
-export const useUserStore = create<UserState>()(
+export const useUserFormStore = create<UserFormState>()(
   devtools(
     (set, get) => {
       const storeLogger = logger.createChild({
-        component: 'UserStore',
+        component: 'UserFormStore',
       });
 
       return {
         // Initial state
-        users: [],
         currentUser: null,
         loading: false,
         error: null,
-        filters: {},
-        pagination: { page: 1, limit: 10, totalPages: 0 },
-        stats: null,
-        selectedUsers: [],
-
-        fetchUsers: async (params = {}) => {
-          // Prevent concurrent API calls, but allow different page requests
-          const currentState = get();
-          if (currentState.loading) {
-            const currentPage = currentState.pagination.page;
-            const requestedPage = params.page ?? currentPage;
-            // Allow the call if it's for a different page (navigation)
-            if (requestedPage === currentPage) {
-              storeLogger.warn('Fetch users already in progress for same page, skipping duplicate call');
-              return;
-            }
-            storeLogger.info(`Allowing concurrent call for different page: ${requestedPage} (current: ${currentPage})`);
-          }
-
-          try {
-            set({ loading: true, error: null });
-
-            const currentFilters = get().filters;
-            const currentPagination = get().pagination;
-
-            // Only send page and limit from pagination, not metadata (total, totalPages, hasNext, hasPrev)
-            const queryParams = {
-              ...currentFilters,
-              page: params.page ?? currentPagination.page,
-              limit: params.limit ?? currentPagination.limit,
-              ...params,
-              // Convert boolean values to strings for API
-              isActive: params.isActive !== undefined
-                ? String(params.isActive)
-                : (typeof currentFilters.isActive === 'boolean' ? String(currentFilters.isActive) : currentFilters.isActive),
-            };
-
-            const response = await userApi.getUsers(queryParams);
-
-            // Convert plain objects to User entities
-            const users = response.users.map(userData => User.fromObject(userData));
-
-            set({
-              users,
-              pagination: response.pagination,
-              stats: response.stats || null,
-              loading: false
-            });
-          } catch (error) {
-            const errorMessage = getErrorMessage(error);
-            set({ error: errorMessage, loading: false });
-            storeLogger.error('Failed to fetch users', { error: errorMessage });
-            throw error;
-          }
-        },
 
         fetchUser: async (id: string) => {
           try {
@@ -178,11 +90,7 @@ export const useUserStore = create<UserState>()(
 
             const newUser = User.fromObject(response.user);
 
-            // Add to users list if we're on the current page
-            set(state => ({
-              users: [...state.users, newUser],
-              loading: false
-            }));
+            set({ loading: false });
 
             return newUser;
           } catch (error) {
@@ -200,11 +108,8 @@ export const useUserStore = create<UserState>()(
             const response = await userApi.updateUser(id, userData);
             const updatedUser = User.fromObject(response.user);
 
-            // Update user in the list
+            // Update current user if it's the same one being edited
             set(state => ({
-              users: state.users.map(user =>
-                user.id === id ? updatedUser : user
-              ),
               currentUser: state.currentUser?.id === id ? updatedUser : state.currentUser,
               loading: false
             }));
@@ -224,10 +129,9 @@ export const useUserStore = create<UserState>()(
 
             await userApi.deleteUser(id);
 
-            // Remove user from the list
+            // Clear current user if it's the one being deleted
             set(state => ({
-              users: state.users.filter(user => user.id !== id),
-              selectedUsers: state.selectedUsers.filter(userId => userId !== id),
+              currentUser: state.currentUser?.id === id ? null : state.currentUser,
               loading: false
             }));
           } catch (error) {
@@ -245,11 +149,9 @@ export const useUserStore = create<UserState>()(
             const response = await userApi.updateUser(staffId, { managerId });
             const updatedUser = User.fromObject(response.user);
 
-            // Update user in the list
+            // Update current user if it's the same one being reassigned
             set(state => ({
-              users: state.users.map(user =>
-                user.id === staffId ? updatedUser : user
-              ),
+              currentUser: state.currentUser?.id === staffId ? updatedUser : state.currentUser,
               loading: false
             }));
 
@@ -262,43 +164,22 @@ export const useUserStore = create<UserState>()(
           }
         },
 
-        setFilters: (filters: UserFilters) => {
-          set({ filters });
-          storeLogger.debug('Filters updated', { filters });
-        },
-
-        setPagination: (pagination: Partial<PaginationState>) => {
-          set(state => ({
-            pagination: { ...state.pagination, ...pagination }
-          }));
-        },
-
-        setSelectedUsers: (userIds: string[]) => {
-          set({ selectedUsers: userIds });
-        },
-
         clearError: () => set({ error: null }),
 
         reset: () => set({
-          users: [],
           currentUser: null,
           loading: false,
           error: null,
-          filters: {},
-          pagination: { page: 1, limit: 10, totalPages: 0 },
-          selectedUsers: [],
         }),
       };
     },
     {
-      name: 'user-store',
+      name: 'user-form-store',
     }
   )
 );
 
-// Selectors to encourage consistent derived access
-export const selectUsers = (state: { users: User[] }) => state.users;
-export const selectUserFilters = (state: { filters: UserFilters }) => state.filters;
-export const selectUserPagination = (state: { pagination: PaginationState }) => state.pagination;
-export const selectUserStats = (state: { stats: any }) => state.stats;
-export const selectUserLoading = (state: { loading: boolean }) => state.loading;
+// Selectors for better performance
+export const selectCurrentUser = (state: { currentUser: User | null }) => state.currentUser;
+export const selectUserFormLoading = (state: { loading: boolean }) => state.loading;
+export const selectUserFormError = (state: { error: string | null }) => state.error;

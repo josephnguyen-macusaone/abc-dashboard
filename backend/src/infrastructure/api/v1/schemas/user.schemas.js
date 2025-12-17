@@ -12,7 +12,6 @@ if (!Joi) {
 export const userSchemas = {
   /**
    * Get users query parameters schema
-   * ENHANCED: Phase 2.1, 2.2, 2.3 - Multi-field search, date ranges, advanced filters
    */
   getUsers: Joi.object({
     // Pagination
@@ -28,7 +27,7 @@ export const userSchemas = {
     }),
 
     // ========================================================================
-    // ENHANCED: Multi-field Search (Phase 2.1)
+    // Multi-field Search
     // ========================================================================
     search: Joi.string().min(1).max(100).messages({
       'string.min': 'Search term must contain at least 1 character',
@@ -61,7 +60,7 @@ export const userSchemas = {
     }),
 
     // ========================================================================
-    // ENHANCED: Date Range Filters (Phase 2.2)
+    // Date Range Filters
     // ========================================================================
 
     // Created date range
@@ -98,18 +97,34 @@ export const userSchemas = {
     }),
 
     // ========================================================================
-    // ENHANCED: Advanced Filters (Phase 2.3)
+    // Advanced Filters
     // ========================================================================
 
-    // Role filter
-    role: Joi.string().valid('admin', 'manager', 'staff').messages({
-      'any.only': 'Role must be one of: admin, manager, staff',
-    }),
+    // Role filter - support single value, array, or comma-separated string
+    role: Joi.alternatives()
+      .try(
+        Joi.string().valid('admin', 'manager', 'staff'),
+        Joi.array().items(Joi.string().valid('admin', 'manager', 'staff')),
+        Joi.string().regex(/^admin|manager|staff(,admin|,manager|,staff)*$/)
+      )
+      .messages({
+        'any.only': 'Role must be one of: admin, manager, staff',
+        'array.includesOne': 'Role array must contain only valid roles',
+        'string.pattern.base': 'Role must be comma-separated valid roles',
+      }),
 
-    // Active status filter
-    isActive: Joi.boolean().messages({
-      'boolean.base': 'isActive must be a boolean',
-    }),
+    // Active status filter - support single value, array, or comma-separated string
+    isActive: Joi.alternatives()
+      .try(
+        Joi.boolean(),
+        Joi.array().items(Joi.boolean()),
+        Joi.string().regex(/^(true|false)(,(true|false))*$/)
+      )
+      .messages({
+        'boolean.base': 'isActive must be a boolean',
+        'array.includesOne': 'isActive array must contain only boolean values',
+        'string.pattern.base': 'isActive must be comma-separated true/false values',
+      }),
 
     // Managed by filter
     managedBy: Joi.string().messages({
@@ -141,7 +156,6 @@ export const userSchemas = {
 
   /**
    * Create user schema
-   * Note: username is optional - auto-generated from email if not provided
    */
   createUser: Joi.object({
     username: Joi.string()

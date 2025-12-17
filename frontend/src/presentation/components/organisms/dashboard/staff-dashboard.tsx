@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardDescription } from '@/presentation/components/atoms/primitives/card';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 
 export function StaffDashboard() {
     const { user } = useAuthStore();

@@ -1,19 +1,17 @@
-import {
-  InsufficientPermissionsException,
-  ValidationException,
-} from '../../domain/exceptions/domain.exception.js';
-import logger from '../config/logger.js';
-import { ROLES } from '../../shared/constants/roles.js';
-
 /**
  * License Management Permission Middleware
  * Handles role-based access control for license management operations
  */
 
+import { InsufficientPermissionsException } from '../../domain/exceptions/domain.exception.js';
+import logger from '../config/logger.js';
+import { ROLES } from '../../shared/constants/roles.js';
+
 /**
  * Check if user can create licenses
+ *
  * @param {Object} currentUser - The authenticated user
- * @returns {boolean} - Whether creation is allowed
+ * @return {boolean} - Whether creation is allowed
  */
 export function canCreateLicense(currentUser) {
   // Only admin can create licenses
@@ -22,8 +20,9 @@ export function canCreateLicense(currentUser) {
 
 /**
  * Check if user can update licenses
+ *
  * @param {Object} currentUser - The authenticated user
- * @returns {boolean} - Whether update is allowed
+ * @return {boolean} - Whether update is allowed
  */
 export function canUpdateLicense(currentUser) {
   // Admin can update licenses
@@ -32,8 +31,9 @@ export function canUpdateLicense(currentUser) {
 
 /**
  * Check if user can delete licenses
+ *
  * @param {Object} currentUser - The authenticated user
- * @returns {boolean} - Whether deletion is allowed
+ * @return {boolean} - Whether deletion is allowed
  */
 export function canDeleteLicense(currentUser) {
   // Only admin can delete licenses
@@ -42,8 +42,9 @@ export function canDeleteLicense(currentUser) {
 
 /**
  * Check if user can view licenses
+ *
  * @param {Object} currentUser - The authenticated user
- * @returns {boolean} - Whether viewing is allowed
+ * @return {boolean} - Whether viewing is allowed
  */
 export function canViewLicense(currentUser) {
   // Admin and managers can view all licenses
@@ -53,8 +54,9 @@ export function canViewLicense(currentUser) {
 
 /**
  * Check if user can assign licenses to users
+ *
  * @param {Object} currentUser - The authenticated user
- * @returns {boolean} - Whether assignment is allowed
+ * @return {boolean} - Whether assignment is allowed
  */
 export function canAssignLicense(currentUser) {
   // Admin and managers can assign licenses
@@ -63,8 +65,9 @@ export function canAssignLicense(currentUser) {
 
 /**
  * Check if user can revoke license assignments
+ *
  * @param {Object} currentUser - The authenticated user
- * @returns {boolean} - Whether revocation is allowed
+ * @return {boolean} - Whether revocation is allowed
  */
 export function canRevokeLicense(currentUser) {
   // Admin and managers can revoke assignments
@@ -73,6 +76,8 @@ export function canRevokeLicense(currentUser) {
 
 /**
  * Middleware to check license creation permissions
+ *
+ * @return {Function} - The middleware function
  */
 export function checkLicenseCreationPermission() {
   return (req, res, next) => {
@@ -122,7 +127,9 @@ export function checkLicenseCreationPermission() {
 
 /**
  * Middleware to check license access permissions
- * @param {string} operation - Operation type ('read', 'update', 'delete', 'list')
+ *
+ * @param {string} operation - The operation to check permissions for
+ * @return {Function} - The middleware function
  */
 export function checkLicenseAccessPermission(operation) {
   return (req, res, next) => {
@@ -192,6 +199,8 @@ export function checkLicenseAccessPermission(operation) {
 
 /**
  * Middleware to check license assignment permissions
+ *
+ * @return {Function} - The middleware function
  */
 export function checkLicenseAssignmentPermission() {
   return (req, res, next) => {
@@ -243,6 +252,8 @@ export function checkLicenseAssignmentPermission() {
 
 /**
  * Middleware to check license revocation permissions
+ *
+ * @return {Function} - The middleware function
  */
 export function checkLicenseRevocationPermission() {
   return (req, res, next) => {
@@ -294,6 +305,8 @@ export function checkLicenseRevocationPermission() {
 
 /**
  * Middleware to check bulk operations permissions
+ *
+ * @return {Function} - The middleware function
  */
 export function checkLicenseBulkOperationPermission() {
   return (req, res, next) => {

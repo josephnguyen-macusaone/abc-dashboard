@@ -3,11 +3,12 @@
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { DashboardTemplate } from '@/presentation/components/templates';
+import { USER_ROLES } from '@/shared/constants';
 import { AccessDeniedCard } from '@/presentation/components/molecules/ui';
-import { AdminDashboard, StaffDashboard } from '@/presentation/components/organisms';
+import { AdminDashboard } from '@/presentation/components/organisms';
+import { StaffDashboard } from '@/presentation/components/organisms';
 import { UserManagementPage } from './user-management-page';
 import { LicenseManagementPage } from './license-management-page';
-import { USER_ROLES } from '@/shared/constants';
 
 export function DashboardPage() {
   const { user } = useAuth();

@@ -21,9 +21,13 @@ export class GetUserStatsUseCase {
 
     try {
       // Execute stats retrieval through repository
-      const stats = await this.userRepository.getUserStats();
-
-      return stats;
+      const stats = await this.userRepository.getUsers({});
+      return {
+        totalUsers: stats.stats?.total || 0,
+        admin: stats.stats?.admin || 0,
+        manager: stats.stats?.manager || 0,
+        staff: stats.stats?.staff || 0,
+      };
     } catch (error) {
       this.logger.error(`Get user stats use case failed`, {
         correlationId,

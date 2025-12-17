@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
-import { User, UserRole } from '@/domain/entities/user-entity';
-import { UserListParams } from '@/application/dto/user-dto';
-import { SortBy, SortOrder } from '@/shared/types';
+import { User } from '@/domain/entities/user-entity';
 import { logger } from '@/shared/utils';
-import { useUserStore, selectUsers, selectUserLoading, selectUserPagination, selectUserStats } from '@/infrastructure/stores/user-store';
+import { useUserStore } from '@/infrastructure/stores/user';
 
 /**
  * UserManagementPage
@@ -25,17 +23,21 @@ export function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const { error: showError, info: showInfo } = useToast();
 
-  const users = useUserStore(selectUsers);
-  const loadingUsers = useUserStore(selectUserLoading);
-  const userPagination = useUserStore(selectUserPagination);
-  const userStats = useUserStore(selectUserStats);
-  const fetchUsers = useUserStore(state => state.fetchUsers);
-
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const { users, userFilters, userPagination, userStats, usersLoading: loadingUsers, fetchUsers } = useUserStore();
 
   // Prevent duplicate API calls in React Strict Mode
   const hasLoadedRef = useRef(false);
+
+  // Derive dateRange from store filters (like license implementation)
+  const dateRange = useMemo(() => {
+    if (userFilters.createdAtFrom || userFilters.createdAtTo) {
+      return {
+        from: userFilters.createdAtFrom ? new Date(userFilters.createdAtFrom) : undefined,
+        to: userFilters.createdAtTo ? new Date(userFilters.createdAtTo) : undefined,
+      };
+    }
+    return {};
+  }, [userFilters.createdAtFrom, userFilters.createdAtTo]);
 
   // Track authentication state changes to show toast only once
   const prevUserRef = useRef(currentUser);
@@ -47,7 +49,7 @@ export function UserManagementPage() {
     prevUserRef.current = currentUser;
   }, [currentUser, showInfo]);
 
-  // Handle pagination and filtering changes
+  // Handle pagination and filtering changes (simplified like admin-dashboard)
   const handleQueryChange = useCallback(async (params: {
     page: number;
     limit: number;
@@ -56,6 +58,7 @@ export function UserManagementPage() {
     role?: string | string[];
     displayName?: string;
     search?: string;
+    searchField?: string;
     isActive?: string | string[];
     createdAtFrom?: string;
     createdAtTo?: string;
@@ -65,76 +68,37 @@ export function UserManagementPage() {
     lastLoginTo?: string;
   }) => {
     try {
-      // Extract role from params
-      let roleParam: UserRole | undefined;
-      if (params.role !== undefined) {
-        // Handle both single value and array from column filters
-        const roleValue = Array.isArray(params.role) ? params.role[0] : params.role;
-        if (roleValue) {
-          roleParam = roleValue as UserRole;
-          setRoleFilter(roleValue);
-        } else {
-          // Empty array or falsy value means clear filter
-          roleParam = undefined;
-          setRoleFilter(null);
-        }
-      } else {
-        roleParam = roleFilter as UserRole | undefined;
-      }
-
-      // Extract status/isActive filter
-      let isActiveParam: boolean | undefined;
-      if (params.isActive !== undefined) {
-        const statusValue = Array.isArray(params.isActive) ? params.isActive[0] : params.isActive;
-        if (statusValue === "true") {
-          isActiveParam = true;
-        } else if (statusValue === "false") {
-          isActiveParam = false;
-        } else {
-          isActiveParam = undefined;
-        }
-      }
-
-      // Build query params - use 'search' parameter as expected by backend
-      const queryParams: UserListParams = {
-        page: params.page,
-        limit: params.limit,
-        search: params.search,
-        searchField: params.search ? 'email' : undefined,
-        displayName: params.displayName,
-        role: roleParam,
-        isActive: isActiveParam,
-        sortBy: (params.sortBy as SortBy) || SortBy.CREATED_AT,
-        sortOrder: params.sortOrder === "desc" ? SortOrder.DESC : SortOrder.ASC,
-        createdAtFrom: params.createdAtFrom,
-        createdAtTo: params.createdAtTo,
-        updatedAtFrom: params.updatedAtFrom,
-        updatedAtTo: params.updatedAtTo,
-        lastLoginFrom: params.lastLoginFrom,
-        lastLoginTo: params.lastLoginTo,
+      // Convert string values to appropriate types for store
+      const storeParams: any = {
+        ...params,
+        // searchField stays as string, store interface accepts it
+        // role: can be string | string[], store accepts UserRole | UserRole[]
+        // isActive: convert string | string[] to boolean | boolean[]
+        isActive: params.isActive !== undefined
+          ? (Array.isArray(params.isActive)
+            ? params.isActive.map(v => v === 'true')
+            : params.isActive === 'true')
+          : undefined,
       };
 
-      await fetchUsers(queryParams);
+      // Store handles merging with current filters
+      await fetchUsers(storeParams);
     } catch (error) {
-      logger.error('Error loading users with pagination', { error });
+      logger.error('Failed to fetch users', { error });
       showError?.('Failed to load users');
     }
-  }, [fetchUsers, showError, roleFilter]);
+  }, [fetchUsers, showError]);
 
 
-  // Load users on mount and when needed
-  const loadUsers = useCallback(async (filters?: { role?: string }) => {
+  // Load users on mount (simplified)
+  const loadUsers = useCallback(async () => {
     try {
-      const params: UserListParams = {
+      await fetchUsers({
         page: 1,
-        limit: 20, // Standard pagination
-        role: filters?.role as UserRole | undefined, // Cast to UserRole enum
-        sortBy: SortBy.CREATED_AT, // Sort by creation date
-        sortOrder: SortOrder.DESC, // Latest users first
-      };
-
-      await fetchUsers(params);
-      // fetchUsers updates the pagination state in the store
+        limit: 20,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
     } catch (error) {
       logger.error('Error loading users', { error });
       showError?.('Failed to load users');
@@ -149,46 +113,26 @@ export function UserManagementPage() {
     }
   }, [loadUsers]);
 
-  // Reload users when role filter changes
-  useEffect(() => {
-    if (hasLoadedRef.current) {
-      loadUsers({ role: roleFilter || undefined });
-    }
-  }, [roleFilter, loadUsers]);
-
-  // Handle date range changes - now triggers server-side filtering
+  // Handle date range changes (simplified)
   const handleDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
-    const newDateRange = values.range.from ? {
-      from: values.range.from,
-      to: values.range.to,
-    } : {};
-
-    setDateRange(newDateRange);
-
-    // Build date field parameters for createdAt (default)
     const dateFieldParams: Record<string, string | undefined> = {};
-    if (newDateRange.from) {
-      dateFieldParams['createdAtFrom'] = newDateRange.from.toISOString();
+
+    if (values.range.from) {
+      dateFieldParams['createdAtFrom'] = values.range.from.toISOString();
     }
-    if (newDateRange.to) {
-      dateFieldParams['createdAtTo'] = newDateRange.to.toISOString();
+    if (values.range.to) {
+      dateFieldParams['createdAtTo'] = values.range.to.toISOString();
     }
 
     // Trigger server-side filtering with date range
     handleQueryChange({
-      page: 1, // Reset to page 1 when filtering changes
+      page: 1,
       limit: 20,
-      role: roleFilter || undefined,
       sortBy: 'createdAt',
       sortOrder: 'desc',
       ...dateFieldParams,
     });
-  }, [roleFilter, handleQueryChange]);
-
-  // Handle role filtering
-  const handleRoleFilter = useCallback((role: string | null) => {
-    setRoleFilter(role);
-  }, []);
+  }, [handleQueryChange]);
 
   return (
     <UserManagement

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/presentation/components/organisms/auth/login-form';
 import { AuthTemplate } from '@/presentation/components/templates';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 
 function LoginPage() {
   const router = useRouter();

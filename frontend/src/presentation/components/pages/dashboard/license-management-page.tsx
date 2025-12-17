@@ -11,7 +11,7 @@ import { useAuth } from "@/presentation/contexts/auth-context";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
 import { createEmptyLicense } from "@/shared/mock/license-faker-data";
-import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license-store";
+import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
 import type { LicenseRecord } from "@/shared/types";
 
 export function LicenseManagementPage() {
@@ -124,8 +124,8 @@ export function LicenseManagementPage() {
   }) => {
     try {
       // Convert status array to comma-separated string for API
-      const statusParam = Array.isArray(params.status) 
-        ? params.status.join(',') 
+      const statusParam = Array.isArray(params.status)
+        ? params.status.join(',')
         : params.status;
 
       await fetchLicenses({

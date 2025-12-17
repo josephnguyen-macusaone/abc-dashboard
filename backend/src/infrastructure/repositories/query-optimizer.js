@@ -5,6 +5,8 @@
 
 /**
  * User field projections for different scenarios
+ *
+ * @type {Object} - User field projections
  */
 export const USER_PROJECTIONS = {
   // Minimal fields for lists and references
@@ -60,6 +62,8 @@ export const USER_PROJECTIONS = {
 
 /**
  * License field projections
+ *
+ * @type {Object} - License field projections
  */
 export const LICENSE_PROJECTIONS = {
   // Minimal fields for lists
@@ -137,10 +141,11 @@ export const LICENSE_PROJECTIONS = {
 
 /**
  * Apply field projection to a query
+ *
  * @param {Object} query - Knex query builder
  * @param {string[]} fields - Array of field names to select
  * @param {string} tableName - Table name for prefixing
- * @returns {Object} Modified query
+ * @return {Object} Modified query
  */
 export function applyProjection(query, fields, tableName = null) {
   if (!fields || fields.length === 0) {
@@ -154,9 +159,10 @@ export function applyProjection(query, fields, tableName = null) {
 
 /**
  * Optimize query with common patterns
+ *
  * @param {Object} query - Knex query builder
  * @param {Object} options - Optimization options
- * @returns {Object} Optimized query
+ * @return {Object} Optimized query
  */
 export function optimizeQuery(query, options = {}) {
   const {
@@ -188,9 +194,10 @@ export function optimizeQuery(query, options = {}) {
 
 /**
  * Build optimized join for manager information
+ *
  * @param {Object} query - Knex query builder
  * @param {boolean} includeManagerDetails - Whether to include full manager details
- * @returns {Object} Modified query
+ * @return {Object} Modified query
  */
 export function joinManager(query, includeManagerDetails = false) {
   if (includeManagerDetails) {
@@ -207,8 +214,9 @@ export function joinManager(query, includeManagerDetails = false) {
 
 /**
  * Build optimized join for user profile
+ *
  * @param {Object} query - Knex query builder
- * @returns {Object} Modified query
+ * @return {Object} Modified query
  */
 export function joinUserProfile(query) {
   query
@@ -228,10 +236,11 @@ export function joinUserProfile(query) {
 
 /**
  * Build optimized pagination
+ *
  * @param {Object} query - Knex query builder
  * @param {number} page - Page number (1-indexed)
  * @param {number} limit - Items per page
- * @returns {Object} Modified query
+ * @return {Object} Modified query
  */
 export function applyPagination(query, page = 1, limit = 10) {
   const offset = (page - 1) * limit;
@@ -240,11 +249,12 @@ export function applyPagination(query, page = 1, limit = 10) {
 
 /**
  * Build optimized sorting
+ *
  * @param {Object} query - Knex query builder
  * @param {string} sortBy - Field to sort by
  * @param {string} sortOrder - Sort order ('asc' or 'desc')
  * @param {string} tableName - Table name for prefixing
- * @returns {Object} Modified query
+ * @return {Object} Modified query
  */
 export function applySorting(query, sortBy, sortOrder = 'asc', tableName = null) {
   if (!sortBy) return query;
@@ -255,10 +265,11 @@ export function applySorting(query, sortBy, sortOrder = 'asc', tableName = null)
 
 /**
  * Execute query with automatic performance logging
+ *
  * @param {Object} query - Knex query builder
  * @param {string} queryName - Name for logging
  * @param {Object} logger - Logger instance
- * @returns {Promise<any>} Query result
+ * @return {Promise<any>} Query result
  */
 export async function executeOptimized(query, queryName, logger) {
   const startTime = Date.now();
@@ -296,10 +307,11 @@ export async function executeOptimized(query, queryName, logger) {
 /**
  * Build a count query without fetching data
  * More efficient than fetching all rows and counting in memory
+ *
  * @param {Object} db - Database connection
  * @param {string} tableName - Table to count from
  * @param {Object} whereConditions - Where conditions
- * @returns {Promise<number>} Count result
+ * @return {Promise<number>} Count result
  */
 export async function optimizedCount(db, tableName, whereConditions = {}) {
   const result = await db(tableName).where(whereConditions).count('* as count').first();
@@ -308,12 +320,13 @@ export async function optimizedCount(db, tableName, whereConditions = {}) {
 
 /**
  * Batch load related data to avoid N+1 queries
+ *
  * @param {Object} db - Database connection
  * @param {string} tableName - Related table name
  * @param {string} foreignKey - Foreign key column
  * @param {string[]} ids - Array of IDs to load
  * @param {string[]} projection - Fields to select
- * @returns {Promise<Object>} Map of id -> related data
+ * @return {Promise<Object>} Map of id -> related data
  */
 export async function batchLoad(db, tableName, foreignKey, ids, projection = ['*']) {
   if (!ids || ids.length === 0) {
@@ -337,11 +350,12 @@ export async function batchLoad(db, tableName, foreignKey, ids, projection = ['*
 
 /**
  * Full-text search using PostgreSQL tsvector
+ *
  * @param {Object} query - Knex query builder
  * @param {string} searchTerm - Search term
  * @param {string[]} fields - Fields to search
  * @param {string} tableName - Table name
- * @returns {Object} Modified query
+ * @return {Object} Modified query
  */
 export function applyFullTextSearch(query, searchTerm, fields, tableName) {
   if (!searchTerm) return query;
@@ -359,6 +373,8 @@ export function applyFullTextSearch(query, searchTerm, fields, tableName) {
 
 /**
  * Query performance hints
+ *
+ * @type {Object} - Query performance hints
  */
 export const QUERY_HINTS = {
   // Use for read-heavy operations

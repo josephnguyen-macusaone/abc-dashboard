@@ -2,6 +2,7 @@
  * Authentication Middleware
  * Handles JWT token verification and user authentication
  */
+
 import { ROLES, hasPermission } from '../../shared/constants/roles.js';
 import logger from '../config/logger.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
@@ -13,6 +14,7 @@ export class AuthMiddleware {
 
   /**
    * Set correlation ID for request tracking (used by DI container)
+   *
    * @param {string} correlationId - Request correlation ID
    */
   setCorrelationId(correlationId) {
@@ -27,6 +29,11 @@ export class AuthMiddleware {
 
   /**
    * Authenticate user using JWT token
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   * @return {Promise<void>} - Promise that resolves to void
    */
   authenticate = async (req, res, next) => {
     try {
@@ -57,6 +64,11 @@ export class AuthMiddleware {
   /**
    * Authorize based on resource ownership
    * Users can only access their own resources
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   * @return {Promise<void>} - Promise that resolves to void
    */
   authorizeSelf = (req, res, next) => {
     const resourceId = req.params.id;
@@ -70,7 +82,9 @@ export class AuthMiddleware {
 
   /**
    * Authorize based on user roles and permissions
+   *
    * @param {string[]} requiredPermissions - Array of required permissions
+   * @return {Function} - The middleware function
    */
   authorize = (requiredPermissions) => (req, res, next) => {
     if (!req.user) {
@@ -91,6 +105,11 @@ export class AuthMiddleware {
 
   /**
    * Authorize admin only access
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   * @return {Promise<void>} - Promise that resolves to void
    */
   requireAdmin = (req, res, next) => {
     if (!req.user) {
@@ -109,6 +128,11 @@ export class AuthMiddleware {
 
   /**
    * Optional authentication - doesn't fail if no token
+   *
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   * @return {Promise<void>} - Promise that resolves to void
    */
   optionalAuth = async (req, res, next) => {
     try {

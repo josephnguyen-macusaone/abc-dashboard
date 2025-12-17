@@ -26,10 +26,6 @@ export class LicenseRepository extends ILicenseRepository {
     this.operationId = correlationId ? `${correlationId}_license_repo` : null;
   }
 
-  // ========================================================================
-  // License CRUD Operations
-  // ========================================================================
-
   async findById(id) {
     return withTimeout(
       async () => {
@@ -102,9 +98,6 @@ export class LicenseRepository extends ILicenseRepository {
     let query = this.db(this.licensesTable);
     let countQuery = this.db(this.licensesTable);
 
-    // ========================================================================
-    // Multi-field Search (search across key, dba, product, plan)
-    // ========================================================================
     if (filters.search) {
       const searchTerm = `%${filters.search}%`;
 
@@ -156,10 +149,6 @@ export class LicenseRepository extends ILicenseRepository {
       query = query.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
       countQuery = countQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
     }
-
-    // ========================================================================
-    // Date Range Filters
-    // ========================================================================
 
     // Start date range
     if (filters.startsAtFrom) {
@@ -482,10 +471,6 @@ export class LicenseRepository extends ILicenseRepository {
     };
   }
 
-  // ========================================================================
-  // License Assignment Operations
-  // ========================================================================
-
   async assignLicense(assignmentData) {
     const { licenseId, userId, assignedBy } = assignmentData;
 
@@ -589,10 +574,6 @@ export class LicenseRepository extends ILicenseRepository {
 
     return !!assignment;
   }
-
-  // ========================================================================
-  // Audit Event Operations
-  // ========================================================================
 
   async createAuditEvent(eventData) {
     const { type, actorId, entityId, entityType, metadata, ipAddress, userAgent } = eventData;
@@ -700,10 +681,6 @@ export class LicenseRepository extends ILicenseRepository {
     };
   }
 
-  // ========================================================================
-  // Bulk Operations
-  // ========================================================================
-
   async bulkCreate(licensesData) {
     const dbDataArray = licensesData.map((data) => this._toLicenseDbFormat(data));
     const savedRows = await this.db(this.licensesTable).insert(dbDataArray).returning('*');
@@ -737,10 +714,6 @@ export class LicenseRepository extends ILicenseRepository {
     const result = await this.db(this.licensesTable).whereIn('id', ids).del();
     return result;
   }
-
-  // ========================================================================
-  // Advanced Query Operations
-  // ========================================================================
 
   async findExpiringLicenses(daysThreshold = 30) {
     const now = new Date();
@@ -784,10 +757,6 @@ export class LicenseRepository extends ILicenseRepository {
 
     return licenses.map((license) => this._toLicenseEntity(license));
   }
-
-  // ========================================================================
-  // Helper Methods - Data Transformation
-  // ========================================================================
 
   /**
    * Convert database row to License entity

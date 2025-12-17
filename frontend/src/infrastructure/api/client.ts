@@ -263,7 +263,7 @@ class HttpClient {
       logger.info('Attempting token refresh');
 
       // Import auth store dynamically to avoid circular dependencies
-      const { useAuthStore } = await import('@/infrastructure/stores/auth-store');
+      const { useAuthStore } = await import('@/infrastructure/stores/auth');
 
       // Attempt token refresh
       const success = await useAuthStore.getState().refreshToken();
@@ -295,7 +295,7 @@ class HttpClient {
 
     try {
       // Import auth store dynamically to avoid circular dependencies
-      const { useAuthStore } = await import('@/infrastructure/stores/auth-store');
+      const { useAuthStore } = await import('@/infrastructure/stores/auth');
 
       // Clear authentication state
       await useAuthStore.getState().logout();

@@ -41,7 +41,11 @@ export class UserController {
       const options = {
         ...sanitizedQuery,
         filters: {
+          // Start with sanitized filters (which include converted isActive/role)
+          ...sanitizedQuery.filters,
+          // Add permission-based filters (managedBy, etc.)
           ...permissionFilters,
+          // Add remaining search filters that weren't handled by sanitizer
           search: req.query.search,
           email: req.query.email,
           username: req.query.username,

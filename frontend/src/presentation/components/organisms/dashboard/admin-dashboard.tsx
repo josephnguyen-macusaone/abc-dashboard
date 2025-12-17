@@ -6,7 +6,7 @@ import type { DateRange } from '@/presentation/components/atoms/forms/date-range
 import type { LicenseDateRange } from '@/application/services/license-dashboard-metrics';
 import { LicenseMetricsSection } from '@/presentation/components/molecules/domain/dashboard/license-metrics-section';
 import { LicenseTableSection } from '@/presentation/components/molecules/domain/dashboard/license-table-section';
-import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license-store';
+import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
 import { logger } from '@/shared/utils';
 
 interface AdminDashboardProps {

@@ -5,16 +5,22 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, UserCircle } from "lucide-react";
 
-import { DataTable, DataTableToolbar } from "@/presentation/components/molecules/data/data-table";
+import {
+  DataTable,
+  DataTableToolbar,
+  DataTableSkeleton,
+} from "@/presentation/components/molecules/data/data-table";
 import { useDataTable } from "@/presentation/hooks";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { SearchBar } from "@/presentation/components/molecules";
+import { Typography } from "@/presentation/components/atoms";
 import { getUserTableColumns } from "./user-table-columns";
 import type { User } from "@/domain/entities/user-entity";
 import type { DataTableRowAction } from "@/shared/types/data-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useUserStore } from "@/infrastructure/stores/user";
 
 interface UsersDataTableProps {
   data: User[];
@@ -26,13 +32,23 @@ interface UsersDataTableProps {
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onCreateUser?: () => void;
+  isLoading?: boolean;
   onQueryChange?: (params: {
     page: number;
     limit: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    search?: string;
+    searchField?: string;
+    role?: string | string[];
+    isActive?: string | string[];
+    displayName?: string;
     createdAtFrom?: string;
     createdAtTo?: string;
+    updatedAtFrom?: string;
+    updatedAtTo?: string;
+    lastLoginFrom?: string;
+    lastLoginTo?: string;
   }) => void;
 }
 
@@ -46,8 +62,12 @@ export function UsersDataTable({
   onEdit,
   onDelete,
   onCreateUser,
+  isLoading = false,
   onQueryChange,
 }: UsersDataTableProps) {
+  // Get filters from store to sync search value
+  const { userFilters } = useUserStore();
+
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<User> | null>(null);
 
@@ -76,7 +96,7 @@ export function UsersDataTable({
   );
 
   // Create the table instance using the data table hook (must be declared before use)
-  const { table } = useDataTable({
+  const { table, setFilterValues } = useDataTable({
     data,
     columns,
     pageCount: onQueryChange ? pageCount : undefined,
@@ -104,53 +124,59 @@ export function UsersDataTable({
   const lastPageSizeRef = useRef<number>(20);
   const lastSortRef = useRef<string>("");
   const lastFiltersRef = useRef<string>("");
-  const lastSearchRef = useRef<string>("");
   const lastManualFiltersRef = useRef<string>("");
+  // Track if we're in a reset operation to prevent duplicate API calls
+  const isResettingRef = useRef(false);
 
-  // Search states for better UX control
-  const [searchInput, setSearchInput] = useState(""); // What user types (immediate UI updates)
-  const [searchQuery, setSearchQuery] = useState(""); // What gets sent to API (debounced)
+  // Initialize search value from store filters (like license management)
+  const [searchValue, setSearchValue] = useState(() => userFilters.search || "");
 
-  // Manual filter state for server-side filtering
-  const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>({});
+  // Initialize manual filter values from store
+  const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>(() => {
+    const initial: Record<string, string[]> = {};
 
-  // Initialize component and prevent initial API calls
+    // Initialize role filter from store
+    if (userFilters.role) {
+      const roleValues = Array.isArray(userFilters.role)
+        ? userFilters.role.map(r => String(r))
+        : [String(userFilters.role)];
+      initial.role = roleValues;
+    }
+
+    // Initialize isActive filter from store
+    if (userFilters.isActive !== undefined) {
+      const isActiveValues = Array.isArray(userFilters.isActive)
+        ? userFilters.isActive.map(v => String(v))
+        : [String(userFilters.isActive)];
+      initial.isActive = isActiveValues;
+    }
+
+    return initial;
+  });
+
+  // Sync search value with store filters when they change
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchParam = urlParams.get('search');
-    const roleParam = urlParams.get('role');
-    const isActiveParam = urlParams.get('isActive');
-
-    if (searchParam) {
-      setSearchInput(searchParam);
-      setSearchQuery(searchParam);
-      // Mark that filtering has been performed when initializing from URL
-      hasPerformedFilteringRef.current = true;
+    if (userFilters.search !== undefined && userFilters.search !== searchValue) {
+      setSearchValue(userFilters.search);
+      if (userFilters.search) {
+        hasPerformedFilteringRef.current = true;
+      }
     }
-
-    if (roleParam) {
-      const roleValues = roleParam.includes(',') ? roleParam.split(',') : [roleParam];
-      setManualFilterValues(prev => ({ ...prev, role: roleValues }));
-      hasPerformedFilteringRef.current = true;
-    }
-
-    if (isActiveParam) {
-      const isActiveValues = isActiveParam.includes(',') ? isActiveParam.split(',') : [isActiveParam];
-      setManualFilterValues(prev => ({ ...prev, isActive: isActiveValues }));
-      hasPerformedFilteringRef.current = true;
-    }
-  }, []);
+  }, [userFilters.search]);
 
   // Track filter actions to determine reset button visibility
   // Use a ref to track if user has performed any filtering actions
-  const hasPerformedFilteringRef = useRef(false);
+  // Initialize based on whether we have filters in the store
+  const hasPerformedFilteringRef = useRef(
+    !!(userFilters.search || userFilters.role || userFilters.isActive !== undefined)
+  );
 
   // Calculate if filters are currently active (for reset button visibility)
   const hasActiveFilters = useMemo(() => {
     const tableState = table.getState();
 
-    // Check search filters: user typing OR active API search
-    const hasSearchFilters = searchInput.trim() !== "" || searchQuery.trim() !== "";
+    // Check search filters
+    const hasSearchFilters = searchValue.trim() !== "";
 
     // Check manual filter values (what user has selected)
     const hasManualFilters = (
@@ -161,17 +187,8 @@ export function UsersDataTable({
     // Check table column filters
     const hasTableFilters = tableState.columnFilters && tableState.columnFilters.length > 0;
 
-    // Check URL parameters for persisted filters
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasUrlFilters = (
-      urlParams.has('search') ||
-      urlParams.has('role') ||
-      urlParams.has('isActive') ||
-      urlParams.has('filters')
-    );
-
-    // Current active state - includes both API search and typing state
-    const currentlyActive = hasSearchFilters || hasManualFilters || hasTableFilters || hasUrlFilters;
+    // Current active state
+    const currentlyActive = hasSearchFilters || hasManualFilters || hasTableFilters;
 
     // If we detect active filters, mark that filtering has been performed
     if (currentlyActive) {
@@ -179,11 +196,10 @@ export function UsersDataTable({
     }
 
     return currentlyActive;
-  }, [searchInput, searchQuery, manualFilterValues, table]);
+  }, [searchValue, manualFilterValues, table]);
 
-  // Reset button should show if there's any search activity
-  // Show when: user is typing, API search is active, or filtering has been performed
-  const shouldShowResetButton = searchInput.trim() !== "" || searchQuery.trim() !== "" || hasPerformedFilteringRef.current;
+  // Reset button should show if there's any filter activity or when no results with filters
+  const shouldShowResetButton = hasActiveFilters || (hasPerformedFilteringRef.current && data.length === 0);
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
@@ -207,22 +223,52 @@ export function UsersDataTable({
   const tableSorting = table.getState().sorting;
   const tableColumnFilters = table.getState().columnFilters;
 
-  const handleSearchChange = useCallback((value: string) => {
-    // Update input immediately for responsive UI (shows reset button)
-    setSearchInput(value);
-    // No automatic API calls - only on Enter key
-  }, []);
+  // Debounced search handler - triggers API call after user stops typing
+  const debouncedSearchRef = useRef<NodeJS.Timeout>(null);
 
-  const handleSearchKeyDown = useCallback((event: React.KeyboardEvent) => {
-    // Enter triggers API call immediately and prevents form submission
-    if (event.key === 'Enter') {
-      event.preventDefault(); // Prevent any form submission
-      setSearchQuery(searchInput);
+  const handleSearchChange = useCallback((value: string) => {
+    // Update input immediately for responsive UI
+    setSearchValue(value);
+    hasPerformedFilteringRef.current = true;
+
+    // Clear previous timeout
+    if (debouncedSearchRef.current) {
+      clearTimeout(debouncedSearchRef.current);
     }
-  }, [searchInput]);
+
+    // Debounce API call
+    debouncedSearchRef.current = setTimeout(() => {
+      // Trigger API call with search value
+      const tableState = table.getState();
+      const activeSort = tableState.sorting?.[0];
+
+      onQueryChange?.({
+        page: 1, // Reset to page 1 on search
+        limit: tableState.pagination.pageSize,
+        sortBy: activeSort?.id || "createdAt",
+        sortOrder: activeSort?.desc ? "desc" : "asc",
+        search: value,
+        searchField: value ? 'email' : undefined, // Search in email field
+        role: manualFilterValues.role || undefined,
+        isActive: manualFilterValues.isActive || undefined,
+      });
+    }, 500); // 500ms debounce
+  }, [table, onQueryChange, manualFilterValues]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedSearchRef.current) {
+        clearTimeout(debouncedSearchRef.current);
+      }
+    };
+  }, []);
 
   // Notify parent of query changes for sorting/filtering/pagination
   useEffect(() => {
+    // Skip if we're in a reset operation
+    if (isResettingRef.current) return;
+
     if (!onQueryChange) return;
 
     const activeSort = tableSorting?.[0];
@@ -230,7 +276,6 @@ export function UsersDataTable({
     // Check if pagination, sorting, or filtering changed
     const currentSortString = JSON.stringify(tableSorting);
     const currentFiltersString = JSON.stringify(tableColumnFilters);
-    const currentSearch = searchQuery.trim(); // Use the API query state
     const currentManualFilters = JSON.stringify(manualFilterValues);
 
     // Initialize refs on first run
@@ -240,7 +285,6 @@ export function UsersDataTable({
       lastPageSizeRef.current = tablePageSize;
       lastSortRef.current = currentSortString;
       lastFiltersRef.current = currentFiltersString;
-      lastSearchRef.current = currentSearch; // currentSearch is based on searchQuery
       lastManualFiltersRef.current = currentManualFilters;
 
       const initialQueryParams = {
@@ -257,14 +301,9 @@ export function UsersDataTable({
       tablePageSize !== lastPageSizeRef.current;
     const sortChanged = currentSortString !== lastSortRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current ||
-      currentSearch !== lastSearchRef.current ||
       currentManualFilters !== lastManualFiltersRef.current;
 
     if (!paginationChanged && !sortChanged && !filtersChanged) return;
-
-    // Check if search has changed to reset to page 1
-    const searchChanged = currentSearch !== lastSearchRef.current;
-    const currentPage = searchChanged ? 1 : tablePageIndex + 1;
 
     // Build query params - ensure default sorting is desc for createdAt
     const queryParams: {
@@ -273,18 +312,20 @@ export function UsersDataTable({
       sortBy?: string;
       sortOrder?: "asc" | "desc";
       search?: string;
+      searchField?: string;
       role?: string | string[];
       isActive?: string | string[];
     } = {
-      page: currentPage,
+      page: tablePageIndex + 1,
       limit: tablePageSize,
       sortBy: activeSort?.id || "createdAt",
       sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
     };
 
-    // Add search value if present
-    if (currentSearch) {
-      queryParams.search = currentSearch;
+    // Add search value if present (from debounced handler)
+    if (searchValue.trim()) {
+      queryParams.search = searchValue.trim();
+      queryParams.searchField = 'email'; // Search in email field
     }
 
     // Add manual filter values
@@ -303,12 +344,6 @@ export function UsersDataTable({
     if (queryString !== lastQueryRef.current && hasInitializedRef.current) {
       lastQueryRef.current = queryString;
       onQueryChange(queryParams);
-
-      // If search changed and we forced page to 1, sync the table state
-      if (searchChanged && tablePageIndex !== 0) {
-        // Use setTimeout to avoid state update conflicts
-        setTimeout(() => table.setPageIndex(0), 0);
-      }
     }
 
     // Update refs after API call
@@ -316,9 +351,88 @@ export function UsersDataTable({
     lastPageSizeRef.current = tablePageSize;
     lastSortRef.current = currentSortString;
     lastFiltersRef.current = currentFiltersString;
-    lastSearchRef.current = currentSearch;
     lastManualFiltersRef.current = currentManualFilters;
-  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, manualFilterValues, onQueryChange]);
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchValue, manualFilterValues, onQueryChange, table]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        columnCount={8}
+        rowCount={10}
+        filterCount={3}
+        withPagination
+        withViewOptions
+      />
+    );
+  }
+
+  // Empty state with reset button if filters are active
+  if (data.length === 0 && !isLoading && shouldShowResetButton) {
+    return (
+      <div className="p-12 text-center border rounded-md">
+        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <UserCircle className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <Typography variant="title-s" className="text-foreground mb-2">
+          No users found
+        </Typography>
+        <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
+          No users match your search criteria. Try adjusting your filters.
+        </Typography>
+        <button
+          onClick={() => {
+            isResettingRef.current = true;
+
+            setSearchValue("");
+            if (debouncedSearchRef.current) {
+              clearTimeout(debouncedSearchRef.current);
+            }
+            setManualFilterValues({});
+            table.setColumnFilters([]);
+            setFilterValues({ role: null, isActive: null });
+            hasPerformedFilteringRef.current = false;
+            table.setPageIndex(0);
+            onQueryChange?.({
+              page: 1,
+              limit: table.getState().pagination.pageSize,
+              sortBy: 'createdAt',
+              sortOrder: 'desc',
+              // Explicitly clear filters to prevent store from merging old values
+              search: undefined,
+              searchField: undefined,
+              role: undefined,
+              isActive: undefined,
+            });
+
+            setTimeout(() => {
+              isResettingRef.current = false;
+            }, 100);
+          }}
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Clear filters
+        </button>
+      </div>
+    );
+  }
+
+  // Empty state without filters
+  if (data.length === 0 && !isLoading) {
+    return (
+      <div className="p-12 text-center border rounded-md">
+        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <UserCircle className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <Typography variant="title-s" className="text-foreground mb-2">
+          No users found
+        </Typography>
+        <Typography variant="body-s" color="muted" className="text-muted-foreground">
+          No user records are available at this time.
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <DataTable table={table}>
@@ -326,28 +440,58 @@ export function UsersDataTable({
         table={table}
         searchBar={
           <SearchBar
-            placeholder="Search..."
-            value={searchInput}
+            placeholder="Search by email..."
+            value={searchValue}
             onValueChange={handleSearchChange}
-            onKeyDown={handleSearchKeyDown}
             allowClear={false}
             className="w-64"
             inputClassName="h-8"
           />
         }
         onReset={() => {
+          // Set reset flag to prevent useEffect from running
+          isResettingRef.current = true;
+
           // 1. Clear search state
-          setSearchInput("");
-          setSearchQuery("");
+          setSearchValue("");
+
+          // Clear debounce timeout
+          if (debouncedSearchRef.current) {
+            clearTimeout(debouncedSearchRef.current);
+          }
 
           // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
           setManualFilterValues({});
 
-          // 3. Reset filtering tracking
+          // 3. Clear table filters
+          table.setColumnFilters([]);
+
+          // 4. Clear URL filter parameters
+          setFilterValues({ role: null, isActive: null });
+
+          // 5. Reset filtering tracking
           hasPerformedFilteringRef.current = false;
 
-          // 4. Reset to first page (this will trigger URL update and API call)
+          // 6. Reset to first page
           table.setPageIndex(0);
+
+          // 7. Trigger API call with clean state (explicitly clear search/filters)
+          onQueryChange?.({
+            page: 1,
+            limit: table.getState().pagination.pageSize,
+            sortBy: 'createdAt',
+            sortOrder: 'desc',
+            // Explicitly clear filters to prevent store from merging old values
+            search: undefined,
+            searchField: undefined,
+            role: undefined,
+            isActive: undefined,
+          });
+
+          // Reset the flag after a short delay
+          setTimeout(() => {
+            isResettingRef.current = false;
+          }, 100);
         }}
         hasActiveFilters={shouldShowResetButton}
         onManualFilterChange={handleManualFilterChange}

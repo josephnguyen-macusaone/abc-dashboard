@@ -261,16 +261,70 @@ export class UserValidator {
     // ENHANCED: Advanced filters (Phase 2.3)
     // ========================================================================
 
-    // Role filter
-    if (query.role && this.VALID_ROLES.includes(query.role)) {
+    // Role filter - support single value or array
+    if (query.role) {
       sanitized.filters = sanitized.filters || {};
-      sanitized.filters.role = query.role;
+
+      if (typeof query.role === 'string') {
+        // Handle comma-separated string
+        if (query.role.includes(',')) {
+          const parts = query.role.split(',');
+          const roles = parts.map((v) => v.trim()).filter((r) => this.VALID_ROLES.includes(r));
+          if (roles.length > 0) {
+            sanitized.filters.role = roles;
+          }
+        } else if (this.VALID_ROLES.includes(query.role)) {
+          sanitized.filters.role = query.role;
+        }
+      } else if (Array.isArray(query.role)) {
+        // Filter to only include valid roles
+        const validRoles = query.role.filter((r) => this.VALID_ROLES.includes(r));
+        if (validRoles.length > 0) {
+          sanitized.filters.role = validRoles;
+        }
+      } else if (this.VALID_ROLES.includes(query.role)) {
+        sanitized.filters.role = query.role;
+      }
     }
 
-    // Active status filter
-    if (query.isActive !== undefined && typeof query.isActive === 'boolean') {
+    // Active status filter - support single value or array
+    if (query.isActive !== undefined) {
       sanitized.filters = sanitized.filters || {};
-      sanitized.filters.isActive = query.isActive;
+
+      if (typeof query.isActive === 'string') {
+        // Handle comma-separated string
+        if (query.isActive.includes(',')) {
+          const parts = query.isActive.split(',');
+          const booleans = parts
+            .map((v) => {
+              const lower = v.trim().toLowerCase();
+              if (lower === 'true') return true;
+              if (lower === 'false') return false;
+              return null; // invalid
+            })
+            .filter((v) => v !== null);
+
+          if (booleans.length > 0) {
+            sanitized.filters.isActive = booleans;
+          }
+        } else {
+          // Handle single string boolean
+          const lower = query.isActive.toLowerCase();
+          if (lower === 'true') {
+            sanitized.filters.isActive = true;
+          } else if (lower === 'false') {
+            sanitized.filters.isActive = false;
+          }
+        }
+      } else if (Array.isArray(query.isActive)) {
+        // Filter to only include boolean values
+        const validBooleans = query.isActive.filter((v) => typeof v === 'boolean');
+        if (validBooleans.length > 0) {
+          sanitized.filters.isActive = validBooleans;
+        }
+      } else if (typeof query.isActive === 'boolean') {
+        sanitized.filters.isActive = query.isActive;
+      }
     }
 
     // Managed by filter

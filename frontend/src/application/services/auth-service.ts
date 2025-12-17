@@ -7,7 +7,7 @@ import {
 } from '@/application/use-cases';
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthResult, User, AuthTokens } from '@/domain/entities/user-entity';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';

@@ -3,6 +3,13 @@
  * Express middleware for request validation using Joi
  */
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+
+/**
+ * Validate request body
+ *
+ * @param {Joi.Schema} schema - The Joi schema to validate against
+ * @return {Function} - The middleware function
+ */
 export const validateRequest = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, {
     abortEarly: false,
@@ -26,6 +33,9 @@ export const validateRequest = (schema) => (req, res, next) => {
 
 /**
  * Validate query parameters
+ *
+ * @param {Joi.Schema} schema - The Joi schema to validate against
+ * @return {Function} - The middleware function
  */
 export const validateQuery = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.query, {
@@ -54,6 +64,9 @@ export const validateQuery = (schema) => (req, res, next) => {
 
 /**
  * Validate route parameters
+ *
+ * @param {Joi.Schema} schema - The Joi schema to validate against
+ * @return {Function} - The middleware function
  */
 export const validateParams = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.params, {

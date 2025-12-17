@@ -90,6 +90,7 @@ function useAsRef<T>(data: T) {
 interface DataGridState {
   sorting: SortingState;
   columnFilters: ColumnFiltersState;
+  globalFilter: string;
   rowHeight: RowHeightValue;
   rowSelection: RowSelectionState;
   selectionState: SelectionState;
@@ -214,6 +215,7 @@ function useDataGrid<TData>({
     return {
       sorting: initialState?.sorting ?? [],
       columnFilters: initialState?.columnFilters ?? [],
+      globalFilter: initialState?.globalFilter ?? "",
       rowHeight: rowHeightProp,
       rowSelection: initialState?.rowSelection ?? {},
       selectionState: {
@@ -310,6 +312,7 @@ function useDataGrid<TData>({
   const searchOpen = useStore(store, (state) => state.searchOpen);
   const sorting = useStore(store, (state) => state.sorting);
   const columnFilters = useStore(store, (state) => state.columnFilters);
+  const globalFilter = useStore(store, (state) => state.globalFilter);
   const rowSelection = useStore(store, (state) => state.rowSelection);
   const rowHeight = useStore(store, (state) => state.rowHeight);
   const contextMenu = useStore(store, (state) => state.contextMenu);
@@ -1536,6 +1539,18 @@ function useDataGrid<TData>({
     [store],
   );
 
+  const onGlobalFilterChange = React.useCallback(
+    (updater: Updater<string>) => {
+      const currentState = store.getState();
+      const newGlobalFilter =
+        typeof updater === "function"
+          ? updater(currentState.globalFilter)
+          : updater;
+      store.setState("globalFilter", newGlobalFilter);
+    },
+    [store],
+  );
+
   const onRowSelectionChange = React.useCallback(
     (updater: Updater<RowSelectionState>) => {
       const currentState = store.getState();
@@ -1766,10 +1781,11 @@ function useDataGrid<TData>({
       ...propsRef.current.state,
       sorting,
       columnFilters,
+      globalFilter,
       rowSelection,
       pagination,
     }),
-    [propsRef, sorting, columnFilters, rowSelection, pagination],
+    [propsRef, sorting, columnFilters, globalFilter, rowSelection, pagination],
   );
 
   const tableOptions = React.useMemo<TableOptions<TData>>(() => {
@@ -1783,6 +1799,7 @@ function useDataGrid<TData>({
       onRowSelectionChange,
       onSortingChange,
       onColumnFiltersChange,
+      onGlobalFilterChange,
       onPaginationChange,
       columnResizeMode: "onChange",
       getCoreRowModel: getMemoizedCoreRowModel,
@@ -1807,6 +1824,7 @@ function useDataGrid<TData>({
     onRowSelectionChange,
     onSortingChange,
     onColumnFiltersChange,
+    onGlobalFilterChange,
     onPaginationChange,
     getMemoizedCoreRowModel,
     getMemoizedFilteredRowModel,
@@ -1858,20 +1876,29 @@ function useDataGrid<TData>({
   const pageSizeRef = React.useRef<number | undefined>(undefined);
   const sortIdRef = React.useRef<string | undefined>(undefined);
   const sortDescRef = React.useRef<boolean | undefined>(undefined);
-  const searchQueryRef = React.useRef<string | undefined>(undefined);
+  const globalFilterRef = React.useRef<string | undefined>(undefined);
+  const columnFiltersRef = React.useRef<string>("");
   const isInitializedRef = React.useRef(false);
 
   // Notify parent of query changes when manual modes are enabled
+  // NOTE: This effect is kept for backwards compatibility with components that rely on it.
+  // New implementations should handle query changes manually for better control (see licenses-data-table.tsx)
   React.useEffect(() => {
     if (!onQueryChange) return;
 
     const state = table.getState();
-    const { pagination: pg, sorting: sort, columnFilters: filters } = state;
+    const { pagination: pg, sorting: sort, columnFilters: filters, globalFilter } = state;
     const activeSort = sort?.[0];
     const filterMap = filters?.reduce<Record<string, unknown>>((acc, curr) => {
       acc[curr.id] = curr.value;
       return acc;
     }, {});
+
+    // Serialize filters for comparison
+    const filtersString = JSON.stringify(filterMap);
+    
+    // Use global filter as search (set by DataGridSearch when manual filtering)
+    const searchValue = globalFilter || undefined;
 
     // On first mount, just initialize refs without calling onQueryChange
     if (!isInitializedRef.current) {
@@ -1879,7 +1906,8 @@ function useDataGrid<TData>({
       pageSizeRef.current = pg?.pageSize ?? 10;
       sortIdRef.current = activeSort?.id;
       sortDescRef.current = activeSort?.desc;
-      searchQueryRef.current = searchQuery;
+      globalFilterRef.current = searchValue;
+      columnFiltersRef.current = filtersString;
       isInitializedRef.current = true;
       return;
     }
@@ -1889,15 +1917,17 @@ function useDataGrid<TData>({
     const pageSizeChanged = pageSizeRef.current !== pg?.pageSize;
     const sortIdChanged = sortIdRef.current !== activeSort?.id;
     const sortDescChanged = sortDescRef.current !== activeSort?.desc;
-    const searchChanged = searchQueryRef.current !== searchQuery;
+    const globalFilterChanged = globalFilterRef.current !== searchValue;
+    const filtersChanged = columnFiltersRef.current !== filtersString;
 
-    if (pageIndexChanged || pageSizeChanged || sortIdChanged || sortDescChanged || searchChanged) {
+    if (pageIndexChanged || pageSizeChanged || sortIdChanged || sortDescChanged || globalFilterChanged || filtersChanged) {
       // Update refs
       pageIndexRef.current = pg?.pageIndex ?? 0;
       pageSizeRef.current = pg?.pageSize ?? 10;
       sortIdRef.current = activeSort?.id;
       sortDescRef.current = activeSort?.desc;
-      searchQueryRef.current = searchQuery;
+      globalFilterRef.current = searchValue;
+      columnFiltersRef.current = filtersString;
 
       // Call onQueryChange asynchronously to avoid setState during render
       const queryParams = {
@@ -1906,15 +1936,15 @@ function useDataGrid<TData>({
         sortBy: activeSort?.id,
         sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
         filters: filterMap,
-        search: searchQuery,
+        search: searchValue,
       };
 
-      // Use setTimeout to ensure this runs after render completes
-      setTimeout(() => {
+      // Use queueMicrotask for better performance than setTimeout
+      queueMicrotask(() => {
         onQueryChange(queryParams);
-      }, 0);
+      });
     }
-  }, [onQueryChange, table, searchQuery]);
+  }, [onQueryChange, pagination, sorting, columnFilters, globalFilter]);
 
   const onScrollToRow = React.useCallback(
     async (opts: Partial<CellPosition>) => {

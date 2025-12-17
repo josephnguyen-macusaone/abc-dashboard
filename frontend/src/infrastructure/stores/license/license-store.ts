@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { LicenseRecord, LicenseStatus } from '@/shared/types';
+import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/shared/types';
 import { licenseApi } from '@/infrastructure/api/licenses';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
 
 export interface LicenseFilters {
   search?: string;
-  status?: LicenseStatus;
+  status?: LicenseStatus | LicenseStatus[];
   dba?: string;
 }
 
@@ -36,7 +36,7 @@ export interface CreateLicenseRequest {
   startDay: string;
   status?: LicenseStatus;
   plan?: string;
-  term?: string;
+  term?: LicenseTerm;
   cancelDate?: string;
   lastPayment?: number;
   smsPurchased?: number;
@@ -53,7 +53,7 @@ export interface UpdateLicenseRequest {
   startDay?: string;
   status?: LicenseStatus;
   plan?: string;
-  term?: string;
+  term?: LicenseTerm;
   cancelDate?: string;
   lastPayment?: number;
   smsPurchased?: number;
@@ -72,19 +72,19 @@ interface LicenseState {
   error: string | null;
   filters: LicenseFilters;
   pagination: PaginationState;
-  selectedLicenses: number[];
+  selectedLicenses: (number | string)[];
 
   // Actions
-  fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }>) => Promise<void>;
-  fetchLicense: (id: number) => Promise<LicenseRecord | null>;
+  fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[] }>) => Promise<void>;
+  fetchLicense: (id: number | string) => Promise<LicenseRecord | null>;
   createLicense: (licenseData: CreateLicenseRequest) => Promise<LicenseRecord>;
-  updateLicense: (id: number, licenseData: UpdateLicenseRequest) => Promise<LicenseRecord>;
-  deleteLicense: (id: number) => Promise<void>;
-  bulkUpdateLicenses: (updates: Array<UpdateLicenseRequest & { id: number }>) => Promise<LicenseRecord[]>;
-  bulkDeleteLicenses: (ids: number[]) => Promise<void>;
+  updateLicense: (id: number | string, licenseData: UpdateLicenseRequest) => Promise<LicenseRecord>;
+  deleteLicense: (id: number | string) => Promise<void>;
+  bulkUpdateLicenses: (updates: Array<Partial<LicenseRecord> & { id: number | string }>) => Promise<LicenseRecord[]>;
+  bulkDeleteLicenses: (ids: (number | string)[]) => Promise<void>;
   setFilters: (filters: LicenseFilters) => void;
   setPagination: (pagination: Partial<PaginationState>) => void;
-  setSelectedLicenses: (licenseIds: number[]) => void;
+  setSelectedLicenses: (licenseIds: (number | string)[]) => void;
   clearError: () => void;
   reset: () => void;
 }
@@ -121,6 +121,13 @@ export const useLicenseStore = create<LicenseState>()(
               ...params,
             };
 
+            // Remove undefined values from queryParams before sending to API
+            (Object.keys(queryParams) as Array<keyof typeof queryParams>)
+              .forEach((key) => {
+                if (queryParams[key] === undefined)
+                  delete queryParams[key];
+              });
+
             const response = await licenseApi.getLicenses(queryParams);
 
             // Use total from stats if available, otherwise from pagination
@@ -142,7 +149,7 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        fetchLicense: async (id: number) => {
+        fetchLicense: async (id: number | string) => {
           try {
             set({ loading: true, error: null });
 
@@ -163,7 +170,25 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            const response = await licenseApi.createLicense(licenseData);
+            // Transform CreateLicenseRequest to Partial<LicenseRecord>
+            const licenseRecord: Partial<LicenseRecord> = {
+              dba: licenseData.dba,
+              zip: licenseData.zip,
+              startsAt: licenseData.startDay, // Transform startDay to startsAt
+              status: licenseData.status,
+              plan: licenseData.plan,
+              term: licenseData.term,
+              cancelDate: licenseData.cancelDate,
+              lastPayment: licenseData.lastPayment,
+              smsPurchased: licenseData.smsPurchased,
+              smsSent: licenseData.smsSent,
+              agents: licenseData.agents,
+              agentsName: licenseData.agentsName,
+              agentsCost: licenseData.agentsCost,
+              notes: licenseData.notes,
+            };
+
+            const response = await licenseApi.createLicense(licenseRecord);
 
             // Add the new license to the list
             const currentLicenses = get().licenses;
@@ -181,11 +206,29 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        updateLicense: async (id: number, licenseData: UpdateLicenseRequest) => {
+        updateLicense: async (id: number | string, licenseData: UpdateLicenseRequest) => {
           try {
             set({ loading: true, error: null });
 
-            const response = await licenseApi.updateLicense(id, licenseData);
+            // Transform UpdateLicenseRequest to Partial<LicenseRecord>
+            const licenseRecord: Partial<LicenseRecord> = {
+              dba: licenseData.dba,
+              zip: licenseData.zip,
+              startsAt: licenseData.startDay, // Transform startDay to startsAt
+              status: licenseData.status,
+              plan: licenseData.plan,
+              term: licenseData.term,
+              cancelDate: licenseData.cancelDate,
+              lastPayment: licenseData.lastPayment,
+              smsPurchased: licenseData.smsPurchased,
+              smsSent: licenseData.smsSent,
+              agents: licenseData.agents,
+              agentsName: licenseData.agentsName,
+              agentsCost: licenseData.agentsCost,
+              notes: licenseData.notes,
+            };
+
+            const response = await licenseApi.updateLicense(id, licenseRecord);
 
             // Update the license in the list
             const currentLicenses = get().licenses;
@@ -208,7 +251,7 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        deleteLicense: async (id: number) => {
+        deleteLicense: async (id: number | string) => {
           try {
             set({ loading: true, error: null });
 
@@ -230,17 +273,19 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        bulkUpdateLicenses: async (updates: Array<UpdateLicenseRequest & { id: number }>) => {
+        bulkUpdateLicenses: async (updates: Array<Partial<LicenseRecord> & { id: number | string }>) => {
           try {
             set({ loading: true, error: null });
 
+            // Transform each update from LicenseRecord format (with startsAt) to API format
+            // The API service will handle the rest of the transformation
             const response = await licenseApi.bulkUpdateLicenses(updates);
 
-            // Update the licenses in the list
+            // Update the licenses in the list with the API response (fully updated records)
             const currentLicenses = get().licenses;
             const updatedLicenses = currentLicenses.map(license => {
-              const update = updates.find(u => u.id === license.id);
-              return update ? { ...license, ...update } as LicenseRecord : license;
+              const updatedLicense = response.find(updated => updated.id === license.id);
+              return updatedLicense || license;
             });
 
             set({
@@ -257,7 +302,7 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        bulkDeleteLicenses: async (ids: number[]) => {
+        bulkDeleteLicenses: async (ids: (number | string)[]) => {
           try {
             set({ loading: true, error: null });
 

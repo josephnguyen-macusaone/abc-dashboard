@@ -14,18 +14,25 @@ import {
   Briefcase,
   CalendarRange,
   CalendarDays,
+  FileText,
+  AlertOctagon,
+  Ban,
 } from "lucide-react";
 import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
 import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/shared/types";
+import { LICENSE_STATUS_LABELS } from "@/shared/constants/license";
 
-// Status options for filter
+// Status options for filter - All 7 status values
 export const STATUS_OPTIONS = [
-  { label: "Active", value: "active", icon: CheckCircle2 },
-  { label: "Cancelled", value: "cancel", icon: XCircle },
+  { label: "Draft", value: "draft", icon: FileText },
   { label: "Pending", value: "pending", icon: Clock },
+  { label: "Active", value: "active", icon: CheckCircle2 },
+  { label: "Expiring", value: "expiring", icon: AlertOctagon },
   { label: "Expired", value: "expired", icon: AlertCircle },
+  { label: "Cancelled", value: "cancel", icon: XCircle },
+  { label: "Revoked", value: "revoked", icon: Ban },
 ];
 
 // Plan options for filter
@@ -43,14 +50,20 @@ export const TERM_OPTIONS = [
 
 function getStatusVariant(status: LicenseStatus) {
   switch (status) {
-    case "active":
-      return "active";
-    case "cancel":
-      return "destructive";
+    case "draft":
+      return "secondary";
     case "pending":
       return "warning";
+    case "active":
+      return "active";
+    case "expiring":
+      return "warning";
     case "expired":
+      return "destructive";
+    case "cancel":
       return "secondary";
+    case "revoked":
+      return "destructive";
     default:
       return "secondary";
   }
@@ -148,8 +161,8 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => {
         const status = row.getValue("status") as LicenseStatus;
         return (
-          <Badge variant={getStatusVariant(status)} className="capitalize text-center">
-            {status}
+          <Badge variant={getStatusVariant(status)} className="text-center">
+            {LICENSE_STATUS_LABELS[status]}
           </Badge>
         );
       },

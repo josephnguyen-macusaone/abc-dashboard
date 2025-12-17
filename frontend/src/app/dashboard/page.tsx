@@ -1,5 +1,5 @@
-import { AccessDeniedPage, DashboardPage } from '@/presentation/components/pages';
 import { ProtectedRoute } from '@/presentation/components/routes';
+import { AccessDeniedPage, DashboardPage } from '@/presentation/components/pages';
 
 // Force dynamic rendering for this protected route
 export const dynamic = 'force-dynamic';

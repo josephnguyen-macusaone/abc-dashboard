@@ -1,0 +1,149 @@
+name: Bundle Analysis
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  bundle-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for comparison
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build application
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Run bundle analysis
+      run: |
+        cd frontend
+        node scripts/bundle-analyzer.js
+
+    - name: Upload bundle report
+      uses: actions/upload-artifact@v4
+      with:
+        name: bundle-report
+        path: frontend/bundle-report.json
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          const reportPath = path.join(process.cwd(), 'frontend', 'bundle-report.json');
+
+          if (!fs.existsSync(reportPath)) {
+            return;
+          }
+
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+
+          let comment = '## 📊 Bundle Analysis Report\n\n';
+
+          // Current build info
+          comment += `**Build Info:**\n`;
+          comment += `- Commit: \`${report.commit.substring(0, 7)}\`\n`;
+          comment += `- Branch: \`${report.branch}\`\n`;
+          comment += `- Timestamp: ${new Date(report.timestamp).toLocaleString()}\n\n`;
+
+          // Bundle sizes
+          const current = report.current;
+          comment += `**Bundle Sizes:**\n`;
+          comment += `- Total: ${(current.totalSize / 1024).toFixed(1)} KB\n`;
+          comment += `- Gzipped: ${(current.totalGzipSize / 1024).toFixed(1)} KB\n\n`;
+
+          // Comparison with previous
+          if (report.previous) {
+            const previous = report.previous;
+            const sizeDiff = current.totalSize - previous.totalSize;
+            const gzipDiff = current.totalGzipSize - previous.totalGzipSize;
+
+            comment += `**Size Changes:**\n`;
+            comment += `- Total: ${sizeDiff >= 0 ? '+' : ''}${(sizeDiff / 1024).toFixed(1)} KB\n`;
+            comment += `- Gzipped: ${gzipDiff >= 0 ? '+' : ''}${(gzipDiff / 1024).toFixed(1)} KB\n\n`;
+          }
+
+          // Limit violations
+          if (report.limitViolations && report.limitViolations.length > 0) {
+            comment += `🚨 **Size Limits Exceeded:**\n`;
+            report.limitViolations.forEach(violation => {
+              comment += `- ${violation}\n`;
+            });
+            comment += '\n';
+          } else {
+            comment += `✅ **All Size Limits Met**\n\n`;
+          }
+
+          // Regressions
+          if (report.regressions && report.regressions.length > 0) {
+            comment += `⚠️ **Regressions Detected:**\n`;
+            report.regressions.forEach(regression => {
+              comment += `- ${regression}\n`;
+            });
+            comment += '\n';
+          } else {
+            comment += `✅ **No Regressions Detected**\n\n`;
+          }
+
+          // Recommendations
+          if (report.recommendations && report.recommendations.length > 0) {
+            comment += `💡 **Recommendations:**\n`;
+            report.recommendations.forEach(rec => {
+              comment += `- ${rec}\n`;
+            });
+          }
+
+          // Post comment
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+    - name: Check bundle limits and regressions
+      if: github.event_name == 'pull_request'
+      run: |
+        cd frontend
+        if [ -f bundle-report.json ]; then
+          VIOLATIONS=$(node -e "
+            const report = require('./bundle-report.json');
+            const violations = (report.limitViolations ? report.limitViolations.length : 0) + (report.regressions ? report.regressions.length : 0);
+            console.log(violations);
+          ")
+          if [ "$VIOLATIONS" -gt 0 ]; then
+            echo "❌ Bundle size violations detected! Failing build."
+            echo "Check the bundle analysis comment above for details."
+            exit 1
+          else
+            echo "✅ All bundle checks passed!"
+          fi
+        else
+          echo "⚠️ No bundle report found"
+        fi

@@ -41,11 +41,11 @@ export function LicensesDataTable({
   isLoading = false,
   onQueryChange,
 }: LicensesDataTableProps) {
-  const columns = React.useMemo(() => getLicenseTableColumns(), []);
+  const columns = useMemo(() => getLicenseTableColumns(), []);
 
-  const [currentPageSize, setCurrentPageSize] = React.useState(20);
+  const [currentPageSize, setCurrentPageSize] = useState(20);
 
-  const pageCount = React.useMemo(
+  const pageCount = useMemo(
     () => (serverPageCount >= 0 ? serverPageCount : Math.ceil(data.length / currentPageSize)),
     [serverPageCount, data.length, currentPageSize]
   );
@@ -79,17 +79,16 @@ export function LicensesDataTable({
   // Track the last query to prevent infinite loops
   const lastQueryRef = useRef<string>("");
   const hasInitializedRef = useRef(false);
+
   // Track last values for changes
   const lastPageIndexRef = useRef<number>(0);
   const lastPageSizeRef = useRef<number>(20);
   const lastSortRef = useRef<string>("");
   const lastFiltersRef = useRef<string>("");
-  const lastSearchRef = useRef<string>("");
   const lastManualFiltersRef = useRef<string>("");
 
-  // Search states for better UX control
-  const [searchInput, setSearchInput] = useState(""); // What user types (immediate UI updates)
-  const [searchQuery, setSearchQuery] = useState(""); // What gets sent to API (debounced)
+  // Search state - single source of truth
+  const [searchValue, setSearchValue] = useState(""); // What user types
 
   // Manual filter state for server-side filtering
   const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>({});
@@ -101,8 +100,8 @@ export function LicensesDataTable({
     const statusParam = urlParams.get('status');
 
     if (searchParam) {
-      setSearchInput(searchParam);
-      setSearchQuery(searchParam);
+      setSearchValue(searchParam);
+      // Mark that filtering has been performed when initializing from URL
       hasPerformedFilteringRef.current = true;
     }
 
@@ -120,8 +119,8 @@ export function LicensesDataTable({
   const hasActiveFilters = useMemo(() => {
     const tableState = table.getState();
 
-    // Check search filters: user typing OR active API search
-    const hasSearchFilters = searchInput.trim() !== "" || searchQuery.trim() !== "";
+    // Check search filters
+    const hasSearchFilters = searchValue.trim() !== "";
 
     // Check manual filter values (what user has selected)
     const hasManualFilters = (
@@ -131,16 +130,8 @@ export function LicensesDataTable({
     // Check table column filters
     const hasTableFilters = tableState.columnFilters && tableState.columnFilters.length > 0;
 
-    // Check URL parameters for persisted filters
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasUrlFilters = (
-      urlParams.has('search') ||
-      urlParams.has('status') ||
-      urlParams.has('filters')
-    );
-
-    // Current active state - includes both API search and typing state
-    const currentlyActive = hasSearchFilters || hasManualFilters || hasTableFilters || hasUrlFilters;
+    // Current active state
+    const currentlyActive = hasSearchFilters || hasManualFilters || hasTableFilters;
 
     // If we detect active filters, mark that filtering has been performed
     if (currentlyActive) {
@@ -148,10 +139,10 @@ export function LicensesDataTable({
     }
 
     return currentlyActive;
-  }, [searchInput, searchQuery, manualFilterValues, table]);
+  }, [searchValue, manualFilterValues, table]);
 
-  // Reset button should show if there's any search activity
-  const shouldShowResetButton = searchInput.trim() !== "" || searchQuery.trim() !== "" || hasPerformedFilteringRef.current;
+  // Reset button should show if there's any filter activity or when no results with filters
+  const shouldShowResetButton = hasActiveFilters || (hasPerformedFilteringRef.current && data.length === 0);
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
@@ -175,19 +166,44 @@ export function LicensesDataTable({
   const tableSorting = table.getState().sorting;
   const tableColumnFilters = table.getState().columnFilters;
 
-  const handleSearchChange = useCallback((value: string) => {
-    // Update input immediately for responsive UI (shows reset button)
-    setSearchInput(value);
-    // No automatic API calls - only on Enter key
-  }, []);
+  // Debounced search handler - triggers API call after user stops typing
+  const debouncedSearchRef = useRef<NodeJS.Timeout>(null);
 
-  const handleSearchKeyDown = useCallback((event: React.KeyboardEvent) => {
-    // Enter triggers API call immediately and prevents form submission
-    if (event.key === 'Enter') {
-      event.preventDefault(); // Prevent any form submission
-      setSearchQuery(searchInput);
+  const handleSearchChange = useCallback((value: string) => {
+    // Update input immediately for responsive UI
+    setSearchValue(value);
+    hasPerformedFilteringRef.current = true;
+
+    // Clear previous timeout
+    if (debouncedSearchRef.current) {
+      clearTimeout(debouncedSearchRef.current);
     }
-  }, [searchInput]);
+
+    // Debounce API call
+    debouncedSearchRef.current = setTimeout(() => {
+      // Trigger API call with search value
+      const tableState = table.getState();
+      const activeSort = tableState.sorting?.[0];
+
+      onQueryChange?.({
+        page: 1, // Reset to page 1 on search
+        limit: tableState.pagination.pageSize,
+        sortBy: (activeSort?.id || "startsAt") as keyof LicenseRecord,
+        sortOrder: activeSort?.desc ? "desc" : "asc",
+        search: value,
+        status: manualFilterValues.status,
+      });
+    }, 500); // 500ms debounce
+  }, [table, onQueryChange, manualFilterValues]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedSearchRef.current) {
+        clearTimeout(debouncedSearchRef.current);
+      }
+    };
+  }, []);
 
   // Notify parent of query changes for sorting/filtering/pagination
   useEffect(() => {
@@ -198,7 +214,6 @@ export function LicensesDataTable({
     // Check if pagination, sorting, or filtering changed
     const currentSortString = JSON.stringify(tableSorting);
     const currentFiltersString = JSON.stringify(tableColumnFilters);
-    const currentSearch = searchQuery.trim(); // Use the API query state
     const currentManualFilters = JSON.stringify(manualFilterValues);
 
     // Initialize refs on first run
@@ -208,7 +223,6 @@ export function LicensesDataTable({
       lastPageSizeRef.current = tablePageSize;
       lastSortRef.current = currentSortString;
       lastFiltersRef.current = currentFiltersString;
-      lastSearchRef.current = currentSearch;
       lastManualFiltersRef.current = currentManualFilters;
 
       const initialQueryParams = {
@@ -225,14 +239,9 @@ export function LicensesDataTable({
       tablePageSize !== lastPageSizeRef.current;
     const sortChanged = currentSortString !== lastSortRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current ||
-      currentSearch !== lastSearchRef.current ||
       currentManualFilters !== lastManualFiltersRef.current;
 
     if (!paginationChanged && !sortChanged && !filtersChanged) return;
-
-    // Check if search has changed to reset to page 1
-    const searchChanged = currentSearch !== lastSearchRef.current;
-    const currentPage = searchChanged ? 1 : tablePageIndex + 1;
 
     // Build query params - ensure default sorting is desc for startsAt
     const queryParams: {
@@ -243,15 +252,15 @@ export function LicensesDataTable({
       search?: string;
       status?: string | string[];
     } = {
-      page: currentPage,
+      page: tablePageIndex + 1,
       limit: tablePageSize,
       sortBy: (activeSort?.id || "startsAt") as keyof LicenseRecord,
       sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
     };
 
-    // Add search value if present
-    if (currentSearch) {
-      queryParams.search = currentSearch;
+    // Add search value if present (from debounced handler)
+    if (searchValue.trim()) {
+      queryParams.search = searchValue.trim();
     }
 
     // Add manual filter values
@@ -266,12 +275,6 @@ export function LicensesDataTable({
     if (queryString !== lastQueryRef.current && hasInitializedRef.current) {
       lastQueryRef.current = queryString;
       onQueryChange(queryParams);
-
-      // If search changed and we forced page to 1, sync the table state
-      if (searchChanged && tablePageIndex !== 0) {
-        // Use setTimeout to avoid state update conflicts
-        setTimeout(() => table.setPageIndex(0), 0);
-      }
     }
 
     // Update refs after API call
@@ -279,12 +282,11 @@ export function LicensesDataTable({
     lastPageSizeRef.current = tablePageSize;
     lastSortRef.current = currentSortString;
     lastFiltersRef.current = currentFiltersString;
-    lastSearchRef.current = currentSearch;
     lastManualFiltersRef.current = currentManualFilters;
-  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, manualFilterValues, onQueryChange]);
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchValue, manualFilterValues, onQueryChange, table]);
 
   // Update page size when table page size changes
-  React.useEffect(() => {
+  useEffect(() => {
     const tablePageSize = table.getState().pagination.pageSize;
     if (tablePageSize !== currentPageSize) {
       setCurrentPageSize(tablePageSize);
@@ -295,16 +297,56 @@ export function LicensesDataTable({
   if (isLoading) {
     return (
       <DataTableSkeleton
-        columnCount={12}
-        rowCount={10}
-        filterCount={4}
+        columnCount={columns.length}
+        rowCount={20}
+        filterCount={1}
         withPagination
         withViewOptions
       />
     );
   }
 
-  // Empty state
+  // Empty state with reset button if filters are active
+  if (data.length === 0 && !isLoading && shouldShowResetButton) {
+    return (
+      <div className="p-12 text-center border rounded-md">
+        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <FileText className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <Typography variant="title-s" className="text-foreground mb-2">
+          No licenses found
+        </Typography>
+        <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
+          No licenses match your search criteria. Try adjusting your filters.
+        </Typography>
+        <button
+          onClick={() => {
+            setSearchValue("");
+            if (debouncedSearchRef.current) {
+              clearTimeout(debouncedSearchRef.current);
+            }
+            setManualFilterValues({});
+            table.setColumnFilters([]);
+            hasPerformedFilteringRef.current = false;
+            table.setPageIndex(0);
+            setTimeout(() => {
+              onQueryChange?.({
+                page: 1,
+                limit: table.getState().pagination.pageSize,
+                sortBy: 'startsAt',
+                sortOrder: 'desc',
+              });
+            }, 0);
+          }}
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Clear filters
+        </button>
+      </div>
+    );
+  }
+
+  // Empty state without filters
   if (data.length === 0 && !isLoading) {
     return (
       <div className="p-12 text-center border rounded-md">
@@ -315,9 +357,7 @@ export function LicensesDataTable({
           No licenses found
         </Typography>
         <Typography variant="body-s" color="muted" className="text-muted-foreground">
-          {hasActiveFilters 
-            ? "No licenses match your search criteria. Try adjusting your filters."
-            : "No license records are available at this time."}
+          No license records are available at this time.
         </Typography>
       </div>
     );
@@ -329,10 +369,9 @@ export function LicensesDataTable({
         table={table}
         searchBar={
           <SearchBar
-            placeholder="Search by DBA, key, or product..."
-            value={searchInput}
+            placeholder="Search by DBA..."
+            value={searchValue}
             onValueChange={handleSearchChange}
-            onKeyDown={handleSearchKeyDown}
             allowClear={false}
             className="w-64"
             inputClassName="h-8"
@@ -340,17 +379,34 @@ export function LicensesDataTable({
         }
         onReset={() => {
           // 1. Clear search state
-          setSearchInput("");
-          setSearchQuery("");
+          setSearchValue("");
+
+          // Clear debounce timeout
+          if (debouncedSearchRef.current) {
+            clearTimeout(debouncedSearchRef.current);
+          }
 
           // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
           setManualFilterValues({});
 
-          // 3. Reset filtering tracking
+          // 3. Clear table filters
+          table.setColumnFilters([]);
+
+          // 4. Reset filtering tracking
           hasPerformedFilteringRef.current = false;
 
-          // 4. Reset to first page (this will trigger URL update and API call)
+          // 5. Reset to first page and trigger API call with clean state
           table.setPageIndex(0);
+
+          // 6. Trigger API call with clean state
+          setTimeout(() => {
+            onQueryChange?.({
+              page: 1,
+              limit: table.getState().pagination.pageSize,
+              sortBy: 'startsAt',
+              sortOrder: 'desc',
+            });
+          }, 0);
         }}
         hasActiveFilters={shouldShowResetButton}
         onManualFilterChange={handleManualFilterChange}

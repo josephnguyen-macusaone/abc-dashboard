@@ -1,7 +1,6 @@
 'use client';
 
 import { Typography } from '@/presentation/components/atoms';
-import { UserStatsCardsProps } from '.';
 import { Crown, Shield, Users } from 'lucide-react';
 import { USER_ROLES } from '@/shared/constants';
 
@@ -27,6 +26,18 @@ export interface StatsCardsProps {
   isLoading?: boolean;
   className?: string;
   columns?: 2 | 3 | 4;
+}
+
+// User-specific stats cards props
+export interface UserStatsCardsProps {
+  userStats?: {
+    total: number;
+    admin: number;
+    manager: number;
+    staff: number;
+  };
+  isLoading?: boolean;
+  className?: string;
 }
 
 // Generic Stats Cards Component

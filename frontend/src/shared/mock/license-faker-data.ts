@@ -9,8 +9,10 @@ import type { LicenseRecord } from '@/shared/types';
  * Generate a new empty license record for adding rows
  * This is used when users click "Add Row" in the license management grid
  */
-export function createEmptyLicense(existingIds: number[]): LicenseRecord {
-  const nextId = Math.max(...existingIds, 0) + 1;
+export function createEmptyLicense(existingIds: (number | string)[]): LicenseRecord {
+  // Generate a temporary negative ID for new licenses (will be replaced by server)
+  const numericIds = existingIds.filter(id => typeof id === 'number') as number[];
+  const nextId = numericIds.length > 0 ? Math.max(...numericIds, 0) + 1 : -Math.floor(Math.random() * 1000000);
   return {
     id: nextId,
     dba: '',

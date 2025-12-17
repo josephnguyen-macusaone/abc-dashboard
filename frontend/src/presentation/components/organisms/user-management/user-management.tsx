@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Typography } from '@/presentation/components/atoms';
 import { StatsCards, UsersDataTable, UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
-import { UserManagementSkeleton } from './user-management-skeleton';
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
@@ -12,7 +11,7 @@ import { UserFormTemplate } from '@/presentation/components/templates';
 import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
-import { useUserStore, selectUserStats, selectUserLoading } from '@/infrastructure/stores/user-store';
+import { useUserStore } from '@/infrastructure/stores/user';
 
 /**
  * UserManagement Component
@@ -45,6 +44,17 @@ interface UserManagementProps {
     limit: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    search?: string;
+    searchField?: string;
+    role?: string | string[];
+    isActive?: string | string[];
+    displayName?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    updatedAtFrom?: string;
+    updatedAtTo?: string;
+    lastLoginFrom?: string;
+    lastLoginTo?: string;
   }) => void;
   /** Server page count for pagination */
   pageCount?: number;
@@ -70,8 +80,7 @@ export function UserManagement({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Get stats from store
-  const userStats = useUserStore(selectUserStats);
-  const isLoadingStats = useUserStore(selectUserLoading);
+  const { userStats, statsLoading: isLoadingStats } = useUserStore();
 
   const handleDateRangeUpdate = useCallback(
     (values: { range: { from?: Date; to?: Date } }) => {
@@ -183,16 +192,6 @@ export function UserManagement({
     );
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <UserManagementSkeleton
-        showDateFilter={!!onDateRangeChange}
-        className={className}
-      />
-    );
-  }
-
   // Default list view
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm px-6 py-6', className)}>
@@ -222,7 +221,7 @@ export function UserManagement({
       {/* Statistics */}
       <div className="mb-4">
         <UserStatsCards
-          userStats={userStats}
+          userStats={userStats || undefined}
           isLoading={isLoading || isLoadingStats}
         />
       </div>
@@ -236,6 +235,7 @@ export function UserManagement({
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
         onCreateUser={onCreateUserHandler}
+        isLoading={isLoading}
         onQueryChange={onQueryChange}
         pageCount={pageCount}
         totalCount={totalCount}

@@ -24,7 +24,12 @@ export class UserApiService {
 
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
+          // Handle array values for filters like role and isActive - send as comma-separated string
+          if (Array.isArray(value)) {
+            queryParams.append(key, value.join(','));
+          } else {
+            queryParams.append(key, String(value));
+          }
         }
       });
 
@@ -41,7 +46,7 @@ export class UserApiService {
 
       return {
         users: response.data,
-        pagination: response.meta?.pagination || { page: 1, limit: 10, totalPages: 0 },
+        pagination: response.meta?.pagination || { page: 1, limit: 10, totalPages: 0, hasNext: false, hasPrev: false },
         stats: response.meta?.stats
       };
     } catch (error) {

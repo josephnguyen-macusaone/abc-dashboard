@@ -1,5 +1,106 @@
 import { httpClient } from '@/infrastructure/api/client';
 import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
+import type { LicenseRecord } from '@/shared/types';
+
+/**
+ * Transform backend license data to frontend LicenseRecord
+ */
+function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
+  return {
+    id: apiLicense.id,
+    dba: apiLicense.dba || '',
+    zip: apiLicense.zip || '',
+    startsAt: apiLicense.startDay || apiLicense.startsAt || '', // Handle both formats
+    status: apiLicense.status || 'pending',
+    plan: apiLicense.plan || 'Basic',
+    term: apiLicense.term || 'monthly',
+    cancelDate: apiLicense.cancelDate,
+    lastPayment: apiLicense.lastPayment || 0,
+    lastActive: apiLicense.lastActive || '',
+    smsPurchased: apiLicense.smsPurchased || 0,
+    smsSent: apiLicense.smsSent || 0,
+    smsBalance: apiLicense.smsBalance || (apiLicense.smsPurchased || 0) - (apiLicense.smsSent || 0),
+    agents: apiLicense.agents || 0,
+    agentsName: apiLicense.agentsName || [],
+    agentsCost: apiLicense.agentsCost || 0,
+    notes: apiLicense.notes || '',
+  };
+}
+
+/**
+ * Transform frontend LicenseRecord to backend API format
+ * Filters out undefined, null, and empty values to ensure clean API payloads
+ */
+function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
+  const apiLicense: any = {};
+
+  // Helper to check if value should be included
+  const shouldInclude = (value: any): boolean => {
+    return value !== undefined && value !== null && value !== '';
+  };
+
+  // Only include fields that have defined, non-null, non-empty values
+  if (shouldInclude(license.dba)) {
+    apiLicense.dba = license.dba;
+  }
+  
+  if (shouldInclude(license.zip)) {
+    apiLicense.zip = license.zip;
+  }
+  
+  if (shouldInclude(license.startsAt)) {
+    // Convert to date-only format if it's a full timestamp
+    const dateStr = String(license.startsAt);
+    apiLicense.startDay = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+  }
+  
+  if (shouldInclude(license.status)) {
+    apiLicense.status = license.status;
+  }
+  
+  if (shouldInclude(license.plan)) {
+    apiLicense.plan = license.plan;
+  }
+  
+  if (shouldInclude(license.term)) {
+    apiLicense.term = license.term;
+  }
+  
+  // Only include cancelDate if it has a real value (not null or empty)
+  if (shouldInclude(license.cancelDate)) {
+    apiLicense.cancelDate = license.cancelDate;
+  }
+  
+  if (license.lastPayment !== undefined && license.lastPayment !== null) {
+    apiLicense.lastPayment = license.lastPayment;
+  }
+  
+  if (license.smsPurchased !== undefined && license.smsPurchased !== null) {
+    apiLicense.smsPurchased = license.smsPurchased;
+  }
+  
+  if (license.smsSent !== undefined && license.smsSent !== null) {
+    apiLicense.smsSent = license.smsSent;
+  }
+  
+  if (license.agents !== undefined && license.agents !== null) {
+    apiLicense.agents = license.agents;
+  }
+  
+  if (license.agentsName !== undefined && license.agentsName !== null) {
+    apiLicense.agentsName = license.agentsName;
+  }
+  
+  if (license.agentsCost !== undefined && license.agentsCost !== null) {
+    apiLicense.agentsCost = license.agentsCost;
+  }
+  
+  if (shouldInclude(license.notes)) {
+    apiLicense.notes = license.notes;
+  }
+
+  return apiLicense;
+}
 
 /**
  * License Management API service
@@ -39,7 +140,7 @@ export class LicenseApiService {
    * Get licenses with pagination and filtering
    */
   static async getLicenses(params: any = {}): Promise<{
-    licenses: any[];
+    licenses: LicenseRecord[];
     pagination: {
       page: number;
       limit: number;
@@ -61,7 +162,12 @@ export class LicenseApiService {
 
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
+          // Handle array values for filters like status - send as comma-separated string
+          if (Array.isArray(value)) {
+            queryParams.append(key, value.join(','));
+          } else {
+            queryParams.append(key, String(value));
+          }
         }
       });
 
@@ -69,15 +175,18 @@ export class LicenseApiService {
       const response = await httpClient.get<{
         success: boolean;
         data: any[];
-        meta: { pagination: any };
+        meta: { pagination: any; stats?: any };
       }>(url);
 
       if (!response.success || !response.data) {
         throw new Error('Get licenses response missing data');
       }
 
+      // Transform API licenses to LicenseRecords
+      const licenses = response.data.map(transformApiLicenseToRecord);
+
       return {
-        licenses: response.data,
+        licenses,
         pagination: response.meta?.pagination || {
           page: params.page || 1,
           limit: params.limit || 20,
@@ -96,10 +205,12 @@ export class LicenseApiService {
   /**
    * Get single license by ID
    */
-  static async getLicense(id: number): Promise<any> {
+  static async getLicense(id: number | string): Promise<LicenseRecord> {
     try {
-      const response = await httpClient.get<any>(`/licenses/${id}`);
-      return response.data?.license || response.data;
+      // Backend expects string ID (UUID)
+      const response = await httpClient.get<any>(`/licenses/${String(id)}`);
+      const apiLicense = response.data?.license || response.data;
+      return transformApiLicenseToRecord(apiLicense);
     } catch (error) {
       throw error;
     }
@@ -108,10 +219,21 @@ export class LicenseApiService {
   /**
    * Create a new license
    */
-  static async createLicense(licenseData: any): Promise<any> {
+  static async createLicense(licenseData: Partial<LicenseRecord>): Promise<LicenseRecord> {
     try {
-      const response = await httpClient.post<any>('/licenses', licenseData);
-      return response.data?.license || response.data;
+      const apiData = transformRecordToApiLicense(licenseData);
+
+      // Validate required fields
+      if (!apiData.dba || apiData.dba.trim() === '') {
+        throw new Error('DBA is required and cannot be empty');
+      }
+      if (!apiData.startDay || apiData.startDay.trim() === '') {
+        throw new Error('Start date is required and cannot be empty');
+      }
+
+      const response = await httpClient.post<any>('/licenses', apiData);
+      const apiLicense = response.data?.license || response.data;
+      return transformApiLicenseToRecord(apiLicense);
     } catch (error) {
       throw error;
     }
@@ -120,10 +242,13 @@ export class LicenseApiService {
   /**
    * Update license by ID
    */
-  static async updateLicense(id: number, updates: any): Promise<any> {
+  static async updateLicense(id: number | string, updates: Partial<LicenseRecord>): Promise<LicenseRecord> {
     try {
-      const response = await httpClient.patch<any>(`/licenses/${id}`, updates);
-      return response.data?.license || response.data;
+      const apiData = transformRecordToApiLicense(updates);
+      // Backend expects string ID (UUID)
+      const response = await httpClient.put<any>(`/licenses/${String(id)}`, apiData);
+      const apiLicense = response.data?.license || response.data;
+      return transformApiLicenseToRecord(apiLicense);
     } catch (error) {
       throw error;
     }
@@ -132,9 +257,10 @@ export class LicenseApiService {
   /**
    * Delete license by ID
    */
-  static async deleteLicense(id: number): Promise<{ message: string }> {
+  static async deleteLicense(id: number | string): Promise<{ message: string }> {
     try {
-      const response = await httpClient.delete<any>(`/licenses/${id}`);
+      // Backend expects string ID (UUID)
+      const response = await httpClient.delete<any>(`/licenses/${String(id)}`);
       return response.data || { message: 'License deleted successfully' };
     } catch (error) {
       throw error;
@@ -144,11 +270,57 @@ export class LicenseApiService {
   /**
    * Bulk update licenses
    */
-  static async bulkUpdateLicenses(updates: any[]): Promise<any[]> {
+  static async bulkUpdateLicenses(updates: Array<Partial<LicenseRecord> & { id: number | string }>): Promise<LicenseRecord[]> {
     try {
-      const response = await httpClient.patch<any>('/licenses/bulk', { updates });
-      return response.data || [];
+      console.log('[LicenseAPI] === Bulk Update Debug ===');
+      console.log('[LicenseAPI] Received', updates.length, 'updates');
+
+      // Transform each update to API format
+      const apiUpdates = updates.map((update, index) => {
+        const apiData = transformRecordToApiLicense(update);
+
+        const result = {
+          id: String(update.id),
+          ...apiData
+        };
+
+        // Log first few updates to see what's being transformed
+        if (index < 3) {
+          console.log(`[LicenseAPI] Update ${index + 1}:`, {
+            originalFieldCount: Object.keys(update).length,
+            transformedFieldCount: Object.keys(apiData).length,
+            hasIdOnly: Object.keys(result).length === 1,
+            fields: Object.keys(result),
+            sample: result
+          });
+        }
+
+        return result;
+      });
+
+      // Filter out updates that only have an id (no actual changes)
+      const validUpdates = apiUpdates.filter(update => Object.keys(update).length > 1);
+      const filteredOutCount = apiUpdates.length - validUpdates.length;
+
+      console.log('[LicenseAPI] Filtered:', filteredOutCount, 'updates with only ID');
+      console.log('[LicenseAPI] Sending:', validUpdates.length, 'valid updates');
+
+      if (validUpdates.length > 0 && validUpdates.length <= 3) {
+        console.log('[LicenseAPI] Full payload:', JSON.stringify({ updates: validUpdates }, null, 2));
+      }
+
+      if (validUpdates.length === 0) {
+        console.warn('[LicenseAPI] All updates filtered out - no fields to update!');
+        return [];
+      }
+
+      const response = await httpClient.patch<any>('/licenses/bulk', { updates: validUpdates });
+      const apiLicenses = response.data?.licenses || response.data || [];
+
+      console.log('[LicenseAPI] Success! Updated', apiLicenses.length, 'licenses');
+      return apiLicenses.map(transformApiLicenseToRecord);
     } catch (error) {
+      console.error('[LicenseAPI] Bulk update failed:', error);
       throw error;
     }
   }
@@ -156,9 +328,11 @@ export class LicenseApiService {
   /**
    * Bulk delete licenses
    */
-  static async bulkDeleteLicenses(ids: number[]): Promise<{ deleted: number; notFound: number[] }> {
+  static async bulkDeleteLicenses(ids: (number | string)[]): Promise<{ deleted: number; notFound: number[] }> {
     try {
-      const response = await httpClient.delete<any>('/licenses/bulk', { data: { ids } });
+      // Backend expects string IDs (UUIDs)
+      const stringIds = ids.map(id => String(id));
+      const response = await httpClient.delete<any>('/licenses/bulk', { data: { ids: stringIds } });
       return response.data || { deleted: ids.length, notFound: [] };
     } catch (error) {
       throw error;

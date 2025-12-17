@@ -122,6 +122,8 @@ export interface UsersListResponseDto {
     page: number;
     limit: number;
     totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
   };
   stats?: {
     total: number;

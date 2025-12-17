@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField } from '@/presentation/components/molecules';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { cn, logger } from '@/shared/utils';
 import { Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 
