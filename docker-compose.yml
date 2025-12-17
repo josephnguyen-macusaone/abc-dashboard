@@ -20,17 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Mailhog for email testing (development only)
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: abc-dashboard-mailhog
-    restart: unless-stopped
-    ports:
-      - "1025:1025"    # SMTP server
-      - "8025:8025"    # Web interface
-    networks:
-      - abc-dashboard-network
-
   # Backend API
   backend:
     build:
@@ -86,6 +75,11 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+      # Enable BuildKit cache for faster builds (local caching)
+      cache_from:
+        - abc-dashboard-frontend:latest
+      # Target the final runner stage
+      target: runner
     container_name: abc-dashboard-frontend
     restart: unless-stopped
     ports:
@@ -93,9 +87,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G  # Increased for build performance
         reservations:
-          memory: 512M
+          memory: 1G
     environment:
       - NODE_ENV=${NODE_ENV}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
