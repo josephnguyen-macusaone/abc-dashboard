@@ -3,22 +3,17 @@ import { ValidationException } from '../../domain/exceptions/domain.exception.js
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 export class LicenseController {
-  constructor(store) {
-    this.store = store;
+  constructor(licenseService) {
+    this.licenseService = licenseService;
   }
 
-  getLicenses = (req, res) => {
+  getLicenses = async (req, res) => {
     try {
       const query = LicenseValidator.validateListQuery(req.query);
-      const result = this.store.list(query);
+      const result = await this.licenseService.getLicenses(query);
 
-      return res.paginated(
-        result.items,
-        result.page,
-        result.limit,
-        result.total,
-        'Licenses retrieved successfully'
-      );
+      // Use success with meta to include stats (like user controller)
+      return res.success(result.getData(), 'Licenses retrieved successfully', result.getMeta());
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -27,9 +22,9 @@ export class LicenseController {
     }
   };
 
-  getLicenseById = (req, res) => {
+  getLicenseById = async (req, res) => {
     try {
-      const license = this.store.getById(req.params.id);
+      const license = await this.licenseService.getLicenseById(req.params.id);
       if (!license) {
         return sendErrorResponse(res, 'NOT_FOUND');
       }
@@ -40,10 +35,17 @@ export class LicenseController {
     }
   };
 
-  createLicense = (req, res) => {
+  createLicense = async (req, res) => {
     try {
       LicenseValidator.validateCreateInput(req.body);
-      const license = this.store.create(req.body);
+
+      const context = {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+
+      const license = await this.licenseService.createLicense(req.body, context);
       return res.created({ license }, 'License created successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
@@ -53,10 +55,17 @@ export class LicenseController {
     }
   };
 
-  updateLicense = (req, res) => {
+  updateLicense = async (req, res) => {
     try {
       LicenseValidator.validateUpdateInput(req.body);
-      const updated = this.store.update(req.params.id, req.body);
+
+      const context = {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+
+      const updated = await this.licenseService.updateLicense(req.params.id, req.body, context);
       if (!updated) {
         return sendErrorResponse(res, 'NOT_FOUND');
       }
@@ -70,10 +79,10 @@ export class LicenseController {
     }
   };
 
-  bulkUpdate = (req, res) => {
+  bulkUpdate = async (req, res) => {
     try {
       LicenseValidator.validateBulkUpdateInput(req.body);
-      const updated = this.store.bulkUpdate(req.body.updates);
+      const updated = await this.repository.bulkUpdate(req.body.updates);
 
       return res.success(
         { licenses: updated, updated: updated.length },
@@ -87,10 +96,10 @@ export class LicenseController {
     }
   };
 
-  bulkCreate = (req, res) => {
+  bulkCreate = async (req, res) => {
     try {
       LicenseValidator.validateBulkCreateInput(req.body);
-      const created = this.store.bulkCreate(req.body.licenses);
+      const created = await this.repository.bulkCreate(req.body.licenses);
 
       return res.created(
         { licenses: created, created: created.length },
@@ -104,7 +113,7 @@ export class LicenseController {
     }
   };
 
-  addRow = (req, res) => {
+  addRow = async (req, res) => {
     try {
       // Reuse create validation; allows empty dba/zip for grid add flow by relaxing requirements
       // Only enforce required fields after save
@@ -116,7 +125,7 @@ export class LicenseController {
         payload.startDay = new Date().toISOString().slice(0, 10);
       }
 
-      const license = this.store.createRow(payload);
+      const license = await this.repository.save(payload);
       return res.created({ license }, 'License row created successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
@@ -126,17 +135,12 @@ export class LicenseController {
     }
   };
 
-  bulkDelete = (req, res) => {
+  bulkDelete = async (req, res) => {
     try {
       LicenseValidator.validateIdsArray(req.body);
-      const result = this.store.bulkDelete(req.body.ids);
+      const deletedCount = await this.repository.bulkDelete(req.body.ids);
 
-      return res.success(
-        { deleted: result.deleted, notFound: result.notFound },
-        result.notFound.length > 0
-          ? 'Some licenses could not be found'
-          : 'Licenses deleted successfully'
-      );
+      return res.success({ deleted: deletedCount }, 'Licenses deleted successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -145,14 +149,36 @@ export class LicenseController {
     }
   };
 
-  deleteLicense = (req, res) => {
+  deleteLicense = async (req, res) => {
     try {
-      const removed = this.store.delete(req.params.id);
+      const context = {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+
+      const removed = await this.licenseService.deleteLicense(req.params.id, context);
       if (!removed) {
         return sendErrorResponse(res, 'NOT_FOUND');
       }
       return res.success(null, 'License deleted successfully');
     } catch {
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  };
+
+  getDashboardMetrics = async (req, res) => {
+    try {
+      const query = LicenseValidator.validateListQuery(req.query);
+      const metrics = await this.licenseService.getDashboardMetrics({
+        filters: query.filters,
+      });
+
+      return res.success(metrics, 'Dashboard metrics retrieved successfully');
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.badRequest(error.message);
+      }
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };

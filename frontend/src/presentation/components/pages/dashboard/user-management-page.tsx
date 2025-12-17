@@ -4,12 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
-import { User, UserRole } from '@/domain/entities/user-entity';
-import { UserListParams } from '@/application/dto/user-dto';
-import { SortBy, SortOrder } from '@/shared/types';
-import { DashboardTemplate } from '@/presentation/components/templates';
+import { User } from '@/domain/entities/user-entity';
 import { logger } from '@/shared/utils';
-import { useUserStore, selectUsers, selectUserLoading, selectUserPagination } from '@/infrastructure/stores/user-store';
+import { useUserStore } from '@/infrastructure/stores/user';
 
 /**
  * UserManagementPage
@@ -24,23 +21,35 @@ import { useUserStore, selectUsers, selectUserLoading, selectUserPagination } fr
  */
 export function UserManagementPage() {
   const { user: currentUser } = useAuth();
-  const { error: showError } = useToast();
+  const { error: showError, info: showInfo } = useToast();
 
-  const users = useUserStore(selectUsers);
-  const loadingUsers = useUserStore(selectUserLoading);
-  const userPagination = useUserStore(selectUserPagination);
-  const fetchUsers = useUserStore(state => state.fetchUsers);
-  const getUserStats = useUserStore(state => state.getUserStats);
-
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
-  const [userStats, setUserStats] = useState<any>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
+  const { users, userFilters, userPagination, userStats, usersLoading: loadingUsers, fetchUsers } = useUserStore();
 
   // Prevent duplicate API calls in React Strict Mode
   const hasLoadedRef = useRef(false);
 
-  // Handle pagination and filtering changes
+  // Derive dateRange from store filters (like license implementation)
+  const dateRange = useMemo(() => {
+    if (userFilters.createdAtFrom || userFilters.createdAtTo) {
+      return {
+        from: userFilters.createdAtFrom ? new Date(userFilters.createdAtFrom) : undefined,
+        to: userFilters.createdAtTo ? new Date(userFilters.createdAtTo) : undefined,
+      };
+    }
+    return {};
+  }, [userFilters.createdAtFrom, userFilters.createdAtTo]);
+
+  // Track authentication state changes to show toast only once
+  const prevUserRef = useRef(currentUser);
+  useEffect(() => {
+    if (!currentUser && prevUserRef.current) {
+      // User just became unauthenticated
+      showInfo('Please log in to access user management.');
+    }
+    prevUserRef.current = currentUser;
+  }, [currentUser, showInfo]);
+
+  // Handle pagination and filtering changes (simplified like admin-dashboard)
   const handleQueryChange = useCallback(async (params: {
     page: number;
     limit: number;
@@ -49,178 +58,93 @@ export function UserManagementPage() {
     role?: string | string[];
     displayName?: string;
     search?: string;
+    searchField?: string;
     isActive?: string | string[];
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    updatedAtFrom?: string;
+    updatedAtTo?: string;
+    lastLoginFrom?: string;
+    lastLoginTo?: string;
   }) => {
     try {
-      // Extract role from params or use current roleFilter
-      let roleParam: UserRole | undefined;
-      if (params.role !== undefined) {
-        // Handle both single value and array from column filters
-        const roleValue = Array.isArray(params.role) ? params.role[0] : params.role;
-        if (roleValue) {
-          roleParam = roleValue as UserRole;
-          // Update the roleFilter state to keep UI in sync
-          setRoleFilter(roleValue);
-        } else {
-          // Empty array or falsy value means clear filter
-          roleParam = undefined;
-          setRoleFilter(null);
-        }
-      } else {
-        roleParam = roleFilter as UserRole | undefined;
-      }
-
-      // Extract status/isActive filter
-      let isActiveParam: boolean | undefined;
-      if (params.isActive !== undefined) {
-        const statusValue = Array.isArray(params.isActive) ? params.isActive[0] : params.isActive;
-        if (statusValue === "true") {
-          isActiveParam = true;
-        } else if (statusValue === "false") {
-          isActiveParam = false;
-        } else {
-          isActiveParam = undefined;
-        }
-      }
-
-      const queryParams: UserListParams = {
-        page: params.page,
-        limit: params.limit,
-        email: params.search, // Use search as email filter
-        displayName: params.displayName,
-        role: roleParam,
-        isActive: isActiveParam,
-        sortBy: (params.sortBy as SortBy) || SortBy.CREATED_AT,
-        sortOrder: params.sortOrder === "desc" ? SortOrder.DESC : SortOrder.ASC,
+      // Convert string values to appropriate types for store
+      const storeParams: any = {
+        ...params,
+        // searchField stays as string, store interface accepts it
+        // role: can be string | string[], store accepts UserRole | UserRole[]
+        // isActive: convert string | string[] to boolean | boolean[]
+        isActive: params.isActive !== undefined
+          ? (Array.isArray(params.isActive)
+            ? params.isActive.map(v => v === 'true')
+            : params.isActive === 'true')
+          : undefined,
       };
 
-      await fetchUsers(queryParams);
-      // fetchUsers updates the pagination state in the store
+      // Store handles merging with current filters
+      await fetchUsers(storeParams);
     } catch (error) {
-      logger.error('Error loading users with pagination', { error });
+      logger.error('Failed to fetch users', { error });
       showError?.('Failed to load users');
     }
-  }, [fetchUsers, showError, roleFilter]);
+  }, [fetchUsers, showError]);
 
-  // Load user stats
-  const loadUserStats = useCallback(async () => {
-    try {
-      setLoadingStats(true);
-      const stats = await getUserStats();
-      setUserStats(stats);
-    } catch (error) {
-      logger.error('Error loading user stats', { error });
-    } finally {
-      setLoadingStats(false);
-    }
-  }, [getUserStats]);
 
-  // Load users on mount and when needed
-  const loadUsers = useCallback(async (filters?: { role?: string }) => {
+  // Load users on mount (simplified)
+  const loadUsers = useCallback(async () => {
     try {
-      const params: UserListParams = {
+      await fetchUsers({
         page: 1,
-        limit: 20, // Standard pagination
-        role: filters?.role as UserRole | undefined, // Cast to UserRole enum
-        sortBy: SortBy.CREATED_AT, // Sort by creation date
-        sortOrder: SortOrder.DESC, // Latest users first
-      };
-
-      await fetchUsers(params);
-      // fetchUsers updates the pagination state in the store
+        limit: 20,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
     } catch (error) {
       logger.error('Error loading users', { error });
       showError?.('Failed to load users');
     }
   }, [fetchUsers, showError]);
 
-  // Load users and stats on mount (prevent duplicate calls in React Strict Mode)
+  // Load users on mount (prevent duplicate calls in React Strict Mode)
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
       loadUsers();
-      loadUserStats();
     }
-  }, [loadUsers, loadUserStats]);
+  }, [loadUsers]);
 
-  // Reload users when role filter changes
-  useEffect(() => {
-    if (hasLoadedRef.current) {
-      loadUsers({ role: roleFilter || undefined });
-    }
-  }, [roleFilter, loadUsers]);
-
-  // Filter users by date range (role filtering is now handled server-side)
-  const filteredUsers = useMemo(() => {
-    let filtered = users;
-
-    // Apply date range filter only (role filtering is server-side)
-    if (dateRange.from || dateRange.to) {
-      filtered = filtered.filter(user => {
-        if (!user.createdAt) return false;
-
-        const userDate = new Date(user.createdAt);
-        const fromDate = dateRange.from ? new Date(dateRange.from) : null;
-        const toDate = dateRange.to ? new Date(dateRange.to) : null;
-
-        // Set toDate to end of day for inclusive filtering
-        if (toDate) {
-          toDate.setHours(23, 59, 59, 999);
-        }
-
-        if (fromDate && userDate < fromDate) return false;
-        if (toDate && userDate > toDate) return false;
-
-        return true;
-      });
-    }
-
-    return filtered;
-  }, [users, dateRange]);
-
-  // Handle date range changes
+  // Handle date range changes (simplified)
   const handleDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
-    // If the range has no "from" date, it means clear was pressed
-    if (!values.range.from) {
-      setDateRange({}); // Clear the date range
-    } else {
-      setDateRange({
-        from: values.range.from,
-        to: values.range.to,
-      });
+    const dateFieldParams: Record<string, string | undefined> = {};
+
+    if (values.range.from) {
+      dateFieldParams['createdAtFrom'] = values.range.from.toISOString();
     }
-  }, []);
+    if (values.range.to) {
+      dateFieldParams['createdAtTo'] = values.range.to.toISOString();
+    }
 
-  // Handle role filtering
-  const handleRoleFilter = useCallback((role: string | null) => {
-    setRoleFilter(role);
-  }, []);
-
-  if (!currentUser) {
-    return (
-      <DashboardTemplate>
-        <div className="text-center py-8">
-          <p>Please log in to access user management.</p>
-        </div>
-      </DashboardTemplate>
-    );
-  }
+    // Trigger server-side filtering with date range
+    handleQueryChange({
+      page: 1,
+      limit: 20,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      ...dateFieldParams,
+    });
+  }, [handleQueryChange]);
 
   return (
     <UserManagement
-      currentUser={currentUser}
-      users={filteredUsers}
+      currentUser={currentUser as unknown as User}
+      users={users}
       isLoading={loadingUsers}
       onLoadUsers={loadUsers}
       dateRange={dateRange}
       onDateRangeChange={handleDateRangeChange}
-      onRoleFilter={handleRoleFilter}
-      activeRoleFilter={roleFilter}
       onQueryChange={handleQueryChange}
       pageCount={userPagination.totalPages}
-      totalCount={userPagination.total}
-      userStats={userStats}
-      isLoadingStats={loadingStats}
+      totalCount={userStats?.total}
     />
   );
 }

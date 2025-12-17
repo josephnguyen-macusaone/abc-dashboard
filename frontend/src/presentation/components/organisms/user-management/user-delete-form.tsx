@@ -212,13 +212,19 @@ export function UserDeleteForm({
                   {user.createdAt && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 mr-1" />
-                      <span className="text-body-s text-muted-foreground">Created {new Date(user.createdAt).toLocaleDateString()}</span>
+                      <span className="text-body-s text-muted-foreground">Created {(() => {
+                        const d = new Date(user.createdAt);
+                        return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                      })()}</span>
                     </div>
                   )}
                   {user.lastLogin && (
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4 mr-1" />
-                      <span className="text-body-s text-muted-foreground">Last login {new Date(user.lastLogin).toLocaleDateString()}</span>
+                      <span className="text-body-s text-muted-foreground">Last login {(() => {
+                        const d = new Date(user.lastLogin);
+                        return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                      })()}</span>
                     </div>
                   )}
                 </div>

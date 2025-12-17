@@ -48,11 +48,7 @@ export interface DateRangePickerProps {
 }
 
 const formatDate = (date: Date, locale: string = 'en-us'): string => {
-  return date.toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`;
 };
 
 const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
@@ -67,6 +63,13 @@ const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
     // If dateInput is already a Date object, return it directly
     return dateInput;
   }
+};
+
+const resetToCurrentMonth = (): DateRange => {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1); // First day of current month
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999); // Current date, end of day
+  return { from, to };
 };
 
 interface Preset {
@@ -553,11 +556,12 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
           <Button
             onClick={() => {
               setIsOpen(false);
-              // Treat clear as removing filters: notify with empty range and reset visuals
-              setSelectedPreset(undefined);
+              const currentMonthRange = resetToCurrentMonth();
+              setSelectedPreset('thisMonth');
+              setRange(currentMonthRange);
               setRangeCompare(undefined);
               onUpdate?.({
-                range: { from: undefined as unknown as Date, to: undefined },
+                range: currentMonthRange,
                 rangeCompare: undefined,
               });
             }}

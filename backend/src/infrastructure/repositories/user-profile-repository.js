@@ -316,6 +316,9 @@ export class UserProfileRepository extends IUserProfileRepository {
 
   /**
    * Convert database row to entity (snake_case to camelCase)
+   *
+   * @param {Object} profileRow - Database row
+   * @return {UserProfile} User profile entity
    */
   _toEntity(profileRow) {
     return new UserProfile({

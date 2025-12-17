@@ -1,8 +1,2 @@
-// Dependency Injection Container and Test Utilities
+// Dependency Injection Container
 export { container } from './container';
-export {
-  mockService,
-  resetServices,
-  createTestContext,
-  withTestContainer
-} from './test-container';

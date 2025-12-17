@@ -7,7 +7,8 @@ export type { SvgAssetPaths, ImageAssetPaths, AssetPaths } from './assets';
 // Re-export all constants from organized modules
 export * from './api';
 export * from './auth';
-export * from './dashboard';
+export * from './license';
+export * from './navigation';
 export * from './routes';
 export * from './ui';
 export * from './security';

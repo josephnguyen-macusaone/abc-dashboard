@@ -2,10 +2,14 @@
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useErrorHandler } from './error-context';
 import { User } from '@/domain/entities/user-entity';
 
+/**
+ * Auth Context Type
+ * Defines the contract for the auth context
+ */
 interface AuthContextType {
   user: User | null;
   token: string | null;

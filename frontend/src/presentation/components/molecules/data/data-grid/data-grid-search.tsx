@@ -22,21 +22,31 @@ export function DataGridSearch<TData>({
 }: DataGridSearchProps<TData>) {
   const [value, setValue] = React.useState("");
 
-  // Get DBA column specifically for search
-  const dbaColumn = React.useMemo(
+  // Check if table is using manual filtering (server-side)
+  const isManualFiltering = table.options.manualFiltering;
+
+  // Get the column for filtering
+  const searchColumn = React.useMemo(
     () => table.getAllColumns().find((column) => column.id === columnId),
     [table, columnId],
   );
 
-  // Update DBA column filter when search value changes
+  // For manual filtering, use global filter which will be picked up by the onQueryChange effect
+  // For client-side filtering, use column filter as before
   React.useEffect(() => {
-    if (dbaColumn) {
-      dbaColumn.setFilterValue(value || undefined);
+    if (isManualFiltering) {
+      // Set global filter which will trigger the search in the query
+      table.setGlobalFilter(value || undefined);
+    } else if (searchColumn) {
+      // Use column filter for client-side filtering
+      searchColumn.setFilterValue(value || undefined);
     }
-  }, [value, dbaColumn]);
+  }, [value, isManualFiltering, searchColumn, table]);
 
-  // Check if DBA column has a filter value
-  const hasFilters = dbaColumn ? dbaColumn.getFilterValue() !== undefined && dbaColumn.getFilterValue() !== "" : false;
+  // Check if there's an active filter
+  const hasFilters = isManualFiltering 
+    ? table.getState().globalFilter !== undefined && table.getState().globalFilter !== ""
+    : searchColumn ? searchColumn.getFilterValue() !== undefined && searchColumn.getFilterValue() !== "" : false;
 
   const handleClear = React.useCallback(() => {
     setValue("");

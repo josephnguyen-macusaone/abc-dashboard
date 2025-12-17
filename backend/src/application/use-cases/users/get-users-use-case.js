@@ -19,14 +19,19 @@ export class GetUsersUseCase {
     try {
       const result = await this.userRepository.findUsers(options);
 
+      // Get total from stats instead of pagination
+      const total = result.stats?.total || 0;
+      const limit = result.limit || options.limit || 10;
+      const totalPages = Math.ceil(total / limit);
+
       return new UserListResponseDto({
         users: result.users.map((user) => UserResponseDto.fromEntity(user)),
         pagination: new PaginationDto({
           page: result.page,
-          limit: result.limit || options.limit || 10,
-          total: result.total,
-          totalPages: result.totalPages,
+          limit: limit,
+          totalPages: result.totalPages || totalPages,
         }),
+        stats: result.stats,
       });
     } catch (error) {
       throw new Error(`Failed to get users: ${error.message}`);

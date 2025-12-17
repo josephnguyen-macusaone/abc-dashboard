@@ -12,7 +12,8 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
         >
             <table
                 data-slot="table"
-                className="w-full caption-bottom text-sm"
+                className="w-full caption-bottom text-sm table-fixed"
+                style={{ tableLayout: 'fixed' }}
                 {...props}
             />
         </div>

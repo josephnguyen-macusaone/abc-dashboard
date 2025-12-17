@@ -1,13 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Generate a standalone server build so Docker can run `next start`
-  output: "standalone",
   // Disable trailing slashes to prevent routing issues
   trailingSlash: false,
 
   // Turbopack configuration (required when using webpack config in Next.js 16)
   turbopack: {},
+
+  // Enable standalone output for optimized Docker builds
+  // This creates a minimal production build with only required dependencies
+  output: 'standalone',
 
   // Memory optimizations for large builds
   experimental: {

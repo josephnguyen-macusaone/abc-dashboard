@@ -9,6 +9,7 @@ export * from './dialog';
 export * from './dropdown-menu';
 export * from './faceted';
 export * from './popover';
+export * from './radio-group';
 export * from './separator';
 export * from './skeleton';
 export * from './slider';

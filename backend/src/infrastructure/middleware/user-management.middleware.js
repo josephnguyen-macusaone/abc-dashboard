@@ -1,14 +1,10 @@
-import {
-  InsufficientPermissionsException,
-  ValidationException,
-} from '../../domain/exceptions/domain.exception.js';
-import logger from '../config/logger.js';
-import { ROLES, ROLE_PERMISSIONS, ROLE_CREATION_PERMISSIONS } from '../../shared/constants/roles.js';
-
 /**
  * User Management Permission Middleware
  * Handles role-based access control for user management operations
  */
+
+import logger from '../config/logger.js';
+import { ROLES, ROLE_CREATION_PERMISSIONS } from '../../shared/constants/roles.js';
 
 /**
  * Check if user can create accounts of specified role
@@ -25,9 +21,10 @@ export function canCreateUser(creatorUser, targetRole) {
 
 /**
  * Check if user can view/manage specific user
+ *
  * @param {Object} currentUser - The authenticated user
  * @param {Object} targetUser - The user being accessed
- * @returns {boolean} - Whether access is allowed
+ * @return {boolean} - Whether access is allowed
  */
 export function canAccessUser(currentUser, targetUser) {
   // Admin can access all users
@@ -53,7 +50,7 @@ export function canAccessUser(currentUser, targetUser) {
  * @param {Object} currentUser - The authenticated user
  * @param {Object} staffUser - The staff user being reassigned
  * @param {string} newManagerId - The new manager ID
- * @returns {boolean} - Whether reassignment is allowed
+ * @return {boolean} - Whether reassignment is allowed
  */
 export function canReassignStaff(currentUser, staffUser, newManagerId) {
   // Only admin can reassign staff
@@ -72,6 +69,9 @@ export function canReassignStaff(currentUser, staffUser, newManagerId) {
 
 /**
  * Middleware to check user creation permissions
+ *
+ * @param {string[]} allowedRoles - The roles that are allowed to create users
+ * @return {Function} - The middleware function
  */
 export function checkUserCreationPermission(allowedRoles = null) {
   return (req, res, next) => {
@@ -123,6 +123,9 @@ export function checkUserCreationPermission(allowedRoles = null) {
 
 /**
  * Middleware to check user access permissions
+ *
+ * @param {string} operation - The operation to check permissions for
+ * @return {Function} - The middleware function
  */
 export function checkUserAccessPermission(operation = 'read') {
   return (req, res, next) => {
@@ -169,6 +172,8 @@ export function checkUserAccessPermission(operation = 'read') {
 
 /**
  * Middleware to check staff reassignment permissions
+ *
+ * @return {Function} - The middleware function
  */
 export function checkStaffReassignmentPermission(req, res, next) {
   try {
@@ -211,8 +216,9 @@ export function checkStaffReassignmentPermission(req, res, next) {
 
 /**
  * Get available roles for user creation based on current user role
+ *
  * @param {string} userRole - Current user's role
- * @returns {string[]} - Array of roles the user can create
+ * @return {string[]} - Array of roles the user can create
  */
 export function getAvailableRolesForCreation(userRole) {
   return ROLE_CREATION_PERMISSIONS[userRole] || [];
@@ -220,14 +226,15 @@ export function getAvailableRolesForCreation(userRole) {
 
 /**
  * Get user query filters based on current user permissions
+ *
  * @param {Object} currentUser - The authenticated user
  * @param {Object} queryParams - Original query parameters
- * @returns {Object} - Filtered query parameters
+ * @return {Object} - Filtered query parameters
  */
 export function getUserQueryFilters(currentUser, queryParams = {}) {
-  const filters = { ...queryParams };
+  const filters = {};
 
-  // Admin sees all users
+  // Admin sees all users - no additional permission filters needed
   if (currentUser.role === ROLES.ADMIN) {
     return filters;
   }

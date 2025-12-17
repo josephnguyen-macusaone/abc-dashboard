@@ -7,11 +7,12 @@ import { PaginationDto } from '../common/pagination.dto.js';
 import { UserResponseDto } from './user-response.dto.js';
 
 export class UserListResponseDto extends BaseDto {
-  constructor({ users, pagination }) {
+  constructor({ users, pagination, stats }) {
     super();
     this.users = users;
     this.pagination =
       pagination instanceof PaginationDto ? pagination : new PaginationDto(pagination);
+    this.stats = stats;
   }
 
   /**
@@ -25,9 +26,9 @@ export class UserListResponseDto extends BaseDto {
       pagination: new PaginationDto({
         page: result.pagination.page,
         limit: result.pagination.limit,
-        total: result.pagination.total,
         totalPages: result.pagination.totalPages,
       }),
+      stats: result.stats,
     });
   }
 
@@ -41,10 +42,13 @@ export class UserListResponseDto extends BaseDto {
 
   /**
    * Get pagination meta
-   * @returns {Object} Pagination metadata
+   * @returns {Object} Pagination metadata with stats
    */
   getMeta() {
-    return { pagination: this.pagination };
+    return {
+      pagination: this.pagination.toJSON ? this.pagination.toJSON() : this.pagination,
+      stats: this.stats,
+    };
   }
 }
 

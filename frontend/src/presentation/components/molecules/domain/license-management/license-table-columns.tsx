@@ -14,18 +14,25 @@ import {
   Briefcase,
   CalendarRange,
   CalendarDays,
+  FileText,
+  AlertOctagon,
+  Ban,
 } from "lucide-react";
 import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
 import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/shared/types";
+import { LICENSE_STATUS_LABELS } from "@/shared/constants/license";
 
-// Status options for filter
+// Status options for filter - All 7 status values
 export const STATUS_OPTIONS = [
-  { label: "Active", value: "active", icon: CheckCircle2 },
-  { label: "Cancelled", value: "cancel", icon: XCircle },
+  { label: "Draft", value: "draft", icon: FileText },
   { label: "Pending", value: "pending", icon: Clock },
+  { label: "Active", value: "active", icon: CheckCircle2 },
+  { label: "Expiring", value: "expiring", icon: AlertOctagon },
   { label: "Expired", value: "expired", icon: AlertCircle },
+  { label: "Cancelled", value: "cancel", icon: XCircle },
+  { label: "Revoked", value: "revoked", icon: Ban },
 ];
 
 // Plan options for filter
@@ -43,14 +50,20 @@ export const TERM_OPTIONS = [
 
 function getStatusVariant(status: LicenseStatus) {
   switch (status) {
-    case "active":
-      return "active";
-    case "cancel":
-      return "destructive";
+    case "draft":
+      return "secondary";
     case "pending":
       return "warning";
+    case "active":
+      return "active";
+    case "expiring":
+      return "warning";
     case "expired":
+      return "destructive";
+    case "cancel":
       return "secondary";
+    case "revoked":
+      return "destructive";
     default:
       return "secondary";
   }
@@ -84,29 +97,18 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       size: 40,
     },
     {
-      id: "id",
-      accessorKey: "id",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="No." />
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium text-center">{row.getValue("id")}</span>
-      ),
-      size: 70,
-      enableColumnFilter: false,
-    },
-    {
       id: "dba",
       accessorKey: "dba",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="DBA" />
       ),
       cell: ({ row }) => (
-        <span className="font-medium truncate max-w-[150px]">
+        <span className="text-sm font-medium truncate max-w-[150px]">
           {row.getValue("dba")}
         </span>
       ),
       enableColumnFilter: false,
+      size: 280,
     },
     {
       id: "zip",
@@ -115,26 +117,27 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Zip Code" />
       ),
       cell: ({ row }) => (
-        <span className="text-center">{row.getValue("zip")}</span>
+        <span className="text-sm text-center">{row.getValue("zip")}</span>
       ),
       meta: {
         label: "Zip Code",
       },
     },
     {
-      id: "startDay",
-      accessorKey: "startDay",
+      id: "startsAt",
+      accessorKey: "startsAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="Start Date" />
       ),
       cell: ({ row }) => {
-        const date = row.getValue("startDay") as string;
+        const date = row.getValue("startsAt") as string;
+        const formattedDate = date ? (() => {
+          const d = new Date(date);
+          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+        })() : '';
         return (
-          <span className="text-center">
-            {new Date(date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
+          <span className="text-sm text-center">
+            {formattedDate}
           </span>
         );
       },
@@ -158,13 +161,23 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => {
         const status = row.getValue("status") as LicenseStatus;
         return (
-          <Badge variant={getStatusVariant(status)} className="capitalize text-center">
-            {status}
+          <Badge variant={getStatusVariant(status)} className="text-center">
+            {LICENSE_STATUS_LABELS[status]}
           </Badge>
         );
       },
       size: 110,
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const status = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(status) : value === status;
+      },
+      meta: {
+        label: "Status",
+        variant: "multiSelect",
+        options: STATUS_OPTIONS,
+        icon: CircleDashed,
+      },
     },
     {
       id: "plan",
@@ -176,6 +189,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <Badge variant="outline">{row.getValue("plan")}</Badge>
       ),
       enableColumnFilter: false,
+      size: 120,
     },
     {
       id: "term",
@@ -186,7 +200,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => {
         const term = row.getValue("term") as LicenseTerm;
         return (
-          <span className="capitalize text-center">{term}</span>
+          <span className="text-sm capitalize text-center">{term}</span>
         );
       },
       size: 100,
@@ -199,7 +213,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Last Payment" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           ${row.getValue("lastPayment")}
         </span>
       ),
@@ -223,13 +237,13 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       ),
       cell: ({ row }) => {
         const date = row.getValue("lastActive") as string;
+        const formattedDate = date ? (() => {
+          const d = new Date(date);
+          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+        })() : '';
         return (
-          <span className="text-center text-sm">
-            {new Date(date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "2-digit",
-            })}
+          <span className="text-sm text-center">
+            {formattedDate}
           </span>
         );
       },
@@ -239,6 +253,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         const filterDate = new Date(value as string);
         return date.toDateString() === filterDate.toDateString();
       },
+      size: 140,
       meta: {
         label: "Last Active",
         variant: "date",
@@ -251,7 +266,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="SMS Purchased" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           {row.getValue("smsPurchased")}
         </span>
       ),
@@ -267,7 +282,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="SMS Sent" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           {row.getValue("smsSent")}
         </span>
       ),
@@ -283,7 +298,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="SMS Balance" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           {row.getValue("smsBalance")}
         </span>
       ),
@@ -298,7 +313,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Agents" />
       ),
       cell: ({ row }) => (
-        <span className="text-center">{row.getValue("agents")}</span>
+        <span className="text-sm text-center">{row.getValue("agents")}</span>
       ),
       size: 90,
       meta: {
@@ -319,7 +334,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           </span>
         );
       },
-      size: 200,
+      size: 250,
       meta: {
         label: "Agents Name",
       },
@@ -331,11 +346,11 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Agents Cost" />
       ),
       cell: ({ row }) => (
-        <span className="text-right font-mono">
+        <span className="text-sm text-right">
           ${row.getValue("agentsCost")}
         </span>
       ),
-      size: 130,
+      size: 140,
       meta: {
         label: "Agents Cost",
       },
@@ -347,11 +362,11 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Notes" />
       ),
       cell: ({ row }) => (
-        <span className="truncate max-w-[200px]" title={row.getValue("notes")}>
+        <span className="text-sm truncate max-w-[200px]" title={row.getValue("notes")}>
           {row.getValue("notes")}
         </span>
       ),
-      size: 180,
+      size: 250,
       filterFn: (row, id, value) => {
         const notes = row.getValue(id) as string;
         return notes.toLowerCase().includes(value.toLowerCase());

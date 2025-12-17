@@ -10,11 +10,7 @@ import logger from '../../infrastructure/config/logger.js';
 import { PERMISSIONS, hasPermission } from '../../shared/constants/roles.js';
 import { UserValidator } from '../../application/validators/index.js';
 import { CreateUserRequestDto } from '../../application/dto/user/index.js';
-import {
-  checkUserCreationPermission,
-  checkUserAccessPermission,
-  getUserQueryFilters,
-} from '../middleware/user-management.middleware.js';
+import { getUserQueryFilters } from '../middleware/user-management.middleware.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 export class UserController {
@@ -23,13 +19,13 @@ export class UserController {
     createUserUseCase,
     updateUserUseCase,
     deleteUserUseCase,
-    getUserStatsUseCase
+    userRepository
   ) {
     this.getUsersUseCase = getUsersUseCase;
     this.createUserUseCase = createUserUseCase;
     this.updateUserUseCase = updateUserUseCase;
     this.deleteUserUseCase = deleteUserUseCase;
-    this.getUserStatsUseCase = getUserStatsUseCase;
+    this.userRepository = userRepository;
   }
 
   async getUsers(req, res) {
@@ -45,25 +41,31 @@ export class UserController {
       const options = {
         ...sanitizedQuery,
         filters: {
+          // Start with sanitized filters (which include converted isActive/role)
+          ...sanitizedQuery.filters,
+          // Add permission-based filters (managedBy, etc.)
           ...permissionFilters,
+          // Add remaining search filters that weren't handled by sanitizer
           search: req.query.search,
           email: req.query.email,
           username: req.query.username,
           displayName: req.query.displayName,
           hasAvatar: req.query.hasAvatar ? req.query.hasAvatar === 'true' : undefined,
           hasBio: req.query.hasBio ? req.query.hasBio === 'true' : undefined,
+          // Date range filters
+          createdAtFrom: req.query.createdAtFrom,
+          createdAtTo: req.query.createdAtTo,
+          updatedAtFrom: req.query.updatedAtFrom,
+          updatedAtTo: req.query.updatedAtTo,
+          lastLoginFrom: req.query.lastLoginFrom,
+          lastLoginTo: req.query.lastLoginTo,
         },
       };
 
       const result = await this.getUsersUseCase.execute(options);
 
-      return res.paginated(
-        result.users,
-        result.pagination.page,
-        result.pagination.limit,
-        result.pagination.total,
-        'Users retrieved successfully'
-      );
+      // Use success with meta to include stats
+      return res.success(result.getData(), 'Users retrieved successfully', result.getMeta());
     } catch (error) {
       // Handle domain exceptions
       if (
@@ -165,7 +167,7 @@ export class UserController {
         // For ValidationException, show additional details
         ...(error.additionalData && { additionalData: error.additionalData }),
         ...(error.statusCode && { statusCode: error.statusCode }),
-        ...(error.category && { category: error.category })
+        ...(error.category && { category: error.category }),
       });
 
       return sendErrorResponse(res, 'VALIDATION_FAILED');
@@ -214,9 +216,9 @@ export class UserController {
           id: currentUser.id,
           email: currentUser.email,
           role: currentUser.role,
-          displayName: currentUser.displayName
+          displayName: currentUser.displayName,
         },
-        correlationId: req.correlationId
+        correlationId: req.correlationId,
       });
 
       // Basic permission check - ensure user has delete permission
@@ -224,7 +226,7 @@ export class UserController {
         logger.warn('User lacks basic delete permission', {
           userId: currentUser.id,
           role: currentUser.role,
-          correlationId: req.correlationId
+          correlationId: req.correlationId,
         });
         throw new InsufficientPermissionsException('You do not have permission to delete users');
       }
@@ -242,16 +244,6 @@ export class UserController {
       }
 
       return sendErrorResponse(res, 'VALIDATION_FAILED');
-    }
-  }
-
-  async getUserStats(req, res) {
-    try {
-      const result = await this.getUserStatsUseCase.execute();
-
-      return res.success(result.stats, 'User statistics retrieved successfully');
-    } catch (error) {
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 
@@ -274,7 +266,9 @@ export class UserController {
       }
 
       if (newManager.role !== 'manager') {
-        return sendErrorResponse(res, 'VALIDATION_FAILED', { details: 'Target user is not a manager' });
+        return sendErrorResponse(res, 'VALIDATION_FAILED', {
+          details: 'Target user is not a manager',
+        });
       }
 
       // Update the staff member's manager
@@ -330,4 +324,379 @@ export class UserController {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
+
+  /**
+   * Bulk activate users
+   */
+  async bulkActivate(req, res) {
+    try {
+      const { ids } = req.body;
+      const currentUser = req.user;
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        throw new ValidationException('ids must be a non-empty array');
+      }
+
+      // Check permission
+      if (!hasPermission(currentUser.role, PERMISSIONS.UPDATE_USER)) {
+        throw new InsufficientPermissionsException('You do not have permission to activate users');
+      }
+
+      const results = {
+        success: [],
+        failed: [],
+      };
+
+      for (const id of ids) {
+        try {
+          await this.updateUserUseCase.execute(id, { isActive: true }, currentUser);
+          results.success.push(id);
+        } catch (error) {
+          results.failed.push({ id, error: error.message });
+        }
+      }
+
+      logger.info('Bulk user activation', {
+        successCount: results.success.length,
+        failedCount: results.failed.length,
+        performedBy: currentUser.id,
+        correlationId: req.correlationId,
+      });
+
+      return res.success(
+        {
+          activated: results.success.length,
+          failed: results.failed.length,
+          details: results,
+        },
+        `Successfully activated ${results.success.length} of ${ids.length} users`
+      );
+    } catch (error) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Bulk activate error:', {
+        error: error.message,
+        stack: error.stack,
+        correlationId: req.correlationId,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Bulk deactivate users
+   */
+  async bulkDeactivate(req, res) {
+    try {
+      const { ids } = req.body;
+      const currentUser = req.user;
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        throw new ValidationException('ids must be a non-empty array');
+      }
+
+      // Check permission
+      if (!hasPermission(currentUser.role, PERMISSIONS.UPDATE_USER)) {
+        throw new InsufficientPermissionsException(
+          'You do not have permission to deactivate users'
+        );
+      }
+
+      const results = {
+        success: [],
+        failed: [],
+      };
+
+      for (const id of ids) {
+        try {
+          // Prevent deactivating self
+          if (id === currentUser.id) {
+            results.failed.push({ id, error: 'Cannot deactivate yourself' });
+            continue;
+          }
+
+          await this.updateUserUseCase.execute(id, { isActive: false }, currentUser);
+          results.success.push(id);
+        } catch (error) {
+          results.failed.push({ id, error: error.message });
+        }
+      }
+
+      logger.info('Bulk user deactivation', {
+        successCount: results.success.length,
+        failedCount: results.failed.length,
+        performedBy: currentUser.id,
+        correlationId: req.correlationId,
+      });
+
+      return res.success(
+        {
+          deactivated: results.success.length,
+          failed: results.failed.length,
+          details: results,
+        },
+        `Successfully deactivated ${results.success.length} of ${ids.length} users`
+      );
+    } catch (error) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Bulk deactivate error:', {
+        error: error.message,
+        stack: error.stack,
+        correlationId: req.correlationId,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Bulk delete users
+   */
+  async bulkDelete(req, res) {
+    try {
+      const { ids } = req.body;
+      const currentUser = req.user;
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        throw new ValidationException('ids must be a non-empty array');
+      }
+
+      // Check permission
+      if (!hasPermission(currentUser.role, PERMISSIONS.DELETE_USER)) {
+        throw new InsufficientPermissionsException('You do not have permission to delete users');
+      }
+
+      const results = {
+        success: [],
+        failed: [],
+      };
+
+      for (const id of ids) {
+        try {
+          // Prevent deleting self
+          if (id === currentUser.id) {
+            results.failed.push({ id, error: 'Cannot delete yourself' });
+            continue;
+          }
+
+          await this.deleteUserUseCase.execute(id, currentUser);
+          results.success.push(id);
+        } catch (error) {
+          results.failed.push({ id, error: error.message });
+        }
+      }
+
+      logger.info('Bulk user deletion', {
+        successCount: results.success.length,
+        failedCount: results.failed.length,
+        performedBy: currentUser.id,
+        correlationId: req.correlationId,
+      });
+
+      logger.security('BULK_USER_DELETE', {
+        action: 'bulk_delete_users',
+        actorId: currentUser.id,
+        actorRole: currentUser.role,
+        deletedCount: results.success.length,
+        failedCount: results.failed.length,
+        performedAt: new Date().toISOString(),
+      });
+
+      return res.success(
+        {
+          deleted: results.success.length,
+          failed: results.failed.length,
+          details: results,
+        },
+        `Successfully deleted ${results.success.length} of ${ids.length} users`
+      );
+    } catch (error) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Bulk delete error:', {
+        error: error.message,
+        stack: error.stack,
+        correlationId: req.correlationId,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Export users to various formats
+   */
+  async exportUsers(req, res) {
+    try {
+      const currentUser = req.user;
+      const { format = 'csv', columns = [], includeFilters = true } = req.body;
+
+      // Validate format
+      const validFormats = ['csv', 'excel', 'json', 'pdf'];
+      if (!validFormats.includes(format)) {
+        throw new ValidationException(`Invalid format. Must be one of: ${validFormats.join(', ')}`);
+      }
+
+      // Check permission
+      if (!hasPermission(currentUser.role, PERMISSIONS.READ_USER)) {
+        throw new InsufficientPermissionsException('You do not have permission to export users');
+      }
+
+      // Use the same query logic as getUsers but without pagination
+      const sanitizedQuery = UserValidator.validateListQuery(req.query);
+      const permissionFilters = getUserQueryFilters(currentUser, req.query);
+
+      const options = {
+        ...sanitizedQuery,
+        filters: {
+          ...permissionFilters,
+          search: req.query.search,
+          email: req.query.email,
+          username: req.query.username,
+          displayName: req.query.displayName,
+        },
+        page: 1,
+        limit: 10000, // Export up to 10,000 records
+      };
+
+      // If includeFilters is false, remove all filters
+      if (!includeFilters) {
+        options.filters = { ...permissionFilters };
+      }
+
+      const result = await this.getUsersUseCase.execute(options);
+      const users = result.users;
+
+      // Filter columns if specified
+      let exportData = users;
+      if (columns && columns.length > 0) {
+        exportData = users.map((user) => {
+          const filtered = {};
+          columns.forEach((col) => {
+            if (user[col] !== undefined) {
+              filtered[col] = user[col];
+            }
+          });
+          return filtered;
+        });
+      }
+
+      logger.info('User export', {
+        format,
+        recordCount: users.length,
+        includeFilters,
+        columnsCount: columns.length,
+        performedBy: currentUser.id,
+        correlationId: req.correlationId,
+      });
+
+      // Export based on format
+      switch (format) {
+        case 'json':
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="users-${new Date().toISOString().split('T')[0]}.json"`
+          );
+          return res.send(JSON.stringify(exportData, null, 2));
+
+        case 'csv':
+          const csv = convertToCSV(exportData);
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="users-${new Date().toISOString().split('T')[0]}.csv"`
+          );
+          return res.send(csv);
+
+        case 'excel':
+        case 'pdf':
+          // For now, return CSV as placeholder
+          // In production, you'd use libraries like xlsx or pdfkit
+          const placeholder = convertToCSV(exportData);
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="users-${new Date().toISOString().split('T')[0]}.csv"`
+          );
+          return res.send(placeholder);
+
+        default:
+          throw new ValidationException('Unsupported format');
+      }
+    } catch (error) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof InsufficientPermissionsException
+      ) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Export users error:', {
+        error: error.message,
+        stack: error.stack,
+        correlationId: req.correlationId,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+}
+
+/**
+ * Helper function to convert JSON to CSV
+ */
+function convertToCSV(data) {
+  if (!data || data.length === 0) {
+    return '';
+  }
+
+  // Get headers from first object
+  const headers = Object.keys(data[0]);
+  const csvHeaders = headers.join(',');
+
+  // Convert each object to CSV row
+  const csvRows = data.map((obj) => {
+    return headers
+      .map((header) => {
+        const value = obj[header];
+        // Handle null/undefined
+        if (value === null || value === undefined) {
+          return '';
+        }
+        // Handle strings with commas or quotes
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        // Handle dates
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        // Handle objects/arrays
+        if (typeof value === 'object') {
+          return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+        }
+        return value;
+      })
+      .join(',');
+  });
+
+  return [csvHeaders, ...csvRows].join('\n');
 }

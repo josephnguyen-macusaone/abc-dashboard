@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Card, CardContent, CardTitle, CardDescription, CardHeader } from '@/presentation/components/atoms';
 import { ChangePasswordForm } from '@/presentation/components/organisms/user-profile';

@@ -188,13 +188,19 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
             <div>
               <Typography variant="label-s" className="font-medium" as="span">Created:</Typography>
               <Typography variant="body-s" color="muted" as="p">
-                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                {user.createdAt ? (() => {
+                  const d = new Date(user.createdAt);
+                  return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                })() : 'N/A'}
               </Typography>
             </div>
             <div>
               <Typography variant="label-s" className="font-medium" as="span">Last Updated:</Typography>
               <Typography variant="body-s" color="muted" as="p">
-                {user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : 'N/A'}
+                {user.updatedAt ? (() => {
+                  const d = new Date(user.updatedAt);
+                  return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                })() : 'N/A'}
               </Typography>
             </div>
           </div>

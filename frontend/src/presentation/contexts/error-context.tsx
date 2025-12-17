@@ -7,6 +7,10 @@ import { handleApiError as processApiError } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
 import { RetryUtils } from '@/shared/utils/retry';
 
+/**
+ * Error Context Type
+ * Defines the contract for the error context
+ */
 interface ErrorContextType {
   handleError: (error: unknown, context?: string) => void;
   handleApiError: (error: unknown, context?: string) => void;
@@ -40,7 +44,6 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
   // Global error event handlers
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      logger.error('Unhandled promise rejection', { error: event.reason });
       event.preventDefault();
 
       const error = event.reason;
@@ -58,16 +61,13 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     };
 
     const handleUncaughtError = (event: ErrorEvent) => {
-      logger.error('Uncaught error', { error: event.error, message: event.message });
       event.preventDefault();
-
       toast.error('Unexpected Error', {
         description: event.message || 'An unexpected error occurred.'
       });
     };
 
     const handleOffline = () => {
-      logger.warn('Network connection lost');
       toast.error('Connection Lost', {
         description: 'Please check your network connection.'
       });

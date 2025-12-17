@@ -101,12 +101,12 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     Omit<UseQueryStateOptions<string>, "parse">
   >(
     () => ({
-      history,
-      scroll,
-      shallow,
+      history: history || "replace", // Use replace to avoid page refresh
+      scroll: scroll || false, // Don't scroll when updating URL
+      shallow: shallow !== false, // Use shallow routing by default
       throttleMs,
       debounceMs,
-      clearOnDefault,
+      clearOnDefault: clearOnDefault || false,
       startTransition,
     }),
     [
@@ -297,6 +297,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     onSortingChange,
     onColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
+    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -309,6 +310,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     manualFiltering,
     meta: {
       ...tableProps.meta,
+      totalRows,
       queryKeys: {
         page: pageKey,
         perPage: perPageKey,
@@ -316,9 +318,9 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
         filters: filtersKey,
         joinOperator: joinOperatorKey,
       },
-    },
+    } as any,
   });
 
-  return { table, shallow, debounceMs, throttleMs };
+  return { table, shallow, debounceMs, throttleMs, setFilterValues };
 }
 

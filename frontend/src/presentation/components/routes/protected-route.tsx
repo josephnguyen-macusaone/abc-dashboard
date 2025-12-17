@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { useAuthStore } from '@/infrastructure/stores/auth-store';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { LoadingOverlay } from '@/presentation/components/atoms';
 import { getRouteConfig, canAccessRoute, getDefaultRedirect } from '@/shared/constants';
 

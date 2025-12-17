@@ -26,15 +26,52 @@ async function main() {
     console.log('Connected to PostgreSQL database');
 
     switch (command) {
+      case 'fresh':
+        console.log('🔄 Resetting database to clean state...');
+
+        // Rollback all migrations to get to a clean state
+        console.log('Rolling back all migrations...');
+        let rollbackCount = 0;
+        while (true) {
+          try {
+            const [batchNo, rolledBack] = await db.migrate.rollback();
+            if (rolledBack.length === 0) {
+              break; // No more migrations to rollback
+            }
+            rollbackCount += rolledBack.length;
+            console.log(`  ✅ Rolled back batch ${batchNo}: ${rolledBack.length} migrations`);
+          } catch (error) {
+            console.log(`  ⚠️  Error during rollback: ${error.message}`);
+            break;
+          }
+        }
+
+        if (rollbackCount > 0) {
+          console.log(`  📊 Total migrations rolled back: ${rollbackCount}`);
+        } else {
+          console.log('  📊 No migrations to rollback (database already clean)');
+        }
+
+        console.log('Running fresh migrations...');
+        const [freshBatchNo, freshMigrations] = await db.migrate.latest();
+        if (freshMigrations.length === 0) {
+          console.log('No migrations to run');
+        } else {
+          console.log(`Batch ${freshBatchNo} run: ${freshMigrations.length} migrations`);
+          freshMigrations.forEach((migration) => console.log(`  - ${migration}`));
+        }
+        console.log('✅ Fresh migration completed successfully');
+        break;
+
       case 'migrate':
       case undefined: // Default to migrate
         console.log('Running migrations...');
-        const [batchNo, migrations] = await db.migrate.latest();
-        if (migrations.length === 0) {
+        const [batchNo2, migrations2] = await db.migrate.latest();
+        if (migrations2.length === 0) {
           console.log('Already up to date');
         } else {
-          console.log(`Batch ${batchNo} run: ${migrations.length} migrations`);
-          migrations.forEach((migration) => console.log(`  - ${migration}`));
+          console.log(`Batch ${batchNo2} run: ${migrations2.length} migrations`);
+          migrations2.forEach((migration) => console.log(`  - ${migration}`));
         }
         console.log('Migrations completed successfully');
         break;
@@ -57,6 +94,48 @@ async function main() {
         console.log('Rollback completed successfully');
         break;
       }
+
+      case 'fresh-seed':
+        console.log('🔄 Fresh migration + seeding...');
+
+        // First rollback all migrations
+        console.log('Rolling back all migrations...');
+        let seedRollbackCount = 0;
+        while (true) {
+          try {
+            const [batchNo, rolledBack] = await db.migrate.rollback();
+            if (rolledBack.length === 0) {
+              break; // No more migrations to rollback
+            }
+            seedRollbackCount += rolledBack.length;
+            console.log(`  ✅ Rolled back batch ${batchNo}: ${rolledBack.length} migrations`);
+          } catch (error) {
+            console.log(`  ⚠️  Error during rollback: ${error.message}`);
+            break;
+          }
+        }
+
+        if (seedRollbackCount > 0) {
+          console.log(`  📊 Total migrations rolled back: ${seedRollbackCount}`);
+        } else {
+          console.log('  📊 No migrations to rollback (database already clean)');
+        }
+
+        // Now run fresh migrations
+        console.log('Running fresh migrations...');
+        const [seedBatchNo, seedMigrations] = await db.migrate.latest();
+        if (seedMigrations.length === 0) {
+          console.log('No migrations to run');
+        } else {
+          console.log(`Batch ${seedBatchNo} run: ${seedMigrations.length} migrations`);
+          seedMigrations.forEach((migration) => console.log(`  - ${migration}`));
+        }
+
+        // Now run seeds
+        console.log('🌱 Running seeds...');
+        await db.seed.run();
+        console.log('✅ Fresh migration + seeding completed successfully');
+        break;
 
       case 'seed':
         if (argument) {
@@ -113,9 +192,13 @@ async function main() {
       default:
         console.log('Usage:');
         console.log('  npm run migrate              # Run all pending migrations');
+        console.log('  npm run migrate:fresh        # Drop all tables and run fresh migrations');
         console.log('  npm run rollback             # Rollback last batch');
         console.log('  npm run rollback 3           # Rollback last 3 batches');
         console.log('  npm run seed                 # Run all seed files');
+        console.log(
+          '  npm run seed:fresh           # Drop all tables, run fresh migrations + seeds'
+        );
         console.log('  npm run seed <filename>      # Run specific seed file');
         console.log('  npm run db:status            # Show migration status');
         await db.destroy();

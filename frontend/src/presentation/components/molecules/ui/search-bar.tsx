@@ -55,6 +55,7 @@ export function SearchBar({
   inputClassName,
   disabled,
   onClear,
+  onKeyDown,
   ...props
 }: SearchBarProps) {
   const handleChange = React.useCallback(
@@ -63,6 +64,18 @@ export function SearchBar({
       onChange?.(event);
     },
     [onChange, onValueChange],
+  );
+
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      // Prevent form submission on Enter key
+      if (event.key === 'Enter') {
+        event.preventDefault();
+      }
+      // Call the parent's onKeyDown if provided
+      onKeyDown?.(event);
+    },
+    [onKeyDown],
   );
 
   const handleClear = React.useCallback(() => {
@@ -78,9 +91,9 @@ export function SearchBar({
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         disabled={disabled}
         className={cn('pl-10 pr-8', inputClassName)}
-        {...props}
       />
       {allowClear && value && !disabled ? (
         <Button

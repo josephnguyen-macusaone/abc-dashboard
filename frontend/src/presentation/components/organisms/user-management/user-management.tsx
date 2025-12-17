@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Typography } from '@/presentation/components/atoms';
-import { UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
-import { UsersDataTable } from '@/presentation/components/molecules/domain/user-management';
+import { StatsCards, UsersDataTable, UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
-import { UserManagementSkeleton } from './user-management-skeleton';
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
@@ -13,6 +11,7 @@ import { UserFormTemplate } from '@/presentation/components/templates';
 import { cn } from '@/shared/utils';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
+import { useUserStore } from '@/infrastructure/stores/user';
 
 /**
  * UserManagement Component
@@ -39,25 +38,28 @@ interface UserManagementProps {
   dateRange?: { from?: Date; to?: Date };
   /** Callback when date range changes */
   onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
-  /** Callback when role filter is applied */
-  onRoleFilter?: (role: string | null) => void;
-  /** Currently active role filter for visual indication */
-  activeRoleFilter?: string | null;
   /** Callback when table query changes (pagination/sort/filter) */
   onQueryChange?: (params: {
     page: number;
     limit: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
+    search?: string;
+    searchField?: string;
+    role?: string | string[];
+    isActive?: string | string[];
+    displayName?: string;
+    createdAtFrom?: string;
+    createdAtTo?: string;
+    updatedAtFrom?: string;
+    updatedAtTo?: string;
+    lastLoginFrom?: string;
+    lastLoginTo?: string;
   }) => void;
   /** Server page count for pagination */
   pageCount?: number;
   /** Total number of users */
   totalCount?: number;
-  /** User statistics */
-  userStats?: any;
-  /** Loading state for stats */
-  isLoadingStats?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -69,24 +71,22 @@ export function UserManagement({
   onLoadUsers,
   dateRange,
   onDateRangeChange,
-  onRoleFilter,
-  activeRoleFilter,
   onQueryChange,
   pageCount,
   totalCount,
-  userStats,
-  isLoadingStats = false,
   className
 }: UserManagementProps) {
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'delete'>('list');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  // Get stats from store
+  const { userStats, statsLoading: isLoadingStats } = useUserStore();
+
   const handleDateRangeUpdate = useCallback(
     (values: { range: { from?: Date; to?: Date } }) => {
       onDateRangeChange?.(values);
-      onLoadUsers?.({});
     },
-    [onDateRangeChange, onLoadUsers]
+    [onDateRangeChange]
   );
 
   // Reload users handler (called after CRUD operations)
@@ -111,7 +111,6 @@ export function UserManagement({
 
   // Form success/cancel handlers
   const handleFormSuccess = () => {
-    // Refresh the data and go back to list view
     handleLoadUsers();
     setCurrentView('list');
     setSelectedUser(null);
@@ -148,6 +147,10 @@ export function UserManagement({
       user.role
     );
   };
+
+  // Create user permission check
+  const canCreateUser = PermissionUtils.canCreateUser(currentUser.role);
+  const onCreateUserHandler = canCreateUser ? handleCreateUser : undefined;
 
   // Render different views
   if (currentView === 'create') {
@@ -189,16 +192,6 @@ export function UserManagement({
     );
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <UserManagementSkeleton
-        showDateFilter={!!onDateRangeChange}
-        className={className}
-      />
-    );
-  }
-
   // Default list view
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm px-6 py-6', className)}>
@@ -226,12 +219,10 @@ export function UserManagement({
       </div>
 
       {/* Statistics */}
-      <div className="mb-5">
+      <div className="mb-4">
         <UserStatsCards
-          userStats={userStats}
+          userStats={userStats || undefined}
           isLoading={isLoading || isLoadingStats}
-          onRoleFilter={onRoleFilter}
-          activeRoleFilter={activeRoleFilter}
         />
       </div>
 
@@ -243,7 +234,7 @@ export function UserManagement({
         canDelete={canDeleteUser}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
-        onCreateUser={PermissionUtils.canCreateUser(currentUser.role) ? handleCreateUser : undefined}
+        onCreateUser={onCreateUserHandler}
         isLoading={isLoading}
         onQueryChange={onQueryChange}
         pageCount={pageCount}

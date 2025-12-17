@@ -23,8 +23,7 @@ import {
   createGetUsersUseCase,
   type GetUsersUseCaseContract,
   createSearchUsersUseCase,
-  type SearchUsersUseCaseContract,
-  GetUserStatsUseCase
+  type SearchUsersUseCaseContract
 } from '@/application/use-cases/user';
 
 /**
@@ -47,7 +46,6 @@ class DependencyContainer {
   private _deleteUserUseCase?: DeleteUserUseCase;
   private _getUsersUseCase?: GetUsersUseCaseContract;
   private _searchUsersUseCase?: SearchUsersUseCaseContract;
-  private _getUserStatsUseCase?: GetUserStatsUseCase;
 
   // Services (Application Layer)
   private _authService?: AuthService;
@@ -132,12 +130,6 @@ class DependencyContainer {
     return this._searchUsersUseCase;
   }
 
-  get getUserStatsUseCase(): GetUserStatsUseCase {
-    if (!this._getUserStatsUseCase) {
-      this._getUserStatsUseCase = new GetUserStatsUseCase(this.userRepository);
-    }
-    return this._getUserStatsUseCase;
-  }
 
   // Service getters
   get authService(): AuthService {
@@ -165,8 +157,7 @@ class DependencyContainer {
         this.updateUserUseCase,
         this.deleteUserUseCase,
         this.getUsersUseCase,
-        this.searchUsersUseCase,
-        this.getUserStatsUseCase
+        this.searchUsersUseCase
       );
     }
     return this._userManagementService;
@@ -189,7 +180,6 @@ class DependencyContainer {
     this._deleteUserUseCase = undefined;
     this._getUsersUseCase = undefined;
     this._searchUsersUseCase = undefined;
-    this._getUserStatsUseCase = undefined;
 
     this._authService = undefined;
     this._userManagementService = undefined;

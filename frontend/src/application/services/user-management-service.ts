@@ -31,8 +31,7 @@ export class UserManagementService {
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
     private readonly getUsersUseCase: GetUsersUseCaseContract,
-    private readonly searchUsersUseCase: SearchUsersUseCaseContract,
-    private readonly getUserStatsUseCase: GetUserStatsUseCase
+    private readonly searchUsersUseCase: SearchUsersUseCaseContract
   ) {}
 
   /**
@@ -135,22 +134,4 @@ export class UserManagementService {
     }
   }
 
-  /**
-   * Get user statistics
-   */
-  async getUserStats(): Promise<UserStats> {
-    const correlationId = generateCorrelationId();
-
-    try {
-      const stats = await this.getUserStatsUseCase.execute();
-      return stats;
-    } catch (error) {
-      this.logger.error(`Failed to fetch user statistics`, {
-        correlationId,
-        operation: 'get_user_stats_error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
 }

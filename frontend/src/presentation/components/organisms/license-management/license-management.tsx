@@ -47,7 +47,7 @@ interface LicenseManagementProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    status?: string;
+    status?: string | string[];
   }) => void;
   /** Additional CSS classes */
   className?: string;
@@ -84,7 +84,7 @@ export function LicenseManagement({
       id: licenses.length + 1,
       dba: '',
       zip: '',
-      startDay: new Date().toISOString().split('T')[0],
+      startsAt: new Date().toISOString().split('T')[0],
       status: 'pending',
       plan: 'Basic',
       term: 'monthly',
@@ -129,7 +129,7 @@ export function LicenseManagement({
     }
 
     return licenses.filter((license) => {
-      const startDate = new Date(license.startDay);
+      const startDate = new Date(license.startsAt);
 
       if (dateRange.from && startDate < dateRange.from) {
         return false;

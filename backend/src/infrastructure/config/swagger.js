@@ -53,15 +53,28 @@ const swaggerDefinition = {
       MetaPagination: {
         type: 'object',
         properties: {
-          pagination: {
+          meta: {
             type: 'object',
             properties: {
-              page: { type: 'integer', example: 1 },
-              limit: { type: 'integer', example: 10 },
-              total: { type: 'integer', example: 42 },
-              totalPages: { type: 'integer', example: 5 },
-              hasNext: { type: 'boolean', example: true },
-              hasPrev: { type: 'boolean', example: false },
+              pagination: {
+                type: 'object',
+                properties: {
+                  page: { type: 'integer', example: 1 },
+                  limit: { type: 'integer', example: 10 },
+                  totalPages: { type: 'integer', example: 5 },
+                  hasNext: { type: 'boolean', example: true },
+                  hasPrev: { type: 'boolean', example: false },
+                },
+              },
+              stats: {
+                type: 'object',
+                properties: {
+                  total: { type: 'integer', example: 42 },
+                  admin: { type: 'integer', example: 5 },
+                  manager: { type: 'integer', example: 10 },
+                  staff: { type: 'integer', example: 27 },
+                },
+              },
             },
           },
         },
@@ -331,7 +344,7 @@ const swaggerDefinition = {
             description: 'Monthly cost for agents',
             minimum: 0,
             nullable: true,
-            example: 25.00,
+            example: 25.0,
           },
           agentsName: {
             type: 'array',

@@ -1,12 +1,48 @@
 import React from 'react';
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import dynamic from 'next/dynamic';
 
-import { AuthProvider, UserProvider, ToastProvider, ThemeProvider, ErrorProvider } from '@/presentation/contexts';
-import { Toaster } from '@/presentation/components/atoms';
-import { ErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
-import { RouteSuspense } from '@/presentation/components/routes/suspense-route';
+// Dynamic imports for code splitting
+const NuqsAdapter = dynamic(() => import('nuqs/adapters/next/app').then(mod => ({ default: mod.NuqsAdapter })), {
+  loading: () => null
+});
+
+const AuthProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.AuthProvider })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>
+});
+
+const UserProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.UserProvider })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Loading user data...</div>
+});
+
+const ToastProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ToastProvider })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Loading notifications...</div>
+});
+
+const ThemeProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ThemeProvider })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Loading theme...</div>
+});
+
+const ErrorProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ErrorProvider })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Loading error handling...</div>
+});
+
+const Toaster = dynamic(() => import('@/presentation/components/atoms').then(mod => ({ default: mod.Toaster })), {
+  loading: () => null
+});
+
+const ErrorBoundary = dynamic(() => import('@/presentation/components/organisms/error-handling/error-boundary').then(mod => ({ default: mod.ErrorBoundary })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Loading application...</div>
+});
+
+const RouteSuspense = dynamic(() => import('@/presentation/components/routes/suspense-route').then(mod => ({ default: mod.RouteSuspense })), {
+  loading: () => <div className="min-h-screen flex items-center justify-center">Initializing application...</div>
+});
+
+const ServiceWorkerProvider = dynamic(() => import('@/presentation/components/providers/service-worker-provider').then(mod => ({ default: mod.ServiceWorkerProvider })), {
+  loading: () => null
+});
 
 import "./globals.css";
 
@@ -71,10 +107,12 @@ export default function RootLayout({
                 <AuthProvider>
                   <UserProvider>
                     <NuqsAdapter>
-                      <RouteSuspense message="Initializing application...">
-                        {children}
-                      </RouteSuspense>
-                      <Toaster />
+                      <ServiceWorkerProvider>
+                        <RouteSuspense message="Initializing application...">
+                          {children}
+                        </RouteSuspense>
+                        <Toaster />
+                      </ServiceWorkerProvider>
                     </NuqsAdapter>
                   </UserProvider>
                 </AuthProvider>

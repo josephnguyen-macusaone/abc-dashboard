@@ -79,8 +79,8 @@ export function DataTableToolbar<TData>({
         />
       ))}
 
-      {/* Reset button - always visible if there are active filters or if custom reset is provided */}
-      {(hasActiveFilters || !!customOnReset) && (
+      {/* Reset button - only visible when filters are actually active */}
+      {hasActiveFilters && (
         <Button
           aria-label="Reset filters"
           variant="outline"
@@ -210,7 +210,7 @@ function DataTableToolbarFilter<TData>({
       default:
         return null;
     }
-  }, [column, columnMeta]);
+  }, [column, columnMeta, isManualFiltering, onManualFilterChange, initialFilterValues, searchValue, handleSearchChange]);
 
   return onFilterRender();
 }

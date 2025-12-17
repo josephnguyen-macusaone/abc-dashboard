@@ -97,12 +97,13 @@ export function getUserTableColumns({
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/10">
               <User2 className="h-4 w-4 text-primary" />
             </div>
-            <span className="font-medium truncate max-w-[200px]">
+            <span className="font-medium truncate max-w-[300px]">
               {displayName}
             </span>
           </div>
         );
       },
+      size: 240,
       meta: {
         label: "Name",
       },
@@ -118,6 +119,7 @@ export function getUserTableColumns({
           {row.getValue("username") || "-"}
         </span>
       ),
+      size: 160,
       meta: {
         label: "Username",
       },
@@ -133,6 +135,7 @@ export function getUserTableColumns({
           {row.getValue("email")}
         </span>
       ),
+      size: 240,
       meta: {
         label: "Email",
       },
@@ -148,6 +151,7 @@ export function getUserTableColumns({
           {row.getValue("phone") || "-"}
         </span>
       ),
+      size: 130,
       meta: {
         label: "Phone",
       },
@@ -169,6 +173,7 @@ export function getUserTableColumns({
         const role = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(role) : value === role;
       },
+      size: 160,
       meta: {
         label: "Role",
         variant: "multiSelect",
@@ -180,7 +185,7 @@ export function getUserTableColumns({
       id: "isActive",
       accessorKey: "isActive",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Status" />
+        <DataTableColumnHeader column={column} label="Status" className="text-center" />
       ),
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean;
@@ -190,12 +195,11 @@ export function getUserTableColumns({
       },
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
-        // This is for client-side filtering fallback only
-        // Server-side filtering is handled via onQueryChange
         const isActive = row.getValue(id) as boolean;
         const statusValue = isActive ? "true" : "false";
         return Array.isArray(value) ? value.includes(statusValue) : value === statusValue;
       },
+      size: 100,
       meta: {
         label: "Status",
         variant: "multiSelect",
@@ -211,19 +215,18 @@ export function getUserTableColumns({
       ),
       cell: ({ row }) => {
         const createdAt = row.getValue("createdAt") as Date | null;
+        const formattedDate = createdAt ? (() => {
+          const d = new Date(createdAt);
+          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+        })() : "N/A";
         return (
           <span className="text-muted-foreground">
-            {createdAt
-              ? new Date(createdAt).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
-              : "N/A"}
+            {formattedDate}
           </span>
         );
       },
       // Removed enableColumnFilter and filterFn - using external DateRangeFilterCard instead
+      size: 120,
       meta: {
         label: "Created At",
       },

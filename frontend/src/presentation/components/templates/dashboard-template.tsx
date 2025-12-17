@@ -1,57 +1,22 @@
 'use client';
 
 import { LoadingOverlay } from '@/presentation/components/atoms';
-import { NavigationItem } from '@/presentation/components/molecules';
 import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { ReactNode, useMemo, useCallback, useState } from 'react';
-import { Home, Users, FileSpreadsheet } from 'lucide-react';
-import { useAuth } from '@/presentation/contexts/auth-context';
-import { useToast } from '@/presentation/contexts/toast-context';
-import { PermissionUtils } from '@/shared/constants';
+import { ReactNode, useMemo, useCallback, useState, useTransition } from 'react';
+import { useAuth, useToast } from '@/presentation/contexts';
+import { PermissionUtils, getNavigationItems } from '@/shared/constants';
 
 interface DashboardTemplateProps {
   children: ReactNode;
 }
 
-// Permission-based navigation items based on enterprise permission system
-const getNavigationItems = (userRole?: string): NavigationItem[] => {
-  const baseItems: NavigationItem[] = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-  ];
-
-  // Admin navigation (full system access)
-  if (PermissionUtils.canManageSystem(userRole)) {
-    return [
-      ...baseItems,
-      { name: 'License Management', href: '/dashboard?section=licenses', icon: FileSpreadsheet },
-      { name: 'User Management', href: '/dashboard?section=users', icon: Users },
-    ];
-  }
-
-  // Manager navigation (user management with restrictions)
-  if (PermissionUtils.canReadUser(userRole)) {
-    return [
-      ...baseItems,
-      { name: 'License Management', href: '/dashboard?section=licenses', icon: FileSpreadsheet },
-      { name: 'User Management', href: '/dashboard?section=users', icon: Users },
-    ];
-  }
-
-  // Staff navigation (limited access)
-  if (PermissionUtils.isStaff(userRole)) {
-    return baseItems;
-  }
-
-  // Default/unknown role
-  return baseItems;
-};
-
 export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isTransitioning, startTransition] = useTransition();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -96,7 +61,9 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   }, [router]);
 
   const handleNavigate = useCallback((href: string) => {
-    router.push(href);
+    startTransition(() => {
+      router.push(href);
+    });
   }, [router]);
 
   const handleSidebarClose = useCallback(() => {
@@ -169,6 +136,11 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
           </main>
         </div>
       </div>
+
+      {/* Route transition loading overlay */}
+      {isTransitioning && (
+        <LoadingOverlay text="Loading..." />
+      )}
     </div>
   );
 }

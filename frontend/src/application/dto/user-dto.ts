@@ -43,9 +43,11 @@ export interface UserListParams {
   page?: number;
   limit?: number;
   search?: string;
+  searchField?: 'email' | 'displayName' | 'username' | 'phone';
   email?: string;
   username?: string;
   displayName?: string;
+  phone?: string;
   role?: UserRole;
   isActive?: boolean;
   hasAvatar?: boolean;
@@ -53,6 +55,13 @@ export interface UserListParams {
   hasBio?: boolean;
   sortBy?: SortBy;
   sortOrder?: SortOrder;
+  // Date range filters matching backend API
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  updatedAtFrom?: string;
+  updatedAtTo?: string;
+  lastLoginFrom?: string;
+  lastLoginTo?: string;
 }
 
 /**
@@ -84,10 +93,15 @@ export interface PaginatedUserList {
   pagination: {
     page: number;
     limit: number;
-    total: number;
     totalPages: number;
     hasNext: boolean;
     hasPrev: boolean;
+  };
+  stats?: {
+    total: number;
+    admin: number;
+    manager: number;
+    staff: number;
   };
 }
 

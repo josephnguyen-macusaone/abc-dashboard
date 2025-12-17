@@ -1,11 +1,12 @@
 import { UserRepository } from '../../infrastructure/repositories/user-repository.js';
 import { UserProfileRepository } from '../../infrastructure/repositories/user-profile-repository.js';
+import { LicenseRepository } from '../../infrastructure/repositories/license-repository.js';
 import connectDB, { getDB } from '../../infrastructure/config/database.js';
 import { AuthController } from '../../infrastructure/controllers/auth-controller.js';
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
 import { LicenseController } from '../../infrastructure/controllers/license-controller.js';
-import { licenseStore } from '../../infrastructure/data/license-store.js';
+import { LicenseService } from '../services/license-service.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
@@ -17,7 +18,6 @@ import { GetUsersUseCase } from '../../application/use-cases/users/get-users-use
 import { CreateUserUseCase } from '../../application/use-cases/users/create-user-use-case.js';
 import { UpdateUserUseCase } from '../../application/use-cases/users/update-user-use-case.js';
 import { DeleteUserUseCase } from '../../application/use-cases/users/delete-user-use-case.js';
-import { GetUserStatsUseCase } from '../../application/use-cases/users/get-user-stats-use-case.js';
 import { GetProfileUseCase } from '../../application/use-cases/profiles/get-profile-use-case.js';
 import { UpdateProfileUseCase as ProfileUpdateProfileUseCase } from '../../application/use-cases/profiles/update-profile-use-case.js';
 import { RecordLoginUseCase } from '../../application/use-cases/profiles/record-login-use-case.js';
@@ -68,6 +68,11 @@ class Container {
       userProfileRepo.setCorrelationId(correlationId);
     }
 
+    const licenseRepo = this.instances.get('licenseRepository');
+    if (licenseRepo && licenseRepo.setCorrelationId) {
+      licenseRepo.setCorrelationId(correlationId);
+    }
+
     // Set on services
     const authService = this.instances.get('authService');
     if (authService) {
@@ -110,6 +115,25 @@ class Container {
     return this.instances.get('userProfileRepository');
   }
 
+  async getLicenseRepository() {
+    if (!this.instances.has('licenseRepository')) {
+      try {
+        let db = getDB();
+        this.instances.set('licenseRepository', new LicenseRepository(db));
+      } catch (error) {
+        if (error.message === 'Database not initialized. Call connectDB first.') {
+          // Initialize database connection if not already done
+          await connectDB();
+          const db = getDB();
+          this.instances.set('licenseRepository', new LicenseRepository(db));
+        } else {
+          throw error;
+        }
+      }
+    }
+    return this.instances.get('licenseRepository');
+  }
+
   getAuthService() {
     if (!this.instances.has('authService')) {
       this.instances.set('authService', new AuthService());
@@ -126,9 +150,36 @@ class Container {
 
   getEmailService() {
     if (!this.instances.has('emailService')) {
-      this.instances.set('emailService', new EmailService());
+      try {
+        this.instances.set('emailService', new EmailService());
+      } catch (error) {
+        // In development, allow server to start without email service
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Email service not available, creating mock service for development');
+          this.instances.set('emailService', {
+            sendEmail: async () => ({ success: false, message: 'Email service not configured' }),
+            sendTemplatedEmail: async () => ({
+              success: false,
+              message: 'Email service not configured',
+            }),
+            correlationId: null,
+            setCorrelationId: () => {},
+          });
+        } else {
+          throw error; // Re-throw in production
+        }
+      }
     }
     return this.instances.get('emailService');
+  }
+
+  async getLicenseService() {
+    if (!this.instances.has('licenseService')) {
+      const licenseRepository = await this.getLicenseRepository();
+      const userRepository = await this.getUserRepository();
+      this.instances.set('licenseService', new LicenseService(licenseRepository, userRepository));
+    }
+    return this.instances.get('licenseService');
   }
 
   // Use cases
@@ -205,10 +256,6 @@ class Container {
     return new DeleteUserUseCase(await this.getUserRepository());
   }
 
-  async getGetUserStatsUseCase() {
-    return new GetUserStatsUseCase(await this.getUserRepository());
-  }
-
   // Profile Use Cases
   async getGetProfileUseCase() {
     return new GetProfileUseCase(await this.getUserProfileRepository());
@@ -242,7 +289,7 @@ class Container {
       await this.getCreateUserUseCase(),
       await this.getUpdateUserUseCase(),
       await this.getDeleteUserUseCase(),
-      await this.getGetUserStatsUseCase()
+      await this.getUserRepository()
     );
   }
 
@@ -257,7 +304,8 @@ class Container {
 
   async getLicenseController() {
     if (!this.instances.has('licenseController')) {
-      this.instances.set('licenseController', new LicenseController(licenseStore));
+      const licenseService = await this.getLicenseService();
+      this.instances.set('licenseController', new LicenseController(licenseService));
     }
     return this.instances.get('licenseController');
   }

@@ -12,7 +12,6 @@ import { startTransition } from "react";
 import {
   DataGrid,
   DataGridFilterMenu,
-  DataGridSearch,
   DataGridSortMenu,
   DataGridRowHeightMenu,
   DataGridViewMenu,
@@ -20,6 +19,7 @@ import {
 import { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
+import { SearchBar } from "@/presentation/components/molecules";
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import { getLicenseGridColumns } from "./license-grid-columns";
 import type { LicenseRecord } from "@/shared/types";
@@ -41,7 +41,7 @@ interface LicensesDataGridProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    status?: string;
+    status?: string | string[];
   }) => void;
 }
 
@@ -65,59 +65,36 @@ export function LicensesDataGrid({
   const [isSaving, setIsSaving] = React.useState(false);
   const dataVersionRef = React.useRef(0);
 
-  // Only use complex sync refs when needed
-  const lastInitialDataRef = React.useRef<{ length: number; string: string }>(
-    useComplexSync ? {
-      length: initialData.length,
-      string: JSON.stringify(initialData)
-    } : { length: 0, string: '' }
-  );
+  // Track the last initial data to detect changes
+  const lastInitialDataRef = React.useRef<LicenseRecord[]>(initialData);
+  
+  // Sync with initialData when it changes, but only if we don't have unsaved changes
+  // Use layout effect to run synchronously after DOM updates but before paint
+  React.useLayoutEffect(() => {
+    // Only sync if data actually changed
+    if (lastInitialDataRef.current === initialData) {
+      return;
+    }
 
-  // Sync with initialData when it changes, but only if we don't have unsaved changes and using complex sync
-  React.useEffect(() => {
+    // Store reference for next comparison
+    lastInitialDataRef.current = initialData;
+
     if (!useComplexSync) {
-      // For simple mode, just set data directly and increment version to force remount
+      // For simple mode, set data directly on changes
       setData(initialData);
       dataVersionRef.current += 1;
       return;
     }
 
     // Complex sync logic for pagination scenarios
-    // Simple length check first - much faster and reliable
-    if (initialData.length !== lastInitialDataRef.current.length) {
-      if (hasChanges) {
-        // If data changed externally but we have changes, update the ref
-        lastInitialDataRef.current.length = initialData.length;
-        return;
-      }
-
-      // Use requestAnimationFrame to defer the update to the next animation frame
-      requestAnimationFrame(() => {
-        setData(initialData);
-        lastInitialDataRef.current.length = initialData.length;
-        dataVersionRef.current += 1;
-      });
+    // Don't override local changes
+    if (hasChanges) {
       return;
     }
 
-    // If lengths match, do a more thorough check but less frequently
-    const currentInitialDataString = JSON.stringify(initialData);
-    const initialDataChanged = lastInitialDataRef.current.string !== currentInitialDataString;
-
-    if (initialDataChanged) {
-      if (hasChanges) {
-        // Update ref but don't sync data
-        lastInitialDataRef.current.string = currentInitialDataString;
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        setData(initialData);
-        lastInitialDataRef.current.string = currentInitialDataString;
-        lastInitialDataRef.current.length = initialData.length;
-        dataVersionRef.current += 1;
-      });
-    }
+    // Update data state
+    setData(initialData);
+    dataVersionRef.current += 1;
   }, [initialData, hasChanges, useComplexSync]);
 
   const columns = React.useMemo(() => getLicenseGridColumns(), []);
@@ -125,19 +102,14 @@ export function LicensesDataGrid({
   const handleDataChange = React.useCallback((newData: LicenseRecord[]) => {
     setData(newData);
     setHasChanges(true);
-    // Update the ref to reflect current initialData state
-    lastInitialDataRef.current = {
-      length: initialData.length,
-      string: JSON.stringify(initialData)
-    };
-  }, [initialData]);
+  }, []);
 
   const handleRowAdd = React.useCallback(async () => {
     const fallback: LicenseRecord = {
       id: data.length + 1,
       dba: "",
       zip: "",
-      startDay: new Date().toISOString().split("T")[0],
+      startsAt: new Date().toISOString().split("T")[0],
       status: "pending",
       plan: "Basic",
       term: "monthly",
@@ -201,6 +173,19 @@ export function LicensesDataGrid({
     toast.info("Changes discarded");
   }, [initialData]);
 
+  // Separate search state to avoid conflicts with data updates
+  const [searchInput, setSearchInput] = React.useState(""); // What user types
+  const [searchQuery, setSearchQuery] = React.useState(""); // What gets sent to API (debounced)
+
+  // Debounce search input to API calls (300ms delay)
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
   const gridState = useDataGrid({
     data,
     columns,
@@ -208,7 +193,7 @@ export function LicensesDataGrid({
     onRowAdd: handleRowAdd,
     onRowsDelete: handleRowsDelete,
     rowHeight: "short",
-    enableSearch: true,
+    enableSearch: false, // Disable built-in search, we'll handle it manually
     enablePaste: true,
     autoFocus: true,
     pageCount: pageCount ?? -1,
@@ -216,8 +201,107 @@ export function LicensesDataGrid({
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange,
-    onQueryChange,
+    // Don't pass onQueryChange to useDataGrid - we'll handle it manually
   });
+
+  // Track changes manually (adapted from licenses-data-table.tsx)
+  const hasInitializedRef = React.useRef(false);
+  const lastPageIndexRef = React.useRef<number>(0);
+  const lastPageSizeRef = React.useRef<number>(20);
+  const lastSortRef = React.useRef<string>("");
+  const lastSearchRef = React.useRef<string>("");
+  const lastFiltersRef = React.useRef<string>("");
+
+  // Extract table state values directly (same as data-table)
+  const tablePageIndex = gridState.table.getState().pagination.pageIndex;
+  const tablePageSize = gridState.table.getState().pagination.pageSize;
+  const tableSorting = gridState.table.getState().sorting;
+  const tableColumnFilters = gridState.table.getState().columnFilters;
+
+  // Manual query change handler (adapted from data-table)
+  React.useEffect(() => {
+    console.log('[LicensesDataGrid] Manual query effect triggered', {
+      initialized: hasInitializedRef.current,
+      onQueryChange: !!onQueryChange,
+      tablePageIndex,
+      tablePageSize,
+      tableSorting,
+      searchQuery,
+      tableColumnFilters,
+    });
+
+    if (!onQueryChange) return;
+
+    const activeSort = tableSorting?.[0];
+    const currentSortString = JSON.stringify(tableSorting);
+    const currentFiltersString = JSON.stringify(tableColumnFilters);
+    const currentSearch = searchQuery.trim();
+
+    // Initialize refs on first run (skip initial call)
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      lastPageIndexRef.current = tablePageIndex;
+      lastPageSizeRef.current = tablePageSize;
+      lastSortRef.current = currentSortString;
+      lastSearchRef.current = currentSearch;
+      lastFiltersRef.current = currentFiltersString;
+      console.log('[LicensesDataGrid] Initialized refs, skipping first call');
+      return;
+    }
+
+    // Check what changed
+    const paginationChanged =
+      tablePageIndex !== lastPageIndexRef.current ||
+      tablePageSize !== lastPageSizeRef.current;
+    const sortChanged = currentSortString !== lastSortRef.current;
+    const searchChanged = currentSearch !== lastSearchRef.current;
+    const filtersChanged = currentFiltersString !== lastFiltersRef.current;
+
+    console.log('[LicensesDataGrid] Change detection', {
+      paginationChanged,
+      sortChanged,
+      searchChanged,
+      filtersChanged,
+    });
+
+    if (!paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
+      console.log('[LicensesDataGrid] No changes detected, skipping API call');
+      return;
+    }
+
+    // Update refs
+    lastPageIndexRef.current = tablePageIndex;
+    lastPageSizeRef.current = tablePageSize;
+    lastSortRef.current = currentSortString;
+    lastSearchRef.current = currentSearch;
+    lastFiltersRef.current = currentFiltersString;
+
+    // Build query params
+    const filterMap = tableColumnFilters?.reduce<Record<string, unknown>>((acc, curr) => {
+      acc[curr.id] = curr.value;
+      return acc;
+    }, {});
+
+    // Extract status filter
+    const statusFilter = filterMap?.status;
+    const status = Array.isArray(statusFilter)
+      ? statusFilter
+      : statusFilter ? String(statusFilter) : undefined;
+
+    const apiParams = {
+      page: tablePageIndex + 1,
+      limit: tablePageSize,
+      sortBy: activeSort?.id,
+      sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
+      search: currentSearch || undefined,
+      status: status,
+    };
+
+    console.log('[LicensesDataGrid] Calling onQueryChange', apiParams);
+
+    // Call API
+    onQueryChange(apiParams);
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, onQueryChange]);
 
   // Loading state
   if (isLoading) {
@@ -272,7 +356,17 @@ export function LicensesDataGrid({
         {/* Toolbar with Search, Filter, Sort, Row Height, View, and Action buttons */}
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <div className="flex items-center gap-2">
-            <DataGridSearch table={gridState.table} placeholder="Search DBA..." />
+            {/* Custom search that uses local state */}
+            <div className="relative">
+              <SearchBar
+                placeholder="Search DBA..."
+                value={searchInput}
+                onValueChange={setSearchInput}
+                allowClear
+                className="w-40 lg:w-56"
+                inputClassName="h-8"
+              />
+            </div>
             <DataGridFilterMenu table={gridState.table} />
             <DataGridSortMenu table={gridState.table} />
             <DataGridRowHeightMenu table={gridState.table} />

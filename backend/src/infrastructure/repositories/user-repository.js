@@ -117,95 +117,162 @@ export class UserRepository extends IUserRepository {
     let query = this.db(this.tableName);
     let countQuery = this.db(this.tableName);
 
-    // Apply filters
+    // ========================================================================
+    // ENHANCED: Multi-field Search (Phase 2.1)
+    // Search across email, displayName, username, and phone
+    // ========================================================================
     if (filters.search) {
-      // Full-text search across displayName and email only
       const searchTerm = `%${filters.search}%`;
-      query = query.where((qb) => {
-        qb.whereRaw('email ILIKE ?', [searchTerm])
-          .orWhereRaw('display_name ILIKE ?', [searchTerm]);
-      });
-      countQuery = countQuery.where((qb) => {
-        qb.whereRaw('email ILIKE ?', [searchTerm])
-          .orWhereRaw('display_name ILIKE ?', [searchTerm]);
-      });
-    } else {
-      // Individual field filters (only if no general search)
-      if (filters.email) {
-        query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
-        countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
-      }
-      if (filters.username) {
-        query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
-        countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
-      }
-      if (filters.displayName) {
-        query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
-        countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+
+      // Determine search field if specified
+      if (filters.searchField) {
+        // Single field search
+        const fieldMap = {
+          email: 'email',
+          displayName: 'display_name',
+          username: 'username',
+          phone: 'phone',
+        };
+        const dbField = fieldMap[filters.searchField];
+
+        if (dbField) {
+          query = query.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+          countQuery = countQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+        }
+      } else {
+        // Multi-field search (default): search across all fields
+        query = query.where((qb) => {
+          qb.whereRaw('email ILIKE ?', [searchTerm])
+            .orWhereRaw('display_name ILIKE ?', [searchTerm])
+            .orWhereRaw('username ILIKE ?', [searchTerm])
+            .orWhereRaw('phone ILIKE ?', [searchTerm]);
+        });
+        countQuery = countQuery.where((qb) => {
+          qb.whereRaw('email ILIKE ?', [searchTerm])
+            .orWhereRaw('display_name ILIKE ?', [searchTerm])
+            .orWhereRaw('username ILIKE ?', [searchTerm])
+            .orWhereRaw('phone ILIKE ?', [searchTerm]);
+        });
       }
     }
+
+    // ========================================================================
+    // Individual field filters (can now work alongside general search)
+    // ========================================================================
+    if (filters.email && !filters.search) {
+      query = query.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+      countQuery = countQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+    }
+    if (filters.username && !filters.search) {
+      query = query.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+      countQuery = countQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+    }
+    if (filters.displayName && !filters.search) {
+      query = query.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+      countQuery = countQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+    }
+    if (filters.phone && !filters.search) {
+      query = query.whereRaw('phone ILIKE ?', [`%${filters.phone}%`]);
+      countQuery = countQuery.whereRaw('phone ILIKE ?', [`%${filters.phone}%`]);
+    }
+
+    // ========================================================================
+    // Date Range Filters (Phase 2.2)
+    // ========================================================================
+
+    // Created date range
+    if (filters.createdAtFrom) {
+      const fromDate = new Date(filters.createdAtFrom);
+      // Set to start of day in UTC to ensure we capture all records from that day
+      fromDate.setUTCHours(0, 0, 0, 0);
+      query = query.where('created_at', '>=', fromDate);
+      countQuery = countQuery.where('created_at', '>=', fromDate);
+    }
+    if (filters.createdAtTo) {
+      const toDate = new Date(filters.createdAtTo);
+      // Set to end of day in UTC to ensure we capture all records from that day
+      toDate.setUTCHours(23, 59, 59, 999);
+      query = query.where('created_at', '<=', toDate);
+      countQuery = countQuery.where('created_at', '<=', toDate);
+    }
+
+    // Updated date range
+    if (filters.updatedAtFrom) {
+      const fromDate = new Date(filters.updatedAtFrom);
+      // Set to start of day in UTC to ensure we capture all records from that day
+      fromDate.setUTCHours(0, 0, 0, 0);
+      query = query.where('updated_at', '>=', fromDate);
+      countQuery = countQuery.where('updated_at', '>=', fromDate);
+    }
+    if (filters.updatedAtTo) {
+      const toDate = new Date(filters.updatedAtTo);
+      // Set to end of day in UTC to ensure we capture all records from that day
+      toDate.setUTCHours(23, 59, 59, 999);
+      query = query.where('updated_at', '<=', toDate);
+      countQuery = countQuery.where('updated_at', '<=', toDate);
+    }
+
+    // Last login date range
+    if (filters.lastLoginFrom) {
+      const fromDate = new Date(filters.lastLoginFrom);
+      // Set to start of day in UTC to ensure we capture all records from that day
+      fromDate.setUTCHours(0, 0, 0, 0);
+      query = query.where('last_login_at', '>=', fromDate);
+      countQuery = countQuery.where('last_login_at', '>=', fromDate);
+    }
+    if (filters.lastLoginTo) {
+      const toDate = new Date(filters.lastLoginTo);
+      // Set to end of day in UTC to ensure we capture all records from that day
+      toDate.setUTCHours(23, 59, 59, 999);
+      query = query.where('last_login_at', '<=', toDate);
+      countQuery = countQuery.where('last_login_at', '<=', toDate);
+    }
+
+    // ========================================================================
+    // Advanced Filters
+    // ========================================================================
+
+    // Role filter - support single value or array
     if (filters.role) {
-      query = query.where('role', filters.role);
-      countQuery = countQuery.where('role', filters.role);
+      if (Array.isArray(filters.role)) {
+        query = query.whereIn('role', filters.role);
+        countQuery = countQuery.whereIn('role', filters.role);
+      } else {
+        query = query.where('role', filters.role);
+        countQuery = countQuery.where('role', filters.role);
+      }
     }
+
+    // Active status filter - support single value or array
     if (filters.isActive !== undefined) {
-      query = query.where('is_active', filters.isActive);
-      countQuery = countQuery.where('is_active', filters.isActive);
+      if (Array.isArray(filters.isActive)) {
+        query = query.whereIn('is_active', filters.isActive);
+        countQuery = countQuery.whereIn('is_active', filters.isActive);
+      } else {
+        query = query.where('is_active', filters.isActive);
+        countQuery = countQuery.where('is_active', filters.isActive);
+      }
     }
+
+    // Managed by filter
     if (filters.managedBy) {
       query = query.where('managed_by', filters.managedBy);
       countQuery = countQuery.where('managed_by', filters.managedBy);
     }
-    if (filters.hasAvatar !== undefined) {
-      if (filters.hasAvatar) {
-        query = query.whereNotNull('avatar_url').whereNot('avatar_url', '');
-        countQuery = countQuery.whereNotNull('avatar_url').whereNot('avatar_url', '');
-      } else {
-        query = query.where((qb) => {
-          qb.whereNull('avatar_url').orWhere('avatar_url', '');
-        });
-        countQuery = countQuery.where((qb) => {
-          qb.whereNull('avatar_url').orWhere('avatar_url', '');
-        });
-      }
-    }
 
-    // Bio filtering - need to join with user_profiles
-    if (filters.hasBio !== undefined) {
-      if (filters.hasBio) {
-        query = query
-          .join('user_profiles', 'users.id', 'user_profiles.user_id')
-          .whereNotNull('user_profiles.bio')
-          .whereNot('user_profiles.bio', '');
-        countQuery = countQuery
-          .join('user_profiles', 'users.id', 'user_profiles.user_id')
-          .whereNotNull('user_profiles.bio')
-          .whereNot('user_profiles.bio', '');
-      } else {
-        query = query.leftJoin('user_profiles', 'users.id', 'user_profiles.user_id').where((qb) => {
-          qb.whereNull('user_profiles.bio').orWhere('user_profiles.bio', '');
-        });
-        countQuery = countQuery
-          .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
-          .where((qb) => {
-            qb.whereNull('user_profiles.bio').orWhere('user_profiles.bio', '');
-          });
-      }
-    }
-
-    const [users, countResult] = await Promise.all([
+    const [users, stats] = await Promise.all([
       query.select('users.*').orderBy(`users.${sortColumn}`, sortOrder).offset(offset).limit(limit),
-      countQuery.count('users.id as count').first(),
+      this.getUserStats(filters),
     ]);
 
-    const total = parseInt(countResult?.count || 0);
+    const total = stats.total || 0;
     const totalPages = Math.ceil(total / limit);
 
     return {
       users: users.map((user) => this._toEntity(user)),
-      total,
       page,
       totalPages,
+      stats,
     };
   }
 
@@ -266,16 +333,101 @@ export class UserRepository extends IUserRepository {
     return parseInt(result?.count || 0) > 0;
   }
 
-  async getUserStats() {
-    const [totalUsers, adminCount, managerCount, staffCount] = await Promise.all([
-      this.db(this.tableName).count('id as count').first(),
-      this.db(this.tableName).where('role', 'admin').count('id as count').first(),
-      this.db(this.tableName).where('role', 'manager').count('id as count').first(),
-      this.db(this.tableName).where('role', 'staff').count('id as count').first(),
+  async getUserStats(filters = {}) {
+    // Start with base query that applies the same filters as getUsers
+    let baseQuery = this.db(this.tableName);
+
+    // Apply the same filters as getUsers method
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      baseQuery = baseQuery.where((qb) => {
+        qb.whereRaw('email ILIKE ?', [searchTerm])
+          .orWhereRaw('display_name ILIKE ?', [searchTerm])
+          .orWhereRaw('username ILIKE ?', [searchTerm])
+          .orWhereRaw('phone ILIKE ?', [searchTerm]);
+      });
+    }
+
+    // Individual field filters
+    if (filters.email && !filters.search) {
+      baseQuery = baseQuery.whereRaw('email ILIKE ?', [`%${filters.email}%`]);
+    }
+    if (filters.username && !filters.search) {
+      baseQuery = baseQuery.whereRaw('username ILIKE ?', [`%${filters.username}%`]);
+    }
+    if (filters.displayName && !filters.search) {
+      baseQuery = baseQuery.whereRaw('display_name ILIKE ?', [`%${filters.displayName}%`]);
+    }
+    if (filters.phone && !filters.search) {
+      baseQuery = baseQuery.whereRaw('phone ILIKE ?', [`%${filters.phone}%`]);
+    }
+
+    // Date range filters
+    if (filters.createdAtFrom) {
+      const fromDate = new Date(filters.createdAtFrom);
+      // Set to start of day in UTC to ensure we capture all records from that day
+      fromDate.setUTCHours(0, 0, 0, 0);
+      baseQuery = baseQuery.where('created_at', '>=', fromDate);
+    }
+    if (filters.createdAtTo) {
+      const toDate = new Date(filters.createdAtTo);
+      // Set to end of day in UTC to ensure we capture all records from that day
+      toDate.setUTCHours(23, 59, 59, 999);
+      baseQuery = baseQuery.where('created_at', '<=', toDate);
+    }
+
+    if (filters.updatedAtFrom) {
+      const fromDate = new Date(filters.updatedAtFrom);
+      // Set to start of day in UTC to ensure we capture all records from that day
+      fromDate.setUTCHours(0, 0, 0, 0);
+      baseQuery = baseQuery.where('updated_at', '>=', fromDate);
+    }
+    if (filters.updatedAtTo) {
+      const toDate = new Date(filters.updatedAtTo);
+      // Set to end of day in UTC to ensure we capture all records from that day
+      toDate.setUTCHours(23, 59, 59, 999);
+      baseQuery = baseQuery.where('updated_at', '<=', toDate);
+    }
+
+    if (filters.lastLoginFrom) {
+      const fromDate = new Date(filters.lastLoginFrom);
+      // Set to start of day in UTC to ensure we capture all records from that day
+      fromDate.setUTCHours(0, 0, 0, 0);
+      baseQuery = baseQuery.where('last_login_at', '>=', fromDate);
+    }
+    if (filters.lastLoginTo) {
+      const toDate = new Date(filters.lastLoginTo);
+      // Set to end of day in UTC to ensure we capture all records from that day
+      toDate.setUTCHours(23, 59, 59, 999);
+      baseQuery = baseQuery.where('last_login_at', '<=', toDate);
+    }
+
+    // Advanced filters
+    if (filters.role) {
+      if (Array.isArray(filters.role)) {
+        baseQuery = baseQuery.whereIn('role', filters.role);
+      } else {
+        baseQuery = baseQuery.where('role', filters.role);
+      }
+    }
+    if (filters.isActive !== undefined) {
+      if (Array.isArray(filters.isActive)) {
+        baseQuery = baseQuery.whereIn('is_active', filters.isActive);
+      } else {
+        baseQuery = baseQuery.where('is_active', filters.isActive);
+      }
+    }
+
+    // Calculate stats based on filtered query
+    const [totalCount, adminCount, managerCount, staffCount] = await Promise.all([
+      baseQuery.clone().count('id as count').first(),
+      baseQuery.clone().where('role', 'admin').count('id as count').first(),
+      baseQuery.clone().where('role', 'manager').count('id as count').first(),
+      baseQuery.clone().where('role', 'staff').count('id as count').first(),
     ]);
 
     return {
-      totalUsers: parseInt(totalUsers?.count || 0),
+      total: parseInt(totalCount?.count || 0),
       admin: parseInt(adminCount?.count || 0),
       manager: parseInt(managerCount?.count || 0),
       staff: parseInt(staffCount?.count || 0),

@@ -11,18 +11,6 @@ import { STATUS_OPTIONS, PLAN_OPTIONS, TERM_OPTIONS } from "./license-table-colu
 export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
   return [
     {
-      id: "id",
-      accessorKey: "id",
-      header: "No.",
-      size: 70,
-      enableSorting: true,
-      enableHiding: false,
-      meta: {
-        label: "No.",
-        cell: { variant: "number" as const },
-      },
-    },
-    {
       id: "dba",
       accessorKey: "dba",
       header: "DBA",
@@ -48,8 +36,8 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
     },
     {
-      id: "startDay",
-      accessorKey: "startDay",
+      id: "startsAt",
+      accessorKey: "startsAt",
       header: "Start Date",
       size: 120,
       meta: {
@@ -62,6 +50,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "status",
       header: "Status",
       size: 120,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const status = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(status) : value === status;
+      },
       meta: {
         label: "Status",
         cell: {

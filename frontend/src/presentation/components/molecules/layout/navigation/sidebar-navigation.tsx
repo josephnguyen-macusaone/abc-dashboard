@@ -64,7 +64,6 @@ export function SidebarNavigation({
             <NavigationButton
               key={item.name}
               name={item.name}
-              href={item.href}
               icon={Icon}
               isActive={isActive}
               onClick={() => onNavigate(item.href)}
