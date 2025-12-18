@@ -8,9 +8,11 @@ import type { LicenseRecord } from '@/shared/types';
 function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
   return {
     id: apiLicense.id,
+    key: apiLicense.key,
+    product: apiLicense.product,
     dba: apiLicense.dba || '',
     zip: apiLicense.zip || '',
-    startsAt: apiLicense.startDay || apiLicense.startsAt || '', // Handle both formats
+    startsAt: apiLicense.startsAt || apiLicense.startDay || '', // Handle both formats
     status: apiLicense.status || 'pending',
     plan: apiLicense.plan || 'Basic',
     term: apiLicense.term || 'monthly',
@@ -20,6 +22,8 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
     smsPurchased: apiLicense.smsPurchased || 0,
     smsSent: apiLicense.smsSent || 0,
     smsBalance: apiLicense.smsBalance || (apiLicense.smsPurchased || 0) - (apiLicense.smsSent || 0),
+    seatsTotal: apiLicense.seatsTotal,
+    seatsUsed: apiLicense.seatsUsed,
     agents: apiLicense.agents || 0,
     agentsName: apiLicense.agentsName || [],
     agentsCost: apiLicense.agentsCost || 0,
@@ -40,61 +44,73 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
   };
 
   // Only include fields that have defined, non-null, non-empty values
+  if (shouldInclude((license as any).key)) {
+    apiLicense.key = (license as any).key;
+  }
+
+  if (shouldInclude((license as any).product)) {
+    apiLicense.product = (license as any).product;
+  }
+
   if (shouldInclude(license.dba)) {
     apiLicense.dba = license.dba;
   }
-  
+
   if (shouldInclude(license.zip)) {
     apiLicense.zip = license.zip;
   }
-  
+
   if (shouldInclude(license.startsAt)) {
     // Convert to date-only format if it's a full timestamp
     const dateStr = String(license.startsAt);
-    apiLicense.startDay = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    apiLicense.startsAt = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
   }
-  
+
   if (shouldInclude(license.status)) {
     apiLicense.status = license.status;
   }
-  
+
   if (shouldInclude(license.plan)) {
     apiLicense.plan = license.plan;
   }
-  
+
   if (shouldInclude(license.term)) {
     apiLicense.term = license.term;
   }
-  
+
   // Only include cancelDate if it has a real value (not null or empty)
   if (shouldInclude(license.cancelDate)) {
     apiLicense.cancelDate = license.cancelDate;
   }
-  
+
   if (license.lastPayment !== undefined && license.lastPayment !== null) {
     apiLicense.lastPayment = license.lastPayment;
   }
-  
+
   if (license.smsPurchased !== undefined && license.smsPurchased !== null) {
     apiLicense.smsPurchased = license.smsPurchased;
   }
-  
+
   if (license.smsSent !== undefined && license.smsSent !== null) {
     apiLicense.smsSent = license.smsSent;
   }
-  
+
   if (license.agents !== undefined && license.agents !== null) {
     apiLicense.agents = license.agents;
   }
-  
+
   if (license.agentsName !== undefined && license.agentsName !== null) {
     apiLicense.agentsName = license.agentsName;
   }
-  
+
   if (license.agentsCost !== undefined && license.agentsCost !== null) {
     apiLicense.agentsCost = license.agentsCost;
   }
-  
+
+  if (license.seatsTotal !== undefined && license.seatsTotal !== null) {
+    apiLicense.seatsTotal = license.seatsTotal;
+  }
+
   if (shouldInclude(license.notes)) {
     apiLicense.notes = license.notes;
   }
@@ -227,7 +243,7 @@ export class LicenseApiService {
       if (!apiData.dba || apiData.dba.trim() === '') {
         throw new Error('DBA is required and cannot be empty');
       }
-      if (!apiData.startDay || apiData.startDay.trim() === '') {
+      if (!apiData.startsAt || apiData.startsAt.trim() === '') {
         throw new Error('Start date is required and cannot be empty');
       }
 
@@ -268,59 +284,61 @@ export class LicenseApiService {
   }
 
   /**
+   * Bulk create licenses
+   */
+  static async bulkCreateLicenses(licenses: Array<Partial<LicenseRecord>>): Promise<LicenseRecord[]> {
+    try {
+      const validLicenses = licenses.filter(license => {
+        if (!license.dba || license.dba.trim() === '') {
+          return false;
+        }
+        return true;
+      });
+
+      if (validLicenses.length === 0) {
+        throw new Error('No valid licenses to create');
+      }
+
+      const apiLicenses = validLicenses.map(license => transformRecordToApiLicense(license));
+
+      const response = await httpClient.post<any>('/licenses/bulk', { licenses: apiLicenses });
+
+      const createdLicenses = response.data?.licenses || [];
+      return createdLicenses.map(transformApiLicenseToRecord);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Bulk update licenses
    */
   static async bulkUpdateLicenses(updates: Array<Partial<LicenseRecord> & { id: number | string }>): Promise<LicenseRecord[]> {
     try {
-      console.log('[LicenseAPI] === Bulk Update Debug ===');
-      console.log('[LicenseAPI] Received', updates.length, 'updates');
-
       // Transform each update to API format
-      const apiUpdates = updates.map((update, index) => {
+      const apiUpdates = updates.map((update) => {
         const apiData = transformRecordToApiLicense(update);
 
         const result = {
           id: String(update.id),
-          ...apiData
+          updates: apiData
         };
-
-        // Log first few updates to see what's being transformed
-        if (index < 3) {
-          console.log(`[LicenseAPI] Update ${index + 1}:`, {
-            originalFieldCount: Object.keys(update).length,
-            transformedFieldCount: Object.keys(apiData).length,
-            hasIdOnly: Object.keys(result).length === 1,
-            fields: Object.keys(result),
-            sample: result
-          });
-        }
 
         return result;
       });
 
       // Filter out updates that only have an id (no actual changes)
-      const validUpdates = apiUpdates.filter(update => Object.keys(update).length > 1);
-      const filteredOutCount = apiUpdates.length - validUpdates.length;
-
-      console.log('[LicenseAPI] Filtered:', filteredOutCount, 'updates with only ID');
-      console.log('[LicenseAPI] Sending:', validUpdates.length, 'valid updates');
-
-      if (validUpdates.length > 0 && validUpdates.length <= 3) {
-        console.log('[LicenseAPI] Full payload:', JSON.stringify({ updates: validUpdates }, null, 2));
-      }
+      const validUpdates = apiUpdates.filter(update => Object.keys(update.updates).length > 0);
 
       if (validUpdates.length === 0) {
-        console.warn('[LicenseAPI] All updates filtered out - no fields to update!');
         return [];
       }
 
       const response = await httpClient.patch<any>('/licenses/bulk', { updates: validUpdates });
       const apiLicenses = response.data?.licenses || response.data || [];
 
-      console.log('[LicenseAPI] Success! Updated', apiLicenses.length, 'licenses');
       return apiLicenses.map(transformApiLicenseToRecord);
     } catch (error) {
-      console.error('[LicenseAPI] Bulk update failed:', error);
       throw error;
     }
   }
@@ -347,6 +365,7 @@ export const licenseApi = {
   createLicense: LicenseApiService.createLicense,
   updateLicense: LicenseApiService.updateLicense,
   deleteLicense: LicenseApiService.deleteLicense,
+  bulkCreateLicenses: LicenseApiService.bulkCreateLicenses,
   bulkUpdateLicenses: LicenseApiService.bulkUpdateLicenses,
   bulkDeleteLicenses: LicenseApiService.bulkDeleteLicenses,
   getDashboardMetrics: LicenseApiService.getDashboardMetrics,

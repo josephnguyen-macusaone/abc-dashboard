@@ -174,11 +174,10 @@ export function LicensesDataGrid({
     try {
       await onSave(data);
       setHasChanges(false);
-      toast.success("Changes saved successfully");
+      // Toast messages are handled by the parent component (onSave callback)
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save changes",
-      );
+      // Error toast is handled by the parent component (onSave callback)
+      throw error; // Re-throw to let parent handle the error
     } finally {
       setIsSaving(false);
     }

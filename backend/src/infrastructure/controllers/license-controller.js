@@ -82,7 +82,7 @@ export class LicenseController {
   bulkUpdate = async (req, res) => {
     try {
       LicenseValidator.validateBulkUpdateInput(req.body);
-      const updated = await this.repository.bulkUpdate(req.body.updates);
+      const updated = await this.licenseService.bulkUpdateLicenses(req.body.updates);
 
       return res.success(
         { licenses: updated, updated: updated.length },
@@ -99,7 +99,16 @@ export class LicenseController {
   bulkCreate = async (req, res) => {
     try {
       LicenseValidator.validateBulkCreateInput(req.body);
-      const created = await this.repository.bulkCreate(req.body.licenses);
+
+      // Add audit fields to each license
+      const licensesWithAudit = req.body.licenses.map((license) => ({
+        ...license,
+        createdBy: req.user?.id,
+        updatedBy: req.user?.id,
+        seatsUsed: license.seatsUsed || 0, // Ensure seatsUsed is set
+      }));
+
+      const created = await this.licenseService.bulkCreateLicenses(licensesWithAudit);
 
       return res.created(
         { licenses: created, created: created.length },
@@ -161,6 +170,7 @@ export class LicenseController {
       if (!removed) {
         return sendErrorResponse(res, 'NOT_FOUND');
       }
+
       return res.success(null, 'License deleted successfully');
     } catch {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');

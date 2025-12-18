@@ -21,9 +21,7 @@ export function LicenseManagementPage() {
   const isLoading = useLicenseStore(selectLicenseLoading);
   const licensePagination = useLicenseStore(selectLicensePagination);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
-  const createLicense = useLicenseStore(state => state.createLicense);
-  const updateLicense = useLicenseStore(state => state.updateLicense);
-  const deleteLicense = useLicenseStore(state => state.deleteLicense);
+  const bulkCreateLicenses = useLicenseStore(state => state.bulkCreateLicenses);
   const bulkUpdateLicenses = useLicenseStore(state => state.bulkUpdateLicenses);
   const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
 
@@ -46,6 +44,13 @@ export function LicenseManagementPage() {
     loadLicenses({ page: 1, limit: 20 });
   }, [loadLicenses]);
 
+  // Generate a unique license key
+  const generateLicenseKey = useCallback((): string => {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `LIC-${timestamp}-${random}`;
+  }, []);
+
   const onSave = useCallback(
     async (data: LicenseRecord[]) => {
       try {
@@ -53,21 +58,22 @@ export function LicenseManagementPage() {
         const newLicenses = data.filter(license => typeof license.id === 'string' && license.id.startsWith('temp-'));
         const existingLicenses = data.filter(license => !newLicenses.includes(license));
 
-        // Create new licenses first
-        const createdLicenses: LicenseRecord[] = [];
-        for (const license of newLicenses) {
-          try {
-            // Remove temp ID and create the license
-            const { id, ...licenseData } = license;
-            const created = await createLicense({
-              ...licenseData,
-              startDay: licenseData.startsAt, // Map startsAt to startDay for API
-            });
-            createdLicenses.push(created);
-          } catch (error) {
-            console.error('Failed to create license:', error);
-            throw new Error(`Failed to create license for DBA: ${license.dba}`);
-          }
+        // Prepare new licenses for bulk creation
+        const licensesToCreate = newLicenses.map(license => {
+          const licenseKey = generateLicenseKey();
+          const { id, ...licenseData } = license;
+          return {
+            ...licenseData,
+            key: licenseKey, // Add the required license key
+            product: 'ABC Business Suite', // Add the required product field
+            seatsTotal: 1, // Add the required seats total (default to 1)
+          };
+        });
+
+        // Bulk create new licenses
+        let createdLicenses: LicenseRecord[] = [];
+        if (licensesToCreate.length > 0) {
+          createdLicenses = await bulkCreateLicenses(licensesToCreate);
         }
 
         // Update existing licenses
@@ -78,15 +84,12 @@ export function LicenseManagementPage() {
           await bulkUpdateLicenses(updates);
         }
 
-        toast.success(`${createdLicenses.length + existingLicenses.length} licenses saved`);
-        // Reload licenses to get updated data
         await loadLicenses();
       } catch (error) {
-        console.error('Save error:', error);
         toast.error(error instanceof Error ? error.message : "Failed to save licenses");
       }
     },
-    [bulkUpdateLicenses, createLicense, loadLicenses],
+    [bulkCreateLicenses, bulkUpdateLicenses, loadLicenses, generateLicenseKey],
   );
 
   const onAddRow = useCallback(async (): Promise<LicenseRecord> => {

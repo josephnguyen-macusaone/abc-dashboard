@@ -121,6 +121,24 @@ export class LicenseService extends ILicenseService {
   }
 
   /**
+   * Bulk create licenses
+   * @param {Array} licensesData - Array of license data
+   * @returns {Promise<Array>} Created licenses
+   */
+  async bulkCreateLicenses(licensesData) {
+    return await this.licenseRepository.bulkCreate(licensesData);
+  }
+
+  /**
+   * Bulk update licenses
+   * @param {Array} updates - Array of license updates
+   * @returns {Promise<Array>} Updated licenses
+   */
+  async bulkUpdateLicenses(updates) {
+    return await this.licenseRepository.bulkUpdate(updates);
+  }
+
+  /**
    * Get audit events for a license
    * @param {string} licenseId - License ID
    * @param {Object} options - Query options

@@ -23,7 +23,14 @@ export const validateRequest = (schema) => (req, res, next) => {
       message: detail.message,
     }));
 
-    return sendErrorResponse(res, 'VALIDATION_FAILED', { details: errors });
+    console.error('[VALIDATION] Validation failed:', {
+      errors,
+      body: req.body,
+      url: req.url,
+      method: req.method,
+    });
+
+    return sendErrorResponse(res, 'VALIDATION_FAILED', {}, { details: errors });
   }
 
   // Replace req.body with validated and sanitized data

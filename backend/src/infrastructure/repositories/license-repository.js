@@ -693,16 +693,21 @@ export class LicenseRepository extends ILicenseRepository {
     // Use transaction for bulk updates
     await this.db.transaction(async (trx) => {
       for (const { id, updates: data } of updates) {
-        const dbUpdates = this._toLicenseDbFormat(data);
-        dbUpdates.updated_at = new Date();
+        try {
+          const dbUpdates = this._toLicenseDbFormat(data);
+          dbUpdates.updated_at = new Date();
 
-        const [updatedRow] = await trx(this.licensesTable)
-          .where('id', id)
-          .update(dbUpdates)
-          .returning('*');
+          const [updatedRow] = await trx(this.licensesTable)
+            .where('id', id)
+            .update(dbUpdates)
+            .returning('*');
 
-        if (updatedRow) {
-          updatedLicenses.push(this._toLicenseEntity(updatedRow));
+          if (updatedRow) {
+            updatedLicenses.push(this._toLicenseEntity(updatedRow));
+          } else {
+          }
+        } catch (updateError) {
+          throw updateError;
         }
       }
     });

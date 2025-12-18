@@ -35,18 +35,16 @@ export const licenseSchemas = {
       .description('General search term to search DBA field'),
 
     status: Joi.string()
-      .valid('active', 'cancel', 'pending', 'expired')
+      .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
       .messages({
-        'any.only': 'Status must be one of: active, cancel, pending, expired',
+        'any.only':
+          'Status must be one of: draft, active, expiring, expired, revoked, cancel, pending',
       }),
 
-    dba: Joi.string()
-      .min(1)
-      .max(255)
-      .messages({
-        'string.min': 'DBA search must contain at least 1 character',
-        'string.max': 'DBA search cannot exceed 255 characters',
-      }),
+    dba: Joi.string().min(1).max(255).messages({
+      'string.min': 'DBA search must contain at least 1 character',
+      'string.max': 'DBA search cannot exceed 255 characters',
+    }),
 
     sortBy: Joi.string()
       .valid(
@@ -69,7 +67,8 @@ export const licenseSchemas = {
       )
       .default('createdAt')
       .messages({
-        'any.only': 'sortBy must be one of: id, dba, zip, startDay, status, plan, term, lastPayment, lastActive, smsPurchased, smsSent, smsBalance, agents, agentsCost, createdAt, updatedAt',
+        'any.only':
+          'sortBy must be one of: id, dba, zip, startDay, status, plan, term, lastPayment, lastActive, smsPurchased, smsSent, smsBalance, agents, agentsCost, createdAt, updatedAt',
       }),
 
     sortOrder: Joi.string().valid('asc', 'desc').default('desc').messages({
@@ -81,6 +80,18 @@ export const licenseSchemas = {
    * Create license schema
    */
   createLicense: Joi.object({
+    key: Joi.string().trim().min(1).max(255).required().messages({
+      'string.min': 'License key cannot be empty',
+      'string.max': 'License key cannot exceed 255 characters',
+      'any.required': 'License key is required',
+      'string.empty': 'License key cannot be empty',
+    }),
+
+    product: Joi.string().trim().min(1).max(100).default('ABC Business Suite').messages({
+      'string.min': 'Product cannot be empty',
+      'string.max': 'Product cannot exceed 100 characters',
+    }),
+
     dba: Joi.string().trim().min(1).max(255).required().messages({
       'string.min': 'DBA cannot be empty',
       'string.max': 'DBA cannot exceed 255 characters',
@@ -92,9 +103,9 @@ export const licenseSchemas = {
       'string.max': 'ZIP code cannot exceed 10 characters',
     }),
 
-    startDay: Joi.string().required().messages({
-      'any.required': 'Start day is required',
-      'string.empty': 'Start day cannot be empty',
+    startsAt: Joi.string().required().messages({
+      'any.required': 'startsAt is required',
+      'string.empty': 'startsAt cannot be empty',
     }),
 
     status: Joi.string()
@@ -104,17 +115,13 @@ export const licenseSchemas = {
         'any.only': 'Status must be one of: active, cancel, pending, expired',
       }),
 
-    plan: Joi.string()
-      .valid('Basic', 'Premium', 'Enterprise')
-      .messages({
-        'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
-      }),
+    plan: Joi.string().valid('Basic', 'Premium', 'Enterprise').messages({
+      'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
+    }),
 
-    term: Joi.string()
-      .valid('monthly', 'yearly')
-      .messages({
-        'any.only': 'Term must be one of: monthly, yearly',
-      }),
+    term: Joi.string().valid('monthly', 'yearly').messages({
+      'any.only': 'Term must be one of: monthly, yearly',
+    }),
 
     cancelDate: Joi.when('status', {
       is: 'cancel',
@@ -170,27 +177,24 @@ export const licenseSchemas = {
       'string.max': 'ZIP code cannot exceed 10 characters',
     }),
 
-    startDay: Joi.string().messages({
-      'string.empty': 'Start day cannot be empty',
+    startsAt: Joi.string().messages({
+      'string.empty': 'Start date cannot be empty',
     }),
 
     status: Joi.string()
-      .valid('active', 'cancel', 'pending', 'expired')
+      .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
       .messages({
-        'any.only': 'Status must be one of: active, cancel, pending, expired',
+        'any.only':
+          'Status must be one of: draft, active, expiring, expired, revoked, cancel, pending',
       }),
 
-    plan: Joi.string()
-      .valid('Basic', 'Premium', 'Enterprise')
-      .messages({
-        'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
-      }),
+    plan: Joi.string().valid('Basic', 'Premium', 'Enterprise').messages({
+      'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
+    }),
 
-    term: Joi.string()
-      .valid('monthly', 'yearly')
-      .messages({
-        'any.only': 'Term must be one of: monthly, yearly',
-      }),
+    term: Joi.string().valid('monthly', 'yearly').messages({
+      'any.only': 'Term must be one of: monthly, yearly',
+    }),
 
     cancelDate: Joi.when('status', {
       is: 'cancel',
@@ -241,71 +245,99 @@ export const licenseSchemas = {
    * Bulk update licenses schema
    */
   bulkUpdateLicenses: Joi.object({
-    updates: Joi.array().items(
-      Joi.object({
-        id: Joi.string().required().messages({
-          'any.required': 'License ID is required',
-          'string.empty': 'License ID cannot be empty',
-        }),
-        dba: Joi.string().trim().min(1).max(255).messages({
-          'string.min': 'DBA cannot be empty',
-          'string.max': 'DBA cannot exceed 255 characters',
-        }),
-        zip: Joi.string().trim().max(10).messages({
-          'string.max': 'ZIP code cannot exceed 10 characters',
-        }),
-        startDay: Joi.string(),
-        status: Joi.string().valid('active', 'cancel', 'pending', 'expired'),
-        plan: Joi.string().valid('Basic', 'Premium', 'Enterprise'),
-        term: Joi.string().valid('monthly', 'yearly'),
-        cancelDate: Joi.when('status', {
-          is: 'cancel',
-          then: Joi.string().required(),
-          otherwise: Joi.string(),
-        }),
-        lastPayment: Joi.number().min(0),
-        smsPurchased: Joi.number().min(0).integer(),
-        smsSent: Joi.number().min(0).integer(),
-        agents: Joi.number().min(0).integer(),
-        agentsCost: Joi.number().min(0),
-        agentsName: Joi.array().items(Joi.string()),
-      }).min(2) // Must have id + at least one update field
-    ).min(1).required().messages({
-      'array.min': 'At least one license update must be provided',
-      'any.required': 'Updates array is required',
-      'array.base': 'Updates must be an array',
-    }),
+    updates: Joi.array()
+      .items(
+        Joi.object({
+          id: Joi.string().required().messages({
+            'any.required': 'License ID is required',
+            'string.empty': 'License ID cannot be empty',
+          }),
+          updates: Joi.object({
+            dba: Joi.string().trim().min(1).max(255).messages({
+              'string.min': 'DBA cannot be empty',
+              'string.max': 'DBA cannot exceed 255 characters',
+            }),
+            zip: Joi.string().trim().max(10).messages({
+              'string.max': 'ZIP code cannot exceed 10 characters',
+            }),
+            startsAt: Joi.string(),
+            status: Joi.string().valid(
+              'draft',
+              'active',
+              'expiring',
+              'expired',
+              'revoked',
+              'cancel',
+              'pending'
+            ),
+            plan: Joi.string().valid('Basic', 'Premium', 'Enterprise'),
+            term: Joi.string().valid('monthly', 'yearly'),
+            seatsTotal: Joi.number().min(1).integer(),
+            cancelDate: Joi.when('status', {
+              is: 'cancel',
+              then: Joi.string().required(),
+              otherwise: Joi.string(),
+            }),
+            lastPayment: Joi.number().min(0),
+            smsPurchased: Joi.number().min(0).integer(),
+            smsSent: Joi.number().min(0).integer(),
+            agents: Joi.number().min(0).integer(),
+            agentsCost: Joi.number().min(0),
+            agentsName: Joi.array().items(Joi.string()),
+          })
+            .min(1)
+            .messages({
+              'object.min': 'At least one field must be provided for update',
+            }),
+        })
+      )
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one license update must be provided',
+        'any.required': 'Updates array is required',
+        'array.base': 'Updates must be an array',
+      }),
   }),
 
   /**
    * Bulk create licenses schema
    */
   bulkCreateLicenses: Joi.object({
-    licenses: Joi.array().items(
-      Joi.object({
-        dba: Joi.string().trim().min(1).max(255).required(),
-        zip: Joi.string().trim().max(10),
-        startDay: Joi.string().required(),
-        status: Joi.string().valid('active', 'cancel', 'pending', 'expired').default('pending'),
-        plan: Joi.string().valid('Basic', 'Premium', 'Enterprise'),
-        term: Joi.string().valid('monthly', 'yearly'),
-        cancelDate: Joi.when('status', {
-          is: 'cancel',
-          then: Joi.string().required(),
-          otherwise: Joi.string(),
-        }),
-        lastPayment: Joi.number().min(0),
-        smsPurchased: Joi.number().min(0).integer(),
-        smsSent: Joi.number().min(0).integer(),
-        agents: Joi.number().min(0).integer(),
-        agentsCost: Joi.number().min(0),
-        agentsName: Joi.array().items(Joi.string()),
-      })
-    ).min(1).required().messages({
-      'array.min': 'At least one license must be provided',
-      'any.required': 'Licenses array is required',
-      'array.base': 'Licenses must be an array',
-    }),
+    licenses: Joi.array()
+      .items(
+        Joi.object({
+          key: Joi.string().trim().min(1).max(255).required(),
+          product: Joi.string().trim().min(1).max(100).default('ABC Business Suite'),
+          dba: Joi.string().trim().min(1).max(255).required(),
+          zip: Joi.string().trim().max(10),
+          startsAt: Joi.string().required(),
+          status: Joi.string()
+            .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
+            .default('pending'),
+          plan: Joi.string().valid('Basic', 'Premium', 'Enterprise'),
+          term: Joi.string().valid('monthly', 'yearly'),
+          seatsTotal: Joi.number().min(1).integer().default(1),
+          cancelDate: Joi.when('status', {
+            is: 'cancel',
+            then: Joi.string().required(),
+            otherwise: Joi.string(),
+          }),
+          lastPayment: Joi.number().min(0),
+          smsPurchased: Joi.number().min(0).integer(),
+          smsSent: Joi.number().min(0).integer(),
+          agents: Joi.number().min(0).integer(),
+          agentsCost: Joi.number().min(0),
+          agentsName: Joi.array().items(Joi.string()),
+        })
+      )
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one license must be provided',
+        'any.required': 'Licenses array is required',
+        'array.base': 'Licenses must be an array',
+      }),
   }),
 
   /**

@@ -45,7 +45,21 @@ const customFormat = winston.format.combine(
 
     // Add metadata in dark gray color if present
     if (Object.keys(meta).length > 0) {
-      const metaStr = JSON.stringify(meta);
+      // Only show important metadata, not full JSON objects
+      const importantKeys = ['error', 'userId', 'correlationId', 'duration', 'statusCode'];
+      const importantMeta = {};
+      for (const key of importantKeys) {
+        if (meta[key] !== undefined) {
+          importantMeta[key] = meta[key];
+        }
+      }
+
+      const metaStr =
+        Object.keys(importantMeta).length > 0
+          ? Object.entries(importantMeta)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(', ')
+          : '';
       logMessage += ` \x1b[37m${metaStr}\x1b[39m`;
     }
 
@@ -76,7 +90,21 @@ const consoleFormat = winston.format.combine(
 
     // Add metadata in dark gray color if present
     if (Object.keys(meta).length > 0) {
-      const metaStr = JSON.stringify(meta);
+      // Only show important metadata, not full JSON objects
+      const importantKeys = ['error', 'userId', 'correlationId', 'duration', 'statusCode'];
+      const importantMeta = {};
+      for (const key of importantKeys) {
+        if (meta[key] !== undefined) {
+          importantMeta[key] = meta[key];
+        }
+      }
+
+      const metaStr =
+        Object.keys(importantMeta).length > 0
+          ? Object.entries(importantMeta)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(', ')
+          : '';
       logMessage += ` \x1b[37m${metaStr}\x1b[39m`;
     }
 

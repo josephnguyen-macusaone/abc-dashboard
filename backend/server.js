@@ -21,6 +21,8 @@ import {
 } from './src/infrastructure/api/v1/middleware/security.middleware.js';
 import {
   cacheTrackingMiddleware,
+  cacheInvalidationMiddleware,
+  responseCachingMiddleware,
   userActivityMiddleware,
   securityMetricsMiddleware,
   performanceMiddleware,
@@ -167,11 +169,17 @@ app.use(requestLogger);
 // API monitoring middleware
 app.use(monitorMiddleware);
 
+// Response caching middleware (must be before auth middleware)
+app.use(responseCachingMiddleware);
+
 // Metrics collection middleware
 app.use(cacheTrackingMiddleware);
 app.use(userActivityMiddleware);
 app.use(securityMetricsMiddleware);
 app.use(performanceMiddleware);
+
+// Cache invalidation middleware (applied to all API routes)
+app.use('/api', cacheInvalidationMiddleware);
 
 // Response helpers middleware (adds res.paginated, res.success, etc.)
 app.use(responseHelpersMiddleware);
@@ -238,8 +246,26 @@ app.get('/favicon.ico', (_req, res) => {
 });
 
 // Root dashboard
-// Serve dashboard HTML file
+// Serve dashboard HTML file with appropriate CSP for dashboard functionality
 app.get('/', (req, res) => {
+  // CSP that allows dashboard functionality while maintaining security
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'", // Allow inline scripts for dashboard
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Allow inline styles for progress bars
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https:", // Allow data URIs for small images
+      "connect-src 'self' http://localhost:5000 https://portal.abcsalon.us", // Allow API calls
+      "frame-src 'none'",
+      "object-src 'none'",
+    ].join('; ')
+  );
+  // Prevent browser caching to ensure updates are loaded immediately
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(process.cwd(), 'public', 'dashboard.html'));
 });
 

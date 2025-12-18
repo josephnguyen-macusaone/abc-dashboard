@@ -4,6 +4,7 @@ import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/shared/types';
 import { licenseApi } from '@/infrastructure/api/licenses';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
+import { toast } from 'sonner';
 
 export interface LicenseFilters {
   search?: string;
@@ -31,9 +32,11 @@ export interface LicenseListResponse {
 }
 
 export interface CreateLicenseRequest {
+  key: string;
+  product: string;
   dba: string;
   zip?: string;
-  startDay: string;
+  startsAt: string;
   status?: LicenseStatus;
   plan?: string;
   term?: LicenseTerm;
@@ -80,6 +83,7 @@ interface LicenseState {
   createLicense: (licenseData: CreateLicenseRequest) => Promise<LicenseRecord>;
   updateLicense: (id: number | string, licenseData: UpdateLicenseRequest) => Promise<LicenseRecord>;
   deleteLicense: (id: number | string) => Promise<void>;
+  bulkCreateLicenses: (licenses: Array<Partial<LicenseRecord>>) => Promise<LicenseRecord[]>;
   bulkUpdateLicenses: (updates: Array<Partial<LicenseRecord> & { id: number | string }>) => Promise<LicenseRecord[]>;
   bulkDeleteLicenses: (ids: (number | string)[]) => Promise<void>;
   setFilters: (filters: LicenseFilters) => void;
@@ -166,15 +170,39 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
+        bulkCreateLicenses: async (licenses: Array<Partial<LicenseRecord>>) => {
+          try {
+            set({ loading: true, error: null });
+
+            const createdLicenses = await licenseApi.bulkCreateLicenses(licenses);
+
+            // Add the new licenses to the list
+            const currentLicenses = get().licenses;
+            set({
+              licenses: [...createdLicenses, ...currentLicenses],
+              loading: false
+            });
+
+            toast.success(`${createdLicenses.length} licenses created successfully`);
+            return createdLicenses;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to bulk create licenses';
+            set({ error: errorMessage, loading: false });
+            throw error;
+          }
+        },
+
         createLicense: async (licenseData: CreateLicenseRequest) => {
           try {
             set({ loading: true, error: null });
 
             // Transform CreateLicenseRequest to Partial<LicenseRecord>
             const licenseRecord: Partial<LicenseRecord> = {
+              key: licenseData.key,
+              product: licenseData.product,
               dba: licenseData.dba,
               zip: licenseData.zip,
-              startsAt: licenseData.startDay, // Transform startDay to startsAt
+              startsAt: licenseData.startsAt, // Transform startsAt to startsAt
               status: licenseData.status,
               plan: licenseData.plan,
               term: licenseData.term,
@@ -188,16 +216,17 @@ export const useLicenseStore = create<LicenseState>()(
               notes: licenseData.notes,
             };
 
-            const response = await licenseApi.createLicense(licenseRecord);
+            const createdLicense = await licenseApi.createLicense(licenseRecord);
 
             // Add the new license to the list
             const currentLicenses = get().licenses;
             set({
-              licenses: [response, ...currentLicenses],
+              licenses: [createdLicense, ...currentLicenses],
               loading: false
             });
 
-            return response;
+            toast.success('License created successfully');
+            return createdLicense;
           } catch (error) {
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
@@ -228,21 +257,22 @@ export const useLicenseStore = create<LicenseState>()(
               notes: licenseData.notes,
             };
 
-            const response = await licenseApi.updateLicense(id, licenseRecord);
+            const updatedLicense = await licenseApi.updateLicense(id, licenseRecord);
 
             // Update the license in the list
             const currentLicenses = get().licenses;
             const updatedLicenses = currentLicenses.map(license =>
-              license.id === id ? response : license
+              license.id === id ? updatedLicense : license
             );
 
             set({
               licenses: updatedLicenses,
-              currentLicense: response,
+              currentLicense: updatedLicense,
               loading: false
             });
 
-            return response;
+            toast.success('License updated successfully');
+            return updatedLicense;
           } catch (error) {
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
@@ -293,6 +323,7 @@ export const useLicenseStore = create<LicenseState>()(
               loading: false
             });
 
+            toast.success(`Changes saved successfully`);
             return response;
           } catch (error) {
             const errorMessage = getErrorMessage(error);

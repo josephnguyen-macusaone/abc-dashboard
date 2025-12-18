@@ -2,7 +2,7 @@ import os from 'os';
 import fs from 'fs';
 import logger from './logger.js';
 import { cache } from './redis.js';
-import { getDB } from './database.js';
+import { getDB, getDatabaseMetrics } from './database.js';
 
 class SystemMetrics {
   constructor() {
@@ -97,6 +97,9 @@ class DatabaseMetrics {
   // PostgreSQL connection metrics
   async getPostgreSQLMetrics() {
     try {
+      // Get pool and performance metrics
+      const poolMetrics = await getDatabaseMetrics();
+
       let db;
       try {
         db = getDB();
@@ -104,6 +107,8 @@ class DatabaseMetrics {
         return {
           connected: false,
           error: 'Database not initialized',
+          pool: poolMetrics.pool,
+          performance: poolMetrics.performance,
         };
       }
 
@@ -171,6 +176,8 @@ class DatabaseMetrics {
         user: dbInfo.rows[0]?.current_user,
         version:
           dbInfo.rows[0]?.version?.split(' ')[0] + ' ' + dbInfo.rows[0]?.version?.split(' ')[1],
+        pool: poolMetrics.pool,
+        performance: poolMetrics.performance,
         databaseStats: {
           tables: parseInt(tableCount.rows[0]?.count || 0),
           size: dbSize.rows[0]?.size,
@@ -223,12 +230,8 @@ class CacheMetrics {
     const totalRequests = this.cacheHits + this.cacheMisses;
     const hitRate = totalRequests > 0 ? ((this.cacheHits / totalRequests) * 100).toFixed(2) : 0;
 
-    let cacheStats = null;
-    try {
-      cacheStats = await cache.stats();
-    } catch (error) {
-      logger.warn('Could not get cache stats:', error.message);
-    }
+    // Get cache stats (cache.stats() now handles its own error cases)
+    const cacheStats = await cache.stats();
 
     return {
       hits: this.cacheHits,

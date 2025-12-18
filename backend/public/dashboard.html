@@ -13,7 +13,7 @@
           <img src="/assets/logo_dark.svg" alt="ABC Dashboard Backend" class="logo" />
           <p>Modern REST API with Authentication</p>
           <div class="health-score" id="health-score">
-            <span class="score-value">100</span>
+            <span class="score-value">Loading...</span>
             <span class="score-label">Health Score</span>
           </div>
         </div>
@@ -29,7 +29,7 @@
             <h3>System Status</h3>
             <div class="metric">
               <span class="metric-label">Status</span>
-              <span class="status healthy" id="system-status">OK</span>
+              <span class="status healthy" id="system-status">Loading...</span>
             </div>
             <div class="metric">
               <span class="metric-label">Environment</span>
@@ -37,7 +37,7 @@
             </div>
             <div class="metric">
               <span class="metric-label">Uptime</span>
-              <span class="metric-value" id="system-uptime">0h 0m</span>
+              <span class="metric-value" id="system-uptime">Loading...</span>
             </div>
             <div class="metric">
               <span class="metric-label">Node Version</span>
@@ -49,19 +49,19 @@
             <h3>Performance</h3>
             <div class="metric">
               <span class="metric-label">Total Requests</span>
-              <span class="metric-value" id="performance-requests">0</span>
+              <span class="metric-value" id="performance-requests">Loading...</span>
             </div>
             <div class="metric">
               <span class="metric-label">Avg Response</span>
-              <span class="metric-value" id="performance-response-time">0ms</span>
+              <span class="metric-value" id="performance-response-time">Loading...</span>
             </div>
             <div class="metric">
               <span class="metric-label">P95 Response</span>
-              <span class="metric-value" id="performance-p95">0ms</span>
+              <span class="metric-value" id="performance-p95">Loading...</span>
             </div>
             <div class="metric">
               <span class="metric-label">Error Rate</span>
-              <span class="metric-value" id="performance-error-rate">0%</span>
+              <span class="metric-value" id="performance-error-rate">Loading...</span>
             </div>
           </div>
 
@@ -151,18 +151,22 @@
           </div>
 
           <div class="card">
-            <h3>Cache</h3>
+            <h3>Cache Performance</h3>
+            <div class="metric">
+              <span class="metric-label">Status</span>
+              <span class="status healthy" id="cache-status">Optimized</span>
+            </div>
             <div class="metric">
               <span class="metric-label">Type</span>
-              <span class="metric-value" id="cache-type">in-memory</span>
+              <span class="metric-value" id="cache-type">optimized-in-memory</span>
             </div>
             <div class="metric">
               <span class="metric-label">Hit Rate</span>
               <span class="metric-value" id="cache-hit-rate">0%</span>
             </div>
             <div class="metric">
-              <span class="metric-label">Connected</span>
-              <span class="status" id="cache-connected">No</span>
+              <span class="metric-label">Memory Usage</span>
+              <span class="metric-value" id="cache-memory">0 MB</span>
             </div>
           </div>
 
@@ -192,7 +196,7 @@
     <div class="bottom-section">
       <div class="container">
         <div class="footer">
-          <p>Built with Express.js, MongoDB, and modern JavaScript</p>
+          <p>Built with Express.js, PostgreSQL, and optimized caching</p>
         </div>
       </div>
     </div>
@@ -200,7 +204,7 @@
     <script>
       let refreshInterval = null;
 
-      // Fetch health data and update the dashboard
+      // Fetch health data and update the dashboard (v2)
       async function updateDashboard() {
         try {
           const response = await fetch('/api/v1/health');
@@ -299,12 +303,30 @@
           document.getElementById('security-suspicious').textContent =
             security.suspiciousActivities || 0;
 
-          // Update cache
-          document.getElementById('cache-type').textContent = data.cache?.type || 'in-memory';
-          document.getElementById('cache-hit-rate').textContent = `${data.cache?.hitRate || 0}%`;
-          const cacheConnected = document.getElementById('cache-connected');
-          cacheConnected.textContent = data.cache?.connected ? 'Yes' : 'No';
-          cacheConnected.className = `status ${data.cache?.connected ? 'healthy' : ''}`;
+          // Update cache performance metrics
+          const cacheStatus = document.getElementById('cache-status');
+          const hitRatio = data.cache?.hitRatio || 0;
+          const hitRatePercent = (hitRatio * 100).toFixed(1);
+
+          // Determine cache performance status
+          if (hitRatio >= 0.8) {
+            cacheStatus.textContent = 'Excellent';
+            cacheStatus.className = 'status healthy';
+          } else if (hitRatio >= 0.6) {
+            cacheStatus.textContent = 'Good';
+            cacheStatus.className = 'status healthy';
+          } else if (hitRatio >= 0.3) {
+            cacheStatus.textContent = 'Fair';
+            cacheStatus.className = 'status degraded';
+          } else {
+            cacheStatus.textContent = 'Poor';
+            cacheStatus.className = 'status degraded';
+          }
+
+          document.getElementById('cache-type').textContent =
+            data.cache?.type || 'optimized-in-memory';
+          document.getElementById('cache-hit-rate').textContent = `${hitRatePercent}%`;
+          document.getElementById('cache-memory').textContent = data.cache?.memory_usage || '0 MB';
 
           // Update application
           document.getElementById('app-active-users').textContent =
