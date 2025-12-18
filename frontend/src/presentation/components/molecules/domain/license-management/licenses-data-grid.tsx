@@ -5,7 +5,7 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Save, RotateCcw } from "lucide-react";
+import { FileText, Plus, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { startTransition } from "react";
 
@@ -67,7 +67,7 @@ export function LicensesDataGrid({
 
   // Track the last initial data to detect changes
   const lastInitialDataRef = React.useRef<LicenseRecord[]>(initialData);
-  
+
   // Sync with initialData when it changes, but only if we don't have unsaved changes
   // Use layout effect to run synchronously after DOM updates but before paint
   React.useLayoutEffect(() => {
@@ -105,8 +105,20 @@ export function LicensesDataGrid({
   }, []);
 
   const handleRowAdd = React.useCallback(async () => {
+    // Generate unique ID that doesn't conflict with existing IDs
+    const generateUniqueId = (existingData: LicenseRecord[]): number => {
+      const existingIds = existingData
+        .map(item => typeof item.id === 'number' ? item.id : 0)
+        .filter(id => id > 0); // Only consider positive IDs (existing saved records)
+
+      if (existingIds.length === 0) return 1;
+
+      const maxId = Math.max(...existingIds);
+      return maxId + 1;
+    };
+
     const fallback: LicenseRecord = {
-      id: data.length + 1,
+      id: generateUniqueId(data),
       dba: "",
       zip: "",
       startsAt: new Date().toISOString().split("T")[0],
@@ -134,10 +146,13 @@ export function LicensesDataGrid({
       }
     }
 
-    setData((prev) => [...prev, newRow]);
+    setData((prev) => [newRow, ...prev]);
     setHasChanges(true);
-    return { rowIndex: data.length, columnId: "dba" };
-  }, [data.length, onAddRow]);
+    // Force DataGrid remount to prevent virtual scroller conflicts
+    dataVersionRef.current += 1;
+
+    return { rowIndex: 0, columnId: "dba" };
+  }, [data, onAddRow]);
 
   const handleRowsDelete = React.useCallback(
     async (rows: LicenseRecord[], indices: number[]) => {
@@ -146,6 +161,8 @@ export function LicensesDataGrid({
       }
       setData((prev) => prev.filter((_, idx) => !indices.includes(idx)));
       setHasChanges(true);
+      // Force DataGrid remount to prevent virtual scroller conflicts
+      dataVersionRef.current += 1;
     },
     [onDeleteRows],
   );
@@ -170,6 +187,8 @@ export function LicensesDataGrid({
   const handleReset = React.useCallback(() => {
     setData(initialData);
     setHasChanges(false);
+    // Force DataGrid remount to prevent virtual scroller conflicts
+    dataVersionRef.current += 1;
     toast.info("Changes discarded");
   }, [initialData]);
 

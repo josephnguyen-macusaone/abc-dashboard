@@ -49,41 +49,69 @@ export function LicenseManagementPage() {
   const onSave = useCallback(
     async (data: LicenseRecord[]) => {
       try {
-        const updates = data.map(license => ({
-          ...license,
-        }));
-        await bulkUpdateLicenses(updates);
-        toast.success("Licenses saved");
+        // Separate new licenses (temp IDs) from existing ones
+        const newLicenses = data.filter(license => typeof license.id === 'string' && license.id.startsWith('temp-'));
+        const existingLicenses = data.filter(license => !newLicenses.includes(license));
+
+        // Create new licenses first
+        const createdLicenses: LicenseRecord[] = [];
+        for (const license of newLicenses) {
+          try {
+            // Remove temp ID and create the license
+            const { id, ...licenseData } = license;
+            const created = await createLicense({
+              ...licenseData,
+              startDay: licenseData.startsAt, // Map startsAt to startDay for API
+            });
+            createdLicenses.push(created);
+          } catch (error) {
+            console.error('Failed to create license:', error);
+            throw new Error(`Failed to create license for DBA: ${license.dba}`);
+          }
+        }
+
+        // Update existing licenses
+        if (existingLicenses.length > 0) {
+          const updates = existingLicenses.map(license => ({
+            ...license,
+          }));
+          await bulkUpdateLicenses(updates);
+        }
+
+        toast.success(`${createdLicenses.length + existingLicenses.length} licenses saved`);
+        // Reload licenses to get updated data
+        await loadLicenses();
       } catch (error) {
-        toast.error("Failed to save licenses");
+        console.error('Save error:', error);
+        toast.error(error instanceof Error ? error.message : "Failed to save licenses");
       }
     },
-    [bulkUpdateLicenses],
+    [bulkUpdateLicenses, createLicense, loadLicenses],
   );
 
   const onAddRow = useCallback(async (): Promise<LicenseRecord> => {
-    try {
-      const newLicense = await createLicense({
-        dba: "",
-        zip: "",
-        startDay: new Date().toISOString().split("T")[0],
-        status: "pending",
-        plan: "Basic",
-        term: "monthly",
-        lastPayment: 0,
-        smsPurchased: 0,
-        smsSent: 0,
-        agents: 0,
-        agentsName: [],
-        agentsCost: 0,
-        notes: "",
-      });
-      return newLicense;
-    } catch (error) {
-      toast.error("Failed to add license row");
-      return createEmptyLicense(licenses.map((l) => l.id));
-    }
-  }, [createLicense, licenses]);
+    // Return a temporary license record for grid editing
+    // The license will be created in the database only when saved via bulkUpdateLicenses
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return {
+      id: tempId,
+      dba: "",
+      zip: "",
+      startsAt: new Date().toISOString().split("T")[0],
+      status: "pending",
+      plan: "Basic",
+      term: "monthly",
+      lastPayment: 0,
+      lastActive: new Date().toISOString().split("T")[0],
+      smsPurchased: 0,
+      smsSent: 0,
+      smsBalance: 0,
+      agents: 0,
+      agentsName: [],
+      agentsCost: 0,
+      notes: "",
+    };
+  }, []);
 
   const onDeleteRows = useCallback(
     async (rows: LicenseRecord[], _indices: number[]) => {

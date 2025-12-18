@@ -40,9 +40,6 @@ const RouteSuspense = dynamic(() => import('@/presentation/components/routes/sus
   loading: () => <div className="min-h-screen flex items-center justify-center">Initializing application...</div>
 });
 
-const ServiceWorkerProvider = dynamic(() => import('@/presentation/components/providers/service-worker-provider').then(mod => ({ default: mod.ServiceWorkerProvider })), {
-  loading: () => null
-});
 
 import "./globals.css";
 
@@ -107,12 +104,10 @@ export default function RootLayout({
                 <AuthProvider>
                   <UserProvider>
                     <NuqsAdapter>
-                      <ServiceWorkerProvider>
-                        <RouteSuspense message="Initializing application...">
-                          {children}
-                        </RouteSuspense>
-                        <Toaster />
-                      </ServiceWorkerProvider>
+                      <RouteSuspense message="Initializing application...">
+                        {children}
+                      </RouteSuspense>
+                      <Toaster />
                     </NuqsAdapter>
                   </UserProvider>
                 </AuthProvider>

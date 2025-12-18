@@ -54,7 +54,6 @@ interface LicenseManagementProps {
 }
 
 export function LicenseManagement({
-  currentUser,
   licenses,
   isLoading = false,
   onLoadLicenses,

@@ -104,8 +104,6 @@ NEXT_PUBLIC_CSP_NONCE_ENABLED=true
 NEXT_PUBLIC_CSP_REPORT_URI=/api/csp-report
 
 # Performance
-NEXT_PUBLIC_ENABLE_PWA=true
-NEXT_PUBLIC_SW_PATH=/sw.js
 ```
 
 ### Environment-Specific Configurations

@@ -152,6 +152,40 @@ export function DataGrid<TData>({
           ))}
         </div>
 
+        {onRowAdd && (
+          <div
+            role="rowgroup"
+            data-slot="grid-footer"
+            ref={footerRef}
+            className="sticky bottom-0 z-10 grid border-b bg-background"
+          >
+            <div
+              role="row"
+              aria-rowindex={rows.length + 2}
+              data-slot="grid-add-row"
+              tabIndex={-1}
+              className="flex w-full"
+            >
+              <div
+                role="gridcell"
+                tabIndex={0}
+                className="relative flex h-9 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+                style={{
+                  width: table.getTotalSize(),
+                  minWidth: table.getTotalSize(),
+                }}
+                onClick={onRowAdd}
+                onKeyDown={onAddRowKeyDown}
+              >
+                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
+                  <Plus className="size-3.5" />
+                  <span className="text-sm">Add row</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div
           role="rowgroup"
           data-slot="grid-body"
@@ -189,39 +223,6 @@ export function DataGrid<TData>({
             );
           })}
         </div>
-        {onRowAdd && (
-          <div
-            role="rowgroup"
-            data-slot="grid-footer"
-            ref={footerRef}
-            className="sticky bottom-0 z-10 grid border-t bg-background"
-          >
-            <div
-              role="row"
-              aria-rowindex={rows.length + 2}
-              data-slot="grid-add-row"
-              tabIndex={-1}
-              className="flex w-full"
-            >
-              <div
-                role="gridcell"
-                tabIndex={0}
-                className="relative flex h-9 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
-                style={{
-                  width: table.getTotalSize(),
-                  minWidth: table.getTotalSize(),
-                }}
-                onClick={onRowAdd}
-                onKeyDown={onAddRowKeyDown}
-              >
-                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
-                  <Plus className="size-3.5" />
-                  <span className="text-sm">Add row</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
       <div className="flex flex-col gap-4 mt-6">
         <TablePagination table={table} />
