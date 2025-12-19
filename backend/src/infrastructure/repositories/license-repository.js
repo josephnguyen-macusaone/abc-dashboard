@@ -816,6 +816,7 @@ export class LicenseRepository extends ILicenseRepository {
     if (data.seatsTotal !== undefined) dbData.seats_total = data.seatsTotal;
     if (data.seatsUsed !== undefined) dbData.seats_used = data.seatsUsed;
     if (data.startsAt !== undefined) dbData.starts_at = data.startsAt;
+    if (data.startDay !== undefined) dbData.starts_at = data.startDay; // Handle API field name
     if (data.expiresAt !== undefined) dbData.expires_at = data.expiresAt;
     if (data.cancelDate !== undefined) dbData.cancel_date = data.cancelDate;
     if (data.lastActive !== undefined) dbData.last_active = data.lastActive;

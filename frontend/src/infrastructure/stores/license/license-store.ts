@@ -315,7 +315,20 @@ export const useLicenseStore = create<LicenseState>()(
             // Handle updates
             if (licensesToUpdate.length > 0) {
               try {
-                const updatedLicenses = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate);
+                const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate);
+
+                // Handle the service response format (object with results array)
+                let updatedLicenses: LicenseRecord[];
+                if (updateResult && typeof updateResult === 'object' && updateResult._isBulkUpdateResult) {
+                  // New format with ID mapping
+                  updatedLicenses = updateResult.results || [];
+                } else if (Array.isArray(updateResult)) {
+                  // Legacy format (direct array)
+                  updatedLicenses = updateResult;
+                } else {
+                  throw new Error('Invalid bulk update response format');
+                }
+
                 results.push(...updatedLicenses);
                 storeLogger.debug('Bulk update completed', { updated: updatedLicenses.length });
               } catch (updateError) {

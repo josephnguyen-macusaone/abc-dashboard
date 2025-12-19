@@ -104,54 +104,23 @@ export function LicensesDataGrid({
   }, []);
 
   const handleRowAdd = React.useCallback(async () => {
-    // Generate unique ID that doesn't conflict with existing IDs
-    const generateUniqueId = (existingData: LicenseRecord[]): number => {
-      const existingIds = existingData
-        .map(item => typeof item.id === 'number' ? item.id : 0)
-        .filter(id => id > 0); // Only consider positive IDs (existing saved records)
-
-      if (existingIds.length === 0) return 1;
-
-      const maxId = Math.max(...existingIds);
-      return maxId + 1;
-    };
-
-    const fallback: LicenseRecord = {
-      id: generateUniqueId(data),
-      dba: "",
-      zip: "",
-      startsAt: new Date().toISOString().split("T")[0],
-      status: "pending",
-      plan: "Basic",
-      term: "monthly",
-      lastPayment: 0,
-      lastActive: new Date().toISOString().split("T")[0],
-      smsPurchased: 0,
-      smsSent: 0,
-      smsBalance: 0,
-      agents: 0,
-      agentsName: [],
-      agentsCost: 0,
-      notes: "",
-    };
-
-    let newRow = fallback;
-    if (onAddRow) {
-      try {
-        const result = onAddRow();
-        newRow = result instanceof Promise ? await result : result;
-      } catch {
-        newRow = fallback;
-      }
+    if (!onAddRow) {
+      throw new Error('onAddRow callback is required for adding new license rows');
     }
 
-    setData((prev) => [newRow, ...prev]);
-    setHasChanges(true);
-    // Force DataGrid remount to prevent virtual scroller conflicts
-    dataVersionRef.current += 1;
+    try {
+      const newRow = await onAddRow();
+      setData((prev) => [newRow, ...prev]);
+      setHasChanges(true);
+      // Force DataGrid remount to prevent virtual scroller conflicts
+      dataVersionRef.current += 1;
 
-    return { rowIndex: 0, columnId: "dba" };
-  }, [data, onAddRow]);
+      return { rowIndex: 0, columnId: "dba" };
+    } catch (error) {
+      console.error('Failed to add new license row:', error);
+      throw error;
+    }
+  }, [onAddRow]);
 
   const handleRowsDelete = React.useCallback(
     async (rows: LicenseRecord[], indices: number[]) => {

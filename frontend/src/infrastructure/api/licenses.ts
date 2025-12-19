@@ -12,7 +12,7 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
     product: apiLicense.product,
     dba: apiLicense.dba || '',
     zip: apiLicense.zip || '',
-    startsAt: apiLicense.startsAt || apiLicense.startDay || '', // Handle both formats
+    startsAt: apiLicense.startsAt || apiLicense.startDay || '', // Handle both formats from API
     status: apiLicense.status || 'pending',
     plan: apiLicense.plan || 'Basic',
     term: apiLicense.term || 'monthly',
@@ -62,8 +62,9 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
 
   if (shouldInclude(license.startsAt)) {
     // Convert to date-only format if it's a full timestamp
+    // Backend expects 'startDay' field for bulk operations
     const dateStr = String(license.startsAt);
-    apiLicense.startsAt = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    apiLicense.startDay = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
   }
 
   if (shouldInclude(license.status)) {

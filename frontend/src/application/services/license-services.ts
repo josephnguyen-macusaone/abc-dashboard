@@ -381,13 +381,18 @@ export class LicenseManagementService {
       const normalizedLicenses: CreateLicenseDTO[] = [];
 
       dto.licenses.forEach((license, index) => {
-        // Normalize field names (startDay -> startsAt)
+        // Keep field names consistent (ensure startsAt exists) and preserve key field
         const licenseAny = license as any; // Cast to any to handle unknown fields
         const normalizedLicense = {
           ...license,
           startsAt: license.startsAt || licenseAny.startDay // Handle both field names
         };
         delete (normalizedLicense as any).startDay; // Remove the wrong field name if it exists
+
+        // Ensure key field is preserved (added by page component)
+        if (!normalizedLicense.key && licenseAny.key) {
+          normalizedLicense.key = licenseAny.key;
+        }
 
         // Set default values for missing required fields to prevent validation errors
         if (!normalizedLicense.startsAt || normalizedLicense.startsAt === 'string') {

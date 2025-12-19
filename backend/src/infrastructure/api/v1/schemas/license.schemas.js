@@ -103,9 +103,9 @@ export const licenseSchemas = {
       'string.max': 'ZIP code cannot exceed 10 characters',
     }),
 
-    startsAt: Joi.string().required().messages({
-      'any.required': 'startsAt is required',
-      'string.empty': 'startsAt cannot be empty',
+    startDay: Joi.string().required().messages({
+      'any.required': 'startDay is required',
+      'string.empty': 'startDay cannot be empty',
     }),
 
     status: Joi.string()
@@ -311,7 +311,7 @@ export const licenseSchemas = {
           product: Joi.string().trim().min(1).max(100).default('ABC Business Suite'),
           dba: Joi.string().trim().min(1).max(255).required(),
           zip: Joi.string().trim().max(10),
-          startsAt: Joi.string().required(),
+          startDay: Joi.string().required(),
           status: Joi.string()
             .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
             .default('pending'),

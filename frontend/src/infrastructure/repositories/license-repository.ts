@@ -549,3 +549,4 @@ export class LicenseRepository implements ILicenseRepository {
       throw error;
     }
   }
+}

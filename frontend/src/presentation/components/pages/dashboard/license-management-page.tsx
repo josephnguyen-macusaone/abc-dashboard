@@ -67,7 +67,7 @@ export function LicenseManagementPage() {
             const { id, ...licenseData } = license;
             return {
               ...licenseData,
-              key: licenseKey, // Add the required license key
+              key: licenseKey, // Add the license key for frontend state management (removed by API transform)
               product: 'ABC Business Suite', // Add the required product field
               seatsTotal: 1, // Add the required seats total (default to 1)
             };

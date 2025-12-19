@@ -228,13 +228,14 @@ export class LicenseValidator {
       throw new ValidationException('plan is required');
     }
 
-    // StartsAt is required and must be a valid date
-    if (!input.startsAt) {
-      throw new ValidationException('startsAt is required');
+    // StartDay is required and must be a valid date (API field name)
+    const startDate = input.startDay || input.startsAt; // Support both field names for compatibility
+    if (!startDate) {
+      throw new ValidationException('startDay is required');
     }
-    const startsAt = new Date(input.startsAt);
-    if (isNaN(startsAt.getTime())) {
-      throw new ValidationException('startsAt must be a valid date');
+    const startDateObj = new Date(startDate);
+    if (isNaN(startDateObj.getTime())) {
+      throw new ValidationException('startDay must be a valid date');
     }
 
     // SeatsTotal is required and must be positive
