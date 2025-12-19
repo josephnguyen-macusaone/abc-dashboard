@@ -23,7 +23,12 @@ export function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const { error: showError, info: showInfo } = useToast();
 
-  const { users, userFilters, userPagination, userStats, usersLoading: loadingUsers, fetchUsers } = useUserStore();
+  const userStore = useUserStore();
+  const { users, fetchUsers } = userStore;
+  const userFilters = userStore.filters;
+  const userPagination = userStore.pagination;
+  const userStats = userStore.stats;
+  const loadingUsers = userStore.listLoading;
 
   // Prevent duplicate API calls in React Strict Mode
   const hasLoadedRef = useRef(false);
@@ -144,7 +149,7 @@ export function UserManagementPage() {
       onDateRangeChange={handleDateRangeChange}
       onQueryChange={handleQueryChange}
       pageCount={userPagination.totalPages}
-      totalCount={userStats?.total}
+      totalCount={userPagination.total}
     />
   );
 }

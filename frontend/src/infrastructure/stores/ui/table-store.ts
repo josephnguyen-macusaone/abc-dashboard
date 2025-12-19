@@ -29,7 +29,7 @@ interface TableUIState {
   getSortState: (tableId: string) => { field: string; direction: 'asc' | 'desc' } | null;
 }
 
-export const useTableUIStore = create<TableUIState>()(
+export const useTableStore = create<TableUIState>()(
   devtools(
     persist(
       (set, get) => ({
@@ -108,7 +108,7 @@ export const useTableUIStore = create<TableUIState>()(
         },
       }),
       {
-        name: 'table-ui-storage',
+        name: 'table-storage',
         partialize: (state) => ({
           columnVisibility: state.columnVisibility,
           sortStates: state.sortStates,
@@ -116,7 +116,7 @@ export const useTableUIStore = create<TableUIState>()(
       }
     ),
     {
-      name: 'table-ui-store',
+      name: 'table-store',
     }
   )
 );

@@ -5,9 +5,8 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Plus, Save, RotateCcw } from "lucide-react";
+import { FileText, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { startTransition } from "react";
 
 import {
   DataGrid,
@@ -238,16 +237,6 @@ export function LicensesDataGrid({
 
   // Manual query change handler (adapted from data-table)
   React.useEffect(() => {
-    console.log('[LicensesDataGrid] Manual query effect triggered', {
-      initialized: hasInitializedRef.current,
-      onQueryChange: !!onQueryChange,
-      tablePageIndex,
-      tablePageSize,
-      tableSorting,
-      searchQuery,
-      tableColumnFilters,
-    });
-
     if (!onQueryChange) return;
 
     const activeSort = tableSorting?.[0];
@@ -263,7 +252,6 @@ export function LicensesDataGrid({
       lastSortRef.current = currentSortString;
       lastSearchRef.current = currentSearch;
       lastFiltersRef.current = currentFiltersString;
-      console.log('[LicensesDataGrid] Initialized refs, skipping first call');
       return;
     }
 
@@ -275,15 +263,7 @@ export function LicensesDataGrid({
     const searchChanged = currentSearch !== lastSearchRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current;
 
-    console.log('[LicensesDataGrid] Change detection', {
-      paginationChanged,
-      sortChanged,
-      searchChanged,
-      filtersChanged,
-    });
-
     if (!paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
-      console.log('[LicensesDataGrid] No changes detected, skipping API call');
       return;
     }
 
@@ -314,8 +294,6 @@ export function LicensesDataGrid({
       search: currentSearch || undefined,
       status: status,
     };
-
-    console.log('[LicensesDataGrid] Calling onQueryChange', apiParams);
 
     // Call API
     onQueryChange(apiParams);

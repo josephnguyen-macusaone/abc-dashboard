@@ -5,8 +5,11 @@ import {
   SidebarNavigation,
   SidebarFooter,
   type NavigationItem,
-} from '@/presentation/components/molecules';
+} from '@/presentation/components/molecules/layout/sidebar';
 import { cn } from '@/shared/utils';
+import { useSidebarStore } from '@/infrastructure/stores';
+import { SIDEBAR_CONSTANTS } from '@/infrastructure/stores/ui/sidebar-store';
+import { useEffect } from 'react';
 
 export interface AppSidebarProps {
   isOpen: boolean;
@@ -37,22 +40,57 @@ export function AppSidebar({
   onLogout,
   className,
 }: AppSidebarProps) {
+  const {
+    isCollapsed,
+    isMobile,
+    toggleCollapsed,
+    setMobile,
+    getEffectiveWidth,
+  } = useSidebarStore();
+
   const handleBrandClick = () => {
     onNavigate('/dashboard');
   };
 
+  // Update mobile state on mount and resize
+  useEffect(() => {
+    // Only run on client side to avoid SSR issues
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      const mobile = window.innerWidth < SIDEBAR_CONSTANTS.MOBILE_BREAKPOINT;
+      setMobile(mobile);
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // Remove setMobile from deps since it's stable
+
+  const effectiveWidth = getEffectiveWidth();
+
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 transform bg-card border-r border-border transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0 h-screen',
-        isOpen ? 'translate-x-0' : '-translate-x-full',
+        'fixed inset-y-0 left-0 z-50 transform bg-card border-r border-border transition-all duration-300 ease-out lg:translate-x-0 lg:static lg:inset-0 h-screen',
+        isMobile
+          ? (isOpen ? 'translate-x-0' : '-translate-x-full')
+          : 'translate-x-0',
         className
       )}
+      style={{
+        width: `${effectiveWidth}px`,
+        minWidth: `${effectiveWidth}px`,
+        maxWidth: `${effectiveWidth}px`,
+        transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
     >
       <div className="flex h-screen flex-col overflow-hidden">
         {/* Logo/Brand */}
         <SidebarBrand
           onClick={handleBrandClick}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={toggleCollapsed}
         />
 
         {/* Navigation */}
@@ -61,6 +99,7 @@ export function AppSidebar({
           currentPath={currentPath}
           isAdmin={isAdmin}
           onNavigate={onNavigate}
+          isCollapsed={isCollapsed}
         />
 
         {/* User Menu */}
@@ -71,6 +110,7 @@ export function AppSidebar({
           avatarUrl={userAvatarUrl}
           onProfileClick={onProfileClick}
           onLogout={onLogout}
+          isCollapsed={isCollapsed}
         />
       </div>
     </aside>

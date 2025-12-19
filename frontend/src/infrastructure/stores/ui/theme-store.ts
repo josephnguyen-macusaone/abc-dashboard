@@ -7,7 +7,7 @@ interface ThemeState {
   theme: (typeof THEMES)[keyof typeof THEMES];
   actualTheme: 'light' | 'dark'; // The resolved theme (light or dark)
 
-      // Actions
+  // Actions
   setTheme: (theme: (typeof THEMES)[keyof typeof THEMES]) => void;
   initialize: () => void;
 }

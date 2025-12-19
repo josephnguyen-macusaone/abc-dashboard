@@ -1,5 +1,5 @@
 // Loading components
-export { Loading, LoadingSpinner, LoadingCard, LoadingTable } from './loading';
+export { Loading, LoadingSpinner } from './loading';
 export { LoadingOverlay } from './loading-overlay';
 
 // Display components

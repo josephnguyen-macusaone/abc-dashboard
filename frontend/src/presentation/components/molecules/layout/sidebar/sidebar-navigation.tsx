@@ -1,8 +1,9 @@
 'use client';
 
 import { ScrollArea } from '@/presentation/components/atoms';
-import { NavigationButton } from '@/presentation/components/molecules/ui/navigation-button';
+import { NavigationButton } from './sidebar-navigation-button';
 import { LucideIcon } from 'lucide-react';
+import { cn } from '@/shared/utils';
 
 export interface NavigationItem {
   name: string;
@@ -17,6 +18,7 @@ export interface SidebarNavigationProps {
   currentPath: string;
   isAdmin: boolean;
   onNavigate: (href: string) => void;
+  isCollapsed?: boolean;
   className?: string;
 }
 
@@ -25,6 +27,7 @@ export function SidebarNavigation({
   currentPath,
   isAdmin,
   onNavigate,
+  isCollapsed = false,
   className,
 }: SidebarNavigationProps) {
   const isItemActive = (path: string, itemHref: string) => {
@@ -55,9 +58,16 @@ export function SidebarNavigation({
   });
 
   return (
-    <ScrollArea className={`flex-1 overflow-hidden ${className || ''}`}>
-      <nav className="space-y-0.5 py-4" role="navigation" aria-label="Main navigation">
-        {filteredItems.map((item) => {
+    <ScrollArea className={cn('flex-1 overflow-hidden', className)}>
+      <nav
+        className={cn(
+          'space-y-0.5 py-4',
+          isCollapsed ? 'px-1' : 'px-2'
+        )}
+        role="navigation"
+        aria-label="Main navigation"
+      >
+        {filteredItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = isItemActive(currentPath, item.href);
           return (
@@ -66,7 +76,12 @@ export function SidebarNavigation({
               name={item.name}
               icon={Icon}
               isActive={isActive}
+              isCollapsed={isCollapsed}
               onClick={() => onNavigate(item.href)}
+              style={{
+                animationDelay: `${index * 50}ms`,
+                transitionDelay: `${index * 50}ms`,
+              }}
             />
           );
         })}

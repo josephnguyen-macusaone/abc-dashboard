@@ -2,20 +2,26 @@
 
 import { Button } from '@/presentation/components/atoms';
 import { Breadcrumb, ThemeSwitcher } from '@/presentation/components/molecules';
+import { CollapseButton } from '@/presentation/components/molecules/layout/sidebar';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/utils';
+import { useSidebarStore } from '@/infrastructure/stores';
 
 export interface AppHeaderProps {
   sidebarOpen: boolean;
   onSidebarToggle: () => void;
+  onSidebarCollapse?: () => void;
   className?: string;
 }
 
 export function AppHeader({
   sidebarOpen,
   onSidebarToggle,
+  onSidebarCollapse,
   className,
 }: AppHeaderProps) {
+  const { isCollapsed } = useSidebarStore();
+
   return (
     <header
       className={cn(
@@ -39,7 +45,17 @@ export function AppHeader({
         </Button>
 
         <div className="flex-1 min-w-0">
-          <Breadcrumb />
+          <Breadcrumb
+            collapseButton={
+              onSidebarCollapse && !isCollapsed ? (
+                <CollapseButton
+                  displayVariant="icon"
+                  onClick={onSidebarCollapse}
+                  className="h-8 w-8"
+                />
+              ) : undefined
+            }
+          />
         </div>
       </div>
 

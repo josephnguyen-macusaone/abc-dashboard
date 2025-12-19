@@ -80,7 +80,9 @@ export function UserManagement({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Get stats from store
-  const { userStats, statsLoading: isLoadingStats } = useUserStore();
+  const userStore = useUserStore();
+  const userStats = userStore.stats;
+  const isLoadingStats = userStore.statsLoading;
 
   const handleDateRangeUpdate = useCallback(
     (values: { range: { from?: Date; to?: Date } }) => {

@@ -52,7 +52,7 @@ interface UserProviderProps {
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const userManagementService = container.userManagementService;
+  const userService = container.userService;
 
   // Loading states
   const [loadingStates, setLoadingStates] = React.useState({
@@ -92,7 +92,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const getUsers = useCallback(async (params: UserListParams): Promise<PaginatedUserList> => {
     return executeWithErrorHandling(
-      () => userManagementService.getUsers(params),
+      () => userService.getUsers(params),
       'getUsers',
       'Failed to load users'
     );
@@ -100,7 +100,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const createUser = useCallback(async (userData: CreateUserDTO): Promise<User> => {
     return executeWithErrorHandling(
-      () => userManagementService.createUser(userData),
+      () => userService.createUser(userData),
       'createUser',
       'Failed to create user'
     );
@@ -108,7 +108,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const updateUser = useCallback(async (id: string, updates: UpdateUserDTO): Promise<User> => {
     return executeWithErrorHandling(
-      () => userManagementService.updateUser(id, updates),
+      () => userService.updateUser(id, updates),
       'updateUser',
       'Failed to update user'
     );
@@ -116,7 +116,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const deleteUser = useCallback(async (id: string): Promise<void> => {
     return executeWithErrorHandling(
-      () => userManagementService.deleteUser(id),
+      () => userService.deleteUser(id),
       'deleteUser',
       'Failed to delete user'
     );

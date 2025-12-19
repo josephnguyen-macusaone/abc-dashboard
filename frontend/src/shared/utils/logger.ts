@@ -37,39 +37,42 @@ const LOG_CONFIG = {
     test: 'error' as LogLevel,
   },
 
-  // Sampling rates (percentage of logs to keep)
+  // Sampling rates (percentage of logs to keep) - reduced for less noise
   sampling: {
-    http: isProduction ? 0.1 : 0.5,     // 10% in prod, 50% in dev
-    debug: isProduction ? 0.05 : 1.0,   // 5% in prod, 100% in dev
-    trace: isProduction ? 0.01 : 0.1,   // 1% in prod, 10% in dev
-    info: isProduction ? 0.2 : 1.0,     // 20% in prod, 100% in dev
+    http: isProduction ? 0.01 : 0.3,     // 1% in prod, 30% in dev (reduced from 10%)
+    debug: isProduction ? 0.005 : 0.5,   // 0.5% in prod, 50% in dev (reduced from 5%)
+    trace: isProduction ? 0.001 : 0.05,  // 0.1% in prod, 5% in dev (reduced from 1%)
+    info: isProduction ? 0.05 : 1.0,     // 5% in prod, 100% in dev (reduced from 20%)
   },
 
-  // Categories to suppress in production
+  // Categories to suppress in production - expanded list
   suppressedCategories: isProduction ? [
     'tracing',
     'performance',
     'component-lifecycle',
-    'api-details'
+    'api-details',
+    'api-debug',
+    'cache-debug',
+    'store-debug'
   ] : [],
 
-  // Maximum logs per minute to prevent spam
+  // Maximum logs per minute to prevent spam - reduced
   rateLimit: {
     enabled: isProduction,
-    maxLogsPerMinute: 60,
+    maxLogsPerMinute: 30, // Reduced from 60
     windowMs: 60000,
   },
 
-  // Performance monitoring
+  // Performance monitoring - disabled in production
   performance: {
     enabled: !isProduction,
-    slowLogThreshold: 5, // ms
+    slowLogThreshold: 10, // Increased threshold
   },
 
-  // Memory management
+  // Memory management - smaller history in production
   memory: {
-    maxHistorySize: isProduction ? 20 : 50, // Reduced from 50 to 20 in prod
-    maxPerformanceMetrics: 100,
+    maxHistorySize: isProduction ? 10 : 30, // Further reduced
+    maxPerformanceMetrics: 50, // Reduced
     enableMemoryMonitoring: !isProduction,
   },
 

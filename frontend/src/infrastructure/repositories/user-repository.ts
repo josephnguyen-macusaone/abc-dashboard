@@ -175,36 +175,48 @@ export class UserRepository implements IUserRepository {
 
   /**
    * Standardized logging utilities for consistent operation tracking
+   * Only logs errors and warnings to reduce noise
    */
   private createOperationLogger(operation: string) {
     return {
-      start: (correlationId: string, metadata?: Record<string, unknown>) =>
-        this.logger.http(`Starting ${operation}`, {
+      start: (correlationId: string, metadata?: Record<string, unknown>) => {
+        // Only log start in development for debugging
+        if (process.env.NODE_ENV === 'development') {
+          this.logger.debug(`Starting ${operation}`, {
           correlationId,
-          operation: `${operation}_start`,
+            category: 'api-details',
           ...metadata,
-        }),
+          });
+        }
+      },
 
-      success: (correlationId: string, duration: number, metadata?: Record<string, unknown>) =>
-        this.logger.http(`${operation} completed`, {
+      success: (correlationId: string, metadata?: Record<string, unknown>) => {
+        // Only log slow operations (>1s) to reduce noise
+        const duration = metadata?.duration as number;
+        if (duration && duration > 1000) {
+          this.logger.warn(`${operation} completed slowly`, {
           correlationId,
           duration,
-          operation: `${operation}_success`,
+            category: 'performance',
           ...metadata,
-        }),
+          });
+        }
+      },
 
       notFound: (correlationId: string, metadata?: Record<string, unknown>) =>
-        this.logger.http(`${operation} - Resource not found`, {
+        this.logger.warn(`${operation} - Resource not found`, {
           correlationId,
           operation: `${operation}_not_found`,
+          category: 'api-warning',
           ...metadata,
         }),
 
       error: (correlationId: string, error: string, metadata?: Record<string, unknown>) =>
-        this.logger.http(`${operation} - API call failed`, {
+        this.logger.error(`${operation} failed`, {
           correlationId,
           operation: `${operation}_error`,
           error,
+          category: 'api-error',
           ...metadata,
         }),
     };
@@ -254,33 +266,47 @@ export class UserRepository implements IUserRepository {
       const startTime = Date.now();
       const response = await userApi.getUser(id);
 
-      // Debug: Log raw API response
-      console.log('getUserById API response for ID:', id, response);
+      // Debug: Log raw API response (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        this.logger.debug('API response received', {
+          correlationId,
+          userId: id,
+          category: 'api-details',
+          responseKeys: Object.keys(response),
+        });
+      }
 
       const userData = this.validateApiResponse<UserProfileDto>(response, 'getUser');
 
-      // Debug: Log validated user data
-      console.log('getUserById validated userData:', {
-        id: userData.id,
-        email: userData.email,
-        role: userData.role,
+      // Debug: Log validated user data (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        this.logger.debug('User data validated', {
+          correlationId,
+          userId: id,
+          category: 'api-details',
+          hasEmail: !!userData.email,
+          hasRole: !!userData.role,
       });
+      }
 
       const duration = Date.now() - startTime;
 
       const user = this.mapUserProfileToDomain(userData);
 
-      // Debug: Log mapped user
-      console.log('getUserById mapped user:', {
-        id: user.id,
-        email: user.email,
-        role: user.role,
+      // Debug: Log mapped user (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        this.logger.debug('User entity mapped', {
+          correlationId,
+          userId: user.id,
+          category: 'api-details',
+          userRole: user.role,
       });
+      }
 
       // Cache the result
       this.setCachedUser(id, user);
 
-      logger.success(correlationId, duration, { userId: user.id, userRole: user.role });
+      logger.success(correlationId, { duration, userId: user.id, userRole: user.role });
 
       return user;
     } catch (error) {
@@ -315,7 +341,7 @@ export class UserRepository implements IUserRepository {
       // Clear stats cache as user counts might have changed
       this.statsCache = null;
 
-      logger.success(correlationId, duration, { userId: user.id, updates: Object.keys(updates) });
+      logger.success(correlationId, { duration, userId: user.id, updates: Object.keys(updates) });
 
       return user;
     } catch (error) {
@@ -342,7 +368,7 @@ export class UserRepository implements IUserRepository {
       this.clearUserCache(id);
       this.statsCache = null;
 
-      logger.success(correlationId, duration, { userId: id });
+      logger.success(correlationId, { duration, userId: id });
     } catch (error) {
       throw this.handleApiError(error, 'delete_user', correlationId);
     }
@@ -364,7 +390,7 @@ export class UserRepository implements IUserRepository {
       const duration = Date.now() - startTime;
 
       const users = this.mapUserProfilesToDomain(response.users);
-      logger.success(correlationId, duration, { role, count: users.length });
+      logger.success(correlationId, { duration, role, count: users.length });
 
       return users;
     } catch (error) {
@@ -389,7 +415,7 @@ export class UserRepository implements IUserRepository {
       const duration = Date.now() - startTime;
 
       const users = this.mapUserProfilesToDomain(response.users);
-      logger.success(correlationId, duration, { query, resultCount: users.length });
+      logger.success(correlationId, { duration, query, resultCount: users.length });
 
       return users;
     } catch (error) {
@@ -411,7 +437,7 @@ export class UserRepository implements IUserRepository {
       // Cache the user data
       this.setCachedUser(user.id, user);
 
-      logger.success(correlationId, 0, { userId: user.id });
+      logger.success(correlationId, { duration: 0, userId: user.id });
       return user;
 
     } catch (error) {
@@ -453,7 +479,7 @@ export class UserRepository implements IUserRepository {
       this.setCachedUser(user.id, user);
       this.statsCache = null;
 
-      logger.success(correlationId, duration, { userId: user.id });
+      logger.success(correlationId, { duration, userId: user.id });
 
       return user;
     } catch (error) {
@@ -506,7 +532,8 @@ export class UserRepository implements IUserRepository {
         stats: response.stats,
       };
 
-      logger.success(correlationId, duration, {
+      logger.success(correlationId, {
+        duration,
         count: users.length,
         total: response.stats?.total || 0,
         page: response.pagination.page

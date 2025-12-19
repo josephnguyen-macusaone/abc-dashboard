@@ -2,6 +2,7 @@ import React from 'react';
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
 import dynamic from 'next/dynamic';
+import { ThemeProvider } from '@/presentation/contexts/theme-context';
 
 // Dynamic imports for code splitting
 const NuqsAdapter = dynamic(() => import('nuqs/adapters/next/app').then(mod => ({ default: mod.NuqsAdapter })), {
@@ -18,10 +19,6 @@ const UserProvider = dynamic(() => import('@/presentation/contexts').then(mod =>
 
 const ToastProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ToastProvider })), {
   loading: () => <div className="min-h-screen flex items-center justify-center">Loading notifications...</div>
-});
-
-const ThemeProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ThemeProvider })), {
-  loading: () => <div className="min-h-screen flex items-center justify-center">Loading theme...</div>
 });
 
 const ErrorProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ErrorProvider })), {
@@ -44,43 +41,42 @@ const RouteSuspense = dynamic(() => import('@/presentation/components/routes/sus
 import "./globals.css";
 
 // Configure Archivo font for display/headings
+// Only preload the most commonly used weights to reduce initial load
 const archivo = Archivo({
   subsets: ["latin", "latin-ext", "vietnamese"],
-  display: "swap",
+  display: "swap", // Prevents invisible text during font load
   variable: "--font-archivo",
-  weight: ["400", "500", "600", "700", "800", "900"],
-  preload: false,
+  weight: ["400", "500", "600", "700"], // Removed 800, 900 to reduce bundle size
+  preload: false, // Don't preload - let browser handle loading
+  fallback: ["system-ui", "sans-serif"], // Better fallbacks
 });
 
 // Configure Inter font for body/UI text
+// Inter is more commonly used, so preload the regular weight
 const inter = Inter({
   subsets: ["latin", "latin-ext", "vietnamese"],
-  display: "swap",
+  display: "swap", // Prevents invisible text during font load
   variable: "--font-inter",
   weight: ["400", "500", "600", "700"],
+  preload: true, // Preload the most common weight for better UX
+  fallback: ["system-ui", "sans-serif"], // Better fallbacks
 });
 
 export const metadata: Metadata = {
   title: "ABC Salon",
+  description: "ABC Salon Dashboard - Professional Salon Management System",
+  keywords: ["salon", "dashboard", "management", "booking", "appointment"],
+  authors: [{ name: "ABC Salon Team" }],
+  robots: "noindex, nofollow", // Add appropriate robots meta for production
 };
 
-// Theme script to prevent flash of wrong theme
-const themeScript = `
-  (function() {
-    try {
-      const stored = localStorage.getItem('theme-storage');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const theme = parsed.state?.theme;
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  })();
-`;
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
+// Font preloading is handled by Next.js Google Fonts automatically
+
 
 export default function RootLayout({
   children,
@@ -88,14 +84,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${inter.variable}`}>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: themeScript,
-          }}
-        />
-      </head>
+    <html lang="en" className={`${archivo.variable} ${inter.variable}`}>
       <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider>

@@ -1,13 +1,10 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { LoadingOverlay } from '@/presentation/components/atoms';
 import { getRouteConfig, canAccessRoute, getDefaultRedirect } from '@/shared/constants';
-
-// Check if we're on the client side
-const isClient = typeof window !== 'undefined';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -24,10 +21,18 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, canAccessProtectedRoutes } = useAuthStore();
 
+  // Track if component has mounted on client to prevent hydration mismatch
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Mark component as mounted on client side
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   // Handle navigation effects in useEffect to avoid calling router during render
   useEffect(() => {
-    // Only run navigation logic on client side after loading
-    if (!isClient || isLoading) return;
+    // Only run navigation logic on client side after loading and mounting
+    if (!hasMounted || isLoading) return;
 
     // Get route configuration
     const routeConfig = getRouteConfig(pathname);
@@ -52,10 +57,11 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     }
 
     // Check if user needs additional verification (removed email verification)
-  }, [router, pathname, user, isAuthenticated, isLoading, canAccessProtectedRoutes]);
+  }, [router, pathname, user, isAuthenticated, isLoading, canAccessProtectedRoutes, hasMounted]);
 
-  // During server-side rendering or initial client load, show loading
-  if (!isClient || isLoading) {
+  // During server-side rendering or initial client load, always show loading
+  // This ensures server and client render the same initial state
+  if (!hasMounted || isLoading) {
     return <LoadingOverlay text="Loading..." />;
   }
 
@@ -74,7 +80,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   if (!hasAccess) {
     // If user is not authenticated, show loading (will redirect via useEffect)
     if (!isAuthenticated) {
-      return <LoadingOverlay text="Redirecting to login..." />;
+      return <LoadingOverlay text="Loading..." />;
     }
 
     // User is authenticated but doesn't have permission - show fallback or loading
@@ -83,9 +89,8 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     }
 
     // Show loading while redirecting (navigation handled in useEffect)
-    return <LoadingOverlay text="Redirecting..." />;
+    return <LoadingOverlay text="Loading..." />;
   }
-
 
   return <>{children}</>;
 }

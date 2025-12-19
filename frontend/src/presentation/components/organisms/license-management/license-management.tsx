@@ -1,12 +1,21 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { Typography } from '@/presentation/components/atoms';
-import { LicensesDataGrid } from '@/presentation/components/molecules/domain/license-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { cn } from '@/shared/utils';
 import type { LicenseRecord } from '@/shared/types';
 import type { User } from '@/domain/entities/user-entity';
+
+// Dynamically import heavy data grid component for better code splitting
+const LicensesDataGrid = dynamic(
+  () => import('@/presentation/components/molecules/domain/license-management').then(mod => ({ default: mod.LicensesDataGrid })),
+  {
+    loading: () => <div className="flex items-center justify-center h-96"><Typography>Loading license management...</Typography></div>,
+    ssr: false, // Disable SSR for complex data grid component
+  }
+);
 
 /**
  * LicenseManagement Component

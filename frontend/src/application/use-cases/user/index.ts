@@ -12,4 +12,3 @@ export {
   createSearchUsersUseCase,
   type SearchUsersUseCaseContract,
 } from './search-users-usecase';
-export { GetUserStatsUseCase } from './get-user-stats-usecase';

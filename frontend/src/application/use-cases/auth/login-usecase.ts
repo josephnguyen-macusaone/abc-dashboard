@@ -77,17 +77,27 @@ export function createLoginUseCase(
       const cid = correlationId || generateCorrelationId();
 
       try {
+        // Validate input
         validateInput(email, password);
+
+        // Login
         const authResult = await authRepository.login(email, password);
+
+        // Validate login result
         validateLoginResult(authResult);
+
+        // Return auth result
         return authResult;
       } catch (error) {
-        useCaseLogger.error(`Login use case failed`, {
+        // Log error
+        useCaseLogger.error(`Failed to login`, {
           correlationId: cid,
           email,
           operation: 'login_usecase_error',
           error: error instanceof Error ? error.message : String(error),
         });
+
+        // Throw error
         throw handleLoginError(error, cid);
       }
     },

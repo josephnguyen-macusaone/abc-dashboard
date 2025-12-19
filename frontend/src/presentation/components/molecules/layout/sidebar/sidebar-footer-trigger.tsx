@@ -10,21 +10,50 @@ export interface SidebarFooterTriggerProps extends React.ButtonHTMLAttributes<HT
   displayName: string;
   role?: string;
   avatarUrl?: string;
+  isCollapsed?: boolean;
 }
 
 export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarFooterTriggerProps>(
-  ({ initials, displayName, role, avatarUrl, className, ...props }, ref) => {
+  ({ initials, displayName, role, avatarUrl, isCollapsed = false, className, ...props }, ref) => {
     // Capitalize the role for display
     const displayRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User';
+
+    if (isCollapsed) {
+      return (
+        <button
+          ref={ref}
+          type="button"
+          className={cn(
+            'w-full flex items-center justify-center p-2 transition-all duration-300 ease-out',
+            'hover:bg-accent hover:text-accent-foreground hover:scale-105',
+            'group rounded-none focus:outline-none focus-visible:ring-0',
+            'transform-gpu',
+            className
+          )}
+          aria-label="User menu"
+          {...props}
+        >
+          <div className="relative">
+            <Avatar className="h-8 w-8 transition-transform duration-300 ease-out group-hover:scale-110">
+              <AvatarImage src={avatarUrl} alt={`${initials} avatar`} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-label-s font-medium">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </button>
+      );
+    }
 
     return (
       <button
         ref={ref}
         type="button"
         className={cn(
-          'w-full flex items-center justify-between p-3 transition-all duration-200',
-          'hover:bg-accent hover:text-accent-foreground',
+          'w-full flex items-center justify-between p-3 transition-all duration-300 ease-out',
+          'hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]',
           'group rounded-none focus:outline-none focus-visible:ring-0',
+          'transform-gpu',
           className
         )}
         aria-label="User menu"
@@ -48,7 +77,7 @@ export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarF
             <p className="text-body-xs text-muted-foreground">{displayRole}</p>
           </div>
         </div>
-        <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 shrink-0" />
+        <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 shrink-0 transition-transform duration-300 ease-out" />
       </button>
     );
   }

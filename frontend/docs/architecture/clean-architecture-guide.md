@@ -184,7 +184,6 @@ graph TD
         U3[DeleteUserUseCase]
         U4[GetUsersUseCase]
         U5[SearchUsersUseCase]
-        U6[GetUserStatsUseCase]
     end
 
     subgraph "Dependencies"
@@ -277,7 +276,6 @@ classDiagram
         -deleteUserUseCase: DeleteUserUseCase
         -getUsersUseCase: GetUsersUseCase
         -searchUsersUseCase: SearchUsersUseCase
-        -getUserStatsUseCase: GetUserStatsUseCase
         +createUser(userData: CreateUserData): Promise~User~
         +updateUser(id: string, userData: UpdateUserData): Promise~User~
         +deleteUser(id: string): Promise~void~

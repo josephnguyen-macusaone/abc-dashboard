@@ -1,13 +1,29 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import type { LicenseRecord } from '@/shared/types';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
-import type { LicenseDateRange } from '@/application/services/license-dashboard-metrics';
-import { LicenseMetricsSection } from '@/presentation/components/molecules/domain/dashboard/license-metrics-section';
-import { LicenseTableSection } from '@/presentation/components/molecules/domain/dashboard/license-table-section';
+import type { LicenseDateRange } from '@/application/use-cases';
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
 import { logger } from '@/shared/utils';
+
+// Dynamically import heavy dashboard components for better code splitting
+const LicenseMetricsSection = dynamic(
+  () => import('@/presentation/components/molecules/domain/dashboard/license-metrics-section').then(mod => ({ default: mod.LicenseMetricsSection })),
+  {
+    loading: () => <div className="animate-pulse bg-gray-200 rounded-lg h-32 mb-4"></div>,
+    ssr: true, // Enable SSR for metrics but lazy load client-side
+  }
+);
+
+const LicenseTableSection = dynamic(
+  () => import('@/presentation/components/molecules/domain/dashboard/license-table-section').then(mod => ({ default: mod.LicenseTableSection })),
+  {
+    loading: () => <div className="animate-pulse bg-gray-200 rounded-lg h-64"></div>,
+    ssr: false, // Disable SSR for heavy data table
+  }
+);
 
 interface AdminDashboardProps {
   className?: string;
@@ -103,23 +119,27 @@ export function AdminDashboard({
 
   return (
     <div className={`space-y-6 ${className || ''}`}>
-      <LicenseMetricsSection
-        licenses={licenses}
-        dateRange={memoizedDateRange}
-        initialDateFrom={defaultRange.from}
-        initialDateTo={defaultRange.to}
-        onDateRangeChange={handleDateRangeChange}
-        isLoading={isLoadingLicenses}
-        totalCount={totalCount}
-        useApiMetrics={true}
-      />
-      <LicenseTableSection
-        licenses={licenses}
-        isLoading={isLoadingLicenses}
-        pageCount={pageCount}
-        totalRows={totalCount}
-        onQueryChange={licensesProp ? undefined : handleQueryChange}
-      />
+      <Suspense fallback={<div className="animate-pulse bg-gray-200 rounded-lg h-32 mb-4"></div>}>
+        <LicenseMetricsSection
+          licenses={licenses}
+          dateRange={memoizedDateRange}
+          initialDateFrom={defaultRange.from}
+          initialDateTo={defaultRange.to}
+          onDateRangeChange={handleDateRangeChange}
+          isLoading={isLoadingLicenses}
+          totalCount={totalCount}
+          useApiMetrics={true}
+        />
+      </Suspense>
+      <Suspense fallback={<div className="animate-pulse bg-gray-200 rounded-lg h-64"></div>}>
+        <LicenseTableSection
+          licenses={licenses}
+          isLoading={isLoadingLicenses}
+          pageCount={pageCount}
+          totalRows={totalCount}
+          onQueryChange={licensesProp ? undefined : handleQueryChange}
+        />
+      </Suspense>
     </div>
   );
 }

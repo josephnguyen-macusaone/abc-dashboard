@@ -11,7 +11,12 @@ interface BreadcrumbItem {
   href: string;
 }
 
-export function Breadcrumb() {
+interface BreadcrumbProps {
+  /** Optional collapse button to show on desktop */
+  collapseButton?: React.ReactNode;
+}
+
+export function Breadcrumb({ collapseButton }: BreadcrumbProps = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -72,10 +77,20 @@ export function Breadcrumb() {
     return null;
   }
 
+  // Determine if we're on a sub-section (more than just Dashboard)
+  const isOnSubSection = breadcrumbs.length > 1 || searchParams.get('section') !== null;
+
   return (
     <nav aria-label="Breadcrumb" className="flex items-center space-x-1">
+      {collapseButton && (
+        <div className="mr-3 hidden lg:block">
+          {collapseButton}
+        </div>
+      )}
+
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
+        const isFirstDashboard = index === 0 && crumb.name === 'Dashboard';
 
         return (
           <div key={crumb.href} className="flex items-center space-x-1">
@@ -83,22 +98,36 @@ export function Breadcrumb() {
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )}
             {isLast ? (
-              <Typography
-                variant="body-s"
-                className="font-medium text-foreground flex items-center space-x-1"
-              >
-                <span>{crumb.name}</span>
-              </Typography>
+              <span className={cn(
+                "truncate pb-0.5 text-sm",
+                "text-foreground"
+              )}>
+                {crumb.name}
+              </span>
             ) : (
               <Link
                 href={crumb.href}
                 className={cn(
-                  "flex items-center space-x-1 text-muted-foreground hover:text-foreground transition-colors",
+                  "flex items-center space-x-1 transition-colors",
+                  // First Dashboard item: muted when on sub-section, normal when on dashboard
+                  isFirstDashboard
+                    ? (isOnSubSection
+                      ? "text-muted-foreground/60 hover:text-muted-foreground"
+                      : "text-foreground hover:text-foreground")
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Typography variant="body-s" as="span">
+                <span className={cn(
+                  "truncate pb-0.5 text-sm",
+                  // First Dashboard item styling
+                  isFirstDashboard
+                    ? (isOnSubSection
+                      ? "text-muted-foreground/60 hover:text-muted-foreground"
+                      : "text-foreground")
+                    : "text-foreground"
+                )}>
                   {crumb.name}
-                </Typography>
+                </span>
               </Link>
             )}
           </div>

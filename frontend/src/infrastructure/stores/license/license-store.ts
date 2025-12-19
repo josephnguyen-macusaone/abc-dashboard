@@ -5,6 +5,7 @@ import { licenseApi } from '@/infrastructure/api/licenses';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
 import { toast } from 'sonner';
+import { container } from '@/shared/di/container';
 
 export interface LicenseFilters {
   search?: string;
@@ -132,16 +133,65 @@ export const useLicenseStore = create<LicenseState>()(
                   delete queryParams[key];
               });
 
-            const response = await licenseApi.getLicenses(queryParams);
+            // Convert status array to comma-separated string for API compatibility
+            const apiParams = {
+              ...queryParams,
+              status: Array.isArray(queryParams.status)
+                ? queryParams.status.join(',')
+                : queryParams.status,
+              sortBy: queryParams.sortBy as keyof LicenseRecord
+            };
 
-            // Use total from stats if available, otherwise from pagination
-            const total = response.stats?.total ?? response.pagination.total ?? 0;
+            const response = await container.licenseManagementService.getLicenses(apiParams);
+
+            // Ensure response has expected structure with better error handling
+            if (!response) {
+              storeLogger.error('API returned null/undefined response');
+              throw new Error('API returned null or undefined response');
+            }
+
+            if (!response.data && !Array.isArray(response.data)) {
+              storeLogger.error('API response missing or invalid data field', {
+                responseKeys: Object.keys(response),
+                dataType: typeof response.data
+              });
+              // Provide fallback empty array instead of crashing
+              set({
+                licenses: [],
+                pagination: {
+                  page: apiParams.page || 1,
+                  limit: apiParams.limit || 20,
+                  total: 0,
+                  totalPages: 0
+                },
+                loading: false
+              });
+              return;
+            }
+
+            if (!response.pagination) {
+              storeLogger.warn('API response missing pagination, using defaults', {
+                responseKeys: Object.keys(response)
+              });
+              // Use default pagination if missing
+              set({
+                licenses: response.data,
+                pagination: {
+                  page: apiParams.page || 1,
+                  limit: apiParams.limit || 20,
+                  total: response.data.length,
+                  totalPages: Math.ceil(response.data.length / (apiParams.limit || 20))
+                },
+                loading: false
+              });
+              return;
+            }
 
             set({
-              licenses: response.licenses,
+              licenses: response.data,
               pagination: {
                 ...response.pagination,
-                total: total
+                total: response.pagination.total || response.data.length
               },
               loading: false
             });
@@ -157,7 +207,7 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            const licenseData = await licenseApi.getLicense(id);
+            const licenseData = await container.licenseManagementService.getLicense(typeof id === 'string' ? parseInt(id) : id);
 
             set({ currentLicense: licenseData, loading: false });
 
@@ -174,7 +224,7 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            const createdLicenses = await licenseApi.bulkCreateLicenses(licenses);
+            const createdLicenses = await container.licenseManagementService.bulkCreateLicenses(licenses as Array<Omit<LicenseRecord, 'id' | 'updatedAt' | 'createdAt' | 'smsBalance'>>);
 
             // Add the new licenses to the list
             const currentLicenses = get().licenses;
@@ -216,7 +266,7 @@ export const useLicenseStore = create<LicenseState>()(
               notes: licenseData.notes,
             };
 
-            const createdLicense = await licenseApi.createLicense(licenseRecord);
+            const createdLicense = await container.licenseManagementService.createLicense(licenseRecord as Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>);
 
             // Add the new license to the list
             const currentLicenses = get().licenses;
@@ -257,7 +307,7 @@ export const useLicenseStore = create<LicenseState>()(
               notes: licenseData.notes,
             };
 
-            const updatedLicense = await licenseApi.updateLicense(id, licenseRecord);
+            const updatedLicense = await container.licenseManagementService.updateLicense(typeof id === 'string' ? parseInt(id) : id, licenseRecord);
 
             // Update the license in the list
             const currentLicenses = get().licenses;
@@ -285,7 +335,7 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            await licenseApi.deleteLicense(id);
+            await container.licenseManagementService.deleteLicense(typeof id === 'string' ? parseInt(id) : id);
 
             // Remove the license from the list
             const currentLicenses = get().licenses;
@@ -308,8 +358,8 @@ export const useLicenseStore = create<LicenseState>()(
             set({ loading: true, error: null });
 
             // Transform each update from LicenseRecord format (with startsAt) to API format
-            // The API service will handle the rest of the transformation
-            const response = await licenseApi.bulkUpdateLicenses(updates);
+            // The LicenseManagementService will handle the rest of the transformation
+            const response = await container.licenseManagementService.bulkUpdateLicenses(updates);
 
             // Update the licenses in the list with the API response (fully updated records)
             const currentLicenses = get().licenses;
@@ -337,7 +387,7 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            await licenseApi.bulkDeleteLicenses(ids);
+            await container.licenseManagementService.bulkDeleteLicenses(ids.map(id => typeof id === 'string' ? parseInt(id) : id));
 
             // Remove the licenses from the list
             const currentLicenses = get().licenses;

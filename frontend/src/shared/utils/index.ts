@@ -79,3 +79,6 @@ export * from './logcfg';
 export * from './buffer';
 export * from './error-normalizer';
 export * from './toast-mapper';
+
+// Export image optimization utilities
+export * from './optimized-image';

@@ -8,7 +8,6 @@ import {
   UpdateUserResponseDto,
   UsersListResponseDto,
   GetUsersQueryParamsDto,
-  UserStatsResponseDto
 } from '@/application/dto/api-dto';
 
 /**

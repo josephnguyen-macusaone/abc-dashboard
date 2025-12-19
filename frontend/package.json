@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
-    "start": "next start"
+    "build:analyze:open": "ANALYZE=true BUNDLE_ANALYZER_OPEN=true next build",
+    "start": "next start",
+    "analyze": "npm run build:analyze",
+    "bundle:analyze": "npx webpack-bundle-analyzer .next/static/chunks/*.js --no-open"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -60,12 +63,13 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^16.0.10",
+    "@next/bundle-analyzer": "^16.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.23",
+    "compression-webpack-plugin": "^11.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",

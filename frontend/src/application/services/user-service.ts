@@ -4,7 +4,6 @@ import {
   UpdateUserDTO,
   UserListParams,
   UserSearchQuery,
-  UserStats,
   PaginatedUserList
 } from '@/application/dto/user-dto';
 import {
@@ -12,8 +11,7 @@ import {
   UpdateUserUseCase,
   DeleteUserUseCase,
   type GetUsersUseCaseContract,
-  type SearchUsersUseCaseContract,
-  GetUserStatsUseCase
+  type SearchUsersUseCaseContract
 } from '@/application/use-cases';
 import logger, { generateCorrelationId } from '@/shared/utils/logger';
 
@@ -21,9 +19,9 @@ import logger, { generateCorrelationId } from '@/shared/utils/logger';
  * Application Service: User Management
  * Coordinates multiple use cases and provides high-level user management operations
  */
-export class UserManagementService {
+export class UserService {
   private readonly logger = logger.createChild({
-    component: 'UserManagementService',
+    component: 'UserService',
   });
 
   constructor(
@@ -41,8 +39,8 @@ export class UserManagementService {
     const correlationId = generateCorrelationId();
 
     try {
-      const user = await this.createUserUseCase.execute(userData);
-      return user;
+      const result = await this.createUserUseCase.execute(userData);
+      return result;
     } catch (error) {
       this.logger.error(`Create user error`, {
         correlationId,
@@ -61,8 +59,8 @@ export class UserManagementService {
     const correlationId = generateCorrelationId();
 
     try {
-      const updatedUser = await this.updateUserUseCase.execute(id, updates);
-      return updatedUser;
+      const result = await this.updateUserUseCase.execute(id, updates);
+      return result;
     } catch (error) {
       this.logger.error(`Update user error`, {
         correlationId,

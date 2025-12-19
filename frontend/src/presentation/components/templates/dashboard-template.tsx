@@ -4,9 +4,10 @@ import { LoadingOverlay } from '@/presentation/components/atoms';
 import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { ReactNode, useMemo, useCallback, useState, useTransition } from 'react';
+import { ReactNode, useMemo, useCallback, useTransition } from 'react';
 import { useAuth, useToast } from '@/presentation/contexts';
 import { PermissionUtils, getNavigationItems } from '@/shared/constants';
+import { useSidebarStore } from '@/infrastructure/stores';
 
 interface DashboardTemplateProps {
   children: ReactNode;
@@ -15,11 +16,14 @@ interface DashboardTemplateProps {
 export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const toast = useToast();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isTransitioning, startTransition] = useTransition();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Use global sidebar store
+  const { isMobile, isCollapsed, toggleCollapsed } = useSidebarStore();
+  const sidebarOpen = !isMobile ? true : !isCollapsed;
 
   // Get navigation items based on user role
   const navigationItems = useMemo(() => {
@@ -67,12 +71,14 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   }, [router]);
 
   const handleSidebarClose = useCallback(() => {
-    setSidebarOpen(false);
-  }, [setSidebarOpen]);
+    if (isMobile) {
+      toggleCollapsed();
+    }
+  }, [isMobile, toggleCollapsed]);
 
   const handleSidebarToggle = useCallback(() => {
-    setSidebarOpen(!sidebarOpen);
-  }, [setSidebarOpen, sidebarOpen]);
+    toggleCollapsed();
+  }, [toggleCollapsed]);
 
   const userInitials = useMemo(() => {
     // Extract initials from display name first, then username, then email
@@ -120,6 +126,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
         <AppHeader
           sidebarOpen={sidebarOpen}
           onSidebarToggle={handleSidebarToggle}
+          onSidebarCollapse={toggleCollapsed}
         />
 
         {/* Page content - only vertical scrolling, horizontal scrolling happens inside tables */}

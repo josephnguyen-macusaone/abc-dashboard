@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/shared/utils';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { Logo } from '@/presentation/components/atoms';
 import { useTheme } from '@/presentation/contexts/theme-context';
@@ -14,6 +14,12 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
   children,
 }) => {
   const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Only show theme-dependent logo after hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Full background layer */}
@@ -42,11 +48,9 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
           'bg-card border border-border rounded-lg shadow-lg',
           'px-6 py-8 sm:px-8'
         )}>
-          {/* Logo */}
           <Logo
-            variant={theme === 'dark' ? 'dark' : 'light'}
+            variant={mounted ? (theme === 'dark' ? 'dark' : 'light') : 'dark'}
             width={160}
-            height={64}
             className="mx-auto"
           />
 

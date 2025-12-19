@@ -25,11 +25,12 @@ export const useTheme = () => {
 
 // Helper function to get initial theme synchronously
 const getInitialTheme = (): { theme: (typeof THEMES)[keyof typeof THEMES]; actualTheme: 'dark' | 'light' } => {
-  // Check if we're on the client side
+  // Always return light theme on server to match SSR
   if (typeof window === 'undefined') {
     return { theme: THEMES.LIGHT, actualTheme: 'light' };
   }
 
+  // On client, check localStorage for stored theme
   let initialTheme: (typeof THEMES)[keyof typeof THEMES] = THEMES.LIGHT;
   let initialActualTheme: 'light' | 'dark' = 'light';
 
@@ -63,18 +64,17 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const initialThemeData = getInitialTheme();
   const [theme, setThemeState] = useState<(typeof THEMES)[keyof typeof THEMES]>(initialThemeData.theme);
   const [actualTheme, setActualTheme] = useState<'dark' | 'light'>(initialThemeData.actualTheme);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Apply initial theme to document immediately (client-side only)
+  // Mark as hydrated on client-side only
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    if (initialThemeData.actualTheme === 'dark') {
-      root.classList.add('dark');
-    }
+    setIsHydrated(true);
   }, []);
 
-  // Initialize theme storage if not present
+  // Initialize theme storage if not present (only after hydration)
   useEffect(() => {
+    if (!isHydrated) return;
+
     const stored = localStorage.getItem('theme-storage');
     if (!stored) {
       localStorage.setItem('theme-storage', JSON.stringify({
@@ -82,10 +82,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
         version: 0
       }));
     }
-  }, []);
+  }, [isHydrated]);
 
-  // Update actual theme when theme changes
+  // Update actual theme when theme changes (only after hydration)
   useEffect(() => {
+    if (!isHydrated) return;
+
     const resolvedTheme = theme === THEMES.SYSTEM
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : (theme as 'light' | 'dark');
@@ -104,7 +106,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       state: { theme },
       version: 0
     }));
-  }, [theme]);
+  }, [theme, isHydrated]);
 
   const setTheme = (newTheme: (typeof THEMES)[keyof typeof THEMES]) => {
     setThemeState(newTheme);

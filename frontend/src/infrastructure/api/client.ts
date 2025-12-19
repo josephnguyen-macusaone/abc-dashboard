@@ -27,6 +27,12 @@ class HttpClient {
     reject: (error: unknown) => void;
   }> = [];
 
+  // Create child logger for HttpClient with component context
+  private httpLogger = logger.createChild({
+    component: 'HttpClient',
+    category: 'api',
+  });
+
   constructor(baseURL: string = DEFAULT_BASE_URL, config?: RequestConfig) {
     this.instance = axios.create({
       baseURL,
@@ -69,11 +75,18 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
-            if (process.env.NODE_ENV === 'development') {
-              console.debug('Adding auth header for request:', config.url, 'Token length:', token.length);
-            }
+            this.httpLogger.debug('Adding auth header for request', {
+              correlationId,
+              url: config.url,
+              tokenLength: token.length,
+              category: 'api-auth',
+            });
           } else {
-            console.log('Frontend: No token found for request:', config.url);
+            this.httpLogger.debug('No token found for request', {
+              correlationId,
+              url: config.url,
+              category: 'api-auth',
+            });
           }
         }
 
@@ -85,27 +98,29 @@ class HttpClient {
           };
         }
 
+        // Store start time for duration calculation
+        (config as InternalAxiosRequestConfig & { startTime?: number }).startTime = Date.now();
+
         // Log outgoing request with trace information
-        if (process.env.NODE_ENV === 'development') {
-          logger.api(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
-            correlationId,
-            url: config.url,
-            method: config.method,
-            traceId: trace.traceId,
-            spanId: trace.spanId,
-            category: 'api-details',
-          });
-        }
+        this.httpLogger.http(`🌐 Request: ${config.method?.toUpperCase()} ${config.url}`, {
+          correlationId,
+          url: config.url,
+          method: config.method,
+          traceId: trace.traceId,
+          spanId: trace.spanId,
+          category: 'api-details',
+        });
 
         return config;
       },
       (error: AxiosError) => {
         const correlationId = (error.config as InternalAxiosRequestConfig & { correlationId?: string })?.correlationId || generateCorrelationId();
-        logger.api('Request failed', {
+        this.httpLogger.error('Request failed', {
           correlationId,
           error: error.message,
           url: error.config?.url,
-          category: 'api-error' as const,
+          method: error.config?.method,
+          category: 'api-error',
         });
         return Promise.reject(handleApiError(error));
       }
@@ -118,17 +133,18 @@ class HttpClient {
         const trace = (response.config as any)?.trace;
 
         // Log successful response with trace information
-        if (process.env.NODE_ENV === 'development') {
-          logger.api(`Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-            correlationId,
-            status: response.status,
-            duration: Date.now() - ((response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime || Date.now()),
-            url: response.config.url,
-            traceId: trace?.traceId,
-            spanId: trace?.spanId,
-            category: 'api-details' as const,
-          });
-        }
+        const startTime = (response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime;
+        const duration = startTime ? Date.now() - startTime : undefined;
+
+        this.httpLogger.http(`🌐 Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+          correlationId,
+          status: response.status,
+          duration,
+          url: response.config.url,
+          traceId: trace?.traceId,
+          spanId: trace?.spanId,
+          category: 'api-details',
+        });
 
         return response;
       },
@@ -138,7 +154,7 @@ class HttpClient {
 
         // Log failed response with detailed error info
         const errorResponse = handleApiError(error);
-        logger.error(`API Error: ${errorResponse.message}`, {
+        this.httpLogger.error(`API Error: ${errorResponse.message}`, {
           correlationId,
           status: error.response?.status,
           code: errorResponse.code,
@@ -256,11 +272,15 @@ class HttpClient {
     try {
       const refreshToken = this.getRefreshToken();
       if (!refreshToken) {
-        logger.warn('No refresh token available for token refresh attempt');
+        this.httpLogger.warn('No refresh token available for token refresh attempt', {
+          category: 'api-auth',
+        });
         return false;
       }
 
-      logger.info('Attempting token refresh');
+      this.httpLogger.info('Attempting token refresh', {
+        category: 'api-auth',
+      });
 
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth');
@@ -269,14 +289,22 @@ class HttpClient {
       const success = await useAuthStore.getState().refreshToken();
 
       if (success) {
-        logger.info('Token refresh successful');
+        this.httpLogger.info('Token refresh successful', {
+          category: 'api-auth',
+        });
       } else {
-        logger.warn('Token refresh failed - refresh method returned false');
+        this.httpLogger.warn('Token refresh failed - refresh method returned false', {
+          category: 'api-auth',
+        });
       }
 
       return success;
     } catch (error) {
-      logger.error('Token refresh failed with exception:', { error: error instanceof Error ? error.message : String(error) });
+      this.httpLogger.error('Token refresh failed with exception', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        category: 'api-auth',
+      });
       return false;
     }
   }
@@ -287,13 +315,19 @@ class HttpClient {
   private async handleAuthFailure(): Promise<void> {
     // Prevent multiple simultaneous auth failure handling
     if (this.isHandlingAuthFailure) {
-      logger.info('Auth failure handling already in progress, skipping duplicate call');
+      this.httpLogger.debug('Auth failure handling already in progress, skipping duplicate call', {
+        category: 'api-auth',
+      });
       return;
     }
 
     this.isHandlingAuthFailure = true;
 
     try {
+      this.httpLogger.warn('Handling authentication failure - clearing state and redirecting', {
+        category: 'api-auth',
+      });
+
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth');
 
@@ -306,12 +340,19 @@ class HttpClient {
         const redirectingKey = 'auth_redirecting';
         if (!sessionStorage.getItem(redirectingKey)) {
           sessionStorage.setItem(redirectingKey, 'true');
-        // Use window.location for reliable client-side navigation
-        window.location.href = '/login';
+          this.httpLogger.info('Redirecting to login page', {
+            category: 'api-auth',
+          });
+          // Use window.location for reliable client-side navigation
+          window.location.href = '/login';
         }
       }
     } catch (error) {
-      logger.error('Failed to handle auth failure:', { error: error instanceof Error ? error.message : String(error) });
+      this.httpLogger.error('Failed to handle auth failure', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        category: 'api-auth',
+      });
     } finally {
       this.isHandlingAuthFailure = false;
     }

@@ -7,6 +7,7 @@ import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/utils/logger';
+import { container } from '@/shared/di/container';
 
 interface AuthState {
   // State
@@ -57,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
           // Initial state
           user: null,
           token: null,
-          isLoading: true,
+          isLoading: false,
           isAuthenticated: false,
           isLoggingOut: false,
           passwordResetSent: false,
@@ -65,6 +66,13 @@ export const useAuthStore = create<AuthState>()(
 
           // Initialize auth state from storage
           initialize: async () => {
+            // Skip if already initialized (has user/token from persistence)
+            const currentState = get();
+            if (currentState.user && currentState.token) {
+              set({ isAuthenticated: true, isLoading: false });
+              return;
+            }
+
             try {
               set({ isLoading: true });
 
@@ -221,10 +229,7 @@ export const useAuthStore = create<AuthState>()(
 
           changePassword: async (currentPassword: string, newPassword: string) => {
             try {
-              await authApi.changePassword({
-                currentPassword,
-                newPassword
-              });
+              await container.authService.changePassword(currentPassword, newPassword);
             } catch (error) {
               storeLogger.warn('Password change failed', {
                 error: error instanceof Error ? error.message : String(error)
@@ -283,13 +288,10 @@ export const useAuthStore = create<AuthState>()(
             set({ isLoggingOut: true });
 
             try {
-              await authApi.logout();
-            } catch (error) {
-              storeLogger.warn('Logout API call failed', {
-                error: error instanceof Error ? error.message : String(error)
-              });
-            } finally {
-              // Always clear local state
+              // Use the logout use case which handles API call and cleanup
+              await container.logoutUseCase.execute();
+
+              // Clear local state after use case completes
               set({
                 user: null,
                 token: null,
@@ -298,9 +300,24 @@ export const useAuthStore = create<AuthState>()(
                 passwordResetSent: false,
                 passwordResetEmail: null
               });
-              CookieService.clearAuthCookies();
-              LocalStorageService.clearAuthData();
-              httpClient.setAuthToken(null);
+
+              // Logout completed - detailed logging handled by use case
+            } catch (error) {
+              storeLogger.error('Logout failed', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+
+              // Still clear local state even if logout use case fails
+              set({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoggingOut: false,
+                passwordResetSent: false,
+                passwordResetEmail: null
+              });
+
+              throw error; // Re-throw to let caller handle the error
             }
           },
 

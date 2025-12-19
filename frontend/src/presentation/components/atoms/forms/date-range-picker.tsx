@@ -92,7 +92,7 @@ const PRESETS: Preset[] = [
 
 /** The DateRangePicker component allows a user to select a range of dates */
 export const DateRangePicker: FC<DateRangePickerProps> = ({
-  initialDateFrom = new Date(new Date().setHours(0, 0, 0, 0)),
+  initialDateFrom,
   initialDateTo,
   initialCompareFrom,
   initialCompareTo,
@@ -102,13 +102,17 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   showCompare = true,
   className,
 }) => {
+  // Use useMemo to ensure stable default date
+  const defaultDateFrom = React.useMemo(() => {
+    return initialDateFrom || new Date(new Date().setHours(0, 0, 0, 0));
+  }, [initialDateFrom]);
   const [isOpen, setIsOpen] = useState(false);
 
   const [range, setRange] = useState<DateRange>({
-    from: getDateAdjustedForTimezone(initialDateFrom),
+    from: getDateAdjustedForTimezone(defaultDateFrom),
     to: initialDateTo
       ? getDateAdjustedForTimezone(initialDateTo)
-      : getDateAdjustedForTimezone(initialDateFrom),
+      : getDateAdjustedForTimezone(defaultDateFrom),
   });
   const [rangeCompare, setRangeCompare] = useState<DateRange | undefined>(
     initialCompareFrom
@@ -129,14 +133,15 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     undefined
   );
 
-  const [isSmallScreen, setIsSmallScreen] = useState(
-    typeof window !== 'undefined' ? window.innerWidth < 960 : false
-  );
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
 
   useEffect(() => {
     const handleResize = (): void => {
       setIsSmallScreen(window.innerWidth < 960);
     };
+
+    // Set initial value
+    handleResize();
 
     window.addEventListener('resize', handleResize);
 
@@ -261,16 +266,16 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   const resetValues = (): void => {
     setRange({
       from:
-        typeof initialDateFrom === 'string'
-          ? getDateAdjustedForTimezone(initialDateFrom)
-          : initialDateFrom,
+        typeof defaultDateFrom === 'string'
+          ? getDateAdjustedForTimezone(defaultDateFrom)
+          : defaultDateFrom,
       to: initialDateTo
         ? typeof initialDateTo === 'string'
           ? getDateAdjustedForTimezone(initialDateTo)
           : initialDateTo
-        : typeof initialDateFrom === 'string'
-          ? getDateAdjustedForTimezone(initialDateFrom)
-          : initialDateFrom,
+        : typeof defaultDateFrom === 'string'
+          ? getDateAdjustedForTimezone(defaultDateFrom)
+          : defaultDateFrom,
     });
     setRangeCompare(
       initialCompareFrom
