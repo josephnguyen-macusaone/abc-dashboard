@@ -22,10 +22,12 @@ class HttpClient {
   private retryConfig: RetryConfig;
   private isRefreshing = false;
   private isHandlingAuthFailure = false;
+  private authFailureHandled = false; // Flag to indicate auth failure has been processed
   private failedQueue: Array<{
     resolve: (token: string) => void;
     reject: (error: unknown) => void;
   }> = [];
+  private pendingRequests = new Map<string, Promise<any>>(); // Request deduplication cache
 
   // Create child logger for HttpClient with component context
   private httpLogger = logger.createChild({
@@ -75,12 +77,6 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
-            this.httpLogger.debug('Adding auth header for request', {
-              correlationId,
-              url: config.url,
-              tokenLength: token.length,
-              category: 'api-auth',
-            });
           } else {
             this.httpLogger.debug('No token found for request', {
               correlationId,
@@ -152,20 +148,34 @@ class HttpClient {
         const correlationId = (error.config as InternalAxiosRequestConfig & { correlationId?: string })?.correlationId || generateCorrelationId();
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number; correlationId?: string };
 
-        // Log failed response with detailed error info
+        // Log failed response with detailed error info (less verbose if auth failure handled)
         const errorResponse = handleApiError(error);
-        this.httpLogger.error(`API Error: ${errorResponse.message}`, {
+        const logLevel = this.authFailureHandled && error.response?.status === 401 ? 'debug' : 'error';
+        this.httpLogger[logLevel](`API Error: ${errorResponse.message}`, {
           correlationId,
           status: error.response?.status,
           code: errorResponse.code,
           url: error.config?.url,
           method: error.config?.method?.toUpperCase(),
-          category: 'api-error',
+          category: this.authFailureHandled && error.response?.status === 401 ? 'api-auth' : 'api-error',
           details: errorResponse.details,
         });
 
         // Handle 401 errors with automatic token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
+          // If auth failure has already been handled, skip all token refresh logic
+          if (this.authFailureHandled) {
+            return Promise.reject(errorResponse);
+          }
+
+          // Check token expiration proactively
+          const token = this.getAuthToken();
+          if (token && this.isTokenExpired(token)) {
+            // Token is expired, skip refresh attempt and handle auth failure directly
+            this.handleAuthFailure();
+            return Promise.reject(errorResponse);
+          }
+
           if (this.isRefreshing) {
             // If refresh is already in progress, queue this request
             return new Promise((resolve, reject) => {
@@ -178,7 +188,7 @@ class HttpClient {
           // Check if we have a refresh token
           const refreshToken = this.getRefreshToken();
           if (!refreshToken) {
-            // No refresh token, redirect to login
+            // No refresh token, handle auth failure
             this.handleAuthFailure();
             return Promise.reject(errorResponse);
           }
@@ -266,6 +276,21 @@ class HttpClient {
   }
 
   /**
+   * Check if JWT token is expired
+   */
+  private isTokenExpired(token: string): boolean {
+    try {
+      // Decode JWT payload (base64 decode the middle part)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch (error) {
+      // If we can't decode the token, assume it's expired for safety
+      return true;
+    }
+  }
+
+  /**
    * Attempt to refresh the authentication token
    */
   private async attemptTokenRefresh(): Promise<boolean> {
@@ -322,6 +347,7 @@ class HttpClient {
     }
 
     this.isHandlingAuthFailure = true;
+    this.authFailureHandled = true; // Mark that auth failure is being handled
 
     try {
       this.httpLogger.warn('Handling authentication failure - clearing state and redirecting', {
@@ -331,8 +357,15 @@ class HttpClient {
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth');
 
-      // Clear authentication state
-      await useAuthStore.getState().logout();
+      // Clear authentication state (don't throw on logout failure)
+      try {
+        await useAuthStore.getState().logout();
+      } catch (logoutError) {
+        this.httpLogger.warn('Logout failed during auth failure cleanup, continuing with local cleanup only', {
+          category: 'api-auth',
+          error: logoutError instanceof Error ? logoutError.message : String(logoutError),
+        });
+      }
 
       // Redirect to login page if in browser
       if (typeof window !== 'undefined') {
@@ -355,6 +388,10 @@ class HttpClient {
       });
     } finally {
       this.isHandlingAuthFailure = false;
+      // Reset the auth failure flag after a delay to allow for any queued requests to complete
+      setTimeout(() => {
+        this.authFailureHandled = false;
+      }, 1000);
     }
   }
 
@@ -370,11 +407,26 @@ class HttpClient {
   }
 
   /**
-   * Generic GET request
+   * Generic GET request with deduplication
    */
   async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.get(url, config);
-    return response.data;
+    // Create a cache key for GET requests
+    const cacheKey = `GET:${url}:${JSON.stringify(config?.params || {})}`;
+
+    // Check if identical request is already in flight
+    const pendingRequest = this.pendingRequests.get(cacheKey);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+
+    // Create new request and cache it
+    const request = this.instance.get(url, config).then(response => response.data).finally(() => {
+      // Clean up cache after request completes (success or failure)
+      this.pendingRequests.delete(cacheKey);
+    });
+
+    this.pendingRequests.set(cacheKey, request);
+    return request;
   }
 
   /**

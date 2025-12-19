@@ -22,7 +22,7 @@ export function LicenseManagementPage() {
   const licensePagination = useLicenseStore(selectLicensePagination);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
   const bulkCreateLicenses = useLicenseStore(state => state.bulkCreateLicenses);
-  const bulkUpdateLicenses = useLicenseStore(state => state.bulkUpdateLicenses);
+  const bulkUpsertLicenses = useLicenseStore(state => (state as any).bulkUpsertLicenses);
   const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
 
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>();
@@ -58,43 +58,46 @@ export function LicenseManagementPage() {
         const newLicenses = data.filter(license => typeof license.id === 'string' && license.id.startsWith('temp-'));
         const existingLicenses = data.filter(license => !newLicenses.includes(license));
 
-        // Prepare new licenses for bulk creation
-        const licensesToCreate = newLicenses.map(license => {
-          const licenseKey = generateLicenseKey();
-          const { id, ...licenseData } = license;
-          return {
-            ...licenseData,
-            key: licenseKey, // Add the required license key
-            product: 'ABC Business Suite', // Add the required product field
-            seatsTotal: 1, // Add the required seats total (default to 1)
-          };
-        });
+        let hasOperations = false;
 
-        // Bulk create new licenses
-        let createdLicenses: LicenseRecord[] = [];
-        if (licensesToCreate.length > 0) {
-          createdLicenses = await bulkCreateLicenses(licensesToCreate);
+        // Bulk create new licenses if any
+        if (newLicenses.length > 0) {
+          const licensesToCreate = newLicenses.map(license => {
+            const licenseKey = generateLicenseKey();
+            const { id, ...licenseData } = license;
+            return {
+              ...licenseData,
+              key: licenseKey, // Add the required license key
+              product: 'ABC Business Suite', // Add the required product field
+              seatsTotal: 1, // Add the required seats total (default to 1)
+            };
+          });
+
+          await bulkCreateLicenses(licensesToCreate);
+          hasOperations = true;
         }
 
-        // Update existing licenses
+        // Bulk update existing licenses if any
         if (existingLicenses.length > 0) {
-          const updates = existingLicenses.map(license => ({
-            ...license,
-          }));
-          await bulkUpdateLicenses(updates);
+          await bulkUpsertLicenses(existingLicenses);
+          hasOperations = true;
         }
 
-        await loadLicenses();
+        // Only reload if we actually performed operations
+        if (hasOperations) {
+          await loadLicenses();
+          toast.success("Licenses saved successfully");
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to save licenses");
       }
     },
-    [bulkCreateLicenses, bulkUpdateLicenses, loadLicenses, generateLicenseKey],
+    [bulkCreateLicenses, bulkUpsertLicenses, loadLicenses, generateLicenseKey],
   );
 
   const onAddRow = useCallback(async (): Promise<LicenseRecord> => {
     // Return a temporary license record for grid editing
-    // The license will be created in the database only when saved via bulkUpdateLicenses
+    // The license will be created in the database only when saved via bulkUpsertLicenses
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     return {
       id: tempId,

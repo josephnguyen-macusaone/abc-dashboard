@@ -54,7 +54,10 @@ const LOG_CONFIG = {
     'api-debug',
     'cache-debug',
     'store-debug'
-  ] : [],
+  ] : [
+    // Suppress noisy categories in development too
+    'api-details', // HTTP request/response logs
+  ],
 
   // Maximum logs per minute to prevent spam - reduced
   rateLimit: {

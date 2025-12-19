@@ -1,19 +1,20 @@
-// License management use cases
+// License management use cases - Clean Architecture implementations
 export {
-  GetLicensesUseCase,
-  type GetLicensesUseCaseContract,
+  GetLicensesUseCaseImpl,
+  type GetLicensesUseCase,
 } from './get-licenses-usecase';
 
 export {
-  CreateLicenseUseCase,
-  type CreateLicenseUseCaseContract,
+  CreateLicenseUseCaseImpl,
+  type CreateLicenseUseCase,
 } from './create-license-usecase';
 
 export {
-  UpdateLicenseUseCase,
-  type UpdateLicenseUseCaseContract,
+  UpdateLicenseUseCaseImpl,
+  type UpdateLicenseUseCase,
 } from './update-license-usecase';
 
+// Legacy use cases (to be migrated to Clean Architecture)
 export {
   DeleteLicenseUseCase,
   type DeleteLicenseUseCaseContract,

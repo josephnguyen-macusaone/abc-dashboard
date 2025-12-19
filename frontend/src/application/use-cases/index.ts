@@ -46,18 +46,18 @@ export {
 
 // License management use cases
 export {
-  GetLicensesUseCase,
-  type GetLicensesUseCaseContract,
+  GetLicensesUseCaseImpl,
+  type GetLicensesUseCase,
 } from './license/get-licenses-usecase';
 
 export {
-  CreateLicenseUseCase,
-  type CreateLicenseUseCaseContract,
+  CreateLicenseUseCaseImpl,
+  type CreateLicenseUseCase,
 } from './license/create-license-usecase';
 
 export {
-  UpdateLicenseUseCase,
-  type UpdateLicenseUseCaseContract,
+  UpdateLicenseUseCaseImpl,
+  type UpdateLicenseUseCase,
 } from './license/update-license-usecase';
 
 export {

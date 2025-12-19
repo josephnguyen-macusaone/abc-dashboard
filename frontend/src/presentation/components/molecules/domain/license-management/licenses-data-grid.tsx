@@ -207,7 +207,7 @@ export function LicensesDataGrid({
     data,
     columns,
     onDataChange: handleDataChange,
-    onRowAdd: handleRowAdd,
+    onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
     onRowsDelete: handleRowsDelete,
     rowHeight: "short",
     enableSearch: false, // Disable built-in search, we'll handle it manually
