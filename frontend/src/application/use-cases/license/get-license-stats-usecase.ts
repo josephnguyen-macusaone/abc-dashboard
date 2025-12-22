@@ -285,7 +285,7 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       (sum, license) => sum + license.smsSent,
       0,
     );
-    const smsIncomeThisMonth = smsSentThisMonth * this.smsRevenuePerMessage;
+    const smsIncomeThisMonth = smsSentThisPeriod * this.smsRevenuePerMessage;
 
     const agentHeavyLicenses = filteredLicenses.filter((license) => license.agents > 3).length;
     const inHouseLicenses = filteredLicenses.length - agentHeavyLicenses;
@@ -355,7 +355,7 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       {
         id: 'sms-income-month',
         label: 'Total SMS income this month',
-        value: this.formatCurrency(smsIncomeThisPeriod),
+        value: this.formatCurrency(smsIncomeThisMonth),
         trend: {
           value: Math.abs(this.percentageChange(smsSentThisPeriod, smsSentComparisonPeriod)),
           direction:
