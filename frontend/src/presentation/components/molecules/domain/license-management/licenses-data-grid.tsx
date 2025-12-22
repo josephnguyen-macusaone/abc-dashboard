@@ -20,8 +20,9 @@ import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
+import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { getLicenseGridColumns } from "./license-grid-columns";
-import type { LicenseRecord } from "@/shared/types";
+import type { LicenseRecord } from "@/types";
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
@@ -110,11 +111,13 @@ export function LicensesDataGrid({
 
     try {
       const newRow = await onAddRow();
+      // Add new row to the TOP of the data array for better UX
       setData((prev) => [newRow, ...prev]);
       setHasChanges(true);
       // Force DataGrid remount to prevent virtual scroller conflicts
       dataVersionRef.current += 1;
 
+      // Return row index 0 to scroll to the newly added row at the top
       return { rowIndex: 0, columnId: "dba" };
     } catch (error) {
       console.error('Failed to add new license row:', error);
@@ -272,23 +275,7 @@ export function LicensesDataGrid({
   if (isLoading) {
     return (
       <div className={className}>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full" />
-            ))}
-          </div>
-        </div>
+        <LicensesDataGridSkeleton />
       </div>
     );
   }

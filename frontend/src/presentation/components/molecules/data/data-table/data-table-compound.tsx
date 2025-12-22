@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode, TableHTMLAttributes } from 'react';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { Loading } from '@/presentation/components/atoms/display';
 
 // Context for compound component state

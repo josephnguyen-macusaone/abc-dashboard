@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface DataGridColumnHeaderProps<TData, TValue>
   extends React.ComponentProps<typeof DropdownMenuTrigger> {

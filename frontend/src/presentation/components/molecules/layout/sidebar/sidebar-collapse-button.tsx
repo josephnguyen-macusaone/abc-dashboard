@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/presentation/components/atoms';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import React from 'react';
 

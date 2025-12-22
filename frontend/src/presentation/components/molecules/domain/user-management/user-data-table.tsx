@@ -10,15 +10,15 @@ import { UserPlus, UserCircle } from "lucide-react";
 import {
   DataTable,
   DataTableToolbar,
-  DataTableSkeleton,
 } from "@/presentation/components/molecules/data/data-table";
+import { UserDataTableSkeleton } from "./user-data-table-skeleton";
 import { useDataTable } from "@/presentation/hooks";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { SearchBar } from "@/presentation/components/molecules";
 import { Typography } from "@/presentation/components/atoms";
 import { getUserTableColumns } from "./user-table-columns";
 import type { User } from "@/domain/entities/user-entity";
-import type { DataTableRowAction } from "@/shared/types/data-table";
+import type { DataTableRowAction } from "@/types/data-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserStore } from "@/infrastructure/stores/user";
 
@@ -356,15 +356,7 @@ export function UsersDataTable({
 
   // Loading state
   if (isLoading) {
-    return (
-      <DataTableSkeleton
-        columnCount={8}
-        rowCount={10}
-        filterCount={3}
-        withPagination
-        withViewOptions
-      />
-    );
+    return <UserDataTableSkeleton />;
   }
 
   // Empty state with reset button if filters are active

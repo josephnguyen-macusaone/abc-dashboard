@@ -1,9 +1,5 @@
 // Shared Constants - Application-wide constants
 
-// Asset Constants (auto-generated)
-export { SVGS, IMAGES, ASSETS } from './assets';
-export type { SvgAssetPaths, ImageAssetPaths, AssetPaths } from './assets';
-
 // Re-export all constants from organized modules
 export * from './api';
 export * from './auth';

@@ -22,12 +22,8 @@ export function truncate(str: string, length: number): string {
   return str.length > length ? `${str.substring(0, length)}...` : str;
 }
 
-/**
- * Generate random ID
- */
-export function generateId(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
+// Re-export generateId from lib for backward compatibility
+export { generateId } from "@/shared/lib";
 
 /**
  * Debounce function
@@ -75,10 +71,20 @@ export function isServer(): boolean {
 export { default as logger } from './logger';
 export * from './logger';
 export * from './retry';
-export * from './logcfg';
+export * from './log-config';
 export * from './buffer';
 export * from './error-normalizer';
-export * from './toast-mapper';
+export * from './toast-map';
 
 // Export image optimization utilities
-export * from './optimized-image';
+export * from './img-opt';
+
+// Export circuit breaker and token management utilities
+export * from './circuit-breaker';
+export * from './token-manager';
+
+// Export theme utilities
+export * from './theme-utils';
+
+// Export tracing utilities
+export * from './tracing';

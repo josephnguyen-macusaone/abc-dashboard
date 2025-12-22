@@ -1,5 +1,5 @@
 import { User } from '@/domain/entities/user-entity';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 import { STORAGE_KEYS } from '@/shared/constants';
 
 /**

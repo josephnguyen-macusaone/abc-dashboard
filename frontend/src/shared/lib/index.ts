@@ -14,3 +14,6 @@ export * from './compose-refs';
 export * from './format';
 export * from './id';
 export * from './parsers';
+
+// Export simple generateId for common use cases
+export { generateSimpleId as generateId } from './id';

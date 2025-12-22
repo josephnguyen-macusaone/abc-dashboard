@@ -22,7 +22,7 @@ export class ApiExceptionDto extends Error {
 
 // Other exports
 import { UserRole } from '@/domain/entities/user-entity';
-import { SortBy, SortOrder } from '@/shared/types';
+import { SortBy, SortOrder } from '@/types';
 
 // API Response Types
 export interface ApiResponse<T = any> {

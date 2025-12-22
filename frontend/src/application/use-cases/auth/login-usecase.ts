@@ -1,7 +1,7 @@
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { AuthResult } from '@/domain/entities/user-entity';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface LoginUseCaseContract {
   execute: (

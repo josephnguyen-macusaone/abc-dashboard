@@ -6,7 +6,7 @@ import {
   SidebarFooter,
   type NavigationItem,
 } from '@/presentation/components/molecules/layout/sidebar';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { useSidebarStore } from '@/infrastructure/stores';
 import { SIDEBAR_CONSTANTS } from '@/infrastructure/stores/ui/sidebar-store';
 import { useEffect } from 'react';

@@ -3,7 +3,7 @@
 import { ScrollArea } from '@/presentation/components/atoms';
 import { NavigationButton } from './sidebar-navigation-button';
 import { LucideIcon } from 'lucide-react';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 export interface NavigationItem {
   name: string;
@@ -31,21 +31,12 @@ export function SidebarNavigation({
   className,
 }: SidebarNavigationProps) {
   const isItemActive = (path: string, itemHref: string) => {
+    // For clean URLs, simply compare pathnames
     const currentUrl = new URL(path, 'http://localhost');
     const itemUrl = new URL(itemHref, 'http://localhost');
 
-    if (currentUrl.pathname !== itemUrl.pathname) return false;
-
-    const currentSection = currentUrl.searchParams.get('section');
-    const itemSection = itemUrl.searchParams.get('section');
-
-    // If the item targets a specific section, match that section and ignore other params
-    if (itemSection) {
-      return currentSection === itemSection;
-    }
-
-    // For base links without section, require same path and no section selected
-    return !currentSection;
+    // Exact pathname match for clean URLs
+    return currentUrl.pathname === itemUrl.pathname;
   };
 
   const filteredItems = items.filter((item) => {

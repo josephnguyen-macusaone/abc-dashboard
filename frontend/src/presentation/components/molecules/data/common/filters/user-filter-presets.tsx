@@ -2,7 +2,7 @@
 
 import { Users, Clock, UserPlus, Shield, UserCheck } from 'lucide-react';
 import { subDays, startOfMonth, startOfWeek } from 'date-fns';
-import type { FilterPreset } from '@/shared/types/data-display';
+import type { FilterPreset } from '@/types/data-display';
 
 /**
  * Predefined filter presets for user management

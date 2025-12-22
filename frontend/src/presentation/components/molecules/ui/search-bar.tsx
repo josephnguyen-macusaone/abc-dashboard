@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Input } from '@/presentation/components/atoms';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import { Search, X } from 'lucide-react';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 export interface SearchBarProps extends Omit<React.ComponentProps<"input">, "type"> {
   /**

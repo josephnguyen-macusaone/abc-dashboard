@@ -4,7 +4,7 @@ import type { Cell, TableMeta } from "@tanstack/react-table";
 import * as React from "react";
 import { useComposedRefs } from "@/shared/lib/compose-refs";
 import { getCellKey } from "@/shared/lib/data-grid";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface DataGridCellWrapperProps<TData> extends React.ComponentProps<"div"> {
   cell: Cell<TData, unknown>;

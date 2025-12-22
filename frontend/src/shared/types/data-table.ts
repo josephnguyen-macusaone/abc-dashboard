@@ -1,7 +1,14 @@
 import type { ColumnSort, Row, RowData } from "@tanstack/react-table";
-import type { DataTableConfig } from "@/shared/config/data-table";
-import type { FilterItemSchema } from "@/shared/lib/parsers";
 import type * as React from "react";
+
+// Filter item schema type (moved here to break circular dependency)
+export interface FilterItemSchema {
+  id: string;
+  value: string | string[];
+  variant: FilterVariant;
+  operator: FilterOperator;
+  filterId: string;
+}
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -36,9 +43,34 @@ export interface Option {
   icon?: React.FC<React.SVGProps<SVGSVGElement>>;
 }
 
-export type FilterOperator = DataTableConfig["operators"][number];
-export type FilterVariant = DataTableConfig["filterVariants"][number];
-export type JoinOperator = DataTableConfig["joinOperators"][number];
+// Filter operator types (explicit definitions)
+export type FilterOperator =
+  | "iLike"
+  | "notILike"
+  | "eq"
+  | "ne"
+  | "inArray"
+  | "notInArray"
+  | "isEmpty"
+  | "isNotEmpty"
+  | "lt"
+  | "lte"
+  | "gt"
+  | "gte"
+  | "isBetween"
+  | "isRelativeToToday";
+
+export type FilterVariant =
+  | "text"
+  | "number"
+  | "range"
+  | "date"
+  | "dateRange"
+  | "boolean"
+  | "select"
+  | "multiSelect";
+
+export type JoinOperator = "and" | "or";
 
 export interface ExtendedColumnSort<TData> extends Omit<ColumnSort, "id"> {
   id: Extract<keyof TData, string>;

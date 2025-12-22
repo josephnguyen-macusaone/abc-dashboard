@@ -1,6 +1,6 @@
 import { httpClient } from '@/infrastructure/api/client';
 import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
-import type { LicenseRecord } from '@/shared/types';
+import type { LicenseRecord } from '@/types';
 
 /**
  * Transform backend license data to frontend LicenseRecord

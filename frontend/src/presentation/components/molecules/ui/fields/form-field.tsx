@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Typography, Input, Label } from '@/presentation/components/atoms';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,

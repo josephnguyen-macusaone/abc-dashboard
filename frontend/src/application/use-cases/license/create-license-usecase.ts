@@ -2,7 +2,7 @@ import { License } from '@/domain/entities/license-entity';
 import { ILicenseRepository } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { CreateLicenseDTO } from '@/application/dto/license-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Create License

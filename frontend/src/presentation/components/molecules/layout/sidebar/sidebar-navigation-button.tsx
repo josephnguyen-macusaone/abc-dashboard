@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/presentation/components/atoms';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { LucideIcon } from 'lucide-react';
 
 export interface NavigationButtonProps extends React.HTMLAttributes<HTMLButtonElement> {

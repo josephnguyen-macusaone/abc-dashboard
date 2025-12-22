@@ -1,6 +1,6 @@
 import { User } from '@/domain/entities/user-entity';
 import { COOKIE_CONFIG } from '@/shared/constants';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 
 /**
  * Infrastructure Service: Cookies

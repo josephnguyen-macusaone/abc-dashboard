@@ -4,8 +4,8 @@ import React, { createContext, useContext, ReactNode, useCallback, useEffect, us
 import { useToast } from './toast-context';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
 import { handleApiError as processApiError } from '@/infrastructure/api/errors';
-import logger from '@/shared/utils/logger';
-import { RetryUtils } from '@/shared/utils/retry';
+import logger from '@/shared/helpers/logger';
+import { RetryUtils } from '@/shared/helpers/retry';
 
 /**
  * Error Context Type

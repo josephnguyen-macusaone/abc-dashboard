@@ -3,7 +3,7 @@ import { User, AuthResult, AuthTokens, UserRole } from '@/domain/entities/user-e
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { authApi } from '@/infrastructure/api/auth';
 import { UserProfileDto } from '@/application/dto/api-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Infrastructure Repository: Authentication

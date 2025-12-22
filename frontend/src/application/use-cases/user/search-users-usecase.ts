@@ -1,7 +1,7 @@
 import { User } from '@/domain/entities/user-entity';
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
 import { UserSearchQuery } from '@/application/dto/user-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface SearchUsersUseCaseContract {
   execute: (searchQuery: UserSearchQuery) => Promise<User[]>;

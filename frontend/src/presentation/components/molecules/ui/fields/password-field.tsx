@@ -1,7 +1,7 @@
 import { forwardRef, useState } from 'react';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { Input, Label } from '@/presentation/components/atoms';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 interface PasswordFieldProps {
   id: string;

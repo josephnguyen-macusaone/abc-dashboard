@@ -1,5 +1,5 @@
 import { licenseApiService, LicenseServiceContract } from '@/application/services/license-services';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Delete License

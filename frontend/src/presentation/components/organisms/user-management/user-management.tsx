@@ -8,7 +8,7 @@ import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
 import { UserFormTemplate } from '@/presentation/components/templates';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
 import { useUserStore } from '@/infrastructure/stores/user';

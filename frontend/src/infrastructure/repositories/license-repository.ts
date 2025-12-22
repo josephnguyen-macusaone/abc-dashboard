@@ -6,7 +6,7 @@ import {
 } from '@/domain/entities/license-entity';
 import { ILicenseRepository, LicenseSpecification, LicenseStatistics } from '@/domain/repositories/i-license-repository';
 import { licenseApi } from '@/infrastructure/api/licenses';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 
 /**
  * Infrastructure Repository: License Management

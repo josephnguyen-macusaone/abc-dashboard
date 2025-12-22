@@ -3,16 +3,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { StatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard';
+import { LicenseMetricsSkeleton } from '@/presentation/components/organisms';
 import { useToast } from '@/presentation/contexts/toast-context';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
-import type { LicenseRecord } from '@/shared/types';
+import type { LicenseRecord } from '@/types';
 import type { StatsCardConfig } from '@/presentation/components/molecules/domain/user-management';
 import {
   createGetLicenseStatsUseCase,
   type LicenseDateRange,
   type LicenseDashboardMetric
 } from '@/application/use-cases';
-import { logger } from '@/shared/utils';
+import { logger } from '@/shared/helpers';
 import {
   AlertTriangle,
   Building,
@@ -128,6 +129,11 @@ export function LicenseMetricsSection({
   }, [metrics]);
 
   const effectiveLoading = isLoading || isLoadingMetrics;
+
+  // Show skeleton when loading initially (before any data is loaded)
+  if (effectiveLoading && licenses.length === 0) {
+    return <LicenseMetricsSkeleton columns={4} />;
+  }
 
   return (
     <div className="space-y-6">

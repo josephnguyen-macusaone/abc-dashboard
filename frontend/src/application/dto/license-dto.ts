@@ -1,4 +1,4 @@
-import { LicenseStatus, LicenseTerm } from '@/shared/types';
+import { LicenseStatus, LicenseTerm } from '@/types';
 
 /**
  * Application DTOs: License Management
@@ -380,4 +380,4 @@ export interface LicenseImportResultDTO {
 }
 
 // Re-export domain types for convenience
-export type { LicenseStatus, LicenseTerm } from '@/shared/types';
+export type { LicenseStatus, LicenseTerm } from '@/types';

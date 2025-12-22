@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { THEMES } from '@/shared/constants';
+import { saveTheme } from '@/shared/helpers/theme-utils';
 
 interface ThemeState {
   // State
@@ -46,15 +47,17 @@ export const useThemeStore = create<ThemeState>()(
 
           set({ theme: newTheme, actualTheme: resolvedTheme });
 
+          // Save theme using our utility (handles both cookies and localStorage)
+          saveTheme(newTheme);
+
           // Apply theme to DOM
           const root = document.documentElement;
           root.classList.remove('light', 'dark');
+          root.setAttribute('data-theme', resolvedTheme);
           if (resolvedTheme === 'dark') {
             root.classList.add('dark');
           }
           // For light theme, rely on default :root variables (no class needed)
-
-          // Persist middleware handles storage automatically
         },
       }),
       {

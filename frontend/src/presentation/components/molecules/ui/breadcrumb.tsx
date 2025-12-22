@@ -3,7 +3,7 @@
 import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { Typography } from '@/presentation/components/atoms';
 
 interface BreadcrumbItem {
@@ -27,6 +27,8 @@ export function Breadcrumb({ collapseButton }: BreadcrumbProps = {}) {
 
     // Map path names to display names
     const pathNameMap: Record<string, string> = {
+      'licenses': 'License Management',
+      'users': 'User Management',
       'user-management': 'User Management',
       'admin': 'Admin',
       'score': 'Score',

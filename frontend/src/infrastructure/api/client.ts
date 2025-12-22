@@ -7,9 +7,10 @@ import axios, {
 } from 'axios';
 import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
 import { handleApiError } from '@/infrastructure/api/errors';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
-import { startTrace, injectIntoHeaders } from '@/shared/utils/tracing';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { startTrace, injectIntoHeaders } from '@/shared/helpers/tracing';
 import { API_CONFIG } from '@/shared/constants';
+import { createApiCircuitBreaker, CircuitBreaker } from '@/shared/helpers/circuit-breaker';
 
 // Default configuration - API_CONFIG.BASE_URL already handles validation and normalization
 const DEFAULT_BASE_URL = API_CONFIG.BASE_URL;
@@ -28,6 +29,7 @@ class HttpClient {
     reject: (error: unknown) => void;
   }> = [];
   private pendingRequests = new Map<string, Promise<any>>(); // Request deduplication cache
+  private circuitBreaker: CircuitBreaker;
 
   // Create child logger for HttpClient with component context
   private httpLogger = logger.createChild({
@@ -49,6 +51,13 @@ class HttpClient {
       maxRetries: config?.retries || DEFAULT_MAX_RETRIES,
       retryDelay: DEFAULT_RETRY_DELAY,
     };
+
+    // Initialize circuit breaker for API protection
+    this.circuitBreaker = createApiCircuitBreaker((state) => {
+      this.httpLogger.info(`Circuit breaker state changed to: ${state}`, {
+        category: 'circuit-breaker'
+      });
+    });
 
     this.setupInterceptors();
   }
@@ -407,58 +416,68 @@ class HttpClient {
   }
 
   /**
-   * Generic GET request with deduplication
+   * Generic GET request with deduplication and circuit breaker protection
    */
   async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    // Create a cache key for GET requests
-    const cacheKey = `GET:${url}:${JSON.stringify(config?.params || {})}`;
+    return this.circuitBreaker.execute(async () => {
+      // Create a cache key for GET requests
+      const cacheKey = `GET:${url}:${JSON.stringify(config?.params || {})}`;
 
-    // Check if identical request is already in flight
-    const pendingRequest = this.pendingRequests.get(cacheKey);
-    if (pendingRequest) {
-      return pendingRequest;
-    }
+      // Check if identical request is already in flight
+      const pendingRequest = this.pendingRequests.get(cacheKey);
+      if (pendingRequest) {
+        return pendingRequest;
+      }
 
-    // Create new request and cache it
-    const request = this.instance.get(url, config).then(response => response.data).finally(() => {
-      // Clean up cache after request completes (success or failure)
-      this.pendingRequests.delete(cacheKey);
+      // Create new request and cache it
+      const request = this.instance.get(url, config).then(response => response.data).finally(() => {
+        // Clean up cache after request completes (success or failure)
+        this.pendingRequests.delete(cacheKey);
+      });
+
+      this.pendingRequests.set(cacheKey, request);
+      return request;
     });
-
-    this.pendingRequests.set(cacheKey, request);
-    return request;
   }
 
   /**
-   * Generic POST request
+   * Generic POST request with circuit breaker protection
    */
   async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.post(url, data, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.post(url, data, config);
+      return response.data;
+    });
   }
 
   /**
-   * Generic PUT request
+   * Generic PUT request with circuit breaker protection
    */
   async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.put(url, data, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.put(url, data, config);
+      return response.data;
+    });
   }
 
   /**
-   * Generic PATCH request
+   * Generic PATCH request with circuit breaker protection
    */
   async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.patch(url, data, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.patch(url, data, config);
+      return response.data;
+    });
   }
 
   /**
-   * Generic DELETE request
+   * Generic DELETE request with circuit breaker protection
    */
   async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.delete(url, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.delete(url, config);
+      return response.data;
+    });
   }
 
   /**
@@ -466,6 +485,27 @@ class HttpClient {
    */
   getInstance(): AxiosInstance {
     return this.instance;
+  }
+
+  /**
+   * Get circuit breaker statistics
+   */
+  getCircuitBreakerStats() {
+    return this.circuitBreaker.getStats();
+  }
+
+  /**
+   * Reset circuit breaker (for recovery or testing)
+   */
+  resetCircuitBreaker(): void {
+    this.circuitBreaker.reset();
+  }
+
+  /**
+   * Force circuit breaker open (for testing)
+   */
+  forceCircuitBreakerOpen(): void {
+    this.circuitBreaker.forceOpen();
   }
 }
 

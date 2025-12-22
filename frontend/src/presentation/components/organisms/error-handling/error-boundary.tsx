@@ -4,7 +4,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Typography, Button } from '@/presentation/components/atoms';
 import { AlertTriangle, RefreshCw, Home, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { logger } from '@/shared/utils';
+import { logger } from '@/shared/helpers';
 import { ErrorTemplate } from '@/presentation/components/templates';
 
 // Suppress React's verbose error logging in development

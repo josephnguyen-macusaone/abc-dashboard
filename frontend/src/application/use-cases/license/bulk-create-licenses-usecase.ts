@@ -1,6 +1,6 @@
-import { LicenseRecord } from '@/shared/types';
+import { LicenseRecord } from '@/types';
 import { licenseApiService } from '@/application/services/license-services';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Bulk Create Licenses

@@ -1,5 +1,5 @@
 import { Skeleton } from "@/presentation/components/atoms";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface LoadingProps {
   className?: string;

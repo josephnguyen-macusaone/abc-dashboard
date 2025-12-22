@@ -21,26 +21,16 @@ import {
 import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
-import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/shared/types";
+import { LicenseStatusBadge, LicensePlanBadge, LICENSE_PLAN_OPTIONS_WITH_ICONS } from "./badges";
+import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
 import { LICENSE_STATUS_LABELS } from "@/shared/constants/license";
+import { LICENSE_STATUS_OPTIONS_WITH_ICONS } from "./badges";
 
-// Status options for filter - All 7 status values
-export const STATUS_OPTIONS = [
-  { label: "Draft", value: "draft", icon: FileText },
-  { label: "Pending", value: "pending", icon: Clock },
-  { label: "Active", value: "active", icon: CheckCircle2 },
-  { label: "Expiring", value: "expiring", icon: AlertOctagon },
-  { label: "Expired", value: "expired", icon: AlertCircle },
-  { label: "Cancelled", value: "cancel", icon: XCircle },
-  { label: "Revoked", value: "revoked", icon: Ban },
-];
+// Status options for filter - Use centralized options with icons
+export const STATUS_OPTIONS = LICENSE_STATUS_OPTIONS_WITH_ICONS;
 
-// Plan options for filter
-export const PLAN_OPTIONS = [
-  { label: "Basic", value: "Basic" },
-  { label: "Premium", value: "Premium" },
-  { label: "Enterprise", value: "Enterprise" },
-];
+// Plan options for filter - Use centralized constants with icons
+export const PLAN_OPTIONS = LICENSE_PLAN_OPTIONS_WITH_ICONS;
 
 // Term options for filter
 export const TERM_OPTIONS = [
@@ -48,26 +38,6 @@ export const TERM_OPTIONS = [
   { label: "Yearly", value: "yearly" },
 ];
 
-function getStatusVariant(status: LicenseStatus) {
-  switch (status) {
-    case "draft":
-      return "secondary";
-    case "pending":
-      return "warning";
-    case "active":
-      return "active";
-    case "expiring":
-      return "warning";
-    case "expired":
-      return "destructive";
-    case "cancel":
-      return "secondary";
-    case "revoked":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-}
 
 export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
   return [
@@ -161,12 +131,13 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => {
         const status = row.getValue("status") as LicenseStatus;
         return (
-          <Badge variant={getStatusVariant(status)} className="text-center">
-            {LICENSE_STATUS_LABELS[status]}
-          </Badge>
+          <LicenseStatusBadge
+            status={status}
+            variant="minimal"
+            showIcon={true}
+          />
         );
       },
-      size: 110,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const status = row.getValue(id) as string;
@@ -186,10 +157,13 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Plan" />
       ),
       cell: ({ row }) => (
-        <Badge variant="outline">{row.getValue("plan")}</Badge>
+        <LicensePlanBadge
+          plan={row.getValue("plan") as any}
+          variant="minimal"
+          showIcon={true}
+        />
       ),
       enableColumnFilter: false,
-      size: 120,
     },
     {
       id: "term",
@@ -329,12 +303,12 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       cell: ({ row }) => {
         const names = row.getValue("agentsName") as string[];
         return (
-          <span className="truncate max-w-[220px]" title={names.join(", ")}>
+          <span className="truncate max-w-[320px]" title={names.join(", ")}>
             {names.join(", ")}
           </span>
         );
       },
-      size: 250,
+      size: 350,
       meta: {
         label: "Agents Name",
       },

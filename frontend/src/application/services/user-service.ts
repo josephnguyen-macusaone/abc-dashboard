@@ -13,7 +13,7 @@ import {
   type GetUsersUseCaseContract,
   type SearchUsersUseCaseContract
 } from '@/application/use-cases';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Service: User Management

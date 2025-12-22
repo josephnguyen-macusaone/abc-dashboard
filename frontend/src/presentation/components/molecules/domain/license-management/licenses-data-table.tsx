@@ -16,7 +16,7 @@ import { useDataTable } from "@/presentation/hooks";
 import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
 import { getLicenseTableColumns } from "./license-table-columns";
-import type { LicenseRecord } from "@/shared/types";
+import type { LicenseRecord } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface LicensesDataTableProps {

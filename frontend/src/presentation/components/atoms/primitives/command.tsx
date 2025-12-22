@@ -4,7 +4,7 @@ import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
 import { Search } from "lucide-react"
 
-import { cn } from "@/shared/utils"
+import { cn } from "@/shared/helpers"
 import { Dialog, DialogContent, DialogTitle } from "@/presentation/components/atoms/primitives/dialog"
 
 function Command({

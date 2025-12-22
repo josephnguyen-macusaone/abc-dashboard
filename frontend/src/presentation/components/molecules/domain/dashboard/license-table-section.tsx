@@ -2,8 +2,8 @@
 
 import { Typography } from '@/presentation/components/atoms';
 import { LicensesDataTable } from '@/presentation/components/molecules/domain/license-management';
-import { cn } from '@/shared/utils';
-import type { LicenseRecord } from '@/shared/types';
+import { cn } from '@/shared/helpers';
+import type { LicenseRecord } from '@/types';
 
 export interface LicenseTableSectionProps {
   /**

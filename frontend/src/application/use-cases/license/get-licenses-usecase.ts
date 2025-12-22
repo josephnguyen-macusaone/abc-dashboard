@@ -1,7 +1,7 @@
 import { License } from '@/domain/entities/license-entity';
 import { ILicenseRepository, LicenseSpecification } from '@/domain/repositories/i-license-repository';
 import { LicenseListQueryDTO, PaginatedLicenseListDTO } from '@/application/dto/license-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Get Licenses

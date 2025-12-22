@@ -1,6 +1,6 @@
 'use client';
 
-import { cn, getResponsiveSizes } from '@/shared/utils';
+import { cn, getResponsiveSizes } from '@/shared/helpers';
 import Image from 'next/image';
 import LogoDark from '@assets/svgs/common/logo_dark.svg';
 import LogoLight from '@assets/svgs/common/logo_light.svg';

@@ -109,6 +109,31 @@ export const ROLE_DEFINITIONS = {
 } as const;
 
 /**
+ * User status labels
+ */
+export const USER_STATUS_LABELS = {
+  active: 'Active',
+  inactive: 'Inactive',
+} as const;
+
+/**
+ * User status badge color classes (Tailwind)
+ */
+export const USER_STATUS_COLORS: Record<'active' | 'inactive', string> = {
+  active: 'bg-green-100 text-green-800 border-green-300',
+  inactive: 'bg-slate-100 text-slate-800 border-slate-300',
+};
+
+/**
+ * User role badge color classes (Tailwind)
+ */
+export const USER_ROLE_COLORS: Record<UserRoleType, string> = {
+  admin: 'bg-purple-100 text-purple-800 border-purple-300',
+  manager: 'bg-blue-100 text-blue-800 border-blue-300',
+  staff: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+};
+
+/**
  * Check if a user role can manage another role
  * Hierarchical permission system where admin > manager > staff
  */

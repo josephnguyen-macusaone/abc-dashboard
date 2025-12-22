@@ -10,9 +10,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/presentation/contexts/auth-context";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
-import { createEmptyLicense } from "@/shared/mock/license-faker-data";
+import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from "@/presentation/components/organisms";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
-import type { LicenseRecord } from "@/shared/types";
+import type { LicenseRecord } from "@/types";
 
 export function LicenseManagementPage() {
   const { user: currentUser } = useAuth();

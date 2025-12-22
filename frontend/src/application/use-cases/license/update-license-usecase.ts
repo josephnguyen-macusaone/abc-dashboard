@@ -2,7 +2,7 @@ import { License, LicenseId } from '@/domain/entities/license-entity';
 import { ILicenseRepository } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { UpdateLicenseDTO } from '@/application/dto/license-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Update License
@@ -101,19 +101,13 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
         new Date() // updatedAt
       );
 
-      this.useCaseLogger.debug('License updated, saving to repository', {
-        correlationId,
-        licenseId: id,
-        newStatus: updatedLicense.status,
-        operation: 'update_license_saving'
-      });
-
       // Save updated license
       await this.licenseRepository.save(updatedLicense);
 
       this.useCaseLogger.debug('License updated successfully', {
         correlationId,
         licenseId: id,
+        newStatus: updatedLicense.status,
         operation: 'update_license_success'
       });
 

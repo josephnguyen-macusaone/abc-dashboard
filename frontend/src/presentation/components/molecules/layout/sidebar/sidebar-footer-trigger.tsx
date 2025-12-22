@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/primitives';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { ChevronDown } from 'lucide-react';
 import React from 'react';
 
@@ -25,16 +25,18 @@ export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarF
           type="button"
           className={cn(
             'w-full flex items-center justify-center p-2 transition-all duration-300 ease-out',
-            'hover:bg-accent hover:text-accent-foreground hover:scale-105',
             'group rounded-none focus:outline-none focus-visible:ring-0',
-            'transform-gpu',
+            'transform-gpu relative',
             className
           )}
           aria-label="User menu"
           {...props}
         >
-          <div className="relative">
-            <Avatar className="h-8 w-8 transition-transform duration-300 ease-out group-hover:scale-110">
+          <div className="relative flex items-center justify-center">
+            {/* Circular hover background */}
+            <div className="absolute inset-0 rounded-full bg-accent opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100" />
+            {/* Avatar */}
+            <Avatar className="h-8 w-8 transition-transform duration-300 ease-out relative z-10 group-hover:scale-110">
               <AvatarImage src={avatarUrl} alt={`${initials} avatar`} />
               <AvatarFallback className="bg-primary text-primary-foreground text-label-s font-medium">
                 {initials}
@@ -51,7 +53,7 @@ export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarF
         type="button"
         className={cn(
           'w-full flex items-center justify-between p-3 transition-all duration-300 ease-out',
-          'hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]',
+          'hover:bg-accent hover:text-accent-foreground',
           'group rounded-none focus:outline-none focus-visible:ring-0',
           'transform-gpu',
           className

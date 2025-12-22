@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.ComponentProps<typeof DropdownMenuTrigger> {

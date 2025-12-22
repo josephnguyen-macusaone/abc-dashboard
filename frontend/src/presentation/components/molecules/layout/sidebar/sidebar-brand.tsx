@@ -3,7 +3,7 @@
 import { Logo } from '@/presentation/components/atoms';
 import { CollapseButton } from './sidebar-collapse-button';
 import { useTheme } from '@/presentation/contexts/theme-context';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 export interface SidebarBrandProps {
   onClick: () => void;

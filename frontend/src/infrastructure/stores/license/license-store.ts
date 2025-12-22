@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/shared/types';
+import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
 import { getErrorMessage } from '@/infrastructure/api/errors';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
 
@@ -144,7 +144,6 @@ export const useLicenseStore = create<LicenseState>()(
             };
 
             // Silent operation - no logging
-
             storeLogger.debug('Fetching licenses from API', {
               params: apiParams,
               currentLicenseCount: get().licenses.length
@@ -249,7 +248,6 @@ export const useLicenseStore = create<LicenseState>()(
               loading: false
             });
 
-            toast.success(`${createdLicenses.length} licenses created successfully`);
             return createdLicenses;
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to bulk create licenses';
@@ -319,9 +317,10 @@ export const useLicenseStore = create<LicenseState>()(
 
                 // Handle the service response format (object with results array)
                 let updatedLicenses: LicenseRecord[];
-                if (updateResult && typeof updateResult === 'object' && updateResult._isBulkUpdateResult) {
+                const resultObj = updateResult as any;
+                if (resultObj && typeof resultObj === 'object' && resultObj._isBulkUpdateResult) {
                   // New format with ID mapping
-                  updatedLicenses = updateResult.results || [];
+                  updatedLicenses = resultObj.results || [];
                 } else if (Array.isArray(updateResult)) {
                   // Legacy format (direct array)
                   updatedLicenses = updateResult;
@@ -345,10 +344,6 @@ export const useLicenseStore = create<LicenseState>()(
               licenses: updatedLicenses,
               loading: false
             });
-
-            const createdCount = licensesToCreate.length;
-            const updatedCount = licensesToUpdate.length;
-            toast.success(`${createdCount > 0 ? `${createdCount} created` : ''}${createdCount > 0 && updatedCount > 0 ? ', ' : ''}${updatedCount > 0 ? `${updatedCount} updated` : ''} successfully`);
 
             return results;
           } catch (error) {

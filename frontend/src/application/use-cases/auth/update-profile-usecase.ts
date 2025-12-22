@@ -1,6 +1,6 @@
 import { User } from '@/domain/entities/user-entity';
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface UpdateProfileDTO {
   firstName?: string;

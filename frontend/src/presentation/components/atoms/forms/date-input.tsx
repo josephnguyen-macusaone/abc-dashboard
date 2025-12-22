@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 interface DateInputProps {
   value?: Date;

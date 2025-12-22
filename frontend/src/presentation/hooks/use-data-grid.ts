@@ -40,7 +40,7 @@ import type {
   SearchState,
   SelectionState,
   UpdateCell,
-} from "@/shared/types/data-grid";
+} from "@/types/data-grid";
 
 const DEFAULT_ROW_HEIGHT = "short";
 const OVERSCAN = 6;
@@ -1896,7 +1896,7 @@ function useDataGrid<TData>({
 
     // Serialize filters for comparison
     const filtersString = JSON.stringify(filterMap);
-    
+
     // Use global filter as search (set by DataGridSearch when manual filtering)
     const searchValue = globalFilter || undefined;
 

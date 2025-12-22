@@ -5,7 +5,7 @@ import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User } from '@/domain/entities/user-entity';
-import { logger } from '@/shared/utils';
+import { logger } from '@/shared/helpers';
 import { useUserStore } from '@/infrastructure/stores/user';
 
 /**

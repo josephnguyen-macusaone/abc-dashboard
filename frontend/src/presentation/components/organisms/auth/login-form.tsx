@@ -7,7 +7,7 @@ import { InputField, FormField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 interface LoginFormProps {

@@ -4,7 +4,7 @@ import { Button } from '@/presentation/components/atoms';
 import { Breadcrumb, ThemeSwitcher } from '@/presentation/components/molecules';
 import { CollapseButton } from '@/presentation/components/molecules/layout/sidebar';
 import { Menu, X } from 'lucide-react';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { useSidebarStore } from '@/infrastructure/stores';
 
 export interface AppHeaderProps {

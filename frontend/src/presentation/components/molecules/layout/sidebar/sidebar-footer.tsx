@@ -31,6 +31,7 @@ export function SidebarFooter({
   isCollapsed = false,
   className,
 }: SidebarFooterProps) {
+  // When the sidebar is collapsed, we show the user menu as a dropdown menu
   if (isCollapsed) {
     return (
       <div className={`shrink-0 p-2 ${className || ''}`}>
@@ -47,7 +48,7 @@ export function SidebarFooter({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             side="right"
-            sideOffset={8}
+            sideOffset={16}
             align="end"
             className="w-56 mb-2 border-border z-60 p-2"
           >
@@ -66,6 +67,7 @@ export function SidebarFooter({
     );
   }
 
+  // When the sidebar is not collapsed, we show the user menu as a button
   return (
     <div className={`shrink-0 ${className || ''}`}>
       <DropdownMenu>

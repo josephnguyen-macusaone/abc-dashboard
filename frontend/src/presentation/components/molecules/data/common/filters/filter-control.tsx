@@ -20,9 +20,9 @@ import {
 } from '@/presentation/components/atoms/primitives/popover';
 import { Calendar as CalendarComponent } from '@/presentation/components/atoms/primitives/calendar';
 import { Typography } from '@/presentation/components/atoms/display/typography';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { format } from 'date-fns';
-import type { FilterConfig, FilterValue, DateRange, NumberRange } from '@/shared/types/data-display';
+import type { FilterConfig, FilterValue, DateRange, NumberRange } from '@/types/data-display';
 
 // ============================================================================
 // Types

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/presentation/components/atoms/forms/select";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface TablePaginationProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;

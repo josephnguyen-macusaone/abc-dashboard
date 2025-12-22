@@ -2,17 +2,18 @@
 
 import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import type { LicenseRecord } from '@/shared/types';
+import type { LicenseRecord } from '@/types';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 import type { LicenseDateRange } from '@/application/use-cases';
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
-import { logger } from '@/shared/utils';
+import { logger } from '@/shared/helpers';
+import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
 
 // Dynamically import heavy dashboard components for better code splitting
 const LicenseMetricsSection = dynamic(
   () => import('@/presentation/components/molecules/domain/dashboard/license-metrics-section').then(mod => ({ default: mod.LicenseMetricsSection })),
   {
-    loading: () => <div className="animate-pulse bg-gray-200 rounded-lg h-32 mb-4"></div>,
+    loading: () => <LicenseMetricsSkeleton columns={4} />,
     ssr: true, // Enable SSR for metrics but lazy load client-side
   }
 );
@@ -20,7 +21,7 @@ const LicenseMetricsSection = dynamic(
 const LicenseTableSection = dynamic(
   () => import('@/presentation/components/molecules/domain/dashboard/license-table-section').then(mod => ({ default: mod.LicenseTableSection })),
   {
-    loading: () => <div className="animate-pulse bg-gray-200 rounded-lg h-64"></div>,
+    loading: () => <LicenseDataTableSkeleton />,
     ssr: false, // Disable SSR for heavy data table
   }
 );
@@ -119,7 +120,7 @@ export function AdminDashboard({
 
   return (
     <div className={`space-y-6 ${className || ''}`}>
-      <Suspense fallback={<div className="animate-pulse bg-gray-200 rounded-lg h-32 mb-4"></div>}>
+      <Suspense fallback={<LicenseMetricsSkeleton columns={4} />}>
         <LicenseMetricsSection
           licenses={licenses}
           dateRange={memoizedDateRange}
@@ -131,7 +132,7 @@ export function AdminDashboard({
           useApiMetrics={true}
         />
       </Suspense>
-      <Suspense fallback={<div className="animate-pulse bg-gray-200 rounded-lg h-64"></div>}>
+      <Suspense fallback={<LicenseDataTableSkeleton />}>
         <LicenseTableSection
           licenses={licenses}
           isLoading={isLoadingLicenses}

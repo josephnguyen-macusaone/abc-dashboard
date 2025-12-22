@@ -1,5 +1,5 @@
 import { User, UserRole } from '@/domain/entities/user-entity';
-import { SortBy, SortOrder } from '@/shared/types';
+import { SortBy, SortOrder } from '@/types';
 
 /**
  * Application DTOs: User Management

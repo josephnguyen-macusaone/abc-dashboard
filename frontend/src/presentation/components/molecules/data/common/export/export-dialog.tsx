@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/presentation/components/atoms/prim
 import { Checkbox } from '@/presentation/components/atoms/forms/checkbox';
 import { Typography } from '@/presentation/components/atoms/display/typography';
 import { Separator } from '@/presentation/components/atoms/primitives/separator';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 // ============================================================================
 // Types

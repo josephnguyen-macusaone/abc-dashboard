@@ -70,13 +70,25 @@ export class LicenseValidator {
     // Status and Term Filters
     // ========================================================================
     if (query.status) {
-      if (!STATUS_VALUES.includes(query.status)) {
-        throw new ValidationException(
-          `Invalid status value. Must be one of: ${STATUS_VALUES.join(', ')}`
-        );
+      // Handle comma-separated status values (e.g., "pending,draft")
+      const statusValues = Array.isArray(query.status)
+        ? query.status
+        : query.status
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+
+      // Validate each status value
+      for (const status of statusValues) {
+        if (!STATUS_VALUES.includes(status)) {
+          throw new ValidationException(
+            `Invalid status value "${status}". Must be one of: ${STATUS_VALUES.join(', ')}`
+          );
+        }
       }
+
       sanitized.filters = sanitized.filters || {};
-      sanitized.filters.status = query.status;
+      sanitized.filters.status = statusValues.length === 1 ? statusValues[0] : statusValues;
     }
 
     if (query.term) {

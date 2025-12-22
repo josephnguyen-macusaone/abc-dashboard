@@ -20,9 +20,11 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@/utils/*": ["./src/shared/utils/*"],
+      "@/types": ["./src/shared/types"],
+      "@/types/*": ["./src/shared/types/*"],
       "@/components/*": ["./src/presentation/components/*"],
       "@/hooks/*": ["./src/presentation/hooks/*"],
-      "@/utils/*": ["./src/shared/utils/*"],
       "@/contexts/*": ["./src/contexts/*"],
       "@/shared/*": ["./src/shared/*"],
       "@/domain/*": ["./src/domain/*"],

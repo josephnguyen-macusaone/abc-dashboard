@@ -11,7 +11,7 @@ import { AuthResult, User, AuthTokens } from '@/domain/entities/user-entity';
 import { useAuthStore } from '@/infrastructure/stores';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 
 export interface AuthPorts {

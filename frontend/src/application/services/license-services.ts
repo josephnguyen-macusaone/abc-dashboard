@@ -1,7 +1,7 @@
 import { License } from '@/domain/entities/license-entity';
 import { ILicenseRepository } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
-import { LicenseRecord, PaginatedResponse } from '@/shared/types';
+import { LicenseRecord, PaginatedResponse } from '@/types';
 import { httpClient } from '@/infrastructure/api/client';
 import {
   type GetLicensesUseCase,
@@ -18,7 +18,7 @@ import {
   BulkOperationResultDTO,
   LicenseResponseDTO
 } from '@/application/dto/license-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 import { licenseApi } from '@/infrastructure/api/licenses';
 
 /**
@@ -390,8 +390,8 @@ export class LicenseManagementService {
         delete (normalizedLicense as any).startDay; // Remove the wrong field name if it exists
 
         // Ensure key field is preserved (added by page component)
-        if (!normalizedLicense.key && licenseAny.key) {
-          normalizedLicense.key = licenseAny.key;
+        if (!(normalizedLicense as any).key && licenseAny.key) {
+          (normalizedLicense as any).key = licenseAny.key;
         }
 
         // Set default values for missing required fields to prevent validation errors

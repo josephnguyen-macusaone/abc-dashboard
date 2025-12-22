@@ -7,7 +7,7 @@ import { InputField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { authApi } from '@/infrastructure/api/auth';
 import { Mail, CheckCircle, ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 
 interface ForgotPasswordFormProps {
   onBackToLogin?: () => void;

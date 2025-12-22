@@ -3,8 +3,8 @@ import { devtools, persist } from 'zustand/middleware';
 import { User, UserRole } from '@/domain/entities/user-entity';
 import { userApi } from '@/infrastructure/api/users';
 import { getErrorMessage } from '@/infrastructure/api/errors';
-import logger from '@/shared/utils/logger';
-import { SortBy, SortOrder } from '@/shared/types';
+import logger from '@/shared/helpers/logger';
+import { SortBy, SortOrder } from '@/types';
 
 export interface UserStats {
   total: number;

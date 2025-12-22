@@ -1,7 +1,7 @@
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
 import { User } from '@/domain/entities/user-entity';
 import { UserDomainService } from '@/domain/services/user-domain-service';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Delete User

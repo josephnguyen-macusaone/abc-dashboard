@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/presentation/components/atoms/primitives/popover";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface DataTableViewOptionsProps<TData>
   extends React.ComponentProps<typeof PopoverContent> {

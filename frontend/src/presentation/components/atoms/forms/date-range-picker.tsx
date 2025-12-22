@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/presentation/components/atoms/forms/select';
 import { Switch } from '@/presentation/components/atoms/forms/switch';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 export interface DateRange {
   from: Date;

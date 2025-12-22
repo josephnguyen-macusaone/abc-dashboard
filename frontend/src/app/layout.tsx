@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
 import dynamic from 'next/dynamic';
 import { ThemeProvider } from '@/presentation/contexts/theme-context';
+import { ThemeScript } from '@/shared/scripts/theme-script';
 
 // Dynamic imports for code splitting
 const NuqsAdapter = dynamic(() => import('nuqs/adapters/next/app').then(mod => ({ default: mod.NuqsAdapter })), {
@@ -89,6 +90,9 @@ export default function RootLayout({
       className={`${archivo.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider>

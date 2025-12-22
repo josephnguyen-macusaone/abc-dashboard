@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
 import type { User } from "@/domain/entities/user-entity";
-import type { DataTableRowAction, Option } from "@/shared/types/data-table";
+import type { DataTableRowAction, Option } from "@/types/data-table";
 
 import { CircleDashed, CheckCircle2, XCircle, Shield, Users, UserCog } from "lucide-react";
 import { Typography } from "@/presentation/components/atoms";
@@ -97,13 +97,13 @@ export function getUserTableColumns({
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/10">
               <User2 className="h-4 w-4 text-primary" />
             </div>
-            <span className="font-medium truncate max-w-[300px]">
+            <span className="font-medium truncate">
               {displayName}
             </span>
           </div>
         );
       },
-      size: 240,
+      size: 280,
       meta: {
         label: "Name",
       },
@@ -115,11 +115,11 @@ export function getUserTableColumns({
         <DataTableColumnHeader column={column} label="Username" />
       ),
       cell: ({ row }) => (
-        <span className="text-muted-foreground truncate max-w-[150px]">
+        <span className="text-muted-foreground truncate">
           {row.getValue("username") || "-"}
         </span>
       ),
-      size: 160,
+      size: 200,
       meta: {
         label: "Username",
       },
@@ -131,11 +131,11 @@ export function getUserTableColumns({
         <DataTableColumnHeader column={column} label="Email" />
       ),
       cell: ({ row }) => (
-        <span className="text-muted-foreground truncate max-w-[250px]">
+        <span className="text-muted-foreground truncate">
           {row.getValue("email")}
         </span>
       ),
-      size: 240,
+      size: 280,
       meta: {
         label: "Email",
       },
@@ -151,7 +151,7 @@ export function getUserTableColumns({
           {row.getValue("phone") || "-"}
         </span>
       ),
-      size: 130,
+      size: 140,
       meta: {
         label: "Phone",
       },
@@ -165,7 +165,7 @@ export function getUserTableColumns({
       cell: ({ row }) => {
         const role = row.getValue("role") as string;
         return (
-          <RoleBadge role={role as any} />
+          <RoleBadge role={role as any} variant="minimal" showIcon={true} />
         );
       },
       enableColumnFilter: true,
@@ -173,7 +173,7 @@ export function getUserTableColumns({
         const role = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(role) : value === role;
       },
-      size: 160,
+      size: 120,
       meta: {
         label: "Role",
         variant: "multiSelect",
@@ -190,7 +190,7 @@ export function getUserTableColumns({
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean;
         return (
-          <StatusBadge isActive={isActive} />
+          <StatusBadge isActive={isActive} variant="minimal" showIcon={true} />
         );
       },
       enableColumnFilter: true,
@@ -199,7 +199,7 @@ export function getUserTableColumns({
         const statusValue = isActive ? "true" : "false";
         return Array.isArray(value) ? value.includes(statusValue) : value === statusValue;
       },
-      size: 100,
+      size: 120,
       meta: {
         label: "Status",
         variant: "multiSelect",
@@ -225,7 +225,6 @@ export function getUserTableColumns({
           </span>
         );
       },
-      // Removed enableColumnFilter and filterFn - using external DateRangeFilterCard instead
       size: 120,
       meta: {
         label: "Created At",
@@ -276,7 +275,9 @@ export function getUserTableColumns({
           </DropdownMenu>
         );
       },
-      size: 40,
+      size: 70,
+      enableSorting: false,
+      enableHiding: false,
     },
   ];
 }

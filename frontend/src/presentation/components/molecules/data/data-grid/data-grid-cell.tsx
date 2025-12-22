@@ -11,7 +11,7 @@ import {
   SelectCell,
   ShortTextCell,
 } from "./data-grid-cell-variants";
-import type { CellVariantProps } from "@/shared/types/data-grid";
+import type { CellVariantProps } from "@/types/data-grid";
 
 interface DataGridCellProps<TData> {
   cell: Cell<TData, unknown>;

@@ -16,8 +16,8 @@ import {
   CreateUserResponseDto
 } from '@/application/dto/api-dto';
 import { userApi } from '@/infrastructure/api/users';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
-import { SortBy } from '@/shared/types';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { SortBy } from '@/types';
 
 /**
  * Infrastructure Repository: User Management

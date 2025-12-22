@@ -1,6 +1,6 @@
 import { IUserRepository } from '@/domain/repositories/i-user-repository';
 import { UserListParams, PaginatedUserList } from '@/application/dto/user-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface GetUsersUseCaseContract {
   execute: (params?: UserListParams) => Promise<PaginatedUserList>;
