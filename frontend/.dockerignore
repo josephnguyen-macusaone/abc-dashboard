@@ -5,21 +5,28 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build outputs
+.next
+out
 dist
 build
 
 # Development artifacts
 coverage
 .nyc_output
+.cache
+.parcel-cache
 
 # Testing
-tests/**
+tests/__mocks__/**
+tests/coverage/**
 *.test.js
 *.test.ts
 *.spec.js
 *.spec.ts
+jest.config.js
+jest.setup.js
 
-# Documentation
+# Documentation (not needed for builds)
 docs/**
 
 # IDE and editor files
@@ -49,7 +56,7 @@ docker-compose*.yml
 # CI/CD
 .github
 
-# Environment files
+# Environment files (will be provided at runtime)
 .env*
 !.env.example
 
@@ -63,7 +70,7 @@ pids
 *.seed
 *.pid.lock
 
-# Coverage directory
+# Coverage directory used by tools like istanbul
 lib-cov
 
 # Dependency directories
@@ -98,3 +105,7 @@ Desktop.ini
 # Temporary folders
 tmp/
 temp/
+
+# Build artifacts
+*.tsbuildinfo
+tsconfig.tsbuildinfo

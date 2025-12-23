@@ -25,6 +25,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # Multi-layer caching strategy for backend
+      cache_from:
+        - abc-dashboard-backend:latest
+        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/backend:latest
+      # BuildKit cache mounts (handled by build.sh in CI/CD)
+      # cache_to handled by GitHub Actions registry
     container_name: abc-dashboard-backend
     restart: unless-stopped
     ports:
@@ -75,9 +81,11 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
-      # Enable BuildKit cache for faster builds (local caching)
+      # Multi-layer caching strategy
       cache_from:
         - abc-dashboard-frontend:latest
+        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/frontend:latest
+      # BuildKit cache mounts handled by build.sh in CI/CD
       # Target the final runner stage
       target: production
     container_name: abc-dashboard-frontend

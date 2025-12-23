@@ -10,12 +10,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies based on NODE_ENV
+# Install dependencies based on NODE_ENV with BuildKit caching
 ARG NODE_ENV=production
-RUN if [ "$NODE_ENV" = "production" ]; then \
-      npm ci --only=production; \
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/.npm-cache \
+    if [ "$NODE_ENV" = "production" ]; then \
+      npm ci --only=production --prefer-offline --no-audit; \
     else \
-      npm ci; \
+      npm ci --prefer-offline --no-audit; \
     fi && npm cache clean --force
 
 # Copy source code

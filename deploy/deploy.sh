@@ -6,9 +6,9 @@
 # This script automates the complete deployment of ABC Dashboard to OpenLiteSpeed
 # Features:
 # - Builds frontend and backend
-# - Deploys with Docker Compose
+# - Deploys with Docker Compose (PostgreSQL + Backend API + Frontend)
 # - Configures OpenLiteSpeed virtual host
-# - Runs health checks
+# - Runs comprehensive health checks
 # =============================================================================
 
 set -e  # Exit on any error
@@ -202,8 +202,8 @@ build_frontend() {
         npm install
     fi
 
-    # Build the application (with static export due to output: 'export' in next.config.ts)
-    log_info "Building Next.js application with static export..."
+    # Build the application (standalone build for Docker + OLS static assets)
+    log_info "Building Next.js application (standalone build)..."
     npm run build
 
     cd ..
@@ -347,7 +347,25 @@ start_services() {
 wait_for_services() {
     log_info "Waiting for services to be healthy..."
 
-    # Note: MongoDB Atlas and Redis are external services, no local checks needed
+    # Change to deployment directory for docker-compose commands
+    cd "$DEPLOYMENT_DIR"
+
+    # Wait for PostgreSQL database
+    log_info "Waiting for PostgreSQL database..."
+    timeout=60
+    while [ $timeout -gt 0 ]; do
+        if docker-compose exec -T postgres pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} >/dev/null 2>&1; then
+            log_success "PostgreSQL database is ready"
+            break
+        fi
+        sleep 2
+        timeout=$((timeout - 2))
+    done
+
+    if [ $timeout -le 0 ]; then
+        log_error "PostgreSQL database failed to start"
+        exit 1
+    fi
 
     # Wait for backend API
     log_info "Waiting for backend API..."
@@ -387,25 +405,32 @@ wait_for_services() {
 }
 
 copy_static_files() {
-    log_info "Copying frontend static files to OpenLiteSpeed..."
+    log_info "Syncing static assets to OpenLiteSpeed document root..."
 
-    # Ensure the document root exists
-    mkdir -p "/usr/local/lsws/$PROJECT_NAME/html/"
+    DOC_ROOT="/usr/local/lsws/$PROJECT_NAME/html"
+    mkdir -p "$DOC_ROOT"
 
-    # Copy built files to OpenLiteSpeed document root
-    if [ -d "frontend/out" ]; then
-        cp -r frontend/out/* "/usr/local/lsws/$PROJECT_NAME/html/"
-        log_info "Frontend static files copied from frontend/out/"
+    # Copy public assets (if present)
+    if [ -d "frontend/public" ]; then
+        rsync -a --delete "frontend/public/" "$DOC_ROOT/"
+        log_info "Public assets synced to $DOC_ROOT"
     else
-        log_error "Frontend build output not found in frontend/out/"
-        log_error "Make sure to build the frontend first with: cd frontend && npm run build"
-        exit 1
+        log_warning "frontend/public not found, skipping public asset copy"
+    fi
+
+    # Copy Next.js built static assets
+    if [ -d "frontend/.next/static" ]; then
+        mkdir -p "$DOC_ROOT/_next/static"
+        rsync -a --delete "frontend/.next/static/" "$DOC_ROOT/_next/static/"
+        log_info "Next.js static assets synced to $DOC_ROOT/_next/static"
+    else
+        log_warning "frontend/.next/static not found, static assets will be served from the container"
     fi
 
     # Set proper permissions
     chown -R lsadm:lsadm "/usr/local/lsws/$PROJECT_NAME/"
 
-    log_success "Static files copied to OpenLiteSpeed document root"
+    log_success "Static asset sync completed"
 }
 
 restart_openlitespeed() {
@@ -460,8 +485,7 @@ show_deployment_info() {
     echo "🚀 Services Status:"
     echo "   OpenLiteSpeed: ✅ Running (Static files + API proxy)"
     echo "   Backend API:   ✅ Running (Docker - Port 5000)"
-    echo "   MongoDB:       ✅ Running (Docker - Port 27017)"
-    echo "   Redis:         ✅ Running (Docker - Port 6379)"
+    echo "   PostgreSQL:    ✅ Running (Docker - Port 5433)"
     echo ""
     echo "📁 Key Locations:"
     echo "   Static Files:  /usr/local/lsws/$PROJECT_NAME/html/"
@@ -493,6 +517,18 @@ main() {
     check_prerequisites
     create_deployment_directory
     copy_project_files
+
+    # Load environment variables from copied .env file
+    if [ -f "$DEPLOYMENT_DIR/.env" ]; then
+        log_info "Loading environment variables from .env file..."
+        set -a
+        source "$DEPLOYMENT_DIR/.env"
+        set +a
+        log_success "Environment variables loaded"
+    else
+        log_warning "No .env file found in deployment directory"
+    fi
+
     build_frontend
     build_backend_image
     configure_openlitespeed
