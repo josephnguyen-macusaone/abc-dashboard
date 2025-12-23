@@ -10,15 +10,15 @@ import { UserPlus, UserCircle } from "lucide-react";
 import {
   DataTable,
   DataTableToolbar,
-  DataTableSkeleton,
 } from "@/presentation/components/molecules/data/data-table";
+import { UserDataTableSkeleton } from "./user-data-table-skeleton";
 import { useDataTable } from "@/presentation/hooks";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { SearchBar } from "@/presentation/components/molecules";
 import { Typography } from "@/presentation/components/atoms";
 import { getUserTableColumns } from "./user-table-columns";
 import type { User } from "@/domain/entities/user-entity";
-import type { DataTableRowAction } from "@/shared/types/data-table";
+import type { DataTableRowAction } from "@/types/data-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserStore } from "@/infrastructure/stores/user";
 
@@ -66,7 +66,7 @@ export function UsersDataTable({
   onQueryChange,
 }: UsersDataTableProps) {
   // Get filters from store to sync search value
-  const { userFilters } = useUserStore();
+  const userStore = useUserStore();
 
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<User> | null>(null);
@@ -129,25 +129,25 @@ export function UsersDataTable({
   const isResettingRef = useRef(false);
 
   // Initialize search value from store filters (like license management)
-  const [searchValue, setSearchValue] = useState(() => userFilters.search || "");
+  const [searchValue, setSearchValue] = useState(() => userStore.filters.search || "");
 
   // Initialize manual filter values from store
   const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>(() => {
     const initial: Record<string, string[]> = {};
 
     // Initialize role filter from store
-    if (userFilters.role) {
-      const roleValues = Array.isArray(userFilters.role)
-        ? userFilters.role.map(r => String(r))
-        : [String(userFilters.role)];
+    if (userStore.filters.role) {
+      const roleValues = Array.isArray(userStore.filters.role)
+        ? userStore.filters.role.map(r => String(r))
+        : [String(userStore.filters.role)];
       initial.role = roleValues;
     }
 
     // Initialize isActive filter from store
-    if (userFilters.isActive !== undefined) {
-      const isActiveValues = Array.isArray(userFilters.isActive)
-        ? userFilters.isActive.map(v => String(v))
-        : [String(userFilters.isActive)];
+    if (userStore.filters.isActive !== undefined) {
+      const isActiveValues = Array.isArray(userStore.filters.isActive)
+        ? userStore.filters.isActive.map(v => String(v))
+        : [String(userStore.filters.isActive)];
       initial.isActive = isActiveValues;
     }
 
@@ -156,19 +156,19 @@ export function UsersDataTable({
 
   // Sync search value with store filters when they change
   useEffect(() => {
-    if (userFilters.search !== undefined && userFilters.search !== searchValue) {
-      setSearchValue(userFilters.search);
-      if (userFilters.search) {
+    if (userStore.filters.search !== undefined && userStore.filters.search !== searchValue) {
+      setSearchValue(userStore.filters.search);
+      if (userStore.filters.search) {
         hasPerformedFilteringRef.current = true;
       }
     }
-  }, [userFilters.search]);
+  }, [userStore.filters.search]);
 
   // Track filter actions to determine reset button visibility
   // Use a ref to track if user has performed any filtering actions
   // Initialize based on whether we have filters in the store
   const hasPerformedFilteringRef = useRef(
-    !!(userFilters.search || userFilters.role || userFilters.isActive !== undefined)
+    !!(userStore.filters.search || userStore.filters.role || userStore.filters.isActive !== undefined)
   );
 
   // Calculate if filters are currently active (for reset button visibility)
@@ -356,15 +356,7 @@ export function UsersDataTable({
 
   // Loading state
   if (isLoading) {
-    return (
-      <DataTableSkeleton
-        columnCount={8}
-        rowCount={10}
-        filterCount={3}
-        withPagination
-        withViewOptions
-      />
-    );
+    return <UserDataTableSkeleton />;
   }
 
   // Empty state with reset button if filters are active

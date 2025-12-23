@@ -71,61 +71,131 @@ export async function seed(knex) {
   const statuses = ['active', 'pending', 'expiring', 'expired', 'cancel'];
   const zipCodes = Array.from({ length: 30 }, (_, i) => `9${String(1000 + i).padStart(4, '0')}`);
 
-  // Generate 50 sample licenses
+  // Generate licenses across 12 months with growth patterns
   const licenses = [];
-  for (let i = 0; i < 50; i++) {
-    const status = statuses[i % statuses.length];
-    const plan = plans[i % plans.length];
-    const term = terms[i % terms.length];
-    const product = products[i % products.length];
-    const company = companies[i % companies.length];
+  const totalMonths = 12;
+  const baseLicensesPerMonth = 15; // Base number of licenses per month
 
-    const startsAt = daysAgo(Math.floor(i * 5 + 30));
-    const expiresAt = term === 'yearly' ? daysFromNow(365 - i * 5) : daysFromNow(30 - i * 2);
+  for (let month = 0; month < totalMonths; month++) {
+    // Create growth pattern: start low, peak in middle months, decline slightly
+    const growthFactor = month < 3 ? 0.6 : month < 8 ? 1.2 : 0.9;
+    const licensesThisMonth = Math.floor(baseLicensesPerMonth * growthFactor + Math.random() * 8);
 
-    const seatsTotal = [5, 10, 25, 50, 100][i % 5];
-    const seatsUsed = Math.min(seatsTotal, Math.floor(seatsTotal * (0.3 + Math.random() * 0.7)));
+    for (let i = 0; i < licensesThisMonth; i++) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - month, 1);
+      const daysIntoMonth = Math.floor(Math.random() * 28) + 1;
+      const startsAt = new Date(monthStart.getFullYear(), monthStart.getMonth(), daysIntoMonth);
 
-    const smsPurchased = 500 + i * 10;
-    const smsSent = Math.floor(smsPurchased * (0.2 + Math.random() * 0.6));
+      // Weighted status distribution: mostly active, some expired, few cancelled
+      const statusWeights = [
+        'active',
+        'active',
+        'active',
+        'active',
+        'active',
+        'active',
+        'active',
+        'expired',
+        'expired',
+        'cancel',
+      ];
+      const status = statusWeights[Math.floor(Math.random() * statusWeights.length)];
 
-    const agents = (i % 5) + 1;
-    const agentsName = Array.from({ length: agents }, (_, idx) => `Agent ${idx + 1}`);
+      const plan = plans[Math.floor(Math.random() * plans.length)];
+      const term = terms[Math.floor(Math.random() * terms.length)];
+      const product = products[Math.floor(Math.random() * products.length)];
 
-    licenses.push({
-      id: knex.raw('gen_random_uuid()'),
-      key: `LIC-${String(i + 1).padStart(6, '0')}-${product.replace(/\s+/g, '').substring(0, 4).toUpperCase()}`,
-      product,
-      plan,
-      status: status === 'expiring' && expiresAt > daysFromNow(30) ? 'active' : status,
-      term,
-      seats_total: seatsTotal,
-      seats_used: status === 'active' ? seatsUsed : 0,
-      starts_at: startsAt,
-      expires_at: status === 'expired' ? daysAgo(Math.floor(Math.random() * 30)) : expiresAt,
-      cancel_date: status === 'cancel' ? daysAgo(Math.floor(Math.random() * 10)) : null,
-      last_active: status === 'active' ? daysAgo(Math.floor(Math.random() * 7)) : null,
-      dba: `${company} ${i > 15 ? `#${Math.floor(i / 5)}` : ''}`.trim(),
-      zip: zipCodes[i % zipCodes.length],
-      last_payment: 99.99 + i * 10,
-      sms_purchased: smsPurchased,
-      sms_sent: smsSent,
-      sms_balance: smsPurchased - smsSent,
-      agents,
-      agents_name: JSON.stringify(agentsName),
-      agents_cost: 50 * agents,
-      notes: i % 3 === 0 ? 'Sample license record for testing' : '',
-      created_by: adminUser.id,
-      updated_by: adminUser.id,
-      created_at: startsAt,
-      updated_at: now,
-    });
+      // Calculate expiration based on term and status
+      let expiresAt;
+      if (term === 'yearly') {
+        expiresAt = new Date(startsAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        expiresAt = new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+
+      if (status === 'expired') {
+        // For expired licenses, set expiry to be 1-30 days after start, but in the past
+        const daysAfterStart = Math.floor(Math.random() * 30) + 1;
+        expiresAt = new Date(startsAt.getTime() + daysAfterStart * 24 * 60 * 60 * 1000);
+        // Make sure it's in the past
+        if (expiresAt > now) {
+          expiresAt = new Date(
+            now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
+          );
+        }
+      }
+
+      const seatsTotal = [5, 10, 25, 50, 100][Math.floor(Math.random() * 5)];
+      const seatsUsed =
+        status === 'active'
+          ? Math.min(seatsTotal, Math.floor(seatsTotal * (0.4 + Math.random() * 0.6)))
+          : 0;
+
+      // Agent distribution: 60% in-house (1-2 agents), 40% agent-heavy (3-7 agents)
+      const isAgentHeavy = Math.random() > 0.6;
+      const agents = isAgentHeavy
+        ? 3 + Math.floor(Math.random() * 5)
+        : 1 + Math.floor(Math.random() * 2);
+      const agentsName = Array.from({ length: agents }, (_, idx) => `Agent ${idx + 1}`);
+
+      const smsPurchased = 500 + Math.floor(Math.random() * 1500);
+      const smsSent =
+        status === 'active'
+          ? Math.floor(smsPurchased * (0.1 + Math.random() * 0.7))
+          : Math.floor(smsPurchased * Math.random() * 0.3);
+
+      const companyIndex = Math.floor(Math.random() * companies.length);
+      const company = companies[companyIndex];
+
+      licenses.push({
+        id: knex.raw('gen_random_uuid()'),
+        key: `LIC-${String(month + 1).padStart(2, '0')}${String(i + 1).padStart(3, '0')}-${product.replace(/\s+/g, '').substring(0, 4).toUpperCase()}`,
+        product,
+        plan,
+        status: status === 'expiring' && expiresAt > daysFromNow(30) ? 'active' : status,
+        term,
+        seats_total: seatsTotal,
+        seats_used: seatsUsed,
+        starts_at: startsAt,
+        expires_at: expiresAt,
+        cancel_date: status === 'cancel' ? daysAgo(Math.floor(Math.random() * 20) + 5) : null,
+        last_active: status === 'active' ? daysAgo(Math.floor(Math.random() * 14)) : null, // Active within last 2 weeks
+        dba: `${company} ${month > 6 ? `#${Math.floor(month / 3)}` : ''}`.trim(),
+        zip: zipCodes[Math.floor(Math.random() * zipCodes.length)],
+        last_payment: 99.99 + Math.random() * 400, // More varied pricing
+        sms_purchased: smsPurchased,
+        sms_sent: smsSent,
+        sms_balance: smsPurchased - smsSent,
+        agents,
+        agents_name: JSON.stringify(agentsName),
+        agents_cost: 50 * agents,
+        notes: Math.random() > 0.7 ? `Test license for month ${month + 1}` : '',
+        created_by: adminUser.id,
+        updated_by: adminUser.id,
+        created_at: startsAt,
+        updated_at: now,
+      });
+    }
   }
 
   // Insert licenses
   const insertedLicenses = await knex('licenses').insert(licenses).returning('*');
 
-  console.log(`✅ Created ${insertedLicenses.length} sample licenses`);
+  console.log(`✅ Created ${insertedLicenses.length} sample licenses across ${totalMonths} months`);
+
+  // Show detailed breakdown by month
+  const byMonth = insertedLicenses.reduce((acc, license) => {
+    const month = license.starts_at.toISOString().slice(0, 7); // YYYY-MM
+    acc[month] = (acc[month] || 0) + 1;
+    return acc;
+  }, {});
+
+  console.log('📅 Monthly distribution:');
+  Object.entries(byMonth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([month, count]) => {
+      console.log(`   - ${month}: ${count} licenses`);
+    });
 
   // Create some sample assignments
   const staffUsers = await knex('users').where({ role: 'staff' }).limit(10);

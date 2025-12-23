@@ -15,12 +15,12 @@ import {
   getCellKey,
   getRowHeightValue,
 } from "@/shared/lib/data-grid";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 import type {
   CellPosition,
   Direction,
   RowHeightValue,
-} from "@/shared/types/data-grid";
+} from "@/types/data-grid";
 
 interface DataGridRowProps<TData> extends React.ComponentProps<"div"> {
   row: Row<TData>;

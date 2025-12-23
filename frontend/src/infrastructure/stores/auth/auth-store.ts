@@ -6,7 +6,9 @@ import { httpClient } from '@/infrastructure/api/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import { getErrorMessage } from '@/infrastructure/api/errors';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
+import { container } from '@/shared/di/container';
+import { createTokenManager, TokenManager } from '@/shared/helpers/token-manager';
 
 interface AuthState {
   // State
@@ -19,6 +21,9 @@ interface AuthState {
   // Password reset state
   passwordResetSent: boolean;
   passwordResetEmail: string | null;
+
+  // Token management
+  tokenManager: TokenManager | null;
 
   // Actions
   initialize: () => Promise<void>;
@@ -42,6 +47,11 @@ interface AuthState {
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   clearPasswordResetState: () => void;
+
+  // Token management actions
+  scheduleTokenRefresh: () => void;
+  getTokenStats: () => any;
+  handleAuthFailure: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -57,14 +67,24 @@ export const useAuthStore = create<AuthState>()(
           // Initial state
           user: null,
           token: null,
-          isLoading: true,
+          isLoading: false,
           isAuthenticated: false,
           isLoggingOut: false,
           passwordResetSent: false,
           passwordResetEmail: null,
+          tokenManager: null,
 
           // Initialize auth state from storage
           initialize: async () => {
+            // Skip if already initialized (has user/token from persistence)
+            const currentState = get();
+            if (currentState.user && currentState.token) {
+              set({ isAuthenticated: true, isLoading: false });
+              // Schedule token refresh for existing token
+              get().scheduleTokenRefresh();
+              return;
+            }
+
             try {
               set({ isLoading: true });
 
@@ -75,6 +95,20 @@ export const useAuthStore = create<AuthState>()(
               if (storedToken) {
                 set({ token: storedToken });
                 httpClient.setAuthToken(storedToken);
+
+                // Initialize token manager and schedule refresh
+                const tokenManager = createTokenManager(
+                  () => get().refreshToken(),
+                  {
+                    onTokenExpired: () => get().handleAuthFailure(),
+                    onTokenRefreshed: (newToken) => {
+                      set({ token: newToken });
+                      httpClient.setAuthToken(newToken);
+                    }
+                  }
+                );
+                set({ tokenManager });
+                tokenManager.scheduleTokenRefresh(storedToken);
               }
 
               if (storedUser) {
@@ -114,6 +148,20 @@ export const useAuthStore = create<AuthState>()(
               // Store token
               set({ token: authResult.tokens.accessToken });
               httpClient.setAuthToken(authResult.tokens.accessToken);
+
+              // Initialize token manager and schedule refresh
+              const tokenManager = createTokenManager(
+                () => get().refreshToken(),
+                {
+                  onTokenExpired: () => get().handleAuthFailure(),
+                  onTokenRefreshed: (newToken) => {
+                    set({ token: newToken });
+                    httpClient.setAuthToken(newToken);
+                  }
+                }
+              );
+              set({ tokenManager });
+              tokenManager.scheduleTokenRefresh(authResult.tokens.accessToken);
 
               // Store tokens
               CookieService.setToken(authResult.tokens.accessToken);
@@ -180,6 +228,12 @@ export const useAuthStore = create<AuthState>()(
                 LocalStorageService.setRefreshToken(newTokens.tokens.refreshToken);
               }
 
+              // Re-schedule token refresh with new token
+              const tokenManager = get().tokenManager;
+              if (tokenManager) {
+                tokenManager.scheduleTokenRefresh(newTokens.tokens.accessToken);
+              }
+
               return true;
             } catch (error) {
               storeLogger.warn('Token refresh failed', {
@@ -191,6 +245,13 @@ export const useAuthStore = create<AuthState>()(
               CookieService.clearAuthCookies();
               LocalStorageService.clearAuthData();
               httpClient.setAuthToken(null);
+
+              // Clean up token manager
+              const tokenManager = get().tokenManager;
+              if (tokenManager) {
+                tokenManager.destroy();
+                set({ tokenManager: null });
+              }
 
               return false;
             }
@@ -221,10 +282,7 @@ export const useAuthStore = create<AuthState>()(
 
           changePassword: async (currentPassword: string, newPassword: string) => {
             try {
-              await authApi.changePassword({
-                currentPassword,
-                newPassword
-              });
+              await container.authService.changePassword(currentPassword, newPassword);
             } catch (error) {
               storeLogger.warn('Password change failed', {
                 error: error instanceof Error ? error.message : String(error)
@@ -283,13 +341,10 @@ export const useAuthStore = create<AuthState>()(
             set({ isLoggingOut: true });
 
             try {
-              await authApi.logout();
-            } catch (error) {
-              storeLogger.warn('Logout API call failed', {
-                error: error instanceof Error ? error.message : String(error)
-              });
-            } finally {
-              // Always clear local state
+              // Use the logout use case which handles API call and cleanup
+              await container.logoutUseCase.execute();
+
+              // Clear local state after use case completes
               set({
                 user: null,
                 token: null,
@@ -298,9 +353,38 @@ export const useAuthStore = create<AuthState>()(
                 passwordResetSent: false,
                 passwordResetEmail: null
               });
-              CookieService.clearAuthCookies();
-              LocalStorageService.clearAuthData();
-              httpClient.setAuthToken(null);
+
+              // Clean up token manager
+              const tokenManager = get().tokenManager;
+              if (tokenManager) {
+                tokenManager.destroy();
+                set({ tokenManager: null });
+              }
+
+              // Logout completed - detailed logging handled by use case
+            } catch (error) {
+              storeLogger.error('Logout failed', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+
+              // Still clear local state even if logout use case fails
+              set({
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoggingOut: false,
+                passwordResetSent: false,
+                passwordResetEmail: null
+              });
+
+              // Clean up token manager even on logout failure
+              const tokenManager = get().tokenManager;
+              if (tokenManager) {
+                tokenManager.destroy();
+                set({ tokenManager: null });
+              }
+
+              throw error; // Re-throw to let caller handle the error
             }
           },
 
@@ -335,6 +419,47 @@ export const useAuthStore = create<AuthState>()(
             passwordResetSent: false,
             passwordResetEmail: null
           }),
+
+          // Handle auth failure (called by token manager)
+          handleAuthFailure: async () => {
+            storeLogger.warn('Token expired, handling auth failure', {
+              category: 'auth-expiry'
+            });
+
+            // Clear authentication state
+            set({ user: null, token: null, isAuthenticated: false });
+            CookieService.clearAuthCookies();
+            LocalStorageService.clearAuthData();
+            httpClient.setAuthToken(null);
+
+            // Clean up token manager
+            const tokenManager = get().tokenManager;
+            if (tokenManager) {
+              tokenManager.destroy();
+              set({ tokenManager: null });
+            }
+
+            // Redirect to login if in browser
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+          },
+
+          // Schedule token refresh for current token
+          scheduleTokenRefresh: () => {
+            const token = get().token;
+            const tokenManager = get().tokenManager;
+
+            if (token && tokenManager) {
+              tokenManager.scheduleTokenRefresh(token);
+            }
+          },
+
+          // Get token management stats
+          getTokenStats: () => {
+            const tokenManager = get().tokenManager;
+            return tokenManager ? tokenManager.getStats() : null;
+          },
         };
       },
       {
@@ -343,7 +468,7 @@ export const useAuthStore = create<AuthState>()(
           user: state.user,
           token: state.token,
           isAuthenticated: state.isAuthenticated,
-          // Don't persist isLoggingOut as it's a temporary state
+          // Don't persist isLoggingOut or tokenManager as they are temporary/runtime objects
         }),
       }
     ),

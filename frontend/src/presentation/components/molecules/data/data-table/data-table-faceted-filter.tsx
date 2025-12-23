@@ -21,8 +21,8 @@ import {
   PopoverTrigger,
 } from "@/presentation/components/atoms/primitives/popover";
 import { Separator } from "@/presentation/components/atoms/primitives/separator";
-import { cn } from "@/shared/utils";
-import type { Option } from "@/shared/types/data-table";
+import { cn } from "@/shared/helpers";
+import type { Option } from "@/types/data-table";
 
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;

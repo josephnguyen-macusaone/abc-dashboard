@@ -195,8 +195,13 @@ export class LicenseRepository extends ILicenseRepository {
 
     // Status filter
     if (filters.status) {
+      if (Array.isArray(filters.status)) {
+        query = query.whereIn('status', filters.status);
+        countQuery = countQuery.whereIn('status', filters.status);
+      } else {
       query = query.where('status', filters.status);
       countQuery = countQuery.where('status', filters.status);
+      }
     }
 
     // Term filter
@@ -395,7 +400,11 @@ export class LicenseRepository extends ILicenseRepository {
 
     // Advanced filters
     if (filters.status) {
+      if (Array.isArray(filters.status)) {
+        baseQuery = baseQuery.whereIn('status', filters.status);
+      } else {
       baseQuery = baseQuery.where('status', filters.status);
+      }
     }
     if (filters.term) {
       baseQuery = baseQuery.where('term', filters.term);
@@ -816,6 +825,7 @@ export class LicenseRepository extends ILicenseRepository {
     if (data.seatsTotal !== undefined) dbData.seats_total = data.seatsTotal;
     if (data.seatsUsed !== undefined) dbData.seats_used = data.seatsUsed;
     if (data.startsAt !== undefined) dbData.starts_at = data.startsAt;
+    if (data.startDay !== undefined) dbData.starts_at = data.startDay; // Handle API field name
     if (data.expiresAt !== undefined) dbData.expires_at = data.expiresAt;
     if (data.cancelDate !== undefined) dbData.cancel_date = data.cancelDate;
     if (data.lastActive !== undefined) dbData.last_active = data.lastActive;

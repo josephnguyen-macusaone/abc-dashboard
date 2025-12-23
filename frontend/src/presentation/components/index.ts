@@ -1,20 +1,15 @@
-// Barrel exports for all presentation components
-// This provides a single import point for all UI components organized by atomic design
+// Skeleton components following Atomic Design principles
 
-// Atomic components (building blocks)
+// Atoms - Basic building blocks
 export * from './atoms';
 
-// Molecular components (combinations of atoms)
+// Molecules - Combinations of atoms
 export * from './molecules';
 
-// Organism components (complex UI sections)
+// Organisms - Complex layouts combining molecules
 export * from './organisms';
 
-// Page components (full page layouts)
-export * from './pages';
-
-// Template components (page-level layouts)
-export * from './templates';
-
-// Route components (protected routes)
-export * from './routes';
+// Backwards compatibility - re-export from skeletons
+export { LicenseDataTableSkeleton } from './organisms/skeletons';
+export { LicenseMetricsSkeleton } from './organisms/skeletons';
+export { LicensesDataGridSkeleton } from './organisms/skeletons';

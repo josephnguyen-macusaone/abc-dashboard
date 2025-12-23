@@ -23,6 +23,11 @@ export {
   createGetProfileUseCase,
   type GetProfileUseCaseContract,
 } from './auth/get-profile-usecase';
+export {
+  ChangePasswordUseCase,
+  createChangePasswordUseCase,
+  type ChangePasswordUseCaseContract,
+} from './auth/change-password-usecase';
 
 // User management use cases
 export { CreateUserUseCase } from './user/create-user-usecase';
@@ -38,35 +43,50 @@ export {
   createSearchUsersUseCase,
   type SearchUsersUseCaseContract,
 } from './user/search-users-usecase';
-export { GetUserStatsUseCase } from './user/get-user-stats-usecase';
 
 // License management use cases
 export {
-  GetLicensesUseCase,
-  createGetLicensesUseCase,
-  type GetLicensesUseCaseContract,
+  GetLicensesUseCaseImpl,
+  type GetLicensesUseCase,
 } from './license/get-licenses-usecase';
 
 export {
-  CreateLicenseUseCase,
-  createCreateLicenseUseCase,
-  type CreateLicenseUseCaseContract,
+  CreateLicenseUseCaseImpl,
+  type CreateLicenseUseCase,
 } from './license/create-license-usecase';
 
 export {
-  UpdateLicenseUseCase,
-  createUpdateLicenseUseCase,
-  type UpdateLicenseUseCaseContract,
+  UpdateLicenseUseCaseImpl,
+  type UpdateLicenseUseCase,
 } from './license/update-license-usecase';
 
 export {
   DeleteLicenseUseCase,
-  createDeleteLicenseUseCase,
   type DeleteLicenseUseCaseContract,
 } from './license/delete-license-usecase';
 
 export {
   BulkUpdateLicensesUseCase,
-  createBulkUpdateLicensesUseCase,
   type BulkUpdateLicensesUseCaseContract,
 } from './license/bulk-update-licenses-usecase';
+
+export {
+  BulkCreateLicensesUseCase,
+  type BulkCreateLicensesUseCaseContract,
+} from './license/bulk-create-licenses-usecase';
+
+export {
+  GetLicenseStatsUseCase,
+  createGetLicenseStatsUseCase,
+  type GetLicenseStatsUseCaseContract,
+  type LicenseDateRange,
+  type LicenseDashboardMetric,
+} from './license/get-license-stats-usecase';
+
+// Sidebar use cases
+export { ToggleSidebarUseCaseImpl } from './sidebar/toggle-sidebar-usecase';
+export { InitializeSidebarUseCaseImpl } from './sidebar/initialize-sidebar-usecase';
+
+// Sidebar type exports
+export type { ToggleSidebarUseCase } from './sidebar/toggle-sidebar-usecase';
+export type { InitializeSidebarUseCase } from './sidebar/initialize-sidebar-usecase';

@@ -1,9 +1,14 @@
 import { AuthService } from '@/application/services/auth-service';
-import { UserManagementService } from '@/application/services/user-management-service';
+import { UserService } from '@/application/services/user-service';
+import { LicenseManagementService } from '@/application/services/license-services';
 
 // Repositories
 import { AuthRepository } from '@/infrastructure/repositories/auth-repository';
 import { UserRepository } from '@/infrastructure/repositories/user-repository';
+import { LicenseRepository } from '@/infrastructure/repositories/license-repository';
+
+// Domain Services
+import { LicenseDomainService } from '@/domain/services/license-domain-service';
 
 // Use Cases
 import {
@@ -15,6 +20,8 @@ import {
   type UpdateProfileUseCaseContract,
   createGetProfileUseCase,
   type GetProfileUseCaseContract,
+  createChangePasswordUseCase,
+  type ChangePasswordUseCaseContract,
 } from '@/application/use-cases/auth';
 import {
   CreateUserUseCase,
@@ -25,6 +32,11 @@ import {
   createSearchUsersUseCase,
   type SearchUsersUseCaseContract
 } from '@/application/use-cases/user';
+import {
+  GetLicensesUseCaseImpl,
+  CreateLicenseUseCaseImpl,
+  UpdateLicenseUseCaseImpl,
+} from '@/application/use-cases/license';
 
 /**
  * Dependency Injection Container
@@ -34,12 +46,17 @@ class DependencyContainer {
   // Repositories (Infrastructure Layer)
   private _authRepository?: AuthRepository;
   private _userRepository?: UserRepository;
+  private _licenseRepository?: LicenseRepository;
+
+  // Domain Services
+  private _licenseDomainService?: LicenseDomainService;
 
   // Use Cases (Application Layer)
   private _loginUseCase?: LoginUseCaseContract;
   private _logoutUseCase?: LogoutUseCaseContract;
   private _updateProfileUseCase?: UpdateProfileUseCaseContract;
   private _getProfileUseCase?: GetProfileUseCaseContract;
+  private _changePasswordUseCase?: ChangePasswordUseCaseContract;
 
   private _createUserUseCase?: CreateUserUseCase;
   private _updateUserUseCase?: UpdateUserUseCase;
@@ -47,9 +64,14 @@ class DependencyContainer {
   private _getUsersUseCase?: GetUsersUseCaseContract;
   private _searchUsersUseCase?: SearchUsersUseCaseContract;
 
+  private _getLicensesUseCase?: GetLicensesUseCaseImpl;
+  private _createLicenseUseCase?: CreateLicenseUseCaseImpl;
+  private _updateLicenseUseCase?: UpdateLicenseUseCaseImpl;
+
   // Services (Application Layer)
   private _authService?: AuthService;
-  private _userManagementService?: UserManagementService;
+  private _userService?: UserService;
+  private _licenseManagementService?: LicenseManagementService;
 
   // Repository getters
   get authRepository(): AuthRepository {
@@ -64,6 +86,20 @@ class DependencyContainer {
       this._userRepository = new UserRepository();
     }
     return this._userRepository;
+  }
+
+  get licenseRepository(): LicenseRepository {
+    if (!this._licenseRepository) {
+      this._licenseRepository = new LicenseRepository();
+    }
+    return this._licenseRepository;
+  }
+
+  get licenseDomainService(): LicenseDomainService {
+    if (!this._licenseDomainService) {
+      this._licenseDomainService = LicenseDomainService;
+    }
+    return this._licenseDomainService;
   }
 
   // Use Case getters
@@ -93,6 +129,13 @@ class DependencyContainer {
       this._getProfileUseCase = createGetProfileUseCase(this.authRepository);
     }
     return this._getProfileUseCase;
+  }
+
+  get changePasswordUseCase(): ChangePasswordUseCaseContract {
+    if (!this._changePasswordUseCase) {
+      this._changePasswordUseCase = createChangePasswordUseCase(this.authRepository);
+    }
+    return this._changePasswordUseCase;
   }
 
   get createUserUseCase(): CreateUserUseCase {
@@ -130,6 +173,33 @@ class DependencyContainer {
     return this._searchUsersUseCase;
   }
 
+  get getLicensesUseCase(): GetLicensesUseCaseImpl {
+    if (!this._getLicensesUseCase) {
+      this._getLicensesUseCase = new GetLicensesUseCaseImpl(this.licenseRepository);
+    }
+    return this._getLicensesUseCase;
+  }
+
+  get createLicenseUseCase(): CreateLicenseUseCaseImpl {
+    if (!this._createLicenseUseCase) {
+      this._createLicenseUseCase = new CreateLicenseUseCaseImpl(
+        this.licenseRepository,
+        this.licenseDomainService
+      );
+    }
+    return this._createLicenseUseCase;
+  }
+
+  get updateLicenseUseCase(): UpdateLicenseUseCaseImpl {
+    if (!this._updateLicenseUseCase) {
+      this._updateLicenseUseCase = new UpdateLicenseUseCaseImpl(
+        this.licenseRepository,
+        this.licenseDomainService
+      );
+    }
+    return this._updateLicenseUseCase;
+  }
+
 
   // Service getters
   get authService(): AuthService {
@@ -137,6 +207,7 @@ class DependencyContainer {
       const logoutPort = this.logoutUseCase;
       const updateProfilePort = this.updateProfileUseCase;
       const getProfilePort = this.getProfileUseCase;
+      const changePasswordPort = this.changePasswordUseCase;
       this._authService = new AuthService(
         this.authRepository,
         {
@@ -144,15 +215,16 @@ class DependencyContainer {
           logout: logoutPort,
           updateProfile: updateProfilePort,
           getProfile: getProfilePort,
+          changePassword: changePasswordPort,
         }
       );
     }
     return this._authService;
   }
 
-  get userManagementService(): UserManagementService {
-    if (!this._userManagementService) {
-      this._userManagementService = new UserManagementService(
+  get userService(): UserService {
+    if (!this._userService) {
+      this._userService = new UserService(
         this.createUserUseCase,
         this.updateUserUseCase,
         this.deleteUserUseCase,
@@ -160,7 +232,22 @@ class DependencyContainer {
         this.searchUsersUseCase
       );
     }
-    return this._userManagementService;
+    return this._userService;
+  }
+
+  get licenseManagementService(): LicenseManagementService {
+    if (!this._licenseManagementService) {
+      this._licenseManagementService = new LicenseManagementService(
+        this.licenseRepository,
+        {
+          getLicenses: this.getLicensesUseCase,
+          createLicense: this.createLicenseUseCase,
+          updateLicense: this.updateLicenseUseCase,
+        },
+        this.licenseDomainService
+      );
+    }
+    return this._licenseManagementService;
   }
 
   /**
@@ -174,6 +261,7 @@ class DependencyContainer {
     this._logoutUseCase = undefined;
     this._updateProfileUseCase = undefined;
     this._getProfileUseCase = undefined;
+    this._changePasswordUseCase = undefined;
 
     this._createUserUseCase = undefined;
     this._updateUserUseCase = undefined;
@@ -181,8 +269,13 @@ class DependencyContainer {
     this._getUsersUseCase = undefined;
     this._searchUsersUseCase = undefined;
 
+    this._getLicensesUseCase = undefined;
+    this._createLicenseUseCase = undefined;
+    this._updateLicenseUseCase = undefined;
+
     this._authService = undefined;
-    this._userManagementService = undefined;
+    this._userService = undefined;
+    this._licenseManagementService = undefined;
   }
 }
 

@@ -14,9 +14,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/pre
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import { Input } from '@/presentation/components/atoms/forms/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
-import { FormField, InputField } from '@/presentation/components/molecules';
+import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
 import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Typography } from '@/presentation/components/atoms';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 
 import { Edit, X, Check } from 'lucide-react';
 
@@ -28,7 +29,7 @@ const updateUserSchema = z.object({
     .optional(),
   phone: z.string()
     .optional()
-    .refine((val) => !val || /^[\+]?[1-9][\d]{0,15}$/.test(val), {
+    .refine((val) => !val || isValidPhoneNumber(val), {
       message: 'Phone number must be in valid format'
     }),
   role: z.enum([USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF]).optional(),
@@ -221,12 +222,10 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
           />
 
           {/* Phone */}
-          <InputField
+          <PhoneField
             label="Phone Number"
-            type="tel"
-            placeholder="Enter phone number"
             value={watch('phone') || ''}
-            onChange={(e) => setValue('phone', e.target.value)}
+            onChange={(value) => setValue('phone', value || '')}
             error={errors.phone?.message}
             disabled={isUpdating}
             inputClassName="h-11"

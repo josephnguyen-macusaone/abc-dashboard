@@ -70,13 +70,25 @@ export class LicenseValidator {
     // Status and Term Filters
     // ========================================================================
     if (query.status) {
-      if (!STATUS_VALUES.includes(query.status)) {
-        throw new ValidationException(
-          `Invalid status value. Must be one of: ${STATUS_VALUES.join(', ')}`
-        );
+      // Handle comma-separated status values (e.g., "pending,draft")
+      const statusValues = Array.isArray(query.status)
+        ? query.status
+        : query.status
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+
+      // Validate each status value
+      for (const status of statusValues) {
+        if (!STATUS_VALUES.includes(status)) {
+          throw new ValidationException(
+            `Invalid status value "${status}". Must be one of: ${STATUS_VALUES.join(', ')}`
+          );
+        }
       }
+
       sanitized.filters = sanitized.filters || {};
-      sanitized.filters.status = query.status;
+      sanitized.filters.status = statusValues.length === 1 ? statusValues[0] : statusValues;
     }
 
     if (query.term) {
@@ -228,13 +240,14 @@ export class LicenseValidator {
       throw new ValidationException('plan is required');
     }
 
-    // StartsAt is required and must be a valid date
-    if (!input.startsAt) {
-      throw new ValidationException('startsAt is required');
+    // StartDay is required and must be a valid date (API field name)
+    const startDate = input.startDay || input.startsAt; // Support both field names for compatibility
+    if (!startDate) {
+      throw new ValidationException('startDay is required');
     }
-    const startsAt = new Date(input.startsAt);
-    if (isNaN(startsAt.getTime())) {
-      throw new ValidationException('startsAt must be a valid date');
+    const startDateObj = new Date(startDate);
+    if (isNaN(startDateObj.getTime())) {
+      throw new ValidationException('startDay must be a valid date');
     }
 
     // SeatsTotal is required and must be positive

@@ -1,7 +1,7 @@
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { AuthResult } from '@/domain/entities/user-entity';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface LoginUseCaseContract {
   execute: (
@@ -77,17 +77,27 @@ export function createLoginUseCase(
       const cid = correlationId || generateCorrelationId();
 
       try {
+        // Validate input
         validateInput(email, password);
+
+        // Login
         const authResult = await authRepository.login(email, password);
+
+        // Validate login result
         validateLoginResult(authResult);
+
+        // Return auth result
         return authResult;
       } catch (error) {
-        useCaseLogger.error(`Login use case failed`, {
+        // Log error
+        useCaseLogger.error(`Failed to login`, {
           correlationId: cid,
           email,
           operation: 'login_usecase_error',
           error: error instanceof Error ? error.message : String(error),
         });
+
+        // Throw error
         throw handleLoginError(error, cid);
       }
     },

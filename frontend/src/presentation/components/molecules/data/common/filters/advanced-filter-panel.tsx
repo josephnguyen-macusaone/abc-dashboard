@@ -11,8 +11,8 @@ import {
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { Separator } from '@/presentation/components/atoms/primitives/separator';
 import { Typography } from '@/presentation/components/atoms/display/typography';
-import { cn } from '@/shared/utils';
-import type { FilterConfig, FilterValue } from '@/shared/types/data-display';
+import { cn } from '@/shared/helpers';
+import type { FilterConfig, FilterValue } from '@/types/data-display';
 import { FilterControl } from './filter-control';
 
 // ============================================================================

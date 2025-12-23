@@ -79,7 +79,7 @@ services:
       cache_from:
         - abc-dashboard-frontend:latest
       # Target the final runner stage
-      target: runner
+      target: production
     container_name: abc-dashboard-frontend
     restart: unless-stopped
     ports:

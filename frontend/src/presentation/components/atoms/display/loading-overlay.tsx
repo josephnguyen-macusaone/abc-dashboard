@@ -2,7 +2,7 @@
 
 import { Loading } from './loading';
 import { Typography } from '@/presentation/components/atoms';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 interface LoadingOverlayProps {
   className?: string;
@@ -22,6 +22,7 @@ export function LoadingOverlay({
         fullScreen ? 'fixed inset-0 z-50 bg-background/80' : 'min-h-screen bg-background/80',
         className
       )}
+      suppressHydrationWarning
     >
       <div className="flex flex-col items-center justify-center space-y-4">
         <Loading size="lg" variant="spinner" />

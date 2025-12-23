@@ -2,7 +2,7 @@
 
 import { CheckCircle, AlertCircle, XCircle, TrendingUp, Package } from 'lucide-react';
 import { addDays } from 'date-fns';
-import type { FilterPreset } from '@/shared/types/data-display';
+import type { FilterPreset } from '@/types/data-display';
 
 /**
  * Predefined filter presets for license management

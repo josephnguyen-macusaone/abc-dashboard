@@ -3,7 +3,6 @@ import {
   CreateUserDTO,
   UpdateUserDTO,
   UserListParams,
-  UserStats,
   PaginatedUserList
 } from '@/application/dto/user-dto';
 

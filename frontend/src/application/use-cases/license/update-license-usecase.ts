@@ -1,35 +1,127 @@
-import { LicenseRecord } from '@/shared/types';
-import { licenseService, LicenseServiceContract } from '@/application/services/license-management-service';
+import { License, LicenseId } from '@/domain/entities/license-entity';
+import { ILicenseRepository } from '@/domain/repositories/i-license-repository';
+import { LicenseDomainService } from '@/domain/services/license-domain-service';
+import { UpdateLicenseDTO } from '@/application/dto/license-dto';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
- * Update License Use Case
- * Handles updating existing licenses
+ * Application Use Case: Update License
+ * Handles updating existing licenses following Clean Architecture principles
  */
-export interface UpdateLicenseUseCaseContract {
-  execute(id: number, updates: Partial<LicenseRecord>): Promise<LicenseRecord>;
+export interface UpdateLicenseUseCase {
+  execute(id: string, updates: UpdateLicenseDTO): Promise<License>;
 }
 
-export class UpdateLicenseUseCase implements UpdateLicenseUseCaseContract {
-  constructor(private readonly licenseService: LicenseServiceContract) {}
+export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
+  private readonly useCaseLogger = logger.createChild({
+    component: 'UpdateLicenseUseCase',
+  });
 
-  async execute(id: number, updates: Partial<LicenseRecord>): Promise<LicenseRecord> {
+  constructor(
+    private readonly licenseRepository: ILicenseRepository,
+    private readonly licenseDomainService: LicenseDomainService
+  ) {}
+
+  async execute(id: string, updates: UpdateLicenseDTO): Promise<License> {
+    const correlationId = generateCorrelationId();
+    const licenseId = new LicenseId(id);
+
     try {
-      const response = await this.licenseService.update(id, updates);
+      this.useCaseLogger.debug('Updating license', {
+        correlationId,
+        licenseId: id,
+        updates: Object.keys(updates),
+        operation: 'update_license_start'
+      });
 
-      if (!response.data?.license) {
-        throw new Error('Invalid response: license data not found');
+      // Find existing license
+      const existingLicense = await this.licenseRepository.findById(licenseId);
+      if (!existingLicense) {
+        throw new Error(`License with ID ${id} not found`);
       }
 
-      return response.data.license;
+      this.useCaseLogger.debug('Existing license found, validating updates', {
+        correlationId,
+        licenseId: id,
+        currentStatus: existingLicense.status,
+        operation: 'update_license_validation'
+      });
+
+      // Validate status transition if status is being updated
+      if (updates.status && updates.status !== existingLicense.status) {
+        const transitionValidation = LicenseDomainService.validateStatusTransition(
+          existingLicense.status,
+          updates.status
+        );
+        if (!transitionValidation.isValid) {
+          this.useCaseLogger.warn('Invalid status transition', {
+            correlationId,
+            licenseId: id,
+            from: existingLicense.status,
+            to: updates.status,
+            errors: transitionValidation.errors,
+            operation: 'update_license_invalid_transition'
+          });
+          throw new Error(`Invalid status transition: ${transitionValidation.errors.join(', ')}`);
+        }
+      }
+
+      // Apply updates to domain entity
+      // Note: In a real implementation, the domain entity would have update methods
+      // For now, we'll create a new entity with updated values
+      const updatedLicenseData = {
+        ...existingLicense,
+        ...updates,
+        updatedAt: new Date()
+      };
+
+      // Create updated license entity (simplified - in real app, entity would have update methods)
+      const updatedLicense = new (License as any)(
+        existingLicense.id,
+        updates.dba ?? existingLicense.dba,
+        updates.zip ?? existingLicense.zip,
+        existingLicense.startsAt, // Start date typically doesn't change
+        updates.status ?? existingLicense.status,
+        updates.plan ?? existingLicense.plan,
+        updates.term ?? existingLicense.term,
+        updates.seatsTotal ?? existingLicense.seatsTotal,
+        existingLicense.seatsUsed, // This would be updated through business methods
+        updates.lastPayment ? new (existingLicense.lastPayment.constructor as any)(updates.lastPayment) : existingLicense.lastPayment,
+        new Date(), // Update last active
+        updates.smsPurchased ?? existingLicense.smsPurchased,
+        existingLicense.smsSent, // This would be updated through business methods
+        updates.agents ?? existingLicense.agents,
+        updates.agentsName ?? existingLicense.agentsName,
+        updates.agentsCost ? new (existingLicense.agentsCost.constructor as any)(updates.agentsCost) : existingLicense.agentsCost,
+        updates.notes ?? existingLicense.notes,
+        existingLicense.key,
+        existingLicense.product,
+        existingLicense.cancelDate, // Keep existing cancel date
+        existingLicense.createdAt,
+        new Date() // updatedAt
+      );
+
+      // Save updated license
+      await this.licenseRepository.save(updatedLicense);
+
+      this.useCaseLogger.debug('License updated successfully', {
+        correlationId,
+        licenseId: id,
+        newStatus: updatedLicense.status,
+        operation: 'update_license_success'
+      });
+
+      return updatedLicense;
     } catch (error) {
+      this.useCaseLogger.error('Failed to update license', {
+        correlationId,
+        licenseId: id,
+        updates: Object.keys(updates),
+        operation: 'update_license_error',
+        error: error instanceof Error ? error.message : String(error)
+      });
       throw new Error(`Failed to update license: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
 
-/**
- * Factory function to create UpdateLicenseUseCase
- */
-export function createUpdateLicenseUseCase(): UpdateLicenseUseCase {
-  return new UpdateLicenseUseCase(licenseService);
-}

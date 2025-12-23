@@ -18,3 +18,6 @@ export * from './user-management';
 
 // Dashboard components
 export * from './dashboard';
+
+// Organism skeleton components - complex layouts combining molecules
+export * from './skeletons';

@@ -5,7 +5,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/shared/types";
+import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
 import { STATUS_OPTIONS, PLAN_OPTIONS, TERM_OPTIONS } from "./license-table-columns";
 
 export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {

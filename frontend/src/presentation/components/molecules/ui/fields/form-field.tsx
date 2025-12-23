@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Typography, Input, Label } from '@/presentation/components/atoms';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
@@ -42,6 +42,19 @@ export function FormField({
   description
 }: FormFieldProps) {
   const fieldId = id || React.useId();
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Set id on input elements after render
+  React.useEffect(() => {
+    if (containerRef.current) {
+      const inputs = containerRef.current.querySelectorAll('input, textarea, select');
+      inputs.forEach((input) => {
+        if (!input.id) {
+          input.id = fieldId;
+        }
+      });
+    }
+  }, [fieldId]);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -52,7 +65,7 @@ export function FormField({
         </Label>
       )}
 
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         {React.cloneElement(children as React.ReactElement<any>, {
           id: fieldId,
           'aria-invalid': !!error,

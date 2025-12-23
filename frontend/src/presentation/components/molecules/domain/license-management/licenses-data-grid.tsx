@@ -5,9 +5,8 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Plus, Save, RotateCcw } from "lucide-react";
+import { FileText, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { startTransition } from "react";
 
 import {
   DataGrid,
@@ -21,8 +20,9 @@ import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
+import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { getLicenseGridColumns } from "./license-grid-columns";
-import type { LicenseRecord } from "@/shared/types";
+import type { LicenseRecord } from "@/types";
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
@@ -105,54 +105,25 @@ export function LicensesDataGrid({
   }, []);
 
   const handleRowAdd = React.useCallback(async () => {
-    // Generate unique ID that doesn't conflict with existing IDs
-    const generateUniqueId = (existingData: LicenseRecord[]): number => {
-      const existingIds = existingData
-        .map(item => typeof item.id === 'number' ? item.id : 0)
-        .filter(id => id > 0); // Only consider positive IDs (existing saved records)
-
-      if (existingIds.length === 0) return 1;
-
-      const maxId = Math.max(...existingIds);
-      return maxId + 1;
-    };
-
-    const fallback: LicenseRecord = {
-      id: generateUniqueId(data),
-      dba: "",
-      zip: "",
-      startsAt: new Date().toISOString().split("T")[0],
-      status: "pending",
-      plan: "Basic",
-      term: "monthly",
-      lastPayment: 0,
-      lastActive: new Date().toISOString().split("T")[0],
-      smsPurchased: 0,
-      smsSent: 0,
-      smsBalance: 0,
-      agents: 0,
-      agentsName: [],
-      agentsCost: 0,
-      notes: "",
-    };
-
-    let newRow = fallback;
-    if (onAddRow) {
-      try {
-        const result = onAddRow();
-        newRow = result instanceof Promise ? await result : result;
-      } catch {
-        newRow = fallback;
-      }
+    if (!onAddRow) {
+      throw new Error('onAddRow callback is required for adding new license rows');
     }
 
-    setData((prev) => [newRow, ...prev]);
-    setHasChanges(true);
-    // Force DataGrid remount to prevent virtual scroller conflicts
-    dataVersionRef.current += 1;
+    try {
+      const newRow = await onAddRow();
+      // Add new row to the TOP of the data array for better UX
+      setData((prev) => [newRow, ...prev]);
+      setHasChanges(true);
+      // Force DataGrid remount to prevent virtual scroller conflicts
+      dataVersionRef.current += 1;
 
-    return { rowIndex: 0, columnId: "dba" };
-  }, [data, onAddRow]);
+      // Return row index 0 to scroll to the newly added row at the top
+      return { rowIndex: 0, columnId: "dba" };
+    } catch (error) {
+      console.error('Failed to add new license row:', error);
+      throw error;
+    }
+  }, [onAddRow]);
 
   const handleRowsDelete = React.useCallback(
     async (rows: LicenseRecord[], indices: number[]) => {
@@ -208,7 +179,7 @@ export function LicensesDataGrid({
     data,
     columns,
     onDataChange: handleDataChange,
-    onRowAdd: handleRowAdd,
+    onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
     onRowsDelete: handleRowsDelete,
     rowHeight: "short",
     enableSearch: false, // Disable built-in search, we'll handle it manually
@@ -238,16 +209,6 @@ export function LicensesDataGrid({
 
   // Manual query change handler (adapted from data-table)
   React.useEffect(() => {
-    console.log('[LicensesDataGrid] Manual query effect triggered', {
-      initialized: hasInitializedRef.current,
-      onQueryChange: !!onQueryChange,
-      tablePageIndex,
-      tablePageSize,
-      tableSorting,
-      searchQuery,
-      tableColumnFilters,
-    });
-
     if (!onQueryChange) return;
 
     const activeSort = tableSorting?.[0];
@@ -263,7 +224,6 @@ export function LicensesDataGrid({
       lastSortRef.current = currentSortString;
       lastSearchRef.current = currentSearch;
       lastFiltersRef.current = currentFiltersString;
-      console.log('[LicensesDataGrid] Initialized refs, skipping first call');
       return;
     }
 
@@ -275,15 +235,7 @@ export function LicensesDataGrid({
     const searchChanged = currentSearch !== lastSearchRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current;
 
-    console.log('[LicensesDataGrid] Change detection', {
-      paginationChanged,
-      sortChanged,
-      searchChanged,
-      filtersChanged,
-    });
-
     if (!paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
-      console.log('[LicensesDataGrid] No changes detected, skipping API call');
       return;
     }
 
@@ -315,8 +267,6 @@ export function LicensesDataGrid({
       status: status,
     };
 
-    console.log('[LicensesDataGrid] Calling onQueryChange', apiParams);
-
     // Call API
     onQueryChange(apiParams);
   }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, onQueryChange]);
@@ -325,23 +275,7 @@ export function LicensesDataGrid({
   if (isLoading) {
     return (
       <div className={className}>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full" />
-            ))}
-          </div>
-        </div>
+        <LicensesDataGridSkeleton />
       </div>
     );
   }

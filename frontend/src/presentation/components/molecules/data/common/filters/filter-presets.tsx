@@ -24,8 +24,8 @@ import { Label } from '@/presentation/components/atoms/forms/label';
 import { Textarea } from '@/presentation/components/atoms/forms/text-area';
 import { Typography } from '@/presentation/components/atoms/display/typography';
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
-import { cn } from '@/shared/utils';
-import type { FilterPreset } from '@/shared/types/data-display';
+import { cn } from '@/shared/helpers';
+import type { FilterPreset } from '@/types/data-display';
 
 // ============================================================================
 // Types

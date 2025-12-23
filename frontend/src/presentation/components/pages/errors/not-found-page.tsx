@@ -53,7 +53,7 @@ export function NotFoundPage({
 
   return (
     <AuthTemplate>
-      <Card className="text-center max-w-md mx-auto">
+      <Card className="text-center max-w-md mx-auto mt-8">
         <CardHeader>
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-muted p-6">
@@ -70,15 +70,15 @@ export function NotFoundPage({
 
         <CardContent className="space-y-4">
           <div className="flex flex-row gap-3 justify-center pb-4">
-            {showGoHomeButton && (
-              <Button variant="default" onClick={handleGoHome}>
-                <Typography variant="button-s">Go to Homepage</Typography>
-              </Button>
-            )}
-
             {showGoBackButton && (
               <Button variant="outline" onClick={handleGoBack}>
                 <Typography variant="button-s">Go Back</Typography>
+              </Button>
+            )}
+
+            {showGoHomeButton && (
+              <Button variant="default" onClick={handleGoHome}>
+                <Typography variant="button-s">Go to Homepage</Typography>
               </Button>
             )}
           </div>

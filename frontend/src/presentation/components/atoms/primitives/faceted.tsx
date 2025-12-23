@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/presentation/components/atoms/primitives/popover";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 type FacetedValue<Multiple extends boolean> = Multiple extends true
   ? string[]

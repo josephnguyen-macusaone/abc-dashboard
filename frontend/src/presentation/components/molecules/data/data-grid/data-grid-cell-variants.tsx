@@ -20,8 +20,8 @@ import { Calendar } from "@/presentation/components/atoms/primitives/calendar";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
 import { CalendarIcon, X } from "lucide-react";
-import { cn } from "@/shared/utils";
-import type { CellVariantProps } from "@/shared/types/data-grid";
+import { cn } from "@/shared/helpers";
+import type { CellVariantProps } from "@/types/data-grid";
 
 export function ShortTextCell<TData>({
   cell,

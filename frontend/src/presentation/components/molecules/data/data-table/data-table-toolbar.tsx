@@ -10,7 +10,7 @@ import { DataTableViewOptions } from "./data-table-view-options";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
 import { SearchBar } from "@/presentation/components/molecules";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 import { useDebouncedCallback } from "@/presentation/hooks/use-debounced-callback";
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {

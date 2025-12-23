@@ -5,3 +5,6 @@ export * from "./ui";
 export * from "./layout";
 export * from "./domain";
 export * from "./data";
+
+// Molecular skeleton components - combinations of atoms
+export * from './skeletons';

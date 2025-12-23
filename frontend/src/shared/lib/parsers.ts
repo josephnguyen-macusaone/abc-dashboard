@@ -1,11 +1,11 @@
 import { createParser } from "nuqs/server";
 import { z } from "zod";
 
-import { dataTableConfig } from "@/shared/config/data-table";
 import type {
   ExtendedColumnFilter,
   ExtendedColumnSort,
-} from "@/shared/types/data-table";
+  FilterItemSchema,
+} from "@/types/data-table";
 
 const sortingItemSchema = z.object({
   id: z.string(),
@@ -48,15 +48,42 @@ export const getSortingStateParser = <TData>(
   });
 };
 
+// Explicit filter variant and operator enums
+const filterVariants = [
+  "text",
+  "number",
+  "range",
+  "date",
+  "dateRange",
+  "boolean",
+  "select",
+  "multiSelect",
+] as const;
+
+const filterOperators = [
+  "iLike",
+  "notILike",
+  "eq",
+  "ne",
+  "inArray",
+  "notInArray",
+  "isEmpty",
+  "isNotEmpty",
+  "lt",
+  "lte",
+  "gt",
+  "gte",
+  "isBetween",
+  "isRelativeToToday",
+] as const;
+
 const filterItemSchema = z.object({
   id: z.string(),
   value: z.union([z.string(), z.array(z.string())]),
-  variant: z.enum(dataTableConfig.filterVariants),
-  operator: z.enum(dataTableConfig.operators),
+  variant: z.enum(filterVariants),
+  operator: z.enum(filterOperators),
   filterId: z.string(),
 });
-
-export type FilterItemSchema = z.infer<typeof filterItemSchema>;
 
 export const getFiltersStateParser = <TData>(
   columnIds?: string[] | Set<string>,

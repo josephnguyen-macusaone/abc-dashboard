@@ -1,5 +1,5 @@
 import { Skeleton } from "@/presentation/components/atoms";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface LoadingProps {
   className?: string;
@@ -49,27 +49,3 @@ export function Loading({
 // LoadingSpinner - alias for backwards compatibility
 export const LoadingSpinner = Loading;
 
-// Skeleton components for common use cases
-export function LoadingCard() {
-  return (
-    <div className="space-y-3">
-      <Skeleton className="h-4 w-[250px]" />
-      <Skeleton className="h-4 w-[200px]" />
-      <Skeleton className="h-4 w-[180px]" />
-    </div>
-  );
-}
-
-export function LoadingTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex space-x-2">
-          {Array.from({ length: cols }).map((_, j) => (
-            <Skeleton key={j} className="h-4 flex-1" />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}

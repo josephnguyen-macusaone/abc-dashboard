@@ -5,7 +5,7 @@ import { Button, Input, Loading, Typography } from '@/presentation/components/at
 import { FormField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 
 interface ResetPasswordFormProps {

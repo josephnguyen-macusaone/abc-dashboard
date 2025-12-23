@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface DataTableSkeletonProps extends React.ComponentProps<"div"> {
   columnCount: number;

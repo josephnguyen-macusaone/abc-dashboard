@@ -180,8 +180,17 @@ export class LicenseController {
   getDashboardMetrics = async (req, res) => {
     try {
       const query = LicenseValidator.validateListQuery(req.query);
+      const dateRange = {};
+      if (req.query.startsAtFrom) {
+        dateRange.startsAtFrom = decodeURIComponent(req.query.startsAtFrom);
+      }
+      if (req.query.startsAtTo) {
+        dateRange.startsAtTo = decodeURIComponent(req.query.startsAtTo);
+      }
+
       const metrics = await this.licenseService.getDashboardMetrics({
         filters: query.filters,
+        ...(Object.keys(dateRange).length > 0 && { dateRange }),
       });
 
       return res.success(metrics, 'Dashboard metrics retrieved successfully');

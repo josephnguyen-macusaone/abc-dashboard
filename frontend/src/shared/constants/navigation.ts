@@ -15,8 +15,8 @@ export function getNavigationItems(userRole?: string): NavigationItem[] {
   if (PermissionUtils.canManageSystem(userRole)) {
     return [
       ...baseItems,
-      { name: 'License Management', href: '/dashboard?section=licenses', icon: FileSpreadsheet },
-      { name: 'User Management', href: '/dashboard?section=users', icon: Users },
+      { name: 'License Management', href: '/licenses', icon: FileSpreadsheet },
+      { name: 'User Management', href: '/users', icon: Users },
     ];
   }
 
@@ -24,8 +24,8 @@ export function getNavigationItems(userRole?: string): NavigationItem[] {
   if (PermissionUtils.canReadUser(userRole)) {
     return [
       ...baseItems,
-      { name: 'License Management', href: '/dashboard?section=licenses', icon: FileSpreadsheet },
-      { name: 'User Management', href: '/dashboard?section=users', icon: Users },
+      { name: 'License Management', href: '/licenses', icon: FileSpreadsheet },
+      { name: 'User Management', href: '/users', icon: Users },
     ];
   }
 

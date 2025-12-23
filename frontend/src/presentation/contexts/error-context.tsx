@@ -4,8 +4,8 @@ import React, { createContext, useContext, ReactNode, useCallback, useEffect, us
 import { useToast } from './toast-context';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
 import { handleApiError as processApiError } from '@/infrastructure/api/errors';
-import logger from '@/shared/utils/logger';
-import { RetryUtils } from '@/shared/utils/retry';
+import logger from '@/shared/helpers/logger';
+import { RetryUtils } from '@/shared/helpers/retry';
 
 /**
  * Error Context Type
@@ -247,6 +247,14 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
 
     // If it's already an ApiException, use it directly
     if (error instanceof ApiExceptionDto) {
+      // Skip showing toast if auth error was handled automatically
+      if (error.authHandled) {
+        logger.debug(`Skipping toast for auth-handled error: ${error.message}`, {
+          category: 'auth-error-handled'
+        });
+        return;
+      }
+
       toast.error(context, {
         description: error.message || 'An error occurred.'
       });

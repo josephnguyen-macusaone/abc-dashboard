@@ -28,3 +28,14 @@ export function generateId(
     : id;
 }
 
+/**
+ * Simple ID generation for common use cases
+ * Uses a 16-character nanoid for better randomness than Math.random
+ */
+export function generateSimpleId(): string {
+  return customAlphabet(
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    16,
+  )();
+}
+

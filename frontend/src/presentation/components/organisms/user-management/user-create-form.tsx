@@ -8,9 +8,10 @@ import { CreateUserDTO, User } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
 import { PermissionUtils, ROLE_DEFINITIONS, type UserRoleType } from '@/shared/constants';
 import { Typography, Button } from '@/presentation/components/atoms';
-import { InputField, FormField } from '@/presentation/components/molecules';
+import { InputField, FormField, PhoneField } from '@/presentation/components/molecules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 import { UserPlus, Loader2, X } from 'lucide-react';
 
 interface UserCreateFormProps {
@@ -130,12 +131,10 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
             className="space-y-3"
           />
 
-          <InputField
+          <PhoneField
             label="Phone (Optional)"
-            type="tel"
-            placeholder="Enter phone number"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(value) => setFormData({ ...formData, phone: value || '' })}
             disabled={isCreating}
             inputClassName="h-11"
             className="space-y-3"

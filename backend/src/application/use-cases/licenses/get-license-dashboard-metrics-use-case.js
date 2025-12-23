@@ -15,14 +15,30 @@ export class GetLicenseDashboardMetricsUseCase {
   async execute(options = {}) {
     try {
       const now = new Date();
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-
-      // Get filtered licenses if date range provided
       const filters = options.filters || {};
-      
+      const dateRange = options.dateRange || {};
+
+      // Determine the target period based on date range or current month
+      let targetPeriodStart, targetPeriodEnd, comparisonPeriodStart, comparisonPeriodEnd;
+
+      if (dateRange.startsAtFrom && dateRange.startsAtTo) {
+        // Use the selected date range as the target period
+        targetPeriodStart = new Date(dateRange.startsAtFrom);
+        targetPeriodEnd = new Date(dateRange.startsAtTo);
+
+        // Calculate comparison period (previous month relative to selected period)
+        const targetMonth = targetPeriodStart.getMonth();
+        const targetYear = targetPeriodStart.getFullYear();
+        comparisonPeriodStart = new Date(targetYear, targetMonth - 1, 1);
+        comparisonPeriodEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+      } else {
+        // Default to current month
+        targetPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        targetPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        comparisonPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        comparisonPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      }
+
       // Get all licenses for comprehensive calculations
       const allLicenses = await this.licenseRepository.findLicenses({
         page: 1,
@@ -30,41 +46,47 @@ export class GetLicenseDashboardMetricsUseCase {
         filters: {},
       });
 
-      // Get licenses filtered by date range (if provided)
-      const filteredLicenses = filters.startsAtFrom || filters.startsAtTo
-        ? await this.licenseRepository.findLicenses({
-            page: 1,
-            limit: 10000,
-            filters,
-          })
-        : allLicenses;
+      // Get licenses filtered by date range (if provided) - this affects total counts
+      const filteredLicenses =
+        filters.startsAtFrom || filters.startsAtTo
+          ? await this.licenseRepository.findLicenses({
+              page: 1,
+              limit: 10000,
+              filters,
+            })
+          : allLicenses;
 
-      // Get current month licenses (by startsAt)
-      const currentMonthLicenses = await this.licenseRepository.findLicenses({
+      // Get target period licenses (what the user selected as "this month")
+      const targetPeriodLicenses = await this.licenseRepository.findLicenses({
         page: 1,
         limit: 10000,
         filters: {
-          startsAtFrom: currentMonthStart.toISOString(),
-          startsAtTo: currentMonthEnd.toISOString(),
+          startsAtFrom: targetPeriodStart.toISOString(),
+          startsAtTo: targetPeriodEnd.toISOString(),
         },
       });
 
-      // Get previous month licenses (by startsAt)
-      const previousMonthLicenses = await this.licenseRepository.findLicenses({
+      // Get comparison period licenses (previous month for trend calculation)
+      const comparisonPeriodLicenses = await this.licenseRepository.findLicenses({
         page: 1,
         limit: 10000,
         filters: {
-          startsAtFrom: previousMonthStart.toISOString(),
-          startsAtTo: previousMonthEnd.toISOString(),
+          startsAtFrom: comparisonPeriodStart.toISOString(),
+          startsAtTo: comparisonPeriodEnd.toISOString(),
         },
       });
 
       // Calculate metrics
       const metrics = this._calculateMetrics(
         filteredLicenses.licenses,
-        currentMonthLicenses.licenses,
-        previousMonthLicenses.licenses,
-        allLicenses.licenses
+        targetPeriodLicenses.licenses,
+        comparisonPeriodLicenses.licenses,
+        allLicenses.licenses,
+        targetPeriodStart,
+        targetPeriodEnd,
+        comparisonPeriodStart,
+        comparisonPeriodEnd,
+        filters
       );
 
       return metrics;
@@ -77,7 +99,17 @@ export class GetLicenseDashboardMetricsUseCase {
    * Calculate dashboard metrics from license data
    * @private
    */
-  _calculateMetrics(filteredLicenses, currentMonthLicenses, previousMonthLicenses, allLicenses) {
+  _calculateMetrics(
+    filteredLicenses,
+    targetPeriodLicenses,
+    comparisonPeriodLicenses,
+    allLicenses,
+    targetPeriodStart,
+    targetPeriodEnd,
+    comparisonPeriodStart,
+    comparisonPeriodEnd,
+    filters
+  ) {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -86,38 +118,38 @@ export class GetLicenseDashboardMetricsUseCase {
       (license) => license.status === 'active'
     ).length;
 
-    const previousActiveLicenses = previousMonthLicenses.filter(
+    const comparisonActiveLicenses = comparisonPeriodLicenses.filter(
       (license) => license.status === 'active'
     ).length;
 
-    // New Licenses This Month (started this month)
-    const newLicensesThisMonth = currentMonthLicenses.length;
-    const newLicensesLastMonth = previousMonthLicenses.length;
+    // New Licenses This Period (started in target period)
+    const newLicensesThisPeriod = targetPeriodLicenses.length;
+    const newLicensesComparisonPeriod = comparisonPeriodLicenses.length;
 
-    // License Income This Month (sum of lastPayment for licenses started this month)
-    const licenseIncomeThisMonth = currentMonthLicenses.reduce(
+    // License Income This Period (sum of lastPayment for licenses started in target period)
+    const licenseIncomeThisPeriod = targetPeriodLicenses.reduce(
       (sum, license) => sum + (parseFloat(license.lastPayment) || 0),
       0
     );
 
-    const licenseIncomeLastMonth = previousMonthLicenses.reduce(
+    const licenseIncomeComparisonPeriod = comparisonPeriodLicenses.reduce(
       (sum, license) => sum + (parseFloat(license.lastPayment) || 0),
       0
     );
 
     // SMS Stats
-    const smsSentThisMonth = currentMonthLicenses.reduce(
+    const smsSentThisPeriod = targetPeriodLicenses.reduce(
       (sum, license) => sum + (license.smsSent || 0),
       0
     );
 
-    const smsSentLastMonth = previousMonthLicenses.reduce(
+    const smsSentComparisonPeriod = comparisonPeriodLicenses.reduce(
       (sum, license) => sum + (license.smsSent || 0),
       0
     );
 
     const smsRevenuePerMessage = 0.05; // 5 cents per SMS
-    const smsIncomeThisMonth = smsSentThisMonth * smsRevenuePerMessage;
+    const smsIncomeThisPeriod = smsSentThisPeriod * smsRevenuePerMessage;
 
     // Agent Classification
     const agentHeavyLicenses = filteredLicenses.filter(
@@ -126,24 +158,34 @@ export class GetLicenseDashboardMetricsUseCase {
 
     const inHouseLicenses = filteredLicenses.length - agentHeavyLicenses;
 
+    // Calculate comparison period agent classifications for trends
+    const comparisonAgentHeavyLicenses = comparisonPeriodLicenses.filter(
+      (license) => (license.agents || 0) > 3
+    ).length;
+
+    const comparisonInHouseLicenses =
+      comparisonPeriodLicenses.length - comparisonAgentHeavyLicenses;
+
     // High Risk Licenses (no activity in last 7 days)
     const highRiskLicenses = filteredLicenses.filter((license) => {
-      if (!license.lastActive) return false;
+      if (!license.lastActive) {
+        return false;
+      }
       const lastActiveDate = new Date(license.lastActive);
       return lastActiveDate < sevenDaysAgo;
     }).length;
 
     // Estimated Next Month Income
     const averagePayment =
-      currentMonthLicenses.length > 0
-        ? licenseIncomeThisMonth / currentMonthLicenses.length
-        : 0;
-    const estimatedNextMonthIncome =
-      licenseIncomeThisMonth + averagePayment * newLicensesThisMonth * 0.1; // 10% growth estimate
+      targetPeriodLicenses.length > 0 ? licenseIncomeThisPeriod / targetPeriodLicenses.length : 0;
+    const estimatedNextPeriodIncome =
+      licenseIncomeThisPeriod + averagePayment * newLicensesThisPeriod * 0.1; // 10% growth estimate
 
     // Calculate percentage changes
     const calculatePercentageChange = (current, previous) => {
-      if (previous === 0) return current === 0 ? 0 : 100;
+      if (previous === 0) {
+        return current === 0 ? 0 : 100;
+      }
       return ((current - previous) / previous) * 100;
     };
 
@@ -151,57 +193,55 @@ export class GetLicenseDashboardMetricsUseCase {
       totalActiveLicenses: {
         value: totalActiveLicenses,
         trend: {
-          value: Math.abs(
-            calculatePercentageChange(totalActiveLicenses, previousActiveLicenses)
-          ),
+          value: Math.abs(calculatePercentageChange(totalActiveLicenses, comparisonActiveLicenses)),
           direction:
-            totalActiveLicenses === previousActiveLicenses
+            totalActiveLicenses === comparisonActiveLicenses
               ? 'neutral'
-              : totalActiveLicenses > previousActiveLicenses
+              : totalActiveLicenses > comparisonActiveLicenses
                 ? 'up'
                 : 'down',
           label: 'vs last month',
         },
       },
       newLicensesThisMonth: {
-        value: newLicensesThisMonth,
+        value: newLicensesThisPeriod,
         trend: {
           value: Math.abs(
-            calculatePercentageChange(newLicensesThisMonth, newLicensesLastMonth)
+            calculatePercentageChange(newLicensesThisPeriod, newLicensesComparisonPeriod)
           ),
           direction:
-            newLicensesThisMonth === newLicensesLastMonth
+            newLicensesThisPeriod === newLicensesComparisonPeriod
               ? 'neutral'
-              : newLicensesThisMonth > newLicensesLastMonth
+              : newLicensesThisPeriod > newLicensesComparisonPeriod
                 ? 'up'
                 : 'down',
           label: 'vs last month',
         },
       },
       licenseIncomeThisMonth: {
-        value: licenseIncomeThisMonth,
+        value: licenseIncomeThisPeriod,
         trend: {
           value: Math.abs(
-            calculatePercentageChange(licenseIncomeThisMonth, licenseIncomeLastMonth)
+            calculatePercentageChange(licenseIncomeThisPeriod, licenseIncomeComparisonPeriod)
           ),
           direction:
-            licenseIncomeThisMonth === licenseIncomeLastMonth
+            licenseIncomeThisPeriod === licenseIncomeComparisonPeriod
               ? 'neutral'
-              : licenseIncomeThisMonth > licenseIncomeLastMonth
+              : licenseIncomeThisPeriod > licenseIncomeComparisonPeriod
                 ? 'up'
                 : 'down',
           label: 'vs last month',
         },
       },
       smsIncomeThisMonth: {
-        value: smsIncomeThisMonth,
-        smsSent: smsSentThisMonth,
+        value: smsIncomeThisPeriod,
+        smsSent: smsSentThisPeriod,
         trend: {
-          value: Math.abs(calculatePercentageChange(smsSentThisMonth, smsSentLastMonth)),
+          value: Math.abs(calculatePercentageChange(smsSentThisPeriod, smsSentComparisonPeriod)),
           direction:
-            smsSentThisMonth === smsSentLastMonth
+            smsSentThisPeriod === smsSentComparisonPeriod
               ? 'neutral'
-              : smsSentThisMonth > smsSentLastMonth
+              : smsSentThisPeriod > smsSentComparisonPeriod
                 ? 'up'
                 : 'down',
           label: 'usage vs last month',
@@ -209,9 +249,31 @@ export class GetLicenseDashboardMetricsUseCase {
       },
       inHouseLicenses: {
         value: inHouseLicenses,
+        trend: {
+          value: Math.abs(calculatePercentageChange(inHouseLicenses, comparisonInHouseLicenses)),
+          direction:
+            inHouseLicenses === comparisonInHouseLicenses
+              ? 'neutral'
+              : inHouseLicenses > comparisonInHouseLicenses
+                ? 'up'
+                : 'down',
+          label: 'vs last month',
+        },
       },
       agentHeavyLicenses: {
         value: agentHeavyLicenses,
+        trend: {
+          value: Math.abs(
+            calculatePercentageChange(agentHeavyLicenses, comparisonAgentHeavyLicenses)
+          ),
+          direction:
+            agentHeavyLicenses === comparisonAgentHeavyLicenses
+              ? 'neutral'
+              : agentHeavyLicenses > comparisonAgentHeavyLicenses
+                ? 'up'
+                : 'down',
+          label: 'vs last month',
+        },
       },
       highRiskLicenses: {
         value: highRiskLicenses,
@@ -222,7 +284,7 @@ export class GetLicenseDashboardMetricsUseCase {
         },
       },
       estimatedNextMonthIncome: {
-        value: estimatedNextMonthIncome,
+        value: estimatedNextPeriodIncome,
         trend: {
           value: 10,
           direction: 'up',
@@ -232,41 +294,16 @@ export class GetLicenseDashboardMetricsUseCase {
       // Additional metadata
       metadata: {
         currentPeriod: {
-          start: new Date(
-            new Date().getFullYear(),
-            new Date().getMonth(),
-            1
-          ).toISOString(),
-          end: new Date(
-            new Date().getFullYear(),
-            new Date().getMonth() + 1,
-            0,
-            23,
-            59,
-            59,
-            999
-          ).toISOString(),
+          start: targetPeriodStart.toISOString(),
+          end: targetPeriodEnd.toISOString(),
         },
         previousPeriod: {
-          start: new Date(
-            new Date().getFullYear(),
-            new Date().getMonth() - 1,
-            1
-          ).toISOString(),
-          end: new Date(
-            new Date().getFullYear(),
-            new Date().getMonth(),
-            0,
-            23,
-            59,
-            59,
-            999
-          ).toISOString(),
+          start: comparisonPeriodStart.toISOString(),
+          end: comparisonPeriodEnd.toISOString(),
         },
         totalLicensesAnalyzed: filteredLicenses.length,
-        appliedFilters: Object.keys(filteredLicenses).length > 0,
+        appliedFilters: !!(filters.startsAtFrom || filters.startsAtTo),
       },
     };
   }
 }
-

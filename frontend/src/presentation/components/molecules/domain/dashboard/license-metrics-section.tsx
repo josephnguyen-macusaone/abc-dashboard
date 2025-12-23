@@ -3,16 +3,50 @@
 import { useState, useEffect, useMemo } from 'react';
 import { StatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard';
+import { LicenseMetricsSkeleton } from '@/presentation/components/organisms';
 import { useToast } from '@/presentation/contexts/toast-context';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
-import type { LicenseRecord } from '@/shared/types';
+import type { LicenseRecord } from '@/types';
+import type { StatsCardConfig } from '@/presentation/components/molecules/domain/user-management';
 import {
-  buildLicenseStatsCards,
-  fetchDashboardMetrics,
-  transformDashboardMetricsToCards,
-  type LicenseDateRange
-} from '@/application/services/license-dashboard-metrics';
-import { logger } from '@/shared/utils';
+  createGetLicenseStatsUseCase,
+  type LicenseDateRange,
+  type LicenseDashboardMetric
+} from '@/application/use-cases';
+import { logger } from '@/shared/helpers';
+import {
+  AlertTriangle,
+  Building,
+  DollarSign,
+  Phone,
+  TrendingUp,
+  User,
+  Users,
+} from 'lucide-react';
+
+/**
+ * Presentation adapter: Transform business domain metrics to UI components
+ */
+function transformMetricsToStatsCards(metrics: LicenseDashboardMetric[]): StatsCardConfig[] {
+  const iconMap: Record<string, any> = {
+    'total-active-licenses': Users,
+    'new-licenses-month': TrendingUp,
+    'licenses-income-month': DollarSign,
+    'sms-income-month': Phone,
+    'total-inhouse-licenses': Building,
+    'total-agent-licenses': User,
+    'high-risk-licenses': AlertTriangle,
+    'estimate-next-month': TrendingUp,
+  };
+
+  return metrics.map(metric => ({
+    id: metric.id,
+    label: metric.label,
+    value: metric.value,
+    icon: iconMap[metric.id] || TrendingUp,
+    ...(metric.trend && { trend: metric.trend }),
+  }));
+}
 
 interface LicenseMetricsSectionProps {
   licenses: LicenseRecord[];
@@ -36,27 +70,45 @@ export function LicenseMetricsSection({
   useApiMetrics = true, // Default to using API metrics
 }: LicenseMetricsSectionProps) {
   const { errorWithDescription } = useToast();
-  const [apiMetrics, setApiMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<LicenseDashboardMetric[]>([]);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
 
-  // Fetch metrics from API when date range changes
+  // Use the dashboard metrics use case
   useEffect(() => {
-    if (!useApiMetrics) return;
-
     const loadMetrics = async () => {
       try {
         setIsLoadingMetrics(true);
-        const response = await fetchDashboardMetrics(dateRange);
-        setApiMetrics(response.data);
+        const useCase = createGetLicenseStatsUseCase();
+        const result = await useCase.execute({
+          licenses: useApiMetrics ? undefined : licenses,
+          dateRange,
+          useApiMetrics,
+        });
+        setMetrics(result);
       } catch (error) {
         logger.error('Failed to fetch dashboard metrics', { error });
-        errorWithDescription(
-          'Failed to load metrics',
-          'Falling back to client-side calculation.',
-          { duration: 5000 }
-        );
-        // Fallback to client-side calculation
-        setApiMetrics(null);
+        if (useApiMetrics) {
+          errorWithDescription(
+            'Failed to load metrics',
+            'Falling back to client-side calculation.',
+            { duration: 5000 }
+          );
+          // Retry with client-side calculation
+          try {
+            const useCase = createGetLicenseStatsUseCase();
+            const result = await useCase.execute({
+              licenses,
+              dateRange,
+              useApiMetrics: false,
+            });
+            setMetrics(result);
+          } catch (fallbackError) {
+            logger.error('Client-side calculation also failed', { error: fallbackError });
+            setMetrics([]);
+          }
+        } else {
+          setMetrics([]);
+        }
       } finally {
         setIsLoadingMetrics(false);
       }
@@ -67,21 +119,21 @@ export function LicenseMetricsSection({
     // Only depend on dateRange values, not the object reference
     dateRange?.from?.toISOString(),
     dateRange?.to?.toISOString(),
-    useApiMetrics
+    useApiMetrics,
+    licenses
   ]);
 
-  // Calculate stats based on mode
+  // Transform business metrics to UI components
   const stats = useMemo(() => {
-    // Use API metrics if available
-    if (useApiMetrics && apiMetrics) {
-      return transformDashboardMetricsToCards(apiMetrics);
-    }
-
-    // Fallback to client-side calculation
-    return buildLicenseStatsCards(licenses, dateRange, totalCount);
-  }, [useApiMetrics, apiMetrics, licenses, dateRange, totalCount]);
+    return transformMetricsToStatsCards(metrics);
+  }, [metrics]);
 
   const effectiveLoading = isLoading || isLoadingMetrics;
+
+  // Show skeleton when loading initially (before any data is loaded)
+  if (effectiveLoading && licenses.length === 0) {
+    return <LicenseMetricsSkeleton columns={4} />;
+  }
 
   return (
     <div className="space-y-6">

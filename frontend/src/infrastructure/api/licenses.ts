@@ -1,6 +1,6 @@
 import { httpClient } from '@/infrastructure/api/client';
 import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
-import type { LicenseRecord } from '@/shared/types';
+import type { LicenseRecord } from '@/types';
 
 /**
  * Transform backend license data to frontend LicenseRecord
@@ -12,7 +12,7 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
     product: apiLicense.product,
     dba: apiLicense.dba || '',
     zip: apiLicense.zip || '',
-    startsAt: apiLicense.startsAt || apiLicense.startDay || '', // Handle both formats
+    startsAt: apiLicense.startsAt || apiLicense.startDay || '', // Handle both formats from API
     status: apiLicense.status || 'pending',
     plan: apiLicense.plan || 'Basic',
     term: apiLicense.term || 'monthly',
@@ -62,8 +62,9 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
 
   if (shouldInclude(license.startsAt)) {
     // Convert to date-only format if it's a full timestamp
+    // Backend expects 'startDay' field for bulk operations
     const dateStr = String(license.startsAt);
-    apiLicense.startsAt = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    apiLicense.startDay = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
   }
 
   if (shouldInclude(license.status)) {
@@ -190,8 +191,26 @@ export class LicenseApiService {
       const url = `/licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await httpClient.get<{
         success: boolean;
+        message: string;
+        timestamp: string;
         data: any[];
-        meta: { pagination: any; stats?: any };
+        meta: {
+          pagination: {
+            page: number;
+            limit: number;
+            totalPages: number;
+            hasNext: boolean;
+            hasPrev: boolean;
+            total?: number;
+          };
+          stats?: {
+            total: number;
+            active: number;
+            expired: number;
+            pending: number;
+            cancel: number;
+          };
+        };
       }>(url);
 
       if (!response.success || !response.data) {
@@ -201,17 +220,28 @@ export class LicenseApiService {
       // Transform API licenses to LicenseRecords
       const licenses = response.data.map(transformApiLicenseToRecord);
 
+      const apiPagination = response.meta?.pagination || {
+        page: params.page || 1,
+        limit: params.limit || 20,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+      };
+
+      // Calculate total from totalPages and limit if not provided
+      const total = apiPagination.total || (apiPagination.totalPages * apiPagination.limit);
+
       return {
         licenses,
-        pagination: response.meta?.pagination || {
-          page: params.page || 1,
-          limit: params.limit || 20,
-          total: 0,
-          totalPages: 0,
-          hasNext: false,
-          hasPrev: false
+        pagination: {
+          page: apiPagination.page,
+          limit: apiPagination.limit,
+          total,
+          totalPages: apiPagination.totalPages,
+          hasNext: apiPagination.hasNext,
+          hasPrev: apiPagination.hasPrev
         },
-        stats: response.meta?.stats
+        stats: response.meta?.stats || undefined
       };
     } catch (error) {
       throw error;
@@ -261,7 +291,8 @@ export class LicenseApiService {
   static async updateLicense(id: number | string, updates: Partial<LicenseRecord>): Promise<LicenseRecord> {
     try {
       const apiData = transformRecordToApiLicense(updates);
-      // Backend expects string ID (UUID)
+      // Backend expects ID in both URL and request body
+      apiData.id = String(id);
       const response = await httpClient.put<any>(`/licenses/${String(id)}`, apiData);
       const apiLicense = response.data?.license || response.data;
       return transformApiLicenseToRecord(apiLicense);

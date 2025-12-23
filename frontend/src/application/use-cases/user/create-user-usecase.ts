@@ -3,7 +3,7 @@ import { User, UserRole } from '@/domain/entities/user-entity';
 import { CreateUserDTO } from '@/application/dto/user-dto';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { UserDomainService } from '@/domain/services/user-domain-service';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Application Use Case: Create User

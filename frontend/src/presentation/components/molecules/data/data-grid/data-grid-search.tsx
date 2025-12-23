@@ -4,7 +4,7 @@ import type { Table } from "@tanstack/react-table";
 import * as React from "react";
 
 import { SearchBar } from "@/presentation/components/molecules";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface DataGridSearchProps<TData>
   extends React.ComponentProps<"div"> {

@@ -2,15 +2,10 @@
 
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
-import { useTheme } from '@/presentation/contexts/theme-context';
-import { THEMES } from '@/shared/constants';
+import { useTheme } from '@/presentation/hooks/use-theme';
 
 export function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
-
-  const toggleTheme = () => {
-    setTheme(theme === THEMES.LIGHT ? THEMES.DARK : THEMES.LIGHT);
-  };
+  const { toggleTheme, resolvedTheme } = useTheme();
 
   return (
     <Button

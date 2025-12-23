@@ -1,8 +1,9 @@
 /**
- * API and HTTP related constants and utilities
+ * API Configuration
+ * Contains the validated and normalized API base URL
  */
 
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 
 /**
  * Validates and normalizes the API base URL
@@ -47,11 +48,8 @@ const validateAndNormalizeBaseURL = (url: string | undefined): string => {
 };
 
 /**
- * API Configuration
+ * API Configuration - Only contains actively used properties
  */
 export const API_CONFIG = {
   BASE_URL: validateAndNormalizeBaseURL(process.env.NEXT_PUBLIC_API_URL),
-  TIMEOUT: 30000,
-  RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000,
 } as const;

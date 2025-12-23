@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/presentation/components/atoms';
-import { InputField, TextAreaField } from '@/presentation/components/molecules';
+import { InputField, TextAreaField, PhoneField } from '@/presentation/components/molecules';
 import { useAuth } from '@/presentation/contexts/auth-context';
 import { useErrorHandler } from '@/presentation/contexts/error-context';
 import { useToast } from '@/presentation/contexts/toast-context';
-import { cn } from '@/shared/utils';
+import { cn } from '@/shared/helpers';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 import { Save, X, Loader2 } from 'lucide-react';
 
 interface ProfileUpdateFormProps {
@@ -66,7 +67,7 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
     if (!formData.displayName.trim()) {
       validationErrors.displayName = 'Display name is required';
     }
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
+    if (formData.phone && !isValidPhoneNumber(formData.phone)) {
       validationErrors.phone = 'Please enter a valid phone number';
     }
     setErrors(validationErrors);
@@ -119,29 +120,27 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
       <form onSubmit={handleSubmit} className="space-y-6" >
         {/* Display Name and Phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          label="Display Name"
-          type="text"
-          placeholder="How you want to be displayed"
-          value={formData.displayName}
-          onChange={(e) => handleInputChange('displayName', e.target.value)}
-          error={errors.displayName}
-          disabled={isLoading}
-          inputClassName="h-11"
-          className="space-y-3"
-        />
+          <InputField
+            label="Display Name"
+            type="text"
+            placeholder="How you want to be displayed"
+            value={formData.displayName}
+            onChange={(e) => handleInputChange('displayName', e.target.value)}
+            error={errors.displayName}
+            disabled={isLoading}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
 
-        <InputField
-          label="Phone Number"
-          type="tel"
-          placeholder="Enter your phone number"
-          value={formData.phone}
-          onChange={(e) => handleInputChange('phone', e.target.value)}
-          error={errors.phone}
-          disabled={isLoading}
-          inputClassName="h-11"
-          className="space-y-3"
-        />
+          <PhoneField
+            label="Phone Number"
+            value={formData.phone}
+            onChange={(value) => handleInputChange('phone', value || '')}
+            error={errors.phone}
+            disabled={isLoading}
+            inputClassName="h-11"
+            className="space-y-3"
+          />
         </div>
 
 

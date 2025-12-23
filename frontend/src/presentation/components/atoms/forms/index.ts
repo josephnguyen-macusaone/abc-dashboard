@@ -6,3 +6,4 @@ export * from './text-area';
 export * from './date-input';
 export * from './date-range-picker';
 export * from './switch';
+export * from './phone-input';

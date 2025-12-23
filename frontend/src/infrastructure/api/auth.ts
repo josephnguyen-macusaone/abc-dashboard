@@ -12,7 +12,7 @@ import {
   UserDto,
   UserProfileDto
 } from '@/application/dto/api-dto';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 
 /**
  * Authentication API service

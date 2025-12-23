@@ -19,3 +19,8 @@ export {
   createUpdateProfileUseCase,
   type UpdateProfileUseCaseContract,
 } from './update-profile-usecase';
+export {
+  ChangePasswordUseCase,
+  createChangePasswordUseCase,
+  type ChangePasswordUseCaseContract,
+} from './change-password-usecase';

@@ -38,7 +38,7 @@ import {
   SortableItemHandle,
   SortableOverlay,
 } from "@/presentation/components/atoms/primitives/sortable";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 const SORT_SHORTCUT_KEY = "s";
 const REMOVE_SORT_SHORTCUTS = ["backspace", "delete"];

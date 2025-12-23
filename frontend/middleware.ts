@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ROUTE_CONFIGS, AUTH_ROUTES, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export function middleware(request: NextRequest) {
   // Generate correlation ID for this request

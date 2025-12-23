@@ -67,10 +67,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword
   } = useAuthStore();
 
-  // Initialize auth state on mount
+  // Initialize auth state on mount (client-side only)
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    // Only initialize if we don't already have auth data (from SSR/persistence)
+    if (typeof window !== 'undefined' && !user && !token) {
+      initialize();
+    } else if (typeof window !== 'undefined') {
+      // If we have persisted data, just ensure isLoading is false
+      useAuthStore.setState({ isLoading: false });
+    }
+  }, [initialize, user, token]);
 
   const handleLogin = async (email: string, password: string) => {
     try {

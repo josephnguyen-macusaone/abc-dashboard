@@ -48,8 +48,8 @@ import {
   getOperatorsForVariant,
 } from "@/shared/lib/data-grid-filters";
 import { formatDate } from "@/shared/lib/format";
-import { cn } from "@/shared/utils";
-import type { FilterOperator, FilterValue } from "@/shared/types/data-grid";
+import { cn } from "@/shared/helpers";
+import type { FilterOperator, FilterValue } from "@/types/data-grid";
 
 const FILTER_SHORTCUT_KEY = "f";
 const REMOVE_FILTER_SHORTCUTS = ["backspace", "delete"];

@@ -5,6 +5,11 @@
 import type { LicenseStatus } from '../types/license';
 
 /**
+ * License Plan Types
+ */
+export type LicensePlan = 'Basic' | 'Premium' | 'Enterprise';
+
+/**
  * License status options for filters and displays
  */
 export const LICENSE_STATUS_OPTIONS: Array<{
@@ -46,3 +51,28 @@ export const LICENSE_STATUS_COLORS: Record<LicenseStatus, string> = {
   cancel: 'bg-gray-200 text-gray-600 border-gray-400',
   revoked: 'bg-red-200 text-red-900 border-red-400',
 };
+
+/**
+ * License plan options for filters and displays
+ */
+export const LICENSE_PLAN_OPTIONS: Array<{
+  label: string;
+  value: LicensePlan;
+  color?: string;
+}> = [
+  { label: 'Basic', value: 'Basic', color: 'blue' },
+  { label: 'Premium', value: 'Premium', color: 'purple' },
+  { label: 'Enterprise', value: 'Enterprise', color: 'gold' },
+];
+
+/**
+ * Plan badge color classes (Tailwind)
+ */
+export const LICENSE_PLAN_COLORS: Record<LicensePlan, string> = {
+  Basic: 'bg-blue-100 text-blue-800 border-blue-300',
+  Premium: 'bg-purple-100 text-purple-800 border-purple-300',
+  Enterprise: 'bg-amber-100 text-amber-800 border-amber-300',
+};
+
+// Export plan options with colors for use in filters/dropdowns
+export { LICENSE_PLAN_OPTIONS as LICENSE_PLAN_OPTIONS_WITH_COLORS };

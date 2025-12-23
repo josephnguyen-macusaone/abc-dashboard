@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { ErrorFallbackPage, AccessDeniedPage, NotFoundPage } from "@/presentation/components/pages/errors"
-import { getErrorStatus } from "@/shared/utils"
+import { getErrorStatus } from "@/shared/helpers"
 
 export default function GlobalError({
   error,

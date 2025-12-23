@@ -13,7 +13,7 @@ import {
 } from "@/presentation/components/atoms/primitives/popover";
 import { Separator } from "@/presentation/components/atoms/primitives/separator";
 import { Slider } from "@/presentation/components/atoms/primitives/slider";
-import { cn } from "@/shared/utils";
+import { cn } from "@/shared/helpers";
 
 interface Range {
   min: number;

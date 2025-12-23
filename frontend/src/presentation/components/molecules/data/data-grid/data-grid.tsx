@@ -7,8 +7,8 @@ import { DataGridRow } from "./data-grid-row";
 import type { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { TablePagination } from "../common/table-pagination";
 import { flexRender } from "@/shared/lib/data-grid";
-import { cn } from "@/shared/utils";
-import type { Direction } from "@/shared/types/data-grid";
+import { cn } from "@/shared/helpers";
+import type { Direction } from "@/types/data-grid";
 
 interface DataGridProps<TData>
   extends Omit<ReturnType<typeof useDataGrid<TData>>, "dir">,
@@ -136,7 +136,7 @@ export function DataGrid<TData>({
                   >
                     {header.isPlaceholder ? null : typeof header.column
                       .columnDef.header === "function" ? (
-                      <div className="size-full px-3 py-3">
+                      <div className="size-full px-3 py-1.5">
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext(),
@@ -151,40 +151,6 @@ export function DataGrid<TData>({
             </div>
           ))}
         </div>
-
-        {onRowAdd && (
-          <div
-            role="rowgroup"
-            data-slot="grid-footer"
-            ref={footerRef}
-            className="sticky bottom-0 z-10 grid border-b bg-background"
-          >
-            <div
-              role="row"
-              aria-rowindex={rows.length + 2}
-              data-slot="grid-add-row"
-              tabIndex={-1}
-              className="flex w-full"
-            >
-              <div
-                role="gridcell"
-                tabIndex={0}
-                className="relative flex h-9 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
-                style={{
-                  width: table.getTotalSize(),
-                  minWidth: table.getTotalSize(),
-                }}
-                onClick={onRowAdd}
-                onKeyDown={onAddRowKeyDown}
-              >
-                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
-                  <Plus className="size-3.5" />
-                  <span className="text-sm">Add row</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div
           role="rowgroup"
@@ -223,6 +189,40 @@ export function DataGrid<TData>({
             );
           })}
         </div>
+
+        {onRowAdd && (
+          <div
+            role="rowgroup"
+            data-slot="grid-footer"
+            ref={footerRef}
+            className="sticky bottom-0 z-10 grid border-t bg-background"
+          >
+            <div
+              role="row"
+              aria-rowindex={rows.length + 2}
+              data-slot="grid-add-row"
+              tabIndex={-1}
+              className="flex w-full"
+            >
+              <div
+                role="gridcell"
+                tabIndex={0}
+                className="relative flex h-9 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+                style={{
+                  width: table.getTotalSize(),
+                  minWidth: table.getTotalSize(),
+                }}
+                onClick={onRowAdd}
+                onKeyDown={onAddRowKeyDown}
+              >
+                <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
+                  <Plus className="size-3.5" />
+                  <span className="text-sm">Add row</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-4 mt-6">
         <TablePagination table={table} />

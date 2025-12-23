@@ -7,9 +7,10 @@ import axios, {
 } from 'axios';
 import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
 import { handleApiError } from '@/infrastructure/api/errors';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
-import { startTrace, injectIntoHeaders } from '@/shared/utils/tracing';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { startTrace, injectIntoHeaders } from '@/shared/helpers/tracing';
 import { API_CONFIG } from '@/shared/constants';
+import { createApiCircuitBreaker, CircuitBreaker } from '@/shared/helpers/circuit-breaker';
 
 // Default configuration - API_CONFIG.BASE_URL already handles validation and normalization
 const DEFAULT_BASE_URL = API_CONFIG.BASE_URL;
@@ -22,10 +23,19 @@ class HttpClient {
   private retryConfig: RetryConfig;
   private isRefreshing = false;
   private isHandlingAuthFailure = false;
+  private authFailureHandled = false; // Flag to indicate auth failure has been processed
   private failedQueue: Array<{
     resolve: (token: string) => void;
     reject: (error: unknown) => void;
   }> = [];
+  private pendingRequests = new Map<string, Promise<any>>(); // Request deduplication cache
+  private circuitBreaker: CircuitBreaker;
+
+  // Create child logger for HttpClient with component context
+  private httpLogger = logger.createChild({
+    component: 'HttpClient',
+    category: 'api',
+  });
 
   constructor(baseURL: string = DEFAULT_BASE_URL, config?: RequestConfig) {
     this.instance = axios.create({
@@ -41,6 +51,13 @@ class HttpClient {
       maxRetries: config?.retries || DEFAULT_MAX_RETRIES,
       retryDelay: DEFAULT_RETRY_DELAY,
     };
+
+    // Initialize circuit breaker for API protection
+    this.circuitBreaker = createApiCircuitBreaker((state) => {
+      this.httpLogger.info(`Circuit breaker state changed to: ${state}`, {
+        category: 'circuit-breaker'
+      });
+    });
 
     this.setupInterceptors();
   }
@@ -69,11 +86,12 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
-            if (process.env.NODE_ENV === 'development') {
-              console.debug('Adding auth header for request:', config.url, 'Token length:', token.length);
-            }
           } else {
-            console.log('Frontend: No token found for request:', config.url);
+            this.httpLogger.debug('No token found for request', {
+              correlationId,
+              url: config.url,
+              category: 'api-auth',
+            });
           }
         }
 
@@ -85,27 +103,29 @@ class HttpClient {
           };
         }
 
+        // Store start time for duration calculation
+        (config as InternalAxiosRequestConfig & { startTime?: number }).startTime = Date.now();
+
         // Log outgoing request with trace information
-        if (process.env.NODE_ENV === 'development') {
-          logger.api(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
-            correlationId,
-            url: config.url,
-            method: config.method,
-            traceId: trace.traceId,
-            spanId: trace.spanId,
-            category: 'api-details',
-          });
-        }
+        this.httpLogger.http(`🌐 Request: ${config.method?.toUpperCase()} ${config.url}`, {
+          correlationId,
+          url: config.url,
+          method: config.method,
+          traceId: trace.traceId,
+          spanId: trace.spanId,
+          category: 'api-details',
+        });
 
         return config;
       },
       (error: AxiosError) => {
         const correlationId = (error.config as InternalAxiosRequestConfig & { correlationId?: string })?.correlationId || generateCorrelationId();
-        logger.api('Request failed', {
+        this.httpLogger.error('Request failed', {
           correlationId,
           error: error.message,
           url: error.config?.url,
-          category: 'api-error' as const,
+          method: error.config?.method,
+          category: 'api-error',
         });
         return Promise.reject(handleApiError(error));
       }
@@ -118,17 +138,18 @@ class HttpClient {
         const trace = (response.config as any)?.trace;
 
         // Log successful response with trace information
-        if (process.env.NODE_ENV === 'development') {
-          logger.api(`Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-            correlationId,
-            status: response.status,
-            duration: Date.now() - ((response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime || Date.now()),
-            url: response.config.url,
-            traceId: trace?.traceId,
-            spanId: trace?.spanId,
-            category: 'api-details' as const,
-          });
-        }
+        const startTime = (response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime;
+        const duration = startTime ? Date.now() - startTime : undefined;
+
+        this.httpLogger.http(`🌐 Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+          correlationId,
+          status: response.status,
+          duration,
+          url: response.config.url,
+          traceId: trace?.traceId,
+          spanId: trace?.spanId,
+          category: 'api-details',
+        });
 
         return response;
       },
@@ -136,20 +157,38 @@ class HttpClient {
         const correlationId = (error.config as InternalAxiosRequestConfig & { correlationId?: string })?.correlationId || generateCorrelationId();
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number; correlationId?: string };
 
-        // Log failed response with detailed error info
+        // Log failed response with detailed error info (less verbose if auth failure handled)
         const errorResponse = handleApiError(error);
-        logger.error(`API Error: ${errorResponse.message}`, {
+        const logLevel = this.authFailureHandled && error.response?.status === 401 ? 'debug' : 'error';
+        this.httpLogger[logLevel](`API Error: ${errorResponse.message}`, {
           correlationId,
           status: error.response?.status,
           code: errorResponse.code,
           url: error.config?.url,
           method: error.config?.method?.toUpperCase(),
-          category: 'api-error',
+          category: this.authFailureHandled && error.response?.status === 401 ? 'api-auth' : 'api-error',
           details: errorResponse.details,
         });
 
         // Handle 401 errors with automatic token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
+          // If auth failure has already been handled, skip all token refresh logic
+          if (this.authFailureHandled) {
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
+            return Promise.reject(errorResponse);
+          }
+
+          // Check token expiration proactively
+          const token = this.getAuthToken();
+          if (token && this.isTokenExpired(token)) {
+            // Token is expired, skip refresh attempt and handle auth failure directly
+            await this.handleAuthFailure();
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
+            return Promise.reject(errorResponse);
+          }
+
           if (this.isRefreshing) {
             // If refresh is already in progress, queue this request
             return new Promise((resolve, reject) => {
@@ -162,8 +201,10 @@ class HttpClient {
           // Check if we have a refresh token
           const refreshToken = this.getRefreshToken();
           if (!refreshToken) {
-            // No refresh token, redirect to login
-            this.handleAuthFailure();
+            // No refresh token, handle auth failure
+            await this.handleAuthFailure();
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
             return Promise.reject(errorResponse);
           }
 
@@ -190,12 +231,16 @@ class HttpClient {
               const refreshError = new Error('Token refresh failed');
               this.processQueue(refreshError, null);
               await this.handleAuthFailure();
+              // Mark the error as auth-handled so components don't show error messages
+              errorResponse.authHandled = true;
               return Promise.reject(errorResponse);
             }
           } catch (refreshError) {
             // Token refresh failed - reject all queued requests and handle auth failure once
             this.processQueue(refreshError, null);
             await this.handleAuthFailure();
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
             return Promise.reject(errorResponse);
           } finally {
             this.isRefreshing = false;
@@ -250,17 +295,36 @@ class HttpClient {
   }
 
   /**
+   * Check if JWT token is expired
+   */
+  private isTokenExpired(token: string): boolean {
+    try {
+      // Decode JWT payload (base64 decode the middle part)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch (error) {
+      // If we can't decode the token, assume it's expired for safety
+      return true;
+    }
+  }
+
+  /**
    * Attempt to refresh the authentication token
    */
   private async attemptTokenRefresh(): Promise<boolean> {
     try {
       const refreshToken = this.getRefreshToken();
       if (!refreshToken) {
-        logger.warn('No refresh token available for token refresh attempt');
+        this.httpLogger.warn('No refresh token available for token refresh attempt', {
+          category: 'api-auth',
+        });
         return false;
       }
 
-      logger.info('Attempting token refresh');
+      this.httpLogger.info('Attempting token refresh', {
+        category: 'api-auth',
+      });
 
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth');
@@ -269,14 +333,22 @@ class HttpClient {
       const success = await useAuthStore.getState().refreshToken();
 
       if (success) {
-        logger.info('Token refresh successful');
+        this.httpLogger.info('Token refresh successful', {
+          category: 'api-auth',
+        });
       } else {
-        logger.warn('Token refresh failed - refresh method returned false');
+        this.httpLogger.warn('Token refresh failed - refresh method returned false', {
+          category: 'api-auth',
+        });
       }
 
       return success;
     } catch (error) {
-      logger.error('Token refresh failed with exception:', { error: error instanceof Error ? error.message : String(error) });
+      this.httpLogger.error('Token refresh failed with exception', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        category: 'api-auth',
+      });
       return false;
     }
   }
@@ -287,18 +359,32 @@ class HttpClient {
   private async handleAuthFailure(): Promise<void> {
     // Prevent multiple simultaneous auth failure handling
     if (this.isHandlingAuthFailure) {
-      logger.info('Auth failure handling already in progress, skipping duplicate call');
+      this.httpLogger.debug('Auth failure handling already in progress, skipping duplicate call', {
+        category: 'api-auth',
+      });
       return;
     }
 
     this.isHandlingAuthFailure = true;
+    this.authFailureHandled = true; // Mark that auth failure is being handled
 
     try {
+      this.httpLogger.warn('Handling authentication failure - clearing state and redirecting', {
+        category: 'api-auth',
+      });
+
       // Import auth store dynamically to avoid circular dependencies
       const { useAuthStore } = await import('@/infrastructure/stores/auth');
 
-      // Clear authentication state
-      await useAuthStore.getState().logout();
+      // Clear authentication state (don't throw on logout failure)
+      try {
+        await useAuthStore.getState().logout();
+      } catch (logoutError) {
+        this.httpLogger.warn('Logout failed during auth failure cleanup, continuing with local cleanup only', {
+          category: 'api-auth',
+          error: logoutError instanceof Error ? logoutError.message : String(logoutError),
+        });
+      }
 
       // Redirect to login page if in browser
       if (typeof window !== 'undefined') {
@@ -306,14 +392,25 @@ class HttpClient {
         const redirectingKey = 'auth_redirecting';
         if (!sessionStorage.getItem(redirectingKey)) {
           sessionStorage.setItem(redirectingKey, 'true');
-        // Use window.location for reliable client-side navigation
-        window.location.href = '/login';
+          this.httpLogger.info('Redirecting to login page', {
+            category: 'api-auth',
+          });
+          // Use window.location for reliable client-side navigation
+          window.location.href = '/login';
         }
       }
     } catch (error) {
-      logger.error('Failed to handle auth failure:', { error: error instanceof Error ? error.message : String(error) });
+      this.httpLogger.error('Failed to handle auth failure', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        category: 'api-auth',
+      });
     } finally {
       this.isHandlingAuthFailure = false;
+      // Reset the auth failure flag after a delay to allow for any queued requests to complete
+      setTimeout(() => {
+        this.authFailureHandled = false;
+      }, 1000);
     }
   }
 
@@ -329,43 +426,68 @@ class HttpClient {
   }
 
   /**
-   * Generic GET request
+   * Generic GET request with deduplication and circuit breaker protection
    */
   async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.get(url, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      // Create a cache key for GET requests
+      const cacheKey = `GET:${url}:${JSON.stringify(config?.params || {})}`;
+
+      // Check if identical request is already in flight
+      const pendingRequest = this.pendingRequests.get(cacheKey);
+      if (pendingRequest) {
+        return pendingRequest;
+      }
+
+      // Create new request and cache it
+      const request = this.instance.get(url, config).then(response => response.data).finally(() => {
+        // Clean up cache after request completes (success or failure)
+        this.pendingRequests.delete(cacheKey);
+      });
+
+      this.pendingRequests.set(cacheKey, request);
+      return request;
+    });
   }
 
   /**
-   * Generic POST request
+   * Generic POST request with circuit breaker protection
    */
   async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.post(url, data, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.post(url, data, config);
+      return response.data;
+    });
   }
 
   /**
-   * Generic PUT request
+   * Generic PUT request with circuit breaker protection
    */
   async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.put(url, data, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.put(url, data, config);
+      return response.data;
+    });
   }
 
   /**
-   * Generic PATCH request
+   * Generic PATCH request with circuit breaker protection
    */
   async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.patch(url, data, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.patch(url, data, config);
+      return response.data;
+    });
   }
 
   /**
-   * Generic DELETE request
+   * Generic DELETE request with circuit breaker protection
    */
   async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.delete(url, config);
-    return response.data;
+    return this.circuitBreaker.execute(async () => {
+      const response = await this.instance.delete(url, config);
+      return response.data;
+    });
   }
 
   /**
@@ -373,6 +495,27 @@ class HttpClient {
    */
   getInstance(): AxiosInstance {
     return this.instance;
+  }
+
+  /**
+   * Get circuit breaker statistics
+   */
+  getCircuitBreakerStats() {
+    return this.circuitBreaker.getStats();
+  }
+
+  /**
+   * Reset circuit breaker (for recovery or testing)
+   */
+  resetCircuitBreaker(): void {
+    this.circuitBreaker.reset();
+  }
+
+  /**
+   * Force circuit breaker open (for testing)
+   */
+  forceCircuitBreakerOpen(): void {
+    this.circuitBreaker.forceOpen();
   }
 }
 

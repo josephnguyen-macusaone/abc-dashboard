@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/shared/types';
-import { licenseApi } from '@/infrastructure/api/licenses';
+import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
 import { getErrorMessage } from '@/infrastructure/api/errors';
-import logger from '@/shared/utils/logger';
+import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
+import { container } from '@/shared/di/container';
 
 export interface LicenseFilters {
   search?: string;
@@ -88,6 +88,8 @@ interface LicenseState {
   bulkDeleteLicenses: (ids: (number | string)[]) => Promise<void>;
   setFilters: (filters: LicenseFilters) => void;
   setPagination: (pagination: Partial<PaginationState>) => void;
+  goToPage: (page: number) => Promise<void>;
+  changePageSize: (limit: number) => Promise<void>;
   setSelectedLicenses: (licenseIds: (number | string)[]) => void;
   clearError: () => void;
   reset: () => void;
@@ -132,16 +134,79 @@ export const useLicenseStore = create<LicenseState>()(
                   delete queryParams[key];
               });
 
-            const response = await licenseApi.getLicenses(queryParams);
+            // Convert status array to comma-separated string for API compatibility
+            const apiParams = {
+              ...queryParams,
+              status: Array.isArray(queryParams.status)
+                ? queryParams.status.join(',')
+                : queryParams.status,
+              sortBy: queryParams.sortBy as keyof LicenseRecord
+            };
 
-            // Use total from stats if available, otherwise from pagination
-            const total = response.stats?.total ?? response.pagination.total ?? 0;
+            // Silent operation - no logging
+            storeLogger.debug('Fetching licenses from API', {
+              params: apiParams,
+              currentLicenseCount: get().licenses.length
+            });
+
+            const response = await container.licenseManagementService.getLicenses(apiParams);
+
+            storeLogger.debug('License fetch response received', {
+              hasData: !!response?.data,
+              dataType: typeof response?.data,
+              dataIsArray: Array.isArray(response?.data),
+              dataLength: Array.isArray(response?.data) ? response.data.length : 'N/A',
+              firstItemId: Array.isArray(response?.data) && response.data.length > 0 ? response.data[0]?.id : 'N/A'
+            });
+
+            // Ensure response has expected structure with better error handling
+            if (!response) {
+              storeLogger.error('API returned null/undefined response');
+              throw new Error('API returned null or undefined response');
+            }
+
+            if (!response.data && !Array.isArray(response.data)) {
+              storeLogger.error('API response missing or invalid data field', {
+                responseKeys: Object.keys(response),
+                dataType: typeof response.data
+              });
+              // Provide fallback empty array instead of crashing
+              set({
+                licenses: [],
+                pagination: {
+                  page: apiParams.page || 1,
+                  limit: apiParams.limit || 20,
+                  total: 0,
+                  totalPages: 0
+                },
+                loading: false
+              });
+              return;
+            }
+
+            if (!response.pagination) {
+              storeLogger.warn('API response missing pagination, using defaults', {
+                responseKeys: Object.keys(response)
+              });
+              // Use default pagination if missing
+              set({
+                licenses: response.data,
+                pagination: {
+                  page: apiParams.page || 1,
+                  limit: apiParams.limit || 20,
+                  total: response.data.length,
+                  totalPages: Math.ceil(response.data.length / (apiParams.limit || 20))
+                },
+                loading: false
+              });
+              return;
+            }
 
             set({
-              licenses: response.licenses,
+              licenses: response.data,
               pagination: {
                 ...response.pagination,
-                total: total
+                total: response.pagination.total || response.data.length
               },
               loading: false
             });
@@ -153,11 +218,11 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        fetchLicense: async (id: number | string) => {
+        fetchLicense: async (id: string) => {
           try {
             set({ loading: true, error: null });
 
-            const licenseData = await licenseApi.getLicense(id);
+            const licenseData = await container.licenseManagementService.getLicense(id.toString());
 
             set({ currentLicense: licenseData, loading: false });
 
@@ -174,7 +239,7 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            const createdLicenses = await licenseApi.bulkCreateLicenses(licenses);
+            const createdLicenses = await container.licenseManagementService.bulkCreateLicenses(licenses as Array<Omit<LicenseRecord, 'id' | 'updatedAt' | 'createdAt' | 'smsBalance'>>);
 
             // Add the new licenses to the list
             const currentLicenses = get().licenses;
@@ -183,11 +248,108 @@ export const useLicenseStore = create<LicenseState>()(
               loading: false
             });
 
-            toast.success(`${createdLicenses.length} licenses created successfully`);
             return createdLicenses;
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to bulk create licenses';
             set({ error: errorMessage, loading: false });
+            throw error;
+          }
+        },
+
+        // Smart method that automatically routes to create or update based on presence of IDs
+        bulkUpsertLicenses: async (licenses: Array<Partial<LicenseRecord> & { id?: number | string }>) => {
+          try {
+            // Validate store state before proceeding
+            const currentState = get();
+            if (!Array.isArray(currentState.licenses)) {
+              storeLogger.error('Store licenses state is corrupted', {
+                licensesType: typeof currentState.licenses,
+                licensesValue: currentState.licenses
+              });
+              throw new Error('Store state corrupted: licenses is not an array');
+            }
+
+            set({ loading: true, error: null });
+
+            // Separate licenses into create and update operations
+            const licensesToCreate: Array<Partial<LicenseRecord>> = [];
+            const licensesToUpdate: Array<Partial<LicenseRecord> & { id: number | string }> = [];
+
+            licenses.forEach(license => {
+              const idStr = String(license.id || '').trim();
+              const hasValidId = idStr !== '' && idStr !== 'undefined' && idStr !== 'null';
+              const isTempId = idStr.startsWith('temp-');
+
+              if (hasValidId && !isTempId) {
+                // Has a valid non-temp ID - treat as update
+                licensesToUpdate.push(license as Partial<LicenseRecord> & { id: number | string });
+              } else {
+                // No valid ID or temp ID - treat as create
+                const { id, ...licenseWithoutId } = license; // Remove id field for create
+                licensesToCreate.push(licenseWithoutId);
+              }
+            });
+
+            storeLogger.debug('Bulk upsert operation', {
+              total: licenses.length,
+              toCreate: licensesToCreate.length,
+              toUpdate: licensesToUpdate.length
+            });
+
+            const results = [];
+
+            // Handle creates first
+            if (licensesToCreate.length > 0) {
+              try {
+                const createdLicenses = await container.licenseManagementService.bulkCreateLicenses(licensesToCreate);
+                results.push(...createdLicenses);
+                storeLogger.debug('Bulk create completed', { created: createdLicenses.length });
+              } catch (createError) {
+                storeLogger.error('Bulk create failed', { error: createError instanceof Error ? createError.message : String(createError) });
+                throw createError;
+              }
+            }
+
+            // Handle updates
+            if (licensesToUpdate.length > 0) {
+              try {
+                const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate);
+
+                // Handle the service response format (object with results array)
+                let updatedLicenses: LicenseRecord[];
+                const resultObj = updateResult as any;
+                if (resultObj && typeof resultObj === 'object' && resultObj._isBulkUpdateResult) {
+                  // New format with ID mapping
+                  updatedLicenses = resultObj.results || [];
+                } else if (Array.isArray(updateResult)) {
+                  // Legacy format (direct array)
+                  updatedLicenses = updateResult;
+                } else {
+                  throw new Error('Invalid bulk update response format');
+                }
+
+                results.push(...updatedLicenses);
+                storeLogger.debug('Bulk update completed', { updated: updatedLicenses.length });
+              } catch (updateError) {
+                storeLogger.error('Bulk update failed', { error: updateError instanceof Error ? updateError.message : String(updateError) });
+                throw updateError;
+              }
+            }
+
+            // Update the store with all results
+            const currentLicenses = get().licenses;
+            const updatedLicenses = [...results, ...currentLicenses];
+
+            set({
+              licenses: updatedLicenses,
+              loading: false
+            });
+
+            return results;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to bulk upsert licenses';
+            set({ error: errorMessage, loading: false });
+            storeLogger.error('Bulk upsert failed', { error: errorMessage });
             throw error;
           }
         },
@@ -216,7 +378,7 @@ export const useLicenseStore = create<LicenseState>()(
               notes: licenseData.notes,
             };
 
-            const createdLicense = await licenseApi.createLicense(licenseRecord);
+            const createdLicense = await container.licenseManagementService.createLicense(licenseRecord as Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>);
 
             // Add the new license to the list
             const currentLicenses = get().licenses;
@@ -235,7 +397,7 @@ export const useLicenseStore = create<LicenseState>()(
           }
         },
 
-        updateLicense: async (id: number | string, licenseData: UpdateLicenseRequest) => {
+        updateLicense: async (id: string, licenseData: UpdateLicenseRequest) => {
           try {
             set({ loading: true, error: null });
 
@@ -257,7 +419,7 @@ export const useLicenseStore = create<LicenseState>()(
               notes: licenseData.notes,
             };
 
-            const updatedLicense = await licenseApi.updateLicense(id, licenseRecord);
+            const updatedLicense = await container.licenseManagementService.updateLicense(id.toString(), licenseRecord);
 
             // Update the license in the list
             const currentLicenses = get().licenses;
@@ -282,25 +444,8 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         deleteLicense: async (id: number | string) => {
-          try {
-            set({ loading: true, error: null });
-
-            await licenseApi.deleteLicense(id);
-
-            // Remove the license from the list
-            const currentLicenses = get().licenses;
-            const filteredLicenses = currentLicenses.filter(license => license.id !== id);
-
-            set({
-              licenses: filteredLicenses,
-              loading: false
-            });
-          } catch (error) {
-            const errorMessage = getErrorMessage(error);
-            set({ error: errorMessage, loading: false });
-            storeLogger.error('Failed to delete license', { licenseId: id, error: errorMessage });
-            throw error;
-          }
+          // TODO: Implement delete functionality in Clean Architecture use cases
+          throw new Error('Delete functionality not yet implemented in Clean Architecture');
         },
 
         bulkUpdateLicenses: async (updates: Array<Partial<LicenseRecord> & { id: number | string }>) => {
@@ -308,14 +453,201 @@ export const useLicenseStore = create<LicenseState>()(
             set({ loading: true, error: null });
 
             // Transform each update from LicenseRecord format (with startsAt) to API format
-            // The API service will handle the rest of the transformation
-            const response = await licenseApi.bulkUpdateLicenses(updates);
+            // The LicenseManagementService will handle the rest of the transformation
+            storeLogger.debug('Calling bulk update service', {
+              updateCount: updates.length,
+              sampleUpdates: updates.slice(0, 2)
+            });
+
+            const response = await container.licenseManagementService.bulkUpdateLicenses(updates);
+
+            // Handle bulk update result with ID mapping
+            let results: any[];
+            let idMapping: Record<string, string> = {};
+
+            const responseObj = response as any; // Cast to any to access custom properties
+            if (responseObj && typeof responseObj === 'object' && responseObj._isBulkUpdateResult) {
+              // New format with ID mapping
+              results = responseObj.results || [];
+              idMapping = responseObj.idMapping || {};
+
+              // Validate that results is an array
+              if (!Array.isArray(results)) {
+                storeLogger.error('Bulk update results is not an array', {
+                  resultsType: typeof results,
+                  resultsValue: results
+                });
+                throw new Error('Bulk update service returned invalid results format');
+              }
+
+              storeLogger.debug('Bulk update response with ID mapping', {
+                responseCount: results.length,
+                idMappingCount: Object.keys(idMapping).length,
+                sampleMappings: Object.entries(idMapping).slice(0, 3)
+              });
+            } else {
+              // Legacy format (direct array)
+              results = Array.isArray(response) ? response : [];
+
+              if (!Array.isArray(results)) {
+                storeLogger.error('Legacy bulk update response is not an array', {
+                  responseType: typeof response,
+                  responseValue: response
+                });
+                throw new Error('Bulk update response is not an array');
+              }
+
+              storeLogger.debug('Bulk update response (legacy format)', {
+                responseCount: results.length,
+                sampleResponse: results.slice(0, 2)
+              });
+            }
 
             // Update the licenses in the list with the API response (fully updated records)
-            const currentLicenses = get().licenses;
-            const updatedLicenses = currentLicenses.map(license => {
-              const updatedLicense = response.find(updated => updated.id === license.id);
-              return updatedLicense || license;
+            const currentState = get();
+            const currentLicenses = currentState.licenses;
+
+            // Safety check - ensure currentLicenses is an array
+            if (!Array.isArray(currentLicenses)) {
+              storeLogger.error('Current licenses is not an array', {
+                currentType: typeof currentLicenses,
+                currentValue: currentLicenses,
+                fullStateKeys: Object.keys(currentState),
+                licensesType: typeof currentState.licenses
+              });
+              throw new Error('Current licenses state is corrupted - not an array');
+            }
+
+            // Additional safety - ensure it's not empty in a weird way
+            if (currentLicenses.length === undefined) {
+              storeLogger.error('Current licenses has no length property', {
+                currentLicenses,
+                hasLength: 'length' in currentLicenses,
+                constructor: currentLicenses.constructor?.name
+              });
+              throw new Error('Current licenses array is malformed');
+            }
+
+            storeLogger.debug('Updating current licenses', {
+              currentCount: currentLicenses.length,
+              responseCount: results.length,
+              hasIdMapping: Object.keys(idMapping).length > 0
+            });
+
+            let updatedLicenses;
+            // Final safety check before map operation
+            if (!Array.isArray(currentLicenses) || typeof currentLicenses.map !== 'function') {
+              storeLogger.error('currentLicenses failed final validation', {
+                isArray: Array.isArray(currentLicenses),
+                hasMap: typeof currentLicenses.map === 'function',
+                type: typeof currentLicenses,
+                value: currentLicenses
+              });
+              throw new Error('currentLicenses is not a valid array for mapping');
+            }
+
+            // Perform license mapping silently
+
+            try {
+              const mapResult = currentLicenses.map((license, index) => {
+                if (!license || typeof license !== 'object') {
+                  storeLogger.warn(`Invalid license at index ${index}`, {
+                    license,
+                    licenseType: typeof license
+                  });
+                  return license; // Return as-is
+                }
+
+                let updatedLicense;
+
+                if (Object.keys(idMapping).length > 0) {
+                  // Use ID mapping: find result by mapping original ID to UUID
+                  const uuid = idMapping[license.id];
+                  if (uuid) {
+                    updatedLicense = results.find(updated => updated.id === uuid);
+                  }
+                } else {
+                  // Direct matching (legacy)
+                  updatedLicense = results.find(updated => updated.id === license.id);
+                }
+
+                return updatedLicense || license;
+              });
+
+              // Ensure map result is an array
+              if (!Array.isArray(mapResult)) {
+                storeLogger.error('Map result is not an array', {
+                  mapResultType: typeof mapResult,
+                  mapResult
+                });
+                throw new Error('Map operation did not return an array');
+              }
+
+              updatedLicenses = mapResult;
+
+            // Count actually updated licenses
+            let actuallyUpdated = 0;
+            try {
+              actuallyUpdated = updatedLicenses.filter((l, i) => l !== currentLicenses[i]).length;
+            } catch (filterError) {
+              storeLogger.error('Filter operation failed', {
+                error: filterError instanceof Error ? filterError.message : String(filterError),
+                updatedLicensesType: typeof updatedLicenses,
+                updatedLicensesIsArray: Array.isArray(updatedLicenses),
+                currentLicensesType: typeof currentLicenses,
+                currentLicensesIsArray: Array.isArray(currentLicenses)
+              });
+              // If filter fails, assume no updates
+              actuallyUpdated = 0;
+            }
+
+            if (actuallyUpdated > 0) {
+              storeLogger.debug('Bulk update completed', {
+                processed: currentLicenses.length,
+                updated: actuallyUpdated
+              });
+            }
+            } catch (mapError) {
+              storeLogger.error('Map operation failed', {
+                error: mapError instanceof Error ? mapError.message : String(mapError),
+                currentLicensesLength: currentLicenses.length,
+                resultsLength: results.length
+              });
+              // Fallback: don't update anything
+              updatedLicenses = currentLicenses;
+            }
+
+            // Ensure updatedLicenses is an array before filtering
+            let actuallyUpdated = 0;
+            if (!Array.isArray(updatedLicenses)) {
+              storeLogger.error('updatedLicenses is not an array after map operation', {
+                updatedLicensesType: typeof updatedLicenses,
+                updatedLicensesValue: updatedLicenses,
+                currentLicensesType: typeof currentLicenses,
+                currentLicensesIsArray: Array.isArray(currentLicenses)
+              });
+              // Fallback: assume no updates
+              actuallyUpdated = 0;
+            } else {
+              actuallyUpdated = updatedLicenses.filter((license, index) => {
+                const changed = license !== currentLicenses[index];
+                if (changed) {
+                  storeLogger.debug(`License ${license.id} was updated`, {
+                    oldDba: currentLicenses[index]?.dba,
+                    newDba: license.dba,
+                    oldStatus: currentLicenses[index]?.status,
+                    newStatus: license.status
+                  });
+                }
+                return changed;
+              }).length;
+            }
+
+            storeLogger.debug('License update summary', {
+              totalLicenses: currentLicenses.length,
+              responseItems: results.length,
+              actuallyUpdated,
+              finalLicenseSample: updatedLicenses.slice(0, 2).map(l => ({ id: l.id, dba: l.dba, status: l.status }))
             });
 
             set({
@@ -334,26 +666,8 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         bulkDeleteLicenses: async (ids: (number | string)[]) => {
-          try {
-            set({ loading: true, error: null });
-
-            await licenseApi.bulkDeleteLicenses(ids);
-
-            // Remove the licenses from the list
-            const currentLicenses = get().licenses;
-            const filteredLicenses = currentLicenses.filter(license => !ids.includes(license.id));
-
-            set({
-              licenses: filteredLicenses,
-              selectedLicenses: [],
-              loading: false
-            });
-          } catch (error) {
-            const errorMessage = getErrorMessage(error);
-            set({ error: errorMessage, loading: false });
-            storeLogger.error('Failed to bulk delete licenses', { licenseIds: ids, error: errorMessage });
-            throw error;
-          }
+          // TODO: Implement bulk delete functionality in Clean Architecture use cases
+          throw new Error('Bulk delete functionality not yet implemented in Clean Architecture');
         },
 
         setFilters: (filters: LicenseFilters) => {
@@ -364,6 +678,14 @@ export const useLicenseStore = create<LicenseState>()(
           set(state => ({
             pagination: { ...state.pagination, ...pagination }
           }));
+        },
+
+        goToPage: async (page: number) => {
+          await get().fetchLicenses({ page });
+        },
+
+        changePageSize: async (limit: number) => {
+          await get().fetchLicenses({ limit, page: 1 }); // Reset to page 1 when changing page size
         },
 
         setSelectedLicenses: (licenseIds: number[]) => {

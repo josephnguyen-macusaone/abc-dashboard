@@ -31,7 +31,7 @@ import * as React from "react";
 
 import { useDebouncedCallback } from "@/presentation/hooks/use-debounced-callback";
 import { getSortingStateParser } from "@/shared/lib/parsers";
-import type { ExtendedColumnSort, QueryKeys } from "@/shared/types/data-table";
+import type { ExtendedColumnSort, QueryKeys } from "@/types/data-table";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";

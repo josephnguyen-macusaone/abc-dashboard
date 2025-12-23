@@ -5,8 +5,18 @@ import { useAuth } from '@/presentation/contexts/auth-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User } from '@/domain/entities/user-entity';
-import { logger } from '@/shared/utils';
+import { logger } from '@/shared/helpers';
 import { useUserStore } from '@/infrastructure/stores/user';
+import { ApiExceptionDto } from '@/application/dto/api-dto';
+
+// Helper function to check if error should be shown to user
+const shouldShowError = (error: unknown): boolean => {
+  // Don't show errors that have been handled by auth system (redirecting to login)
+  if (error instanceof ApiExceptionDto && error.authHandled) {
+    return false;
+  }
+  return true;
+};
 
 /**
  * UserManagementPage
@@ -23,7 +33,12 @@ export function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const { error: showError, info: showInfo } = useToast();
 
-  const { users, userFilters, userPagination, userStats, usersLoading: loadingUsers, fetchUsers } = useUserStore();
+  const userStore = useUserStore();
+  const { users, fetchUsers } = userStore;
+  const userFilters = userStore.filters;
+  const userPagination = userStore.pagination;
+  const userStats = userStore.stats;
+  const loadingUsers = userStore.listLoading;
 
   // Prevent duplicate API calls in React Strict Mode
   const hasLoadedRef = useRef(false);
@@ -85,7 +100,9 @@ export function UserManagementPage() {
       await fetchUsers(storeParams);
     } catch (error) {
       logger.error('Failed to fetch users', { error });
-      showError?.('Failed to load users');
+      if (shouldShowError(error)) {
+        showError?.('Failed to load users');
+      }
     }
   }, [fetchUsers, showError]);
 
@@ -101,7 +118,9 @@ export function UserManagementPage() {
       });
     } catch (error) {
       logger.error('Error loading users', { error });
-      showError?.('Failed to load users');
+      if (shouldShowError(error)) {
+        showError?.('Failed to load users');
+      }
     }
   }, [fetchUsers, showError]);
 
@@ -144,7 +163,7 @@ export function UserManagementPage() {
       onDateRangeChange={handleDateRangeChange}
       onQueryChange={handleQueryChange}
       pageCount={userPagination.totalPages}
-      totalCount={userStats?.total}
+      totalCount={userPagination.total}
     />
   );
 }

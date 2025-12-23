@@ -3,7 +3,7 @@ import { User, AuthResult, AuthTokens, UserRole } from '@/domain/entities/user-e
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { authApi } from '@/infrastructure/api/auth';
 import { UserProfileDto } from '@/application/dto/api-dto';
-import logger, { generateCorrelationId } from '@/shared/utils/logger';
+import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
  * Infrastructure Repository: Authentication
@@ -16,29 +16,39 @@ export class AuthRepository implements IAuthRepository {
 
   /**
    * Standardized logging utilities for consistent operation tracking
+   * Only logs errors and warnings to reduce noise
    */
   private createOperationLogger(operation: string) {
     return {
-      start: (correlationId: string, metadata?: Record<string, unknown>) =>
-        this.logger.http(`Starting ${operation}`, {
+      start: (correlationId: string, metadata?: Record<string, unknown>) => {
+        // Only log start in development for debugging
+        if (process.env.NODE_ENV === 'development') {
+          this.logger.debug(`Starting ${operation}`, {
           correlationId,
-          operation: `${operation}_start`,
+            category: 'api-details',
           ...metadata,
-        }),
+          });
+        }
+      },
 
-      success: (correlationId: string, duration: number, metadata?: Record<string, unknown>) =>
-        this.logger.http(`${operation} completed`, {
+      success: (correlationId: string, duration: number, metadata?: Record<string, unknown>) => {
+        // Only log slow operations (>1s) to reduce noise
+        if (duration > 1000) {
+          this.logger.warn(`${operation} completed slowly`, {
           correlationId,
           duration,
-          operation: `${operation}_success`,
+            category: 'performance',
           ...metadata,
-        }),
+          });
+        }
+      },
 
       error: (correlationId: string, error: string, metadata?: Record<string, unknown>) =>
-        this.logger.http(`${operation} - API call failed`, {
+        this.logger.error(`${operation} failed`, {
           correlationId,
           operation: `${operation}_error`,
           error,
+          category: 'api-error',
           ...metadata,
         }),
     };
