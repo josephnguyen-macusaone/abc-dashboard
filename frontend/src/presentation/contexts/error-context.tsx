@@ -247,6 +247,14 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
 
     // If it's already an ApiException, use it directly
     if (error instanceof ApiExceptionDto) {
+      // Skip showing toast if auth error was handled automatically
+      if (error.authHandled) {
+        logger.debug(`Skipping toast for auth-handled error: ${error.message}`, {
+          category: 'auth-error-handled'
+        });
+        return;
+      }
+
       toast.error(context, {
         description: error.message || 'An error occurred.'
       });

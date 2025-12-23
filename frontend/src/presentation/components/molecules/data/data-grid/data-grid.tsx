@@ -136,7 +136,7 @@ export function DataGrid<TData>({
                   >
                     {header.isPlaceholder ? null : typeof header.column
                       .columnDef.header === "function" ? (
-                      <div className="size-full px-3 py-3">
+                      <div className="size-full px-3 py-1.5">
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext(),

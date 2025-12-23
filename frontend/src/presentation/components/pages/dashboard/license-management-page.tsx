@@ -10,9 +10,18 @@ import { toast } from "sonner";
 import { useAuth } from "@/presentation/contexts/auth-context";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
-import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from "@/presentation/components/organisms";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
+import { ApiExceptionDto } from "@/application/dto/api-dto";
 import type { LicenseRecord } from "@/types";
+
+// Helper function to check if error should be shown to user
+const shouldShowError = (error: unknown): boolean => {
+  // Don't show errors that have been handled by auth system (redirecting to login)
+  if (error instanceof ApiExceptionDto && error.authHandled) {
+    return false;
+  }
+  return true;
+};
 
 export function LicenseManagementPage() {
   const { user: currentUser } = useAuth();
@@ -36,7 +45,9 @@ export function LicenseManagementPage() {
         status: params?.status as any,
       });
     } catch (error) {
-      toast.error("Failed to load licenses");
+      if (shouldShowError(error)) {
+        toast.error("Failed to load licenses");
+      }
     }
   }, [fetchLicenses]);
 
@@ -89,7 +100,9 @@ export function LicenseManagementPage() {
           toast.success("Licenses saved successfully");
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to save licenses");
+        if (shouldShowError(error)) {
+          toast.error(error instanceof Error ? error.message : "Failed to save licenses");
+        }
       }
     },
     [bulkCreateLicenses, bulkUpsertLicenses, loadLicenses, generateLicenseKey],
@@ -126,7 +139,9 @@ export function LicenseManagementPage() {
         await bulkDeleteLicenses(ids);
         toast.success("Deleted selected licenses");
       } catch (error) {
-        toast.error("Failed to delete licenses");
+        if (shouldShowError(error)) {
+          toast.error("Failed to delete licenses");
+        }
       }
     },
     [bulkDeleteLicenses],
@@ -171,7 +186,9 @@ export function LicenseManagementPage() {
         status: statusParam as any,
       });
     } catch (error) {
-      toast.error("Failed to fetch licenses");
+      if (shouldShowError(error)) {
+        toast.error("Failed to fetch licenses");
+      }
     }
   }, [fetchLicenses]);
 

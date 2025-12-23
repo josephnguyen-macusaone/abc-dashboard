@@ -1,24 +1,167 @@
 import { Typography } from "@/presentation/components/atoms";
 import { TextSkeleton, ShapeSkeleton } from '@/presentation/components/atoms';
-import { ButtonSkeleton } from '@/presentation/components/molecules';
+import { ButtonSkeleton, InputSkeleton } from '@/presentation/components/molecules';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/presentation/components/atoms/primitives/table";
 import { cn } from "@/shared/helpers";
 
 interface LicenseDataTableSkeletonProps {
   className?: string;
   title?: string;
   description?: string;
+  showHeader?: boolean;
 }
 
 /**
  * License Data Table Skeleton Organism
- * Complex skeleton using atomic and molecular components
- * Matches the layout and structure of LicensesDataTable component
+ * Matches the exact structure and styling of the LicensesDataTable component
  */
 export function LicenseDataTableSkeleton({
   className,
   title = 'License Management',
-  description = 'Manage license records and subscriptions'
+  description = 'Manage license records and subscriptions',
+  showHeader = true,
 }: LicenseDataTableSkeletonProps) {
+  // Column definitions matching license-table-columns.tsx exactly
+  // Using the exact size values from the column definitions
+  const columns = [
+    { id: 'select', size: 40, header: 'Select' },
+    { id: 'dba', size: 280, header: 'DBA' },
+    { id: 'zip', size: 100, header: 'Zip Code' },
+    { id: 'startsAt', size: 120, header: 'Start Date' },
+    { id: 'status', size: 120, header: 'Status' },
+    { id: 'plan', size: 120, header: 'Plan' },
+    { id: 'term', size: 100, header: 'Term' },
+    { id: 'lastPayment', size: 140, header: 'Last Payment' },
+    { id: 'lastActive', size: 140, header: 'Last Active' },
+    { id: 'smsPurchased', size: 140, header: 'SMS Purchased' },
+    { id: 'smsSent', size: 110, header: 'SMS Sent' },
+    { id: 'smsBalance', size: 120, header: 'SMS Balance' },
+    { id: 'agents', size: 90, header: 'Agents' },
+    { id: 'agentsName', size: 350, header: 'Agents Name' },
+    { id: 'agentsCost', size: 140, header: 'Agents Cost' },
+    { id: 'notes', size: 250, header: 'Notes' },
+  ];
+
+  const content = (
+    <div className={cn("flex w-full flex-col gap-4 overflow-auto", !showHeader && className)}>
+      {/* DataTableToolbar - matches exact structure from DataTableToolbar */}
+      <div
+        role="toolbar"
+        aria-orientation="horizontal"
+        className="flex w-full flex-wrap items-center gap-2 py-1"
+      >
+        {/* Search bar on the left - matches SearchBar with w-64 and h-8 */}
+        <div className="flex items-center">
+          <InputSkeleton size="md" className="w-64" showLabel={false} />
+        </div>
+
+        {/* Filter components - Status filter button */}
+        <ButtonSkeleton variant="outline" size="sm" showText textWidth="16" />
+
+        {/* Additional actions on the right - View options (DataTableViewOptions) */}
+        <div className="flex items-center gap-2 ml-auto">
+          <ButtonSkeleton variant="outline" size="sm" textWidth="12" />
+        </div>
+      </div>
+
+      {/* DataTable table - matches DataTable component structure exactly */}
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader className="bg-muted">
+            <TableRow className="hover:bg-transparent">
+              {columns.map((column) => (
+                <TableHead
+                  key={column.id}
+                  style={{ width: `${column.size}px` }}
+                >
+                  {/* DataTableColumnHeader structure - matches the trigger button styling */}
+                  <div className="-ml-1.5 flex h-8 items-center gap-1.5 rounded-md px-2 py-1.5">
+                    <TextSkeleton variant="body" width="24" className="h-4" />
+                    {/* Sort icon placeholder - ChevronsUpDown icon (size-4 = 16px) */}
+                    <ShapeSkeleton width="4" height="4" variant="rounded" className="shrink-0 w-4 h-4" />
+                  </div>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 20 }).map((_, rowIndex) => (
+              <TableRow
+                key={rowIndex}
+                data-state={undefined}
+                className={cn(
+                  rowIndex % 2 === 0 ? "" : "even:bg-muted/20"
+                )}
+              >
+                {columns.map((column) => {
+                  return (
+                    <TableCell
+                      key={column.id}
+                      style={{ width: `${column.size}px` }}
+                    >
+                      <TextSkeleton
+                        className="h-[26px]"
+                      />
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination - matches TablePagination structure exactly */}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8">
+          {/* Left side - "Showing X to Y of Z entries" */}
+          <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
+            <TextSkeleton variant="body" width="48" />
+          </div>
+
+          {/* Right side - Rows per page, Page info, Navigation buttons */}
+          <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
+            {/* Rows per page selector - matches Select with h-8 w-16 */}
+            <div className="flex items-center space-x-2">
+              <TextSkeleton variant="body" width="20" className="font-medium" />
+              <ShapeSkeleton width="16" height="8" variant="rounded" />
+            </div>
+
+            {/* Page info - "Page X of Y" */}
+            <div className="flex items-center justify-center font-medium text-sm">
+              <TextSkeleton variant="body" width="16" />
+            </div>
+
+            {/* Navigation buttons - matches Button size="icon" className="size-8" */}
+            <div className="flex items-center space-x-2">
+              {/* First page button (hidden on small screens) */}
+              <ShapeSkeleton width="8" height="8" variant="rounded" className="hidden lg:block" />
+              {/* Previous page button */}
+              <ShapeSkeleton width="8" height="8" variant="rounded" />
+              {/* Next page button */}
+              <ShapeSkeleton width="8" height="8" variant="rounded" />
+              {/* Last page button (hidden on small screens) */}
+              <ShapeSkeleton width="8" height="8" variant="rounded" className="hidden lg:block" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // If showHeader is false, return just the DataTable content (matches LicensesDataTable structure)
+  if (!showHeader) {
+    return content;
+  }
+
+  // If showHeader is true, wrap in the card container with title/description (matches LicenseTableSection structure)
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-3 px-6 pb-6', className)}>
       {/* Header */}
@@ -32,150 +175,7 @@ export function LicenseDataTableSkeleton({
           </Typography>
         </div>
       </div>
-
-      {/* DataTable structure - matches DataTable + DataTableToolbar */}
-      <div className="flex w-full flex-col gap-4 overflow-auto">
-        {/* DataTableToolbar - matches exact structure */}
-        <div className="flex w-full flex-wrap items-center gap-2 py-1">
-          {/* Search bar on the left - matches DataTableToolbar */}
-          <div className="flex items-center">
-            <div className="relative">
-              <ShapeSkeleton width="64" height="8" variant="rounded" />
-            </div>
-          </div>
-
-          {/* Filter components - matches DataTableToolbar */}
-          <ButtonSkeleton variant="outline" size="sm" showText />
-
-          {/* Reset button - only visible when filters are active */}
-          <ButtonSkeleton variant="outline" size="sm" textWidth="12" />
-
-          {/* Additional actions on the right */}
-          <div className="flex items-center gap-2 ml-auto">
-            <ButtonSkeleton variant="outline" size="sm" textWidth="12" />
-          </div>
-        </div>
-
-        {/* DataTable table - matches DataTable component structure */}
-        <div className="overflow-hidden rounded-md border">
-          {/* Table Header - matching all 8 columns from getLicenseTableColumns */}
-          <div className="bg-muted">
-            <div className="flex h-12 items-center border-b px-4" style={{ minWidth: 'fit-content' }}>
-              {/* DBA - flex-1 */}
-              <div className="flex-1">
-                <TextSkeleton variant="caption" width="8" />
-              </div>
-              {/* Created At - w-40 */}
-              <div style={{ width: "160px" }}>
-                <TextSkeleton variant="caption" width="16" />
-              </div>
-              {/* Status - w-32 */}
-              <div style={{ width: "128px" }}>
-                <TextSkeleton variant="caption" width="12" />
-              </div>
-              {/* Plan - w-24 */}
-              <div style={{ width: "96px" }}>
-                <TextSkeleton variant="caption" width="8" />
-              </div>
-              {/* Term - w-24 */}
-              <div style={{ width: "96px" }}>
-                <TextSkeleton variant="caption" width="8" />
-              </div>
-              {/* Agents - w-20 */}
-              <div style={{ width: "80px" }}>
-                <TextSkeleton variant="caption" width="10" />
-              </div>
-              {/* Last Payment - w-32 */}
-              <div style={{ width: "128px" }}>
-                <TextSkeleton variant="caption" width="16" />
-              </div>
-              {/* Actions - w-24 */}
-              <div style={{ width: "96px" }}>
-                <TextSkeleton variant="caption" width="12" />
-              </div>
-            </div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y" style={{ minWidth: 'fit-content' }}>
-            {Array.from({ length: 10 }).map((_, rowIndex) => (
-              <div
-                key={rowIndex}
-                className={cn(
-                  "flex h-12 items-center px-4 hover:bg-muted/50",
-                  rowIndex % 2 === 0 ? "bg-background" : "bg-muted/20"
-                )}
-                style={{ minWidth: 'fit-content' }}
-              >
-                {/* DBA - flex-1 */}
-                <div className="flex-1">
-                  <TextSkeleton variant="body" width="32" />
-                </div>
-                {/* Created At - w-40 */}
-                <div style={{ width: "160px" }}>
-                  <TextSkeleton variant="body" width="24" />
-                </div>
-                {/* Status - w-32 */}
-                <div style={{ width: "128px" }}>
-                  <ShapeSkeleton width="16" height="6" variant="rounded" />
-                </div>
-                {/* Plan - w-24 */}
-                <div style={{ width: "96px" }}>
-                  <ShapeSkeleton width="12" height="6" variant="rounded" />
-                </div>
-                {/* Term - w-24 */}
-                <div style={{ width: "96px" }}>
-                  <ShapeSkeleton width="14" height="6" variant="rounded" />
-                </div>
-                {/* Agents - w-20 */}
-                <div style={{ width: "80px" }}>
-                  <TextSkeleton variant="body" width="6" />
-                </div>
-                {/* Last Payment - w-32 */}
-                <div style={{ width: "128px" }}>
-                  <TextSkeleton variant="body" width="16" />
-                </div>
-                {/* Actions - w-24 */}
-                <div style={{ width: "96px" }}>
-                  <ShapeSkeleton width="8" height="8" variant="rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pagination - matches TablePagination structure exactly */}
-        <div className="flex flex-col gap-2.5">
-          <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8">
-            {/* Left side: Showing entries text */}
-            <TextSkeleton variant="body" width="48" />
-
-            {/* Right side: Controls */}
-            <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-              {/* Rows per page selector */}
-              <div className="flex items-center space-x-2">
-                <TextSkeleton variant="body" width="20" />
-                <ShapeSkeleton width="16" height="8" variant="rounded" />
-              </div>
-
-              {/* Page indicator */}
-              <div className="flex items-center justify-center font-medium text-sm">
-                <TextSkeleton variant="body" width="16" />
-              </div>
-
-              {/* Navigation buttons */}
-              <div className="flex items-center space-x-2">
-                <ShapeSkeleton width="8" height="8" variant="rounded" />
-                <ShapeSkeleton width="8" height="8" variant="rounded" />
-                <ShapeSkeleton width="8" height="8" variant="rounded" />
-                <ShapeSkeleton width="8" height="8" variant="rounded" />
-                <ShapeSkeleton width="8" height="8" variant="rounded" />
-                <ShapeSkeleton width="8" height="8" variant="rounded" className="hidden lg:block" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {content}
     </div>
   );
 }

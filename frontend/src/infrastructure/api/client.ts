@@ -174,6 +174,8 @@ class HttpClient {
         if (error.response?.status === 401 && !originalRequest._retry) {
           // If auth failure has already been handled, skip all token refresh logic
           if (this.authFailureHandled) {
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
             return Promise.reject(errorResponse);
           }
 
@@ -181,7 +183,9 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && this.isTokenExpired(token)) {
             // Token is expired, skip refresh attempt and handle auth failure directly
-            this.handleAuthFailure();
+            await this.handleAuthFailure();
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
             return Promise.reject(errorResponse);
           }
 
@@ -198,7 +202,9 @@ class HttpClient {
           const refreshToken = this.getRefreshToken();
           if (!refreshToken) {
             // No refresh token, handle auth failure
-            this.handleAuthFailure();
+            await this.handleAuthFailure();
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
             return Promise.reject(errorResponse);
           }
 
@@ -225,12 +231,16 @@ class HttpClient {
               const refreshError = new Error('Token refresh failed');
               this.processQueue(refreshError, null);
               await this.handleAuthFailure();
+              // Mark the error as auth-handled so components don't show error messages
+              errorResponse.authHandled = true;
               return Promise.reject(errorResponse);
             }
           } catch (refreshError) {
             // Token refresh failed - reject all queued requests and handle auth failure once
             this.processQueue(refreshError, null);
             await this.handleAuthFailure();
+            // Mark the error as auth-handled so components don't show error messages
+            errorResponse.authHandled = true;
             return Promise.reject(errorResponse);
           } finally {
             this.isRefreshing = false;

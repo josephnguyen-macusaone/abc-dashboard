@@ -6,6 +6,8 @@ interface ShapeSkeletonProps {
   variant?: 'rectangle' | 'circle' | 'rounded' | 'pill';
   width?: string | number;
   height?: string | number;
+  animation?: 'pulse' | 'shimmer' | 'wave';
+  speed?: 'slow' | 'normal' | 'fast';
 }
 
 /**
@@ -17,12 +19,14 @@ export function ShapeSkeleton({
   variant = 'rectangle',
   width = 'full',
   height = '4',
+  animation = 'shimmer',
+  speed = 'normal',
   ...props
 }: ShapeSkeletonProps) {
   const variantClasses = {
     rectangle: 'rounded-none',
     circle: 'rounded-full',
-    rounded: 'rounded',
+    rounded: 'rounded-md',
     pill: 'rounded-full'
   };
 
@@ -31,11 +35,13 @@ export function ShapeSkeleton({
 
   return (
     <Skeleton
+      variant={animation}
+      speed={speed}
       className={cn(
         widthClass,
         heightClass,
         variantClasses[variant],
-        'bg-gradient-to-r from-muted/60 to-muted/40',
+        'bg-gradient-to-r from-muted/40 via-muted/60 to-muted/40',
         className
       )}
       {...props}

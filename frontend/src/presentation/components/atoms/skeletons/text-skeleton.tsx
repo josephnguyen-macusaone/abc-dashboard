@@ -6,6 +6,8 @@ interface TextSkeletonProps {
   lines?: number;
   variant?: 'heading' | 'body' | 'caption' | 'button';
   width?: string | number;
+  animation?: 'pulse' | 'shimmer' | 'wave';
+  speed?: 'slow' | 'normal' | 'fast';
 }
 
 /**
@@ -17,6 +19,8 @@ export function TextSkeleton({
   lines = 1,
   variant = 'body',
   width,
+  animation = 'shimmer',
+  speed = 'normal',
   ...props
 }: TextSkeletonProps) {
   const variantClasses = {
@@ -32,7 +36,9 @@ export function TextSkeleton({
   if (lines === 1) {
     return (
       <Skeleton
-        className={cn(baseClass, widthClass, 'bg-gradient-to-r from-muted/60 to-muted/40', className)}
+        variant={animation}
+        speed={speed}
+        className={cn(baseClass, widthClass, 'bg-gradient-to-r from-muted/40 via-muted/60 to-muted/40', className)}
         {...props}
       />
     );
@@ -43,10 +49,12 @@ export function TextSkeleton({
       {Array.from({ length: lines }).map((_, index) => (
         <Skeleton
           key={index}
+          variant={animation}
+          speed={speed}
           className={cn(
             baseClass,
             index === lines - 1 ? 'w-3/4' : 'w-full', // Last line shorter
-            'bg-gradient-to-r from-muted/60 to-muted/40'
+            'bg-gradient-to-r from-muted/40 via-muted/60 to-muted/40'
           )}
           {...props}
         />

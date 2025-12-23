@@ -7,6 +7,16 @@ import { UserManagement } from '@/presentation/components/organisms/user-managem
 import { User } from '@/domain/entities/user-entity';
 import { logger } from '@/shared/helpers';
 import { useUserStore } from '@/infrastructure/stores/user';
+import { ApiExceptionDto } from '@/application/dto/api-dto';
+
+// Helper function to check if error should be shown to user
+const shouldShowError = (error: unknown): boolean => {
+  // Don't show errors that have been handled by auth system (redirecting to login)
+  if (error instanceof ApiExceptionDto && error.authHandled) {
+    return false;
+  }
+  return true;
+};
 
 /**
  * UserManagementPage
@@ -90,7 +100,9 @@ export function UserManagementPage() {
       await fetchUsers(storeParams);
     } catch (error) {
       logger.error('Failed to fetch users', { error });
-      showError?.('Failed to load users');
+      if (shouldShowError(error)) {
+        showError?.('Failed to load users');
+      }
     }
   }, [fetchUsers, showError]);
 
@@ -106,7 +118,9 @@ export function UserManagementPage() {
       });
     } catch (error) {
       logger.error('Error loading users', { error });
-      showError?.('Failed to load users');
+      if (shouldShowError(error)) {
+        showError?.('Failed to load users');
+      }
     }
   }, [fetchUsers, showError]);
 

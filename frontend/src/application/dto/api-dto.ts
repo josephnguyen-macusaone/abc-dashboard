@@ -10,13 +10,15 @@ export class ApiExceptionDto extends Error {
   public readonly code?: string;
   public readonly status?: number;
   public readonly details?: any;
+  public authHandled?: boolean; // Indicates if auth error was handled automatically (mutable for client to set)
 
-  constructor(message: string, code?: string, status?: number, details?: any) {
+  constructor(message: string, code?: string, status?: number, details?: any, authHandled?: boolean) {
     super(message);
     this.name = 'ApiException';
     this.code = code;
     this.status = status;
     this.details = details;
+    this.authHandled = authHandled;
   }
 }
 

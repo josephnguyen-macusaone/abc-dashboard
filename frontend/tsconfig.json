@@ -20,7 +20,6 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@/utils/*": ["./src/shared/utils/*"],
       "@/types": ["./src/shared/types"],
       "@/types/*": ["./src/shared/types/*"],
       "@/components/*": ["./src/presentation/components/*"],
