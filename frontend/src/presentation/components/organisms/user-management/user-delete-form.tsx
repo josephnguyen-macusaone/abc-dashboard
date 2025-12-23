@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useUser } from '@/presentation/contexts/user-context';
 import { useToast } from '@/presentation/contexts/toast-context';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { User } from '@/application/dto/user-dto';
 import { USER_ROLE_LABELS } from '@/shared/constants';
 
@@ -38,7 +38,7 @@ export function UserDeleteForm({
 }: UserDeleteFormProps) {
   const { deleteUser, loading: { deleteUser: isDeleting } } = useUser();
   const { success, error } = useToast();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useAuthStore();
   const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const handleDelete = async () => {

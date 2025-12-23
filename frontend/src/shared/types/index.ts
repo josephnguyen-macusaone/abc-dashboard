@@ -103,7 +103,7 @@ export interface TableFilters {
     start: Date;
     end: Date;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Re-export enum
@@ -111,6 +111,29 @@ export { Role, SortBy, SortOrder } from './enum';
 
 // Re-export license types
 export type { LicenseStatus, LicenseTerm, LicenseRecord } from './license';
+
+// Re-export common types
+export type {
+  UnknownObject,
+  UnknownArray,
+  AnyValue,
+  ErrorLike,
+  UserId,
+  LicenseId,
+  TokenId,
+  ApiResponseData,
+  FormData,
+  Metadata,
+} from './common';
+
+export {
+  isUserId,
+  isLicenseId,
+  isTokenId,
+  createUserId,
+  createLicenseId,
+  createTokenId,
+} from './common';
 
 /**
  * Column Definition for table configuration

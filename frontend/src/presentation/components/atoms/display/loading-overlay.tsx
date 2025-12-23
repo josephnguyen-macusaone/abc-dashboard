@@ -1,5 +1,3 @@
-'use client';
-
 import { Loading } from './loading';
 import { Typography } from '@/presentation/components/atoms';
 import { cn } from '@/shared/helpers';

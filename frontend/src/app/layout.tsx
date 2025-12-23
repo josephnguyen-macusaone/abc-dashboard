@@ -10,7 +10,7 @@ const NuqsAdapter = dynamic(() => import('nuqs/adapters/next/app').then(mod => (
   loading: () => null
 });
 
-const AuthProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.AuthProvider })), {
+const AuthInitializer = dynamic(() => import('@/presentation/components/atoms/auth/auth-initializer').then(mod => ({ default: mod.AuthInitializer })), {
   loading: () => <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>
 });
 
@@ -98,7 +98,7 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <ErrorProvider>
-                <AuthProvider>
+                <AuthInitializer>
                   <UserProvider>
                     <NuqsAdapter>
                       <RouteSuspense message="Initializing application...">
@@ -107,7 +107,7 @@ export default function RootLayout({
                       <Toaster />
                     </NuqsAdapter>
                   </UserProvider>
-                </AuthProvider>
+                </AuthInitializer>
               </ErrorProvider>
             </ToastProvider>
           </ThemeProvider>

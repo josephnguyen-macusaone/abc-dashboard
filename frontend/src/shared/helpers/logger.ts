@@ -98,7 +98,7 @@ const logPerformanceMetrics = new Map<string, number>();
 interface QueuedLog {
   level: LogLevel;
   message: string;
-  meta: any;
+  meta: Record<string, unknown>;
   timestamp: number;
 }
 
@@ -191,7 +191,7 @@ const formatMessage = (
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}
 ): string => {
   // Create cache key for message formatting
@@ -270,7 +270,7 @@ const logToConsole = (
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}
 ): void => {
   // Early returns for performance
@@ -305,7 +305,7 @@ const logToConsoleImmediate = (
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}
 ): void => {
   const startTime = LOG_CONFIG.performance.enabled ? (typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now()) : 0;
@@ -371,11 +371,11 @@ const logHistory = new CircularBuffer<{
   timestamp: string;
   level: LogLevel;
   message: string;
-  meta?: any;
+  meta?: Record<string, unknown>;
   category?: string;
 }>(LOG_CONFIG.memory.maxHistorySize);
 
-const addToHistory = (level: LogLevel, message: string, meta?: any): void => {
+const addToHistory = (level: LogLevel, message: string, meta?: Record<string, unknown>): void => {
   if (!isDevelopment && !LOG_CONFIG.memory.enableMemoryMonitoring) return;
 
   logHistory.push({
@@ -383,7 +383,7 @@ const addToHistory = (level: LogLevel, message: string, meta?: any): void => {
     level,
     message,
     meta,
-    category: meta?.category,
+    category: typeof meta?.category === 'string' ? meta.category : undefined,
   });
 };
 
@@ -392,7 +392,7 @@ export const getLogHistory = (): Array<{
   timestamp: string;
   level: LogLevel;
   message: string;
-  meta?: any;
+  meta?: Record<string, unknown>;
   category?: string;
 }> => {
   return logHistory.getAll();
@@ -452,7 +452,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     addToHistory('error', message, meta);
     logToConsole('error', message, meta);
@@ -462,7 +462,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     addToHistory('warn', message, meta);
     logToConsole('warn', message, meta);
@@ -472,7 +472,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     addToHistory('info', message, meta);
     logToConsole('info', message, meta);
@@ -482,7 +482,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     addToHistory('http', message, meta);
     logToConsole('http', message, meta);
@@ -492,7 +492,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     addToHistory('debug', message, meta);
     logToConsole('debug', message, meta);
@@ -502,7 +502,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     addToHistory('trace', message, meta);
     logToConsole('trace', message, meta);
@@ -530,7 +530,7 @@ const enhancedLogger = {
     userId?: string;
     component?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }) => ({
     error: (message: string, meta: { [key: string]: any } = {}) =>
       enhancedLogger.error(message, { ...context, ...meta }),
@@ -567,7 +567,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     enhancedLogger.info(`🚀 ${message}`, { category: 'startup', ...meta });
   },
@@ -577,7 +577,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     enhancedLogger.warn(`🔒 ${message}`, { category: 'security', ...meta });
   },
@@ -587,7 +587,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     enhancedLogger.http(`🌐 ${message}`, { category: 'api', ...meta });
   },
@@ -597,7 +597,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     enhancedLogger.info(`👤 ${message}`, { category: 'user-action', ...meta });
   },
@@ -608,7 +608,7 @@ const enhancedLogger = {
     userId?: string;
     duration?: number;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     const perfMessage = meta.duration ? `${message} (${meta.duration}ms)` : message;
     enhancedLogger.info(`⚡ ${perfMessage}`, { category: 'performance', ...meta });
@@ -637,7 +637,7 @@ const enhancedLogger = {
     userId?: string;
     traceId?: string;
     spanId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     enhancedLogger.trace(`🔍 ${message}`, { category: 'tracing', ...meta });
   },
@@ -647,7 +647,7 @@ const enhancedLogger = {
     correlationId?: string;
     userId?: string;
     component?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     enhancedLogger.debug(`🧩 ${message}`, { category: 'component-lifecycle', ...meta });
   },
@@ -659,7 +659,7 @@ const enhancedLogger = {
     error?: Error;
     componentStack?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     // Create concise error summary for production readability
     const errorMessage = meta.error?.message || 'Unknown error';
@@ -691,7 +691,7 @@ const enhancedLogger = {
     error?: Error;
     componentStack?: string;
     category?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   } = {}): void => {
     const errorMeta = {
       ...meta,

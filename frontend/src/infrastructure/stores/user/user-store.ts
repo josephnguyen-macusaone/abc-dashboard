@@ -186,7 +186,7 @@ export const useUserStore = create<UserStoreState>()(
                 throw new Error('Get users response missing data');
               }
 
-              const users = response.users.map(userData => User.fromObject(userData));
+              const users = response.users.map(userData => User.fromObject(userData as unknown as Record<string, unknown>));
 
               // Merge API pagination with our required total field
               const apiPagination = response.pagination || {
@@ -285,7 +285,7 @@ export const useUserStore = create<UserStoreState>()(
               set({ formLoading: true, formError: null });
 
               const response = await userApi.getUser(id);
-              const user = User.fromObject(response);
+              const user = User.fromObject(response as unknown as Record<string, unknown>);
 
               set({ currentUser: user, formLoading: false });
               return user;
@@ -302,7 +302,7 @@ export const useUserStore = create<UserStoreState>()(
               set({ formLoading: true, formError: null });
 
               const response = await userApi.createUser(userData);
-              const user = User.fromObject(response);
+              const user = User.fromObject(response as unknown as Record<string, unknown>);
 
               set({ currentUser: user, formLoading: false });
 
@@ -323,7 +323,7 @@ export const useUserStore = create<UserStoreState>()(
               set({ formLoading: true, formError: null });
 
               const response = await userApi.updateUser(id, userData);
-              const user = User.fromObject(response);
+              const user = User.fromObject(response as unknown as Record<string, unknown>);
 
               set({ currentUser: user, formLoading: false });
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField } from '@/presentation/components/molecules';
 import { useAuthStore } from '@/infrastructure/stores/auth';
+import { useChangePasswordFormStore } from '@/infrastructure/stores/auth/forms';
 import { cn, logger } from '@/shared/helpers';
 import { Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 
@@ -29,25 +30,25 @@ export function ChangePasswordForm({
   isForcedChange = false
 }: ChangePasswordFormProps) {
   const { changePassword } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState<PasswordFormData>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  // Use Zustand store for form state management
+  const {
+    data: formData,
+    errors,
+    isSubmitting: isLoading,
+    setFieldValue,
+    setFieldError,
+    validateForm,
+    reset: resetForm,
+  } = useChangePasswordFormStore();
 
-  const [errors, setErrors] = useState<Partial<Record<keyof PasswordFormData, string | null>>>({});
+  // Local UI state (minimal)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInputChange = (field: keyof PasswordFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
+    setFieldValue(field, value);
   };
 
   const validatePasswordStrength = (password: string): { isValid: boolean; errors: string[] } => {
@@ -73,57 +74,60 @@ export function ChangePasswordForm({
     };
   };
 
-  const validateForm = (): boolean => {
-    const validationErrors: Partial<Record<keyof PasswordFormData, string | null>> = {};
+  const validateFormExtended = (): boolean => {
+    let hasErrors = false;
+
+    // Clear existing errors
+    // Note: The store handles basic validation, we add extended validation here
 
     // Only validate current password if required
     if (requiresCurrentPassword && !formData.currentPassword.trim()) {
-      validationErrors.currentPassword = 'Current password is required';
+      setFieldError('currentPassword', 'Current password is required');
+      hasErrors = true;
     }
 
+    // Validate new password with extended rules
     if (!formData.newPassword.trim()) {
-      validationErrors.newPassword = 'New password is required';
+      setFieldError('newPassword', 'New password is required');
+      hasErrors = true;
     } else {
       const passwordValidation = validatePasswordStrength(formData.newPassword);
       if (!passwordValidation.isValid) {
-        validationErrors.newPassword = passwordValidation.errors[0];
+        setFieldError('newPassword', passwordValidation.errors[0]);
+        hasErrors = true;
+      }
+      // Check if new password differs from current if current password was provided
+      else if (requiresCurrentPassword && formData.currentPassword && formData.currentPassword === formData.newPassword) {
+        setFieldError('newPassword', 'New password must be different from current password');
+        hasErrors = true;
       }
     }
 
+    // Validate confirm password
     if (!formData.confirmPassword.trim()) {
-      validationErrors.confirmPassword = 'Please confirm your new password';
+      setFieldError('confirmPassword', 'Please confirm your new password');
+      hasErrors = true;
     } else if (formData.newPassword !== formData.confirmPassword) {
-      validationErrors.confirmPassword = 'Passwords do not match';
+      setFieldError('confirmPassword', 'Passwords do not match');
+      hasErrors = true;
     }
 
-    // Only check if new password differs from current if current password was provided
-    if (requiresCurrentPassword && formData.currentPassword && formData.currentPassword === formData.newPassword) {
-      validationErrors.newPassword = 'New password must be different from current password';
-    }
-
-    setErrors(validationErrors);
-    return Object.values(validationErrors).every(error => !error);
+    return !hasErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
-    setIsLoading(true);
+    if (!validateFormExtended()) return;
+
     try {
       await changePassword(formData.currentPassword || '', formData.newPassword);
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
+      resetForm(); // Reset form on success
 
       // Success toast will be handled by the page component
       onSuccess?.();
     } catch (error: any) {
       // Error toast will be handled by the auth store
       logger.error('Password change form error:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 

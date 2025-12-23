@@ -55,7 +55,7 @@ export interface LicenseListQueryDTO {
   searchField?: 'dba' | 'plan' | 'key' | 'notes';
   dba?: string;
   zip?: string;
-  status?: LicenseStatus;
+  status?: LicenseStatus | string;
   plan?: string;
   term?: LicenseTerm;
   seatsTotal?: {

@@ -1,5 +1,5 @@
 import { LicenseRecord } from '@/types';
-import { licenseApiService } from '@/application/services/license-services';
+import { licenseApiService, LicenseServiceContract } from '@/application/services/license-services';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
@@ -45,7 +45,7 @@ export class BulkCreateLicensesUseCase implements BulkCreateLicensesUseCaseContr
     component: 'BulkCreateLicensesUseCase',
   });
 
-  constructor(private readonly licenseService: any) {}
+  constructor(private readonly licenseService: LicenseServiceContract) {}
 
   async execute(licenses: Array<Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>>): Promise<LicenseRecord[]> {
     const correlationId = generateCorrelationId();

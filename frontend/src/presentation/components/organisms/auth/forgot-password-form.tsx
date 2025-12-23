@@ -6,6 +6,7 @@ import { Loading } from '@/presentation/components/atoms';
 import { InputField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { authApi } from '@/infrastructure/api/auth';
+import { useForgotPasswordFormStore } from '@/infrastructure/stores/auth/forms';
 import { Mail, CheckCircle, ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
 import logger from '@/shared/helpers/logger';
 
@@ -20,13 +21,21 @@ interface ForgotPasswordFormData {
 
 export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordFormProps) {
   const toast = useToast();
-  const [formData, setFormData] = useState<ForgotPasswordFormData>({
-    email: '',
-  });
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Use Zustand store for form state management
+  const {
+    data: formData,
+    errors,
+    isSubmitting: isLoading,
+    touched,
+    setFieldValue,
+    setTouched,
+    validateForm,
+    reset: resetForm,
+  } = useForgotPasswordFormStore();
+
+  // Local UI state (minimal)
   const [isSuccess, setIsSuccess] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof ForgotPasswordFormData, string | null>>>({});
-  const [touched, setTouched] = useState<Partial<Record<keyof ForgotPasswordFormData, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
 
@@ -47,36 +56,19 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
   }, [formData.email]);
 
   const handleInputChange = (field: keyof ForgotPasswordFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-
-    // Clear error when user starts typing (but keep validation feedback)
-    if (errors[field] && submitAttempted) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
+    setFieldValue(field, value);
 
     // Mark field as touched for validation
     if (!touched[field]) {
-      setTouched(prev => ({ ...prev, [field]: true }));
+      setTouched(field, true);
     }
   };
 
   const handleInputBlur = (field: keyof ForgotPasswordFormData) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched(field, true);
     setSubmitAttempted(true); // Enable validation on blur
   };
 
-  const validateForm = () => {
-    const validationErrors: Partial<Record<keyof ForgotPasswordFormData, string | null>> = {};
-
-    if (!formData.email.trim()) {
-      validationErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      validationErrors.email = 'Please enter a valid email address';
-    }
-
-    setErrors(validationErrors);
-    return Object.values(validationErrors).every(error => !error);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,10 +76,10 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
 
     if (!validateForm()) return;
 
-    setIsLoading(true);
     try {
       await authApi.forgotPassword(formData.email);
       setIsSuccess(true);
+      resetForm(); // Reset form on success
       toast.success('Password reset email sent successfully!', {
         description: 'Check your email for reset instructions.',
         duration: 5000,
@@ -98,14 +90,12 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
         description: 'Please try again or contact support if the problem persists.',
         duration: 5000,
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleTryDifferentEmail = () => {
     setIsSuccess(false);
-    setFormData({ email: '' });
+    resetForm();
   };
 
   if (isSuccess) {

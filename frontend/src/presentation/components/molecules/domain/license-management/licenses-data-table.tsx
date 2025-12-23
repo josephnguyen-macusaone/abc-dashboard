@@ -18,6 +18,7 @@ import { SearchBar } from "@/presentation/components/molecules";
 import { getLicenseTableColumns } from "./license-table-columns";
 import type { LicenseRecord } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDataTableStore } from "@/infrastructure/stores/user";
 
 interface LicensesDataTableProps {
   data: LicenseRecord[];
@@ -87,11 +88,18 @@ export function LicensesDataTable({
   const lastFiltersRef = useRef<string>("");
   const lastManualFiltersRef = useRef<string>("");
 
-  // Search state - single source of truth
-  const [searchValue, setSearchValue] = useState(""); // What user types
-
-  // Manual filter state for server-side filtering
-  const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>({});
+  // Use Zustand store for table state management
+  const tableId = 'licenses-data-table';
+  const {
+    search: searchValue,
+    manualFilters: manualFilterValues,
+  } = useDataTableStore((state) => state.getTableState(tableId));
+  const {
+    setTableSearch,
+    setTableManualFilters,
+    updateTableManualFilter,
+    clearTableFilters,
+  } = useDataTableStore();
 
   // Initialize component and prevent initial API calls
   useEffect(() => {
@@ -100,14 +108,14 @@ export function LicensesDataTable({
     const statusParam = urlParams.get('status');
 
     if (searchParam) {
-      setSearchValue(searchParam);
+      setTableSearch(tableId, searchParam);
       // Mark that filtering has been performed when initializing from URL
       hasPerformedFilteringRef.current = true;
     }
 
     if (statusParam) {
       const statusValues = statusParam.includes(',') ? statusParam.split(',') : [statusParam];
-      setManualFilterValues(prev => ({ ...prev, status: statusValues }));
+      updateTableManualFilter(tableId, 'status', statusValues);
       hasPerformedFilteringRef.current = true;
     }
   }, []);
@@ -146,11 +154,8 @@ export function LicensesDataTable({
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
-    setManualFilterValues(prev => ({
-      ...prev,
-      [columnId]: values
-    }));
-  }, []);
+    updateTableManualFilter(tableId, columnId, values);
+  }, [updateTableManualFilter, tableId]);
 
   // Ensure table always has default sorting on mount
   useEffect(() => {
@@ -171,7 +176,7 @@ export function LicensesDataTable({
 
   const handleSearchChange = useCallback((value: string) => {
     // Update input immediately for responsive UI
-    setSearchValue(value);
+    setTableSearch(tableId, value);
     hasPerformedFilteringRef.current = true;
 
     // Clear previous timeout
@@ -315,11 +320,11 @@ export function LicensesDataTable({
         </Typography>
         <button
           onClick={() => {
-            setSearchValue("");
+            setTableSearch(tableId, "");
             if (debouncedSearchRef.current) {
               clearTimeout(debouncedSearchRef.current);
             }
-            setManualFilterValues({});
+            clearTableFilters(tableId);
             table.setColumnFilters([]);
             hasPerformedFilteringRef.current = false;
             table.setPageIndex(0);
@@ -373,7 +378,7 @@ export function LicensesDataTable({
         }
         onReset={() => {
           // 1. Clear search state
-          setSearchValue("");
+          setTableSearch(tableId, "");
 
           // Clear debounce timeout
           if (debouncedSearchRef.current) {
@@ -381,7 +386,7 @@ export function LicensesDataTable({
           }
 
           // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
-          setManualFilterValues({});
+          clearTableFilters(tableId);
 
           // 3. Clear table filters
           table.setColumnFilters([]);

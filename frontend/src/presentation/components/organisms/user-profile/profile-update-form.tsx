@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/presentation/components/atoms';
 import { InputField, TextAreaField, PhoneField } from '@/presentation/components/molecules';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
+import { useProfileUpdateFormStore } from '@/infrastructure/stores/user/forms';
 import { useErrorHandler } from '@/presentation/contexts/error-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { cn } from '@/shared/helpers';
@@ -28,56 +29,41 @@ interface ProfileFormData {
 }
 
 export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className }: ProfileUpdateFormProps) {
-  const { user, handleUpdateProfile } = useAuth();
+  const { user, updateProfile } = useAuthStore();
   const { handleApiError } = useErrorHandler();
   const toast = useToast();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState<ProfileFormData>(() => {
-    return {
-      displayName: initialData?.displayName ?? '',
-      bio: initialData?.bio ?? '',
-      phone: initialData?.phone ?? '',
-    };
-  });
+  // Use Zustand store for form state management
+  const {
+    data: formData,
+    errors,
+    isSubmitting: isLoading,
+    setFieldValue,
+    setFieldError,
+    validateForm,
+    reset: resetForm,
+  } = useProfileUpdateFormStore();
 
-  const [errors, setErrors] = useState<Partial<Record<keyof ProfileFormData, string | null>>>({});
-
-  // Update form data when initialData changes (for re-initialization)
+  // Initialize form with provided initial data
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      resetForm({
         displayName: initialData.displayName,
         bio: initialData.bio,
         phone: initialData.phone,
       });
     }
-  }, [initialData]);
+  }, [initialData, resetForm]);
+
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const validationErrors: Partial<Record<keyof ProfileFormData, string | null>> = {};
-    if (!formData.displayName.trim()) {
-      validationErrors.displayName = 'Display name is required';
-    }
-    if (formData.phone && !isValidPhoneNumber(formData.phone)) {
-      validationErrors.phone = 'Please enter a valid phone number';
-    }
-    setErrors(validationErrors);
-    return Object.values(validationErrors).every(error => !error);
+    setFieldValue(field, value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    setIsLoading(true);
+
     try {
       // Prepare complete profile data for PUT request
       const cleanString = (str: string) => str.trim().replace(/[\r\n\t]/g, ' ').replace(/"/g, '\\"');
@@ -97,7 +83,7 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
       }
 
       await toast.promise(
-        handleUpdateProfile(profileData),
+        updateProfile(profileData),
         {
           loading: 'Updating your profile...',
           success: () => {
@@ -109,8 +95,6 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
       );
     } catch (error) {
       handleApiError(error, 'Failed to update profile');
-    } finally {
-      setIsLoading(false);
     }
   };
 

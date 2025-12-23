@@ -7,7 +7,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
-import { useAuth } from "@/presentation/contexts/auth-context";
+import { useAuthStore } from "@/infrastructure/stores/auth";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
@@ -24,7 +24,7 @@ const shouldShowError = (error: unknown): boolean => {
 };
 
 export function LicenseManagementPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useAuthStore();
 
   const licenses = useLicenseStore(selectLicenses);
   const isLoading = useLicenseStore(selectLicenseLoading);

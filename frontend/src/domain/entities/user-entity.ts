@@ -111,7 +111,7 @@ export class User {
   /**
    * Create a new User instance from plain object
    */
-  static fromObject(obj: any): User {
+  static fromObject(obj: Record<string, unknown>): User {
     // Validate required fields
     if (!obj.id) {
       throw new Error('User object missing required id field');
@@ -122,45 +122,65 @@ export class User {
     if (!obj.role) {
       throw new Error('User object missing required role field');
     }
+
+    // Type guards for safe property access
+    const isString = (value: unknown): value is string => typeof value === 'string';
+
     if (!obj.name) {
-      // Provide fallback for name field
-      obj.name = obj.displayName || obj.username || obj.email?.split('@')[0] || 'User';
+      // Provide fallback for name field with type safety
+      obj.name = (isString(obj.displayName) && obj.displayName) ||
+                 (isString(obj.username) && obj.username) ||
+                 (isString(obj.email) && obj.email.split('@')[0]) ||
+                 'User';
     }
 
     // Ensure id is always a string
     const userId = String(obj.id);
 
+    // Ensure required fields are strings (they should be validated above)
+    const name = isString(obj.name) ? obj.name : 'User';
+    const email = isString(obj.email) ? obj.email : '';
+    const role = obj.role as UserRole; // Should be validated above
+
     return new User(
       userId,
-      obj.name,
-      obj.email,
-      obj.role,
-      obj.isActive !== undefined ? obj.isActive : false, // Default to false if not provided
-      obj.username, // Add username field
-      obj.avatar,
-      obj.firstName,
-      obj.lastName,
-      obj.displayName,
-      obj.bio,
-      obj.phone,
-      obj.lastLogin ? new Date(obj.lastLogin) : undefined,
-      obj.updatedAt ? new Date(obj.updatedAt) : undefined,
-      obj.isFirstLogin !== undefined ? obj.isFirstLogin : true, // Default to true for new users
-      obj.langKey || 'en',
-      obj.emailVerified !== undefined ? obj.emailVerified : false,
-      obj.lastActivity ? new Date(obj.lastActivity) : undefined,
-      obj.createdAt ? new Date(obj.createdAt) : undefined,
-      obj.createdBy,
-      obj.lastModifiedBy,
-      obj.managedBy,
-      obj.requiresPasswordChange
+      name,
+      email,
+      role,
+      typeof obj.isActive === 'boolean' ? obj.isActive : false, // Default to false if not provided
+      isString(obj.username) ? obj.username : undefined,
+      isString(obj.avatar) ? obj.avatar : undefined,
+      isString(obj.firstName) ? obj.firstName : undefined,
+      isString(obj.lastName) ? obj.lastName : undefined,
+      isString(obj.displayName) ? obj.displayName : undefined,
+      isString(obj.bio) ? obj.bio : undefined,
+      isString(obj.phone) ? obj.phone : undefined,
+      obj.lastLogin instanceof Date || (isString(obj.lastLogin) && !isNaN(Date.parse(obj.lastLogin)))
+        ? new Date(obj.lastLogin)
+        : undefined,
+      obj.updatedAt instanceof Date || (isString(obj.updatedAt) && !isNaN(Date.parse(obj.updatedAt)))
+        ? new Date(obj.updatedAt)
+        : undefined,
+      typeof obj.isFirstLogin === 'boolean' ? obj.isFirstLogin : true, // Default to true for new users
+      isString(obj.langKey) ? obj.langKey : 'en',
+      typeof obj.emailVerified === 'boolean' ? obj.emailVerified : false,
+      obj.lastActivity instanceof Date || (isString(obj.lastActivity) && !isNaN(Date.parse(obj.lastActivity)))
+        ? new Date(obj.lastActivity)
+        : undefined,
+      obj.createdAt instanceof Date || (isString(obj.createdAt) && !isNaN(Date.parse(obj.createdAt)))
+        ? new Date(obj.createdAt)
+        : undefined,
+      isString(obj.createdBy) ? obj.createdBy : undefined,
+      isString(obj.lastModifiedBy) ? obj.lastModifiedBy : undefined,
+      isString(obj.managedBy) ? obj.managedBy : undefined,
+      typeof obj.requiresPasswordChange === 'boolean' ? obj.requiresPasswordChange : undefined
     );
   }
 
   /**
    * Convert User to plain object for API responses
    */
-  toObject(): Record<string, any> {
+  toObject(): Record<string, unknown> {
     return {
       id: this.id,
       name: this.name,

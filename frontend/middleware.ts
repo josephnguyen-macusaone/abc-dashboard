@@ -3,6 +3,76 @@ import type { NextRequest } from 'next/server';
 import { ROUTE_CONFIGS, AUTH_ROUTES, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
+/**
+ * Content Security Policy Configuration
+ * Implements comprehensive CSP to prevent XSS and other injection attacks
+ */
+const CSP_HEADERS = {
+  'Content-Security-Policy': [
+    // Default restrictions - only allow same-origin
+    "default-src 'self'",
+
+    // Scripts - allow Next.js and our inline theme script
+    "script-src 'self' 'unsafe-inline'", // unsafe-inline needed for theme script
+
+    // Styles - allow Next.js styles and inline styles
+    "style-src 'self' 'unsafe-inline'",
+
+    // Images - allow same-origin and data URLs (for favicons, small images)
+    "img-src 'self' data: https:",
+
+    // Fonts - allow same-origin and Google Fonts
+    "font-src 'self' https://fonts.gstatic.com",
+
+    // Connect - allow same-origin and our API
+    "connect-src 'self'",
+
+    // Frame - deny all framing
+    "frame-ancestors 'none'",
+
+    // Object/embed - deny plugins
+    "object-src 'none'",
+
+    // Base URI - restrict to same-origin
+    "base-uri 'self'",
+
+    // Form actions - restrict to same-origin
+    "form-action 'self'",
+
+    // Upgrade insecure requests to HTTPS
+    "upgrade-insecure-requests",
+
+    // Report violations (in development)
+    process.env.NODE_ENV === 'development' ? "report-uri /api/csp-report" : ""
+  ].filter(Boolean).join('; '),
+
+  // Additional Security Headers
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': [
+    'camera=()',
+    'microphone=()',
+    'geolocation=()',
+    'interest-cohort=()'
+  ].join(', '),
+
+  // HSTS - enforce HTTPS
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+};
+
+/**
+ * Apply security headers to response
+ */
+function applySecurityHeaders(response: NextResponse) {
+  Object.entries(CSP_HEADERS).forEach(([header, value]) => {
+    if (value) {
+      response.headers.set(header, value);
+    }
+  });
+}
+
 export function middleware(request: NextRequest) {
   // Generate correlation ID for this request
   const correlationId = generateCorrelationId();
@@ -25,17 +95,21 @@ export function middleware(request: NextRequest) {
 
     if (!isValidActionId) {
       // Silently reject invalid Server Action requests (don't log to reduce noise)
-      return new NextResponse(
+      const response = new NextResponse(
         JSON.stringify({ error: 'Invalid request' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+      applySecurityHeaders(response);
+      return response;
     }
 
     // This app doesn't use Server Actions - block ALL Server Action requests
-    return new NextResponse(
+    const response = new NextResponse(
       JSON.stringify({ error: 'Not found' }),
       { status: 404, headers: { 'Content-Type': 'application/json' } }
     );
+    applySecurityHeaders(response);
+    return response;
   }
 
   middlewareLogger.debug('Processing request', {
@@ -124,7 +198,9 @@ export function middleware(request: NextRequest) {
       });
       const loginUrl = new URL(routeConfig.redirectTo || '/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
+      const response = NextResponse.redirect(loginUrl);
+      applySecurityHeaders(response);
+      return response;
     }
 
     // Check role-based access
@@ -140,7 +216,9 @@ export function middleware(request: NextRequest) {
         });
         // Redirect to appropriate page based on user role
         const redirectPath = getDefaultRedirect(user.role);
-        return NextResponse.redirect(new URL(redirectPath, request.url));
+        const response = NextResponse.redirect(new URL(redirectPath, request.url));
+        applySecurityHeaders(response);
+        return response;
       }
     }
 
@@ -155,7 +233,9 @@ export function middleware(request: NextRequest) {
       });
       const verifyUrl = new URL('/verify-email', request.url);
       verifyUrl.searchParams.set('email', user.email || '');
-      return NextResponse.redirect(verifyUrl);
+      const response = NextResponse.redirect(verifyUrl);
+      applySecurityHeaders(response);
+      return response;
     }
 
     middlewareLogger.debug('Route access granted', {
@@ -174,10 +254,14 @@ export function middleware(request: NextRequest) {
       redirectTo: getDefaultRedirect(user.role)
     });
     const redirectPath = getDefaultRedirect(user.role);
-    return NextResponse.redirect(new URL(redirectPath, request.url));
+    const response = NextResponse.redirect(new URL(redirectPath, request.url));
+    applySecurityHeaders(response);
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  applySecurityHeaders(response);
+  return response;
 }
 
 export const config = {

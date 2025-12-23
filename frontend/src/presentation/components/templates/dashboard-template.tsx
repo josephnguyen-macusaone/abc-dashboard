@@ -5,16 +5,16 @@ import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useTransition } from 'react';
-import { useAuth, useToast } from '@/presentation/contexts';
+import { useToast } from '@/presentation/contexts';
 import { PermissionUtils, getNavigationItems } from '@/shared/constants';
-import { useSidebarStore } from '@/infrastructure/stores';
+import { useSidebarStore, useAuthStore } from '@/infrastructure/stores';
 
 interface DashboardTemplateProps {
   children: ReactNode;
 }
 
 export function DashboardTemplate({ children }: DashboardTemplateProps) {
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, logout, isAuthenticated, isLoading } = useAuthStore();
   const toast = useToast();
   const [isTransitioning, startTransition] = useTransition();
   const router = useRouter();

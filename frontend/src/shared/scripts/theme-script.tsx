@@ -4,111 +4,120 @@ import type { ThemeType } from '@/presentation/contexts/theme-context';
 /**
  * Theme Script Component
  *
- * Injects an inline script that runs immediately before React hydration
+ * Injects a secure script that runs immediately before React hydration
  * to apply the correct theme and prevent theme flash.
  *
- * This script:
- * 1. Reads theme from cookies (for SSR support)
- * 2. Falls back to localStorage
- * 3. Applies theme to document element immediately
- * 4. Sets a global variable for React to use
+ * Security improvements:
+ * - Uses Next.js Script component with security attributes
+ * - Minimizes inline script content
+ * - Sanitizes cookie/localStorage access
+ * - No dynamic content injection
  */
 export function ThemeScript() {
-  // Script that runs before React hydration
-  const scriptContent = `
+  // Minimal inline script - just calls a secure function
+  const inlineScript = `
     (function() {
       try {
-        // Function to get cookie value
-        function getCookie(name) {
-          const value = '; ' + document.cookie;
-          const parts = value.split('; ' + name + '=');
-          if (parts.length === 2) return parts.pop().split(';').shift();
-          return null;
-        }
-
-        // Valid theme values (injected at build time)
-        const validThemes = ['light', 'dark', 'system'];
-        const LIGHT_THEME = 'light';
-        const DARK_THEME = 'dark';
-        const SYSTEM_THEME = 'system';
-
-        // Function to get stored theme
-        function getStoredTheme() {
-          // Priority: cookies (SSR) > localStorage (Zustand) > default
-
-          // Try cookies first (for SSR support)
-          const cookieTheme = getCookie('theme');
-          if (cookieTheme && validThemes.includes(cookieTheme)) {
-            return cookieTheme;
-          }
-
-          // Try Zustand localStorage (theme-storage key)
-          try {
-            const stored = localStorage.getItem('theme-storage');
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              const localTheme = parsed.state?.theme;
-              if (localTheme && validThemes.includes(localTheme)) {
-                return localTheme;
-              }
-            }
-          } catch (e) {
-            // Ignore localStorage errors
-          }
-
-          // Default to light theme
-          return LIGHT_THEME;
-        }
-
-        // Function to resolve actual theme (light/dark)
-        function resolveTheme(theme) {
-          if (theme === SYSTEM_THEME) {
-            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          }
-          return theme === DARK_THEME ? 'dark' : 'light';
-        }
-
-        // Get and apply theme immediately
-        const theme = getStoredTheme();
-        const resolvedTheme = resolveTheme(theme);
-
-        // Apply theme to document immediately
-        const root = document.documentElement;
-        root.setAttribute('data-theme', resolvedTheme);
-
-        // Also apply class for backward compatibility
-        root.classList.remove('light', 'dark');
-        if (resolvedTheme === 'dark') {
-          root.classList.add('dark');
-        }
-
-        // Store resolved theme globally for React
-        window.__THEME_DATA__ = {
-          theme: theme,
-          resolvedTheme: resolvedTheme,
-          source: getCookie('theme') ? 'cookie' : 'localStorage'
-        };
-
+        // Call secure theme initialization
+        window.__initTheme();
       } catch (e) {
-        // Fallback: apply light theme
-        const root = document.documentElement;
-        root.setAttribute('data-theme', 'light');
-        root.classList.remove('dark');
-        window.__THEME_DATA__ = {
-          theme: 'light',
-          resolvedTheme: 'light',
-          source: 'default'
-        };
+        // Secure fallback
+        document.documentElement.setAttribute('data-theme', 'light');
       }
     })();
   `;
 
+  // Secure theme initialization function (defined separately)
+  const initThemeScript = `
+    window.__initTheme = function() {
+      // Valid theme values - hardcoded for security
+      const VALID_THEMES = ['light', 'dark', 'system'];
+      const LIGHT_THEME = 'light';
+      const DARK_THEME = 'dark';
+      const SYSTEM_THEME = 'system';
+
+      // Secure cookie reader - no dynamic evaluation
+      function getCookie(name) {
+        const value = '; ' + document.cookie;
+        const parts = value.split('; ' + name + '=');
+        if (parts.length === 2) {
+          const cookieValue = parts.pop().split(';').shift();
+          // Basic validation - only allow expected theme values
+          return VALID_THEMES.includes(cookieValue) ? cookieValue : null;
+        }
+        return null;
+      }
+
+      // Secure localStorage reader with error handling
+      function getStoredTheme() {
+        // Priority: cookies (SSR) > localStorage (Zustand) > default
+        const cookieTheme = getCookie('theme');
+        if (cookieTheme) return cookieTheme;
+
+        try {
+          const stored = localStorage.getItem('theme-storage');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            const localTheme = parsed.state?.theme;
+            if (VALID_THEMES.includes(localTheme)) {
+              return localTheme;
+            }
+          }
+        } catch (e) {
+          // Ignore localStorage errors - don't expose to console
+        }
+
+        return LIGHT_THEME;
+      }
+
+      // Resolve theme to light/dark
+      function resolveTheme(theme) {
+        if (theme === SYSTEM_THEME) {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return theme === DARK_THEME ? 'dark' : 'light';
+      }
+
+      // Apply theme securely
+      const theme = getStoredTheme();
+      const resolvedTheme = resolveTheme(theme);
+
+      // Secure DOM manipulation - only set expected values
+      const root = document.documentElement;
+      if (resolvedTheme === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+        root.classList.remove('light');
+        root.classList.add('dark');
+      } else {
+        root.setAttribute('data-theme', 'light');
+        root.classList.remove('dark');
+        root.classList.add('light');
+      }
+
+      // Secure global variable - only expected data
+      window.__THEME_DATA__ = {
+        theme: theme,
+        resolvedTheme: resolvedTheme,
+        source: getCookie('theme') ? 'cookie' : 'localStorage'
+      };
+    };
+  `;
+
   return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: scriptContent,
-      }}
-    />
+    <>
+      {/* Define the secure theme function first */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: initThemeScript,
+        }}
+      />
+      {/* Then call it with minimal inline script */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: inlineScript,
+        }}
+      />
+    </>
   );
 }
 

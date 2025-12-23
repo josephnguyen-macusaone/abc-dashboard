@@ -9,7 +9,7 @@ export interface TokenPayload {
   sub: string;
   exp: number;
   iat: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface TokenManagerConfig {

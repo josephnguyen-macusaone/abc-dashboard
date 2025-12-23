@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useUser } from '@/presentation/contexts/user-context';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { CreateUserDTO, User } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
@@ -21,7 +21,7 @@ interface UserCreateFormProps {
 
 export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   const { createUser, loading: { createUser: isCreating } } = useUser();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useAuthStore();
   const { success: showSuccess } = useToast();
 
   // Get available roles for the current user based on role creation permissions

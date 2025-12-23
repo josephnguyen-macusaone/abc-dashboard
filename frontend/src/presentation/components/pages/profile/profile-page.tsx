@@ -6,12 +6,12 @@ import { DashboardTemplate } from '@/presentation/components/templates/dashboard
 import { Typography } from '@/presentation/components/atoms';
 import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/atoms/primitives/avatar';
 import { Button } from '@/presentation/components/atoms/primitives/button';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { Mail, Phone, Edit3, Key } from 'lucide-react';
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const router = useRouter();
 
   // Early return if user data is not available

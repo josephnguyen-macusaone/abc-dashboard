@@ -58,11 +58,22 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     originalConsoleError.apply(console, args);
   };
 
-  // Reset suppress count periodically
-  setInterval(() => {
-    suppressCount = 0;
-    lastErrorTime = 0;
-  }, 10000);
+  // Reset suppress count periodically (only in development)
+  let suppressInterval: ReturnType<typeof setInterval> | null = null;
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    suppressInterval = setInterval(() => {
+      suppressCount = 0;
+      lastErrorTime = 0;
+    }, 10000);
+
+    // Clean up interval when page unloads
+    window.addEventListener('beforeunload', () => {
+      if (suppressInterval) {
+        clearInterval(suppressInterval);
+        suppressInterval = null;
+      }
+    });
+  }
 }
 
 interface Props {
@@ -94,6 +105,7 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   private maxRetries: number = 3;
   private retryTimeout: number = 1000;
+  private retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: Props) {
     super(props);
@@ -145,6 +157,14 @@ export class ErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo);
   }
 
+  componentWillUnmount() {
+    // Clean up any pending retry timeout
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+      this.retryTimeoutId = null;
+    }
+  }
+
 
   handleReset = () => {
     this.setState({
@@ -162,6 +182,12 @@ export class ErrorBoundary extends Component<Props, State> {
     const { retryCount } = this.state;
 
     if (retryCount < this.maxRetries) {
+      // Clear any existing retry timeout
+      if (this.retryTimeoutId) {
+        clearTimeout(this.retryTimeoutId);
+        this.retryTimeoutId = null;
+      }
+
       // Exponential backoff
       const delay = this.retryTimeout * Math.pow(2, retryCount);
 
@@ -170,7 +196,7 @@ export class ErrorBoundary extends Component<Props, State> {
         delay,
       });
 
-      setTimeout(() => {
+      this.retryTimeoutId = setTimeout(() => {
         this.setState(prevState => ({
           hasError: false,
           error: null,
@@ -178,6 +204,7 @@ export class ErrorBoundary extends Component<Props, State> {
           errorId: null,
           retryCount: prevState.retryCount + 1,
         }));
+        this.retryTimeoutId = null; // Clear the timeout ID after execution
       }, delay);
     }
   };

@@ -17,7 +17,7 @@ interface LicensesDataGridSkeletonProps {
 export function LicensesDataGridSkeleton({
   className,
   rowCount = 20,
-  height = 600,
+  height = 1200,
   showAddRow = true,
   showPagination = true,
 }: LicensesDataGridSkeletonProps) {

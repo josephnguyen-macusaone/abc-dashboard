@@ -8,7 +8,7 @@ import axios, {
 import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
 import { handleApiError } from '@/infrastructure/api/errors';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
-import { startTrace, injectIntoHeaders } from '@/shared/helpers/tracing';
+import { startTrace, injectIntoHeaders, TraceContext } from '@/shared/helpers/tracing';
 import { API_CONFIG } from '@/shared/constants';
 import { createApiCircuitBreaker, CircuitBreaker } from '@/shared/helpers/circuit-breaker';
 
@@ -71,11 +71,11 @@ class HttpClient {
       (config: InternalAxiosRequestConfig) => {
         // Generate correlation ID for this request
         const correlationId = generateCorrelationId();
-        (config as InternalAxiosRequestConfig & { correlationId: string; trace: any }).correlationId = correlationId;
+        (config as InternalAxiosRequestConfig & { correlationId: string; trace: TraceContext }).correlationId = correlationId;
 
         // Start trace for this request
         const trace = startTrace(`api_${config.method?.toUpperCase()}_${config.url}`);
-        (config as InternalAxiosRequestConfig & { correlationId: string; trace: any }).trace = trace;
+        (config as InternalAxiosRequestConfig & { correlationId: string; trace: TraceContext }).trace = trace;
 
         // Inject trace headers
         const traceHeaders = injectIntoHeaders(trace);

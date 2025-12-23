@@ -132,7 +132,7 @@ export const useAuthStore = create<AuthState>()(
               // Check if user requires password change
               if (authResult.user?.requiresPasswordChange) {
                 // Store user data but don't authenticate yet
-                const user = User.fromObject(authResult.user);
+                const user = User.fromObject(authResult.user as unknown as Record<string, unknown>);
                 set({ user });
                 CookieService.setUser(user);
                 LocalStorageService.setUser(user);
@@ -265,7 +265,7 @@ export const useAuthStore = create<AuthState>()(
           updateProfile: async (updates) => {
             try {
               const response = await authApi.updateProfile(updates);
-              const updatedUser = User.fromObject(response.user);
+              const updatedUser = User.fromObject(response.user as unknown as Record<string, unknown>);
 
               set({ user: updatedUser });
               CookieService.setUser(updatedUser);
@@ -400,7 +400,7 @@ export const useAuthStore = create<AuthState>()(
           refreshCurrentUser: async () => {
             try {
               const profileData = await authApi.getProfile();
-              const user = User.fromObject(profileData);
+              const user = User.fromObject(profileData as unknown as Record<string, unknown>);
 
               set({ user });
               CookieService.setUser(user);

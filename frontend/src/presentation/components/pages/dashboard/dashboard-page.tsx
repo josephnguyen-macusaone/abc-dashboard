@@ -1,12 +1,12 @@
 'use client';
 
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { DashboardTemplate } from '@/presentation/components/templates';
 import { AdminDashboard, StaffDashboard } from '@/presentation/components/organisms';
 import { USER_ROLES } from '@/shared/constants';
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   // Check if user is admin or manager
   const isAdminOrManager = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.MANAGER;

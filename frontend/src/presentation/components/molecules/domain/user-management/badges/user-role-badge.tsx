@@ -1,5 +1,3 @@
-'use client';
-
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { ROLE_DEFINITIONS, USER_ROLE_COLORS, type UserRoleType } from '@/shared/constants/auth';
 import { Shield, Users, User } from 'lucide-react';

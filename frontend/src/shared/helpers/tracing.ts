@@ -4,7 +4,7 @@ import { CircularBuffer } from './buffer';
 /**
  * Trace context for distributed tracing with performance metrics
  */
-interface TraceContext {
+export interface TraceContext {
   traceId: string;
   spanId: string;
   parentSpanId?: string;
@@ -27,7 +27,7 @@ interface Span {
   endTime?: number;
   duration?: number;
   sampled: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -157,7 +157,7 @@ class TracingUtils {
   /**
    * End a span and record performance metrics
    */
-  endSpan(trace: TraceContext, metadata?: Record<string, any>): void {
+  endSpan(trace: TraceContext, metadata?: Record<string, unknown>): void {
     const span = this.activeSpans.get(trace as object);
     if (!span) return;
 
@@ -314,7 +314,7 @@ class TracingUtils {
   logWithTrace(
     level: 'debug' | 'info' | 'warn' | 'error' | 'trace',
     message: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): void {
     const trace = this.getCurrentTrace();
     const logContext = {
@@ -332,7 +332,7 @@ class TracingUtils {
   /**
    * Create traced function wrapper with automatic span management
    */
-  traceFunction<T extends (...args: any[]) => any>(
+  traceFunction<T extends (...args: never[]) => unknown>(
     operation: string,
     fn: T,
     parentTrace?: TraceContext
@@ -351,9 +351,9 @@ class TracingUtils {
         const result = fn(...args);
 
         // Handle promises
-        if (result && typeof result.then === 'function') {
+        if (result && typeof result === 'object' && result !== null && 'then' in result && typeof result.then === 'function') {
           return result
-            .then((resolvedResult: any) => {
+            .then((resolvedResult: unknown) => {
               this.endSpan(trace, { success: true });
               if (trace.sampled) {
                 this.logWithTrace('trace', `Operation completed: ${operation}`, {
@@ -407,7 +407,7 @@ class TracingUtils {
   /**
    * Create traced async function wrapper
    */
-  traceAsyncFunction<T extends (...args: any[]) => Promise<any>>(
+  traceAsyncFunction<T extends (...args: never[]) => Promise<unknown>>(
     operation: string,
     fn: T,
     parentTrace?: TraceContext
@@ -440,22 +440,22 @@ export const injectIntoHeaders = (trace: TraceContext, headers?: Record<string, 
 export const logWithTrace = (
   level: 'debug' | 'info' | 'warn' | 'error',
   message: string,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ) => tracingUtils.logWithTrace(level, message, context);
 
-export const traceFunction = <T extends (...args: any[]) => any>(
+export const traceFunction = <T extends (...args: never[]) => unknown>(
   operation: string,
   fn: T,
   parentTrace?: TraceContext
 ) => tracingUtils.traceFunction(operation, fn, parentTrace);
 
-export const traceAsyncFunction = <T extends (...args: any[]) => Promise<any>>(
+export const traceAsyncFunction = <T extends (...args: never[]) => Promise<unknown>>(
   operation: string,
   fn: T,
   parentTrace?: TraceContext
 ) => tracingUtils.traceAsyncFunction(operation, fn, parentTrace);
 
-export const endSpan = (trace: TraceContext, metadata?: Record<string, any>) =>
+export const endSpan = (trace: TraceContext, metadata?: Record<string, unknown>) =>
   tracingUtils.endSpan(trace, metadata);
 
 export const getSpanMetrics = (operation?: string) =>

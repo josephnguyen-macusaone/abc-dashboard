@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { PermissionUtils, USER_PERMISSIONS, PermissionType, isValidUserRole } from '@/shared/constants';
 
 interface PermissionGuardProps {
@@ -25,7 +25,7 @@ export function PermissionGuard({
   fallback = null,
   requireAll = false
 }: PermissionGuardProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   // If no specific permission/role requirements, show content
   if (!permission && !userRole) {
@@ -66,7 +66,7 @@ export function AdminOnly({ children, fallback = null }: { children: ReactNode; 
  * Manager or higher access guard
  */
 export function ManagerOrHigher({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const hasAccess = PermissionUtils.isAdmin(user?.role) || PermissionUtils.isManager(user?.role);
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;

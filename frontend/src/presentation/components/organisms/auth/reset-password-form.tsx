@@ -5,6 +5,7 @@ import { Button, Input, Loading, Typography } from '@/presentation/components/at
 import { FormField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth';
+import { useResetPasswordFormStore } from '@/infrastructure/stores/auth/forms';
 import { cn } from '@/shared/helpers';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 
@@ -24,13 +25,20 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
   const toast = useToast();
   const { resetPassword } = useAuthStore();
 
-  const [formData, setFormData] = useState<ResetPasswordFormData>({
-    password: '',
-    confirmPassword: '',
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  // Use Zustand store for form state management
+  const {
+    data: formData,
+    errors,
+    isSubmitting: isLoading,
+    setFieldValue,
+    setFieldError,
+    clearFieldError,
+    validateForm,
+    reset: resetForm,
+  } = useResetPasswordFormStore();
+
+  // Local UI state (minimal)
   const [isSuccess, setIsSuccess] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof ResetPasswordFormData, string | null>>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -41,32 +49,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
   }, [token, toast]);
 
   const handleInputChange = (field: keyof ResetPasswordFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
-  };
-
-  const validateForm = () => {
-    const validationErrors: Partial<Record<keyof ResetPasswordFormData, string | null>> = {};
-
-    if (!formData.password.trim()) {
-      validationErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      validationErrors.password = 'Password must be at least 8 characters long';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      validationErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
-    }
-
-    if (!formData.confirmPassword.trim()) {
-      validationErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      validationErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(validationErrors);
-    return Object.values(validationErrors).every(error => !error);
+    setFieldValue(field, value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,6 +65,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
           loading: 'Resetting your password...',
           success: () => {
             setIsSuccess(true);
+            resetForm(); // Reset form on success
             onSuccess?.();
             return 'Password reset successfully!';
           },

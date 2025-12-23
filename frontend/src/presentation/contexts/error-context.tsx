@@ -6,6 +6,7 @@ import { ApiExceptionDto } from '@/application/dto/api-dto';
 import { handleApiError as processApiError } from '@/infrastructure/api/errors';
 import logger from '@/shared/helpers/logger';
 import { RetryUtils } from '@/shared/helpers/retry';
+import { ErrorLike } from '@/shared/types';
 
 /**
  * Error Context Type
@@ -89,15 +90,24 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
   // Error Handling Utilities
   // ============================================================================
 
-  const getUserFriendlyMessage = useCallback((error: any): string => {
-    const errorMessage = (
-      error?.message ||
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      error?.data?.message ||
-      error?.data?.error ||
+  const getUserFriendlyMessage = useCallback((error: unknown): string => {
+    // Type guards for safe property access
+    const isObject = (value: unknown): value is Record<string, unknown> => {
+      return typeof value === 'object' && value !== null;
+    };
+
+    const errorObj = isObject(error) ? error : {};
+
+    const rawErrorMessage = (
+      errorObj.message ||
+      (isObject(errorObj.response) && isObject(errorObj.response.data) && errorObj.response.data.message) ||
+      (isObject(errorObj.response) && isObject(errorObj.response.data) && errorObj.response.data.error) ||
+      (isObject(errorObj.data) && errorObj.data.message) ||
+      (isObject(errorObj.data) && errorObj.data.error) ||
       String(error)
-    ).toLowerCase();
+    );
+
+    const errorMessage = typeof rawErrorMessage === 'string' ? rawErrorMessage.toLowerCase() : String(rawErrorMessage).toLowerCase();
 
     // Comprehensive error message mapping
     const ERROR_MESSAGE_MAP: Record<string, string> = {
@@ -193,12 +203,24 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     return ERROR_MESSAGE_MAP[errorMessage] || 'An unexpected error occurred. Please try again.';
   }, []);
 
-  // Error categorization for better handling
-  const getErrorCategory = useCallback((error: any): string => {
-    if (!error.response) return 'network';
+  // Type guard for objects
+  const isObject = (value: unknown): value is Record<string, unknown> => {
+    return typeof value === 'object' && value !== null;
+  };
 
-    const status = error.response.status;
-    const message = (error.message || error.response?.data?.message || '').toLowerCase();
+  // Error categorization for better handling
+  const getErrorCategory = useCallback((error: unknown): string => {
+    const errorObj = isObject(error) ? error : {};
+
+    if (!isObject(errorObj.response)) return 'network';
+
+    const status = typeof errorObj.response.status === 'number' ? errorObj.response.status : 0;
+    const rawMessage = (
+      errorObj.message ||
+      (isObject(errorObj.response.data) && errorObj.response.data.message) ||
+      ''
+    );
+    const message = typeof rawMessage === 'string' ? rawMessage.toLowerCase() : String(rawMessage).toLowerCase();
 
     if (status >= 400 && status < 500) {
       if (status === 401 || status === 403) return 'auth';
@@ -224,11 +246,13 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
   // Error Recovery
   // ============================================================================
 
-  const isRecoverableError = useCallback((error: any): boolean => {
-    // Network errors are usually recoverable
-    if (!error.response) return true;
+  const isRecoverableError = useCallback((error: unknown): boolean => {
+    const errorObj = isObject(error) ? error : {};
 
-    const status = error.response.status;
+    // Network errors are usually recoverable
+    if (!isObject(errorObj.response)) return true;
+
+    const status = typeof errorObj.response.status === 'number' ? errorObj.response.status : 0;
     const category = getErrorCategory(error);
 
     // Recoverable categories and status codes
@@ -242,7 +266,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
   // Public API Methods
   // ============================================================================
 
-  const handleApiError = useCallback((error: any, context: string = 'API Error') => {
+  const handleApiError = useCallback((error: unknown, context: string = 'API Error') => {
     logger.error(`API Error in ${context}:`, { error, context });
 
     // If it's already an ApiException, use it directly
@@ -295,7 +319,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     if (category === 'auth') {
       // Log the error but don't show toast - HTTP client will handle logout and redirect
       logger.warn(`Authentication error handled automatically: ${userFriendlyMessage}`, {
-        error: error?.message,
+        error: isObject(error) && typeof error.message === 'string' ? error.message : String(error),
         category: 'auth-error-handled',
       });
       return;
@@ -315,7 +339,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     });
   }, [getUserFriendlyMessage, getErrorCategory]);
 
-  const handleAuthError = useCallback((error: any) => {
+  const handleAuthError = useCallback((error: unknown) => {
     // Only log auth errors, don't show toast - forms handle their own error UI
     const errorResponse = processApiError(error);
     logger.error(`Authentication Error: ${errorResponse.message}`, {
@@ -326,14 +350,14 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     });
   }, []);
 
-  const handleNetworkError = useCallback((error: any) => {
+  const handleNetworkError = useCallback((error: unknown) => {
     logger.error('Network Error:', { error });
     toast.error('Network Error', {
       description: 'Please check your connection and try again.'
     });
   }, []);
 
-  const handleError = useCallback((error: any, context: string = 'Error') => {
+  const handleError = useCallback((error: unknown, context: string = 'Error') => {
     logger.error(`General Error in ${context}:`, { error, context });
 
     // For general errors, show a generic error toast
@@ -349,8 +373,8 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
 
   // Recovery mechanisms
   const attemptRecovery = useCallback(async (
-    error: any,
-    recoveryFn: () => Promise<any>,
+    error: unknown,
+    recoveryFn: () => Promise<unknown>,
     context: string = 'recovery'
   ): Promise<boolean> => {
     if (isRecovering) {
@@ -380,14 +404,17 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
           maxDelay: 5000,
           retryCondition: (recoveryError) => {
             // Only retry network-related recovery failures
-            return !recoveryError.response || recoveryError.response.status >= 500;
+            const errorObj = isObject(recoveryError) ? recoveryError : {};
+            if (!isObject(errorObj.response)) return true; // Network error, retry
+            const status = typeof errorObj.response.status === 'number' ? errorObj.response.status : 0;
+            return status >= 500;
           },
           onRetry: (retryError, attempt, delay) => {
             logger.warn(`Recovery retry attempt ${attempt}`, {
               correlationId,
               context,
               delay,
-              error: retryError?.message,
+              error: isObject(retryError) && typeof retryError.message === 'string' ? retryError.message : String(retryError),
             });
           },
         },
@@ -406,7 +433,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
         correlationId,
         context,
         recoveryAttempt: recoveryAttempts + 1,
-        originalError: error?.message,
+        originalError: isObject(error) && typeof error.message === 'string' ? error.message : String(error),
         recoveryError: recoveryError instanceof Error ? recoveryError.message : String(recoveryError),
       });
 

@@ -2,12 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { LoadingSpinner } from '@/presentation/components/atoms';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   // Only redirect after authentication state is determined
   useEffect(() => {

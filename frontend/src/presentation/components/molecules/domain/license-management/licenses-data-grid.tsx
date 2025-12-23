@@ -48,7 +48,7 @@ interface LicensesDataGridProps {
 export function LicensesDataGrid({
   data: initialData,
   isLoading = false,
-  height = 600,
+  height = 1200,
   className,
   onSave,
   onAddRow,
@@ -189,7 +189,7 @@ export function LicensesDataGrid({
     totalRows: totalCount,
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
-    manualFiltering: !!onQueryChange,
+    manualFiltering: !!onQueryChange, // Enable server-side filtering when onQueryChange provided
     // Don't pass onQueryChange to useDataGrid - we'll handle it manually
   });
 
@@ -246,26 +246,53 @@ export function LicensesDataGrid({
     lastSearchRef.current = currentSearch;
     lastFiltersRef.current = currentFiltersString;
 
-    // Build query params
-    const filterMap = tableColumnFilters?.reduce<Record<string, unknown>>((acc, curr) => {
-      acc[curr.id] = curr.value;
-      return acc;
-    }, {});
-
-    // Extract status filter
-    const statusFilter = filterMap?.status;
-    const status = Array.isArray(statusFilter)
-      ? statusFilter
-      : statusFilter ? String(statusFilter) : undefined;
-
-    const apiParams = {
+    // Build query params with proper filter processing
+    const apiParams: {
+      page: number;
+      limit: number;
+      sortBy?: string;
+      sortOrder: "asc" | "desc";
+      search?: string;
+      status?: string;
+    } = {
       page: tablePageIndex + 1,
       limit: tablePageSize,
       sortBy: activeSort?.id,
       sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
       search: currentSearch || undefined,
-      status: status,
     };
+
+    // Process table column filters to utilize backend API
+    if (tableColumnFilters && tableColumnFilters.length > 0) {
+      tableColumnFilters.forEach(filter => {
+        const filterValue = filter.value as any;
+
+        if (filterValue?.value !== undefined) {
+          // Handle complex filters with operators
+          const operator = filterValue.operator || 'equals';
+          const value = filterValue.value;
+
+          // Map frontend operators to backend API parameters
+          if (filter.id === 'dba' && operator === 'contains') {
+            // "Contains" on DBA field maps to general search
+            apiParams.search = value;
+          } else if (filter.id === 'status') {
+            // Status filtering - backend supports exact match
+            // For now, use the first value if multiple are selected
+            apiParams.status = Array.isArray(value) ? value[0] : value;
+          }
+        } else if (filter.value !== undefined) {
+          // Handle simple filters without operators
+          if (filter.id === 'dba') {
+            apiParams.search = String(filter.value);
+          } else if (filter.id === 'status') {
+            apiParams.status = Array.isArray(filter.value)
+              ? String(filter.value[0])
+              : String(filter.value);
+          }
+        }
+      });
+    }
 
     // Call API
     onQueryChange(apiParams);
@@ -320,7 +347,7 @@ export function LicensesDataGrid({
               />
             </div>
             <DataGridFilterMenu table={gridState.table} />
-            <DataGridSortMenu table={gridState.table} />
+            {/* <DataGridSortMenu table={gridState.table} /> */} {/* Hidden - sorting not working */}
             <DataGridRowHeightMenu table={gridState.table} />
             <DataGridViewMenu table={gridState.table} />
           </div>

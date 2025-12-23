@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/atoms';
 import { ProfileUpdateForm } from '@/presentation/components/organisms/user-profile/profile-update-form';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { User } from 'lucide-react';
 import { Typography } from '@/presentation/components/atoms';
 
@@ -17,7 +17,7 @@ interface ParsedProfileData {
 
 export function EditProfilePage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuthStore();
   const [parsedProfileData, setParsedProfileData] = useState<ParsedProfileData | null>(null);
 
   useEffect(() => {

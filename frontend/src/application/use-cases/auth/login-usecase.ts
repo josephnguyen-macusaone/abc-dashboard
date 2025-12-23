@@ -2,6 +2,7 @@ import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { AuthResult } from '@/domain/entities/user-entity';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { ErrorLike } from '@/shared/types';
 
 export interface LoginUseCaseContract {
   execute: (
@@ -50,8 +51,15 @@ export function createLoginUseCase(
     }
   }
 
-  function handleLoginError(error: any, correlationId: string): Error {
-    const errorMessage = error?.message || 'Login failed';
+  function handleLoginError(error: unknown, correlationId: string): Error {
+    // Type guard to safely access error properties
+    const isErrorLike = (err: unknown): err is ErrorLike => {
+      return typeof err === 'object' && err !== null;
+    };
+
+    const errorMessage = isErrorLike(error) && typeof error.message === 'string'
+      ? error.message
+      : 'Login failed';
 
     if (errorMessage.includes('Invalid credentials')) {
       return new Error('Invalid email or password');

@@ -547,7 +547,7 @@ export class LicenseManagementService {
   }
 
   // Legacy methods for backward compatibility (to be removed after migration)
-  async getLicenses(params: any = {}): Promise<PaginatedResponse<LicenseRecord>> {
+  async getLicenses(params: LicenseListQueryDTO = {}): Promise<PaginatedResponse<LicenseRecord>> {
     const result = await this.list(params as LicenseListQueryDTO);
     return {
       data: result.licenses.map(dto => ({
@@ -604,7 +604,7 @@ export class LicenseManagementService {
     };
   }
 
-  async createLicense(licenseData: any): Promise<LicenseRecord> {
+  async createLicense(licenseData: CreateLicenseDTO): Promise<LicenseRecord> {
     const result = await this.create(licenseData);
     return {
       id: parseInt(result.id),
@@ -631,7 +631,7 @@ export class LicenseManagementService {
     };
   }
 
-  async updateLicense(id: string, updates: any): Promise<LicenseRecord> {
+  async updateLicense(id: string, updates: UpdateLicenseDTO): Promise<LicenseRecord> {
     const result = await this.update(id, updates);
     return {
       id: parseInt(result.id),

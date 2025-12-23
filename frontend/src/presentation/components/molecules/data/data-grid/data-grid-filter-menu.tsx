@@ -442,12 +442,12 @@ function DataGridFilterItem<TData>({
                           prevFilters.map((f) =>
                             f.id === filter.id
                               ? {
-                                  id: value,
-                                  value: {
-                                    operator: newOperator,
-                                    value: "",
-                                  },
-                                }
+                                id: value,
+                                value: {
+                                  operator: newOperator,
+                                  value: "",
+                                },
+                              }
                               : f,
                           ),
                         );

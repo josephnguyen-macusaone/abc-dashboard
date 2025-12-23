@@ -21,6 +21,7 @@ import type { User } from "@/domain/entities/user-entity";
 import type { DataTableRowAction } from "@/types/data-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserStore } from "@/infrastructure/stores/user";
+import { useDataTableStore } from "@/infrastructure/stores/user";
 
 interface UsersDataTableProps {
   data: User[];
@@ -67,6 +68,19 @@ export function UsersDataTable({
 }: UsersDataTableProps) {
   // Get filters from store to sync search value
   const userStore = useUserStore();
+
+  // Use Zustand store for table state management
+  const tableId = 'users-data-table';
+  const {
+    search: searchValue,
+    manualFilters: manualFilterValues,
+  } = useDataTableStore((state) => state.getTableState(tableId));
+  const {
+    setTableSearch,
+    setTableManualFilters,
+    updateTableManualFilter,
+    clearTableFilters,
+  } = useDataTableStore();
 
   const [rowAction, setRowAction] =
     useState<DataTableRowAction<User> | null>(null);
@@ -128,41 +142,31 @@ export function UsersDataTable({
   // Track if we're in a reset operation to prevent duplicate API calls
   const isResettingRef = useRef(false);
 
-  // Initialize search value from store filters (like license management)
-  const [searchValue, setSearchValue] = useState(() => userStore.filters.search || "");
+  // Initialize from user store on mount
+  useEffect(() => {
+    // Initialize table state from user store filters
+    const initialFilters: Record<string, string[]> = {};
 
-  // Initialize manual filter values from store
-  const [manualFilterValues, setManualFilterValues] = useState<Record<string, string[]>>(() => {
-    const initial: Record<string, string[]> = {};
-
-    // Initialize role filter from store
     if (userStore.filters.role) {
       const roleValues = Array.isArray(userStore.filters.role)
         ? userStore.filters.role.map(r => String(r))
         : [String(userStore.filters.role)];
-      initial.role = roleValues;
+      initialFilters.role = roleValues;
     }
 
-    // Initialize isActive filter from store
     if (userStore.filters.isActive !== undefined) {
       const isActiveValues = Array.isArray(userStore.filters.isActive)
         ? userStore.filters.isActive.map(v => String(v))
         : [String(userStore.filters.isActive)];
-      initial.isActive = isActiveValues;
+      initialFilters.isActive = isActiveValues;
     }
 
-    return initial;
-  });
-
-  // Sync search value with store filters when they change
-  useEffect(() => {
-    if (userStore.filters.search !== undefined && userStore.filters.search !== searchValue) {
-      setSearchValue(userStore.filters.search);
-      if (userStore.filters.search) {
-        hasPerformedFilteringRef.current = true;
-      }
+    // Set initial state in data table store
+    if (userStore.filters.search) {
+      setTableSearch(tableId, userStore.filters.search);
     }
-  }, [userStore.filters.search]);
+    setTableManualFilters(tableId, initialFilters);
+  }, [userStore.filters, setTableSearch, setTableManualFilters, tableId]);
 
   // Track filter actions to determine reset button visibility
   // Use a ref to track if user has performed any filtering actions
@@ -203,11 +207,8 @@ export function UsersDataTable({
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
-    setManualFilterValues(prev => ({
-      ...prev,
-      [columnId]: values
-    }));
-  }, []);
+    updateTableManualFilter(tableId, columnId, values);
+  }, [updateTableManualFilter, tableId]);
 
   // Ensure table always has default sorting on mount
   useEffect(() => {
@@ -228,7 +229,7 @@ export function UsersDataTable({
 
   const handleSearchChange = useCallback((value: string) => {
     // Update input immediately for responsive UI
-    setSearchValue(value);
+    setTableSearch(tableId, value);
     hasPerformedFilteringRef.current = true;
 
     // Clear previous timeout
@@ -376,11 +377,11 @@ export function UsersDataTable({
           onClick={() => {
             isResettingRef.current = true;
 
-            setSearchValue("");
+            setTableSearch(tableId, "");
             if (debouncedSearchRef.current) {
               clearTimeout(debouncedSearchRef.current);
             }
-            setManualFilterValues({});
+            clearTableFilters(tableId);
             table.setColumnFilters([]);
             setFilterValues({ role: null, isActive: null });
             hasPerformedFilteringRef.current = false;
@@ -445,7 +446,7 @@ export function UsersDataTable({
           isResettingRef.current = true;
 
           // 1. Clear search state
-          setSearchValue("");
+          setTableSearch(tableId, "");
 
           // Clear debounce timeout
           if (debouncedSearchRef.current) {
@@ -453,7 +454,7 @@ export function UsersDataTable({
           }
 
           // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
-          setManualFilterValues({});
+          clearTableFilters(tableId);
 
           // 3. Clear table filters
           table.setColumnFilters([]);

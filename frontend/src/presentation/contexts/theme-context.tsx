@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { THEMES, THEME_CONFIG } from '@/shared/constants';
 import {
   getThemeData,
@@ -89,6 +89,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   });
 
   const [isHydrated, setIsHydrated] = useState(false);
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Apply theme to DOM
   const applyTheme = useCallback((resolvedTheme: ResolvedTheme) => {
@@ -105,15 +106,22 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     // Handle transition disabling during theme changes
     if (disableTransitionOnChange) {
+      // Clear any existing transition timeout
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
+      }
+
       const css = document.createElement('style');
       css.textContent = '*, *::before, *::after { transition: none !important; }';
       css.setAttribute('data-theme-transition', '');
       document.head.appendChild(css);
 
       // Re-enable transitions after theme change
-      setTimeout(() => {
+      transitionTimeoutRef.current = setTimeout(() => {
         const existing = document.querySelector('[data-theme-transition]');
         if (existing) existing.remove();
+        transitionTimeoutRef.current = null;
       }, THEME_CONFIG.TRANSITION_DURATION);
     }
   }, [attribute, disableTransitionOnChange]);
@@ -173,6 +181,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       applyTheme(currentThemeData.resolvedTheme);
     }
   }, [applyTheme]); // Remove themeData from deps to avoid loops
+
+  // Cleanup transition timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const value: ThemeContextType = {
     theme: themeData.theme,

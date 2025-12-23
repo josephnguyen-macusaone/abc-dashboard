@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
-import { useAuth } from '@/presentation/contexts/auth-context';
-import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth';
+import { useToast } from '@/presentation/contexts/toast-context';
+import { useLoginFormStore } from '@/infrastructure/stores/auth/forms';
 import { cn } from '@/shared/helpers';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
@@ -21,54 +21,47 @@ interface LoginFormData {
 }
 
 export function LoginForm({ onSuccess, className }: LoginFormProps) {
-  const { login } = useAuth();
+  const { login } = useAuthStore();
   const toast = useToast();
   const router = useRouter();
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
-  });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string | null>>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  // Use Zustand store for form state management
+  const {
+    data: formData,
+    errors,
+    isSubmitting: isLoading,
+    setFieldValue,
+    validateForm,
+    reset: resetForm,
+  } = useLoginFormStore();
+
+  // Local UI state (minimal)
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleInputChange = (field: keyof LoginFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
+  const handleInputChange = (field: keyof LoginFormData, value: string) => {
+    setFieldValue(field, value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Basic validation
-    const validationErrors: Partial<Record<keyof LoginFormData, string | null>> = {};
-    if (!formData.email.trim()) {
-      validationErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      validationErrors.email = 'Please enter a valid email address';
-    }
-    if (!formData.password.trim()) {
-      validationErrors.password = 'Password is required';
-    }
-    setErrors(validationErrors);
-    const hasErrors = Object.values(validationErrors).some(error => error !== null && error !== undefined);
-    if (hasErrors) return;
+
+    if (!validateForm()) return;
 
     try {
       await toast.promise(
         login(formData.email, formData.password),
         {
           loading: 'Signing you in...',
-          success: 'Welcome back!',
+          success: () => {
+            resetForm(); // Reset form on successful login
+            onSuccess?.();
+            return 'Welcome back!';
+          },
           error: (error: any) => {
             return error?.message || 'Login failed';
           }
         }
       );
-      onSuccess?.();
     } catch (error) {
       // Error already handled by toast.promise
     }

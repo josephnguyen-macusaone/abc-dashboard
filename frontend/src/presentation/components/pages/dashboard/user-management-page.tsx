@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useAuth } from '@/presentation/contexts/auth-context';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User } from '@/domain/entities/user-entity';
@@ -30,7 +30,7 @@ const shouldShowError = (error: unknown): boolean => {
  * which access the UserContext directly.
  */
 export function UserManagementPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useAuthStore();
   const { error: showError, info: showInfo } = useToast();
 
   const userStore = useUserStore();

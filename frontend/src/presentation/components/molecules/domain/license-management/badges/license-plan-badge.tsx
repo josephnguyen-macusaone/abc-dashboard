@@ -1,5 +1,3 @@
-'use client';
-
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import {
   Star,

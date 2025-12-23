@@ -140,7 +140,7 @@ export const useLicenseStore = create<LicenseState>()(
               status: Array.isArray(queryParams.status)
                 ? queryParams.status.join(',')
                 : queryParams.status,
-              sortBy: queryParams.sortBy as keyof LicenseRecord
+              sortBy: queryParams.sortBy as 'dba' | 'status' | 'plan' | 'startsAt' | 'createdAt' | 'updatedAt' | 'lastActive' | 'seatsTotal' | 'seatsUsed' | 'smsBalance' | 'lastPayment' | undefined
             };
 
             // Silent operation - no logging

@@ -8,8 +8,8 @@ export interface RetryConfig {
   baseDelay: number;
   maxDelay: number;
   backoffFactor: number;
-  retryCondition?: (error: any, attempt: number) => boolean;
-  onRetry?: (error: any, attempt: number, delay: number) => void;
+  retryCondition?: (error: unknown, attempt: number) => boolean;
+  onRetry?: (error: unknown, attempt: number, delay: number) => void;
   timeout?: number;
   silent?: boolean; // Disable all retry logging
   logLevel?: 'none' | 'errors' | 'minimal' | 'verbose'; // Control logging verbosity
@@ -23,10 +23,14 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   baseDelay: 1000, // 1 second
   maxDelay: 30000, // 30 seconds
   backoffFactor: 2,
-  retryCondition: (error: any) => {
+  retryCondition: (error: unknown) => {
     // Retry on network errors, 5xx server errors, and timeouts
-    if (!error.response) return true; // Network errors
-    const status = error.response?.status;
+    const errorObj = typeof error === 'object' && error !== null ? error : {};
+    if (!('response' in errorObj) || !errorObj.response) return true; // Network errors
+    const response = errorObj.response;
+    const status = typeof response === 'object' && response !== null && 'status' in response && typeof response.status === 'number'
+      ? response.status
+      : 0;
     return status >= 500 || status === 408 || status === 429;
   },
   silent: false,
@@ -230,7 +234,7 @@ export function retrySync<T>(
 /**
  * Creates a retry wrapper for functions
  */
-export function withRetry<T extends (...args: any[]) => any>(
+export function withRetry<T extends (...args: never[]) => Promise<unknown>>(
   fn: T,
   config: Partial<RetryConfig> = {},
   context?: string
@@ -243,7 +247,7 @@ export function withRetry<T extends (...args: any[]) => any>(
 /**
  * Creates a retry wrapper for synchronous functions
  */
-export function withRetrySync<T extends (...args: any[]) => any>(
+export function withRetrySync<T extends (...args: never[]) => unknown>(
   fn: T,
   config: Partial<RetryConfig> = {},
   context?: string
@@ -263,9 +267,15 @@ export const RETRY_CONFIGS = {
     baseDelay: 1000,
     maxDelay: 10000,
     logLevel: 'minimal' as const,
-    retryCondition: (error: any) => {
+    retryCondition: (error: unknown) => {
       // Retry on network errors and 5xx server errors
-      return !error.response || error.response.status >= 500;
+      const errorObj = typeof error === 'object' && error !== null ? error : {};
+      if (!('response' in errorObj) || !errorObj.response) return true; // Network errors
+      const response = errorObj.response;
+      const status = typeof response === 'object' && response !== null && 'status' in response && typeof response.status === 'number'
+        ? response.status
+        : 0;
+      return status >= 500;
     },
   },
 
@@ -275,11 +285,11 @@ export const RETRY_CONFIGS = {
     baseDelay: 500,
     maxDelay: 5000,
     logLevel: 'errors' as const, // Only log errors
-    retryCondition: (error: any) => {
+    retryCondition: (error: unknown) => {
       // Only retry on connection errors, not constraint violations
-      return error.code === 'ECONNRESET' ||
-             error.code === 'ENOTFOUND' ||
-             error.code === 'ETIMEDOUT';
+      const errorObj = typeof error === 'object' && error !== null ? error : {};
+      const code = 'code' in errorObj && typeof errorObj.code === 'string' ? errorObj.code : '';
+      return code === 'ECONNRESET' || code === 'ENOTFOUND' || code === 'ETIMEDOUT';
     },
   },
 
@@ -289,9 +299,11 @@ export const RETRY_CONFIGS = {
     baseDelay: 100,
     maxDelay: 1000,
     logLevel: 'errors' as const, // Only log errors
-    retryCondition: (error: any) => {
+    retryCondition: (error: unknown) => {
       // Only retry on specific file system errors
-      return error.code === 'EMFILE' || error.code === 'ENFILE';
+      const errorObj = typeof error === 'object' && error !== null ? error : {};
+      const code = 'code' in errorObj && typeof errorObj.code === 'string' ? errorObj.code : '';
+      return code === 'EMFILE' || code === 'ENFILE';
     },
   },
 
@@ -301,9 +313,13 @@ export const RETRY_CONFIGS = {
     baseDelay: 1000,
     maxDelay: 30000,
     logLevel: 'minimal' as const,
-    retryCondition: (error: any) => {
-      if (!error.response) return true; // Network errors
-      const status = error.response.status;
+    retryCondition: (error: unknown) => {
+      const errorObj = typeof error === 'object' && error !== null ? error : {};
+      if (!('response' in errorObj) || !errorObj.response) return true; // Network errors
+      const response = errorObj.response;
+      const status = typeof response === 'object' && response !== null && 'status' in response && typeof response.status === 'number'
+        ? response.status
+        : 0;
       return status >= 500 || status === 429 || status === 408;
     },
   },
@@ -314,9 +330,15 @@ export const RETRY_CONFIGS = {
     baseDelay: 500,
     maxDelay: 15000,
     logLevel: 'minimal' as const, // Still minimal but with more attempts
-    retryCondition: (error: any) => {
+    retryCondition: (error: unknown) => {
       // More aggressive retry for critical operations
-      return !error.response || error.response.status >= 500 || error.response.status === 429;
+      const errorObj = typeof error === 'object' && error !== null ? error : {};
+      if (!('response' in errorObj) || !errorObj.response) return true; // Network errors
+      const response = errorObj.response;
+      const status = typeof response === 'object' && response !== null && 'status' in response && typeof response.status === 'number'
+        ? response.status
+        : 0;
+      return status >= 500 || status === 429;
     },
   },
 
@@ -327,8 +349,14 @@ export const RETRY_CONFIGS = {
     maxDelay: 10000,
     silent: true,
     logLevel: 'none' as const,
-    retryCondition: (error: any) => {
-      return !error.response || error.response.status >= 500;
+    retryCondition: (error: unknown) => {
+      const errorObj = typeof error === 'object' && error !== null ? error : {};
+      if (!('response' in errorObj) || !errorObj.response) return true; // Network errors
+      const response = errorObj.response;
+      const status = typeof response === 'object' && response !== null && 'status' in response && typeof response.status === 'number'
+        ? response.status
+        : 0;
+      return status >= 500;
     },
   },
 } as const;
@@ -389,7 +417,7 @@ export const RetryUtils = {
   /**
    * Creates a retry wrapper with custom logging level
    */
-  withLoggingLevel<T extends (...args: any[]) => any>(
+  withLoggingLevel<T extends (...args: never[]) => Promise<unknown>>(
     fn: T,
     logLevel: RetryConfig['logLevel'] = 'minimal',
     context?: string
