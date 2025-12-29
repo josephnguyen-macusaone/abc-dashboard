@@ -94,8 +94,9 @@ export function middleware(request: NextRequest) {
     const isValidActionId = /^[a-f0-9]{40}$/i.test(nextActionHeader);
 
     if (!isValidActionId) {
-      // Log and reject invalid Server Action requests
-      middlewareLogger.warn('Blocked invalid Server Action request', {
+      // Log and reject invalid Server Action requests (bots/scanners)
+      // Using debug level since this is expected security behavior
+      middlewareLogger.debug('Security: Blocked invalid Server Action probe', {
         nextActionHeader: nextActionHeader.substring(0, 50), // Truncate for security
         userAgent: request.headers.get('user-agent')?.substring(0, 100),
         ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',

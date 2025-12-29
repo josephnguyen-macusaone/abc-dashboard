@@ -80,6 +80,11 @@ USER nextjs
 
 EXPOSE 3000
 
+# Configure Next.js to listen on all interfaces (0.0.0.0)
+# This ensures health checks from localhost work properly
+ENV HOSTNAME="0.0.0.0"
+ENV PORT=3000
+
 # Health check for docker-compose
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:3000/ || exit 1
