@@ -16,15 +16,30 @@ coverage
 .cache
 .parcel-cache
 
-# Testing
-tests/__mocks__/**
-tests/coverage/**
+# Testing (completely excluded from builds)
+tests/**
+tests
+__tests__/**
+__mocks__/**
 *.test.js
 *.test.ts
+*.test.jsx
+*.test.tsx
 *.spec.js
 *.spec.ts
+*.spec.jsx
+*.spec.tsx
 jest.config.js
+jest.config.ts
 jest.setup.js
+jest.setup.ts
+vitest.config.js
+vitest.config.ts
+playwright.config.js
+playwright.config.ts
+cypress.config.js
+cypress/**
+.jest/**
 
 # Documentation (not needed for builds)
 docs/**

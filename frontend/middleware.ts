@@ -85,7 +85,7 @@ export function middleware(request: NextRequest) {
 
   // ==========================================================================
   // SECURITY: Block malformed Server Action requests from bots/scanners
-  // These are external bots sending POST requests with invalid "Next-Action: x" headers
+  // Validate Server Action IDs to prevent malicious requests
   // ==========================================================================
   const nextActionHeader = request.headers.get('next-action');
   if (nextActionHeader) {
@@ -94,7 +94,15 @@ export function middleware(request: NextRequest) {
     const isValidActionId = /^[a-f0-9]{40}$/i.test(nextActionHeader);
 
     if (!isValidActionId) {
-      // Silently reject invalid Server Action requests (don't log to reduce noise)
+      // Log and reject invalid Server Action requests
+      middlewareLogger.warn('Blocked invalid Server Action request', {
+        nextActionHeader: nextActionHeader.substring(0, 50), // Truncate for security
+        userAgent: request.headers.get('user-agent')?.substring(0, 100),
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        pathname,
+        method: request.method
+      });
+
       const response = new NextResponse(
         JSON.stringify({ error: 'Invalid request' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -103,13 +111,12 @@ export function middleware(request: NextRequest) {
       return response;
     }
 
-    // This app doesn't use Server Actions - block ALL Server Action requests
-    const response = new NextResponse(
-      JSON.stringify({ error: 'Not found' }),
-      { status: 404, headers: { 'Content-Type': 'application/json' } }
-    );
-    applySecurityHeaders(response);
-    return response;
+    // Allow valid Server Action requests to proceed
+    // Next.js will handle the actual server action routing
+    middlewareLogger.debug('Allowing valid Server Action request', {
+      nextActionId: nextActionHeader.substring(0, 8) + '...', // Log partial ID for debugging
+      pathname
+    });
   }
 
   middlewareLogger.debug('Processing request', {
@@ -121,7 +128,8 @@ export function middleware(request: NextRequest) {
   // Skip middleware for API routes, static files, and Next.js internals
   if (
     pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
+    pathname.startsWith('/_next/static') ||
+    pathname.startsWith('/_next/image') ||
     pathname.includes('.') ||
     pathname.startsWith('/favicon')
   ) {
@@ -267,12 +275,9 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match ALL request paths to catch server actions and other requests
+     * We'll filter out static files and API routes in the middleware logic
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/(.*)',
   ],
 };

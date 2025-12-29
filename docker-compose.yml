@@ -25,6 +25,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
       # Multi-layer caching strategy for backend
       cache_from:
         - abc-dashboard-backend:latest
@@ -38,9 +40,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 256M  # Reduced for 1GB RAM server
+          cpus: '0.3'
         reservations:
-          memory: 256M
+          memory: 128M
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=5000
@@ -81,6 +84,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+        - BUILDKIT_INLINE_CACHE=1
       # Multi-layer caching strategy
       cache_from:
         - abc-dashboard-frontend:latest
@@ -95,9 +99,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G  # Increased for build performance
+          memory: 512M  # Reduced for 1GB RAM server
+          cpus: '0.5'
         reservations:
-          memory: 1G
+          memory: 256M
     environment:
       - NODE_ENV=${NODE_ENV}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
@@ -108,7 +113,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,54 +1,88 @@
-# Multi-stage build: development runner + production Next.js server
-FROM node:20-alpine AS base
+# ============================================================
+# OPTIMIZED MULTI-STAGE DOCKERFILE FOR 1GB RAM SERVERS
+# ============================================================
+# Key optimizations:
+# - BuildKit cache mounts for npm (persistent across builds)
+# - Separate dependency and build stages (better layer caching)
+# - Reduced memory limits (1GB heap for Next.js)
+# - Single npm install (no redundant installs)
+# - Minimal production image (Node.js + built artifacts only)
+# ============================================================
+
+# ============================================================
+# Stage 1: Dependencies - Install node_modules (CACHEABLE)
+# ============================================================
+FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy only package files for dependency installation
 COPY package*.json ./
 
-# Install all deps for building (includes dev deps for type checks)
-# Use BuildKit cache mount for npm cache + bind mount for faster installs
+# Install dependencies with BuildKit cache mount
+# This cache persists across builds - HUGE time saver!
 RUN --mount=type=cache,target=/root/.npm \
     --mount=type=cache,target=/app/.npm-cache \
-    npm ci --prefer-offline --no-audit
+    npm ci --prefer-offline --no-audit --cache=/app/.npm-cache
 
+# ============================================================
+# Stage 2: Builder - Build Next.js app (CACHEABLE CODE)
+# ============================================================
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy node_modules from deps stage (no need to reinstall!)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy all source files
 COPY . .
 
-# Development stage (kept for local convenience)
-FROM base AS development
-EXPOSE 3000
-ENV NODE_ENV=development
-CMD ["npm", "run", "dev"]
-
-# Production build stage
-FROM base AS builder
+# Build arguments for Next.js
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-# Server Actions encryption key is optional for development builds
-# Use cache mount for Next.js build cache
-RUN --mount=type=cache,target=/app/.next/cache \
+
+# Build Next.js with REDUCED memory limit for 1GB RAM servers
+# Disable webpack build workers to save memory
+# Use standalone output for minimal production size
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+RUN NODE_OPTIONS="--max-old-space-size=1024" \
     npm run build
 
-# Production runtime stage - run Next.js server
+# Verify standalone build was created
+RUN ls -lah .next/standalone || (echo "ERROR: Standalone build not found!" && exit 1)
+
+# ============================================================
+# Stage 3: Production - Minimal runtime image
+# ============================================================
 FROM node:20-alpine AS production
 WORKDIR /app
+
 ENV NODE_ENV=production
-# Enable Next.js optimizations
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install only production dependencies
-COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    --mount=type=cache,target=/app/.npm-cache \
-    npm ci --omit=dev --prefer-offline --no-audit && \
-    npm cache clean --force
+# Install only what's needed for health checks
+RUN apk add --no-cache wget
 
-# Copy the standalone server build produced by Next.js
+# Copy standalone Next.js server (includes runtime deps)
 COPY --from=builder /app/.next/standalone ./
+
+# Copy static assets
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 && \
+    chown -R nextjs:nodejs /app
+
+USER nextjs
+
 EXPOSE 3000
+
+# Health check for docker-compose
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:3000/ || exit 1
 
+# Start the standalone Next.js server
 CMD ["node", "server.js"]
