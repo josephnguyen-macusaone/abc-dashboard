@@ -21,6 +21,9 @@ const customJestConfig = {
     '^@/types$': '<rootDir>/src/shared/types',
     '^@/types/(.*)$': '<rootDir>/src/shared/types/$1',
     '^@assets/(.*)$': '<rootDir>/assets/$1',
+    // Handle CSS and asset imports
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/tests/__mocks__/fileMock.js',
   },
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
@@ -52,11 +55,6 @@ const customJestConfig = {
     '^.+\\.module\\.(css|sass|scss)$',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  // Handle CSS imports
-  moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/tests/__mocks__/fileMock.js',
-  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
