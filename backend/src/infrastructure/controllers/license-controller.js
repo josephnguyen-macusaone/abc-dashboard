@@ -1,6 +1,7 @@
 import { LicenseValidator } from '../../application/validators/license-validator.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import logger from '../config/logger.js';
 
 export class LicenseController {
   constructor(licenseService) {
@@ -179,6 +180,11 @@ export class LicenseController {
 
   getDashboardMetrics = async (req, res) => {
     try {
+      logger.info('Dashboard metrics request:', {
+        query: req.query,
+        userId: req.user?.id
+      });
+
       const query = LicenseValidator.validateListQuery(req.query);
       const dateRange = {};
       if (req.query.startsAtFrom) {
@@ -188,6 +194,11 @@ export class LicenseController {
         dateRange.startsAtTo = decodeURIComponent(req.query.startsAtTo);
       }
 
+      logger.info('Calling license service with:', {
+        filters: query.filters,
+        dateRange
+      });
+
       const metrics = await this.licenseService.getDashboardMetrics({
         filters: query.filters,
         ...(Object.keys(dateRange).length > 0 && { dateRange }),
@@ -195,6 +206,11 @@ export class LicenseController {
 
       return res.success(metrics, 'Dashboard metrics retrieved successfully');
     } catch (error) {
+      logger.error('Dashboard metrics error:', {
+        error: error.message,
+        stack: error.stack,
+        query: req.query
+      });
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
       }

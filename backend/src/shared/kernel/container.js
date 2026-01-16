@@ -1,11 +1,13 @@
 import { UserRepository } from '../../infrastructure/repositories/user-repository.js';
 import { UserProfileRepository } from '../../infrastructure/repositories/user-profile-repository.js';
 import { LicenseRepository } from '../../infrastructure/repositories/license-repository.js';
+import { ExternalLicenseRepository } from '../../infrastructure/repositories/external-license-repository.js';
 import connectDB, { getDB } from '../../infrastructure/config/database.js';
 import { AuthController } from '../../infrastructure/controllers/auth-controller.js';
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
 import { LicenseController } from '../../infrastructure/controllers/license-controller.js';
+import { ExternalLicenseController } from '../../infrastructure/controllers/external-license-controller.js';
 import { LicenseService } from '../services/license-service.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
@@ -21,9 +23,12 @@ import { DeleteUserUseCase } from '../../application/use-cases/users/delete-user
 import { GetProfileUseCase } from '../../application/use-cases/profiles/get-profile-use-case.js';
 import { UpdateProfileUseCase as ProfileUpdateProfileUseCase } from '../../application/use-cases/profiles/update-profile-use-case.js';
 import { RecordLoginUseCase } from '../../application/use-cases/profiles/record-login-use-case.js';
+import { SyncExternalLicensesUseCase } from '../../application/use-cases/external-licenses/sync-external-licenses-use-case.js';
+import { ManageExternalLicensesUseCase } from '../../application/use-cases/external-licenses/manage-external-licenses-use-case.js';
 import { AuthService } from '../services/auth-service.js';
 import { TokenService } from '../services/token-service.js';
 import { EmailService } from '../services/email-service.js';
+import { ExternalLicenseApiService } from '../services/external-license-api-service.js';
 import { AuthMiddleware } from '../../infrastructure/middleware/auth-middleware.js';
 
 /**
@@ -73,6 +78,11 @@ class Container {
       licenseRepo.setCorrelationId(correlationId);
     }
 
+    const externalLicenseRepo = this.instances.get('externalLicenseRepository');
+    if (externalLicenseRepo && externalLicenseRepo.setCorrelationId) {
+      externalLicenseRepo.setCorrelationId(correlationId);
+    }
+
     // Set on services
     const authService = this.instances.get('authService');
     if (authService) {
@@ -87,6 +97,11 @@ class Container {
     const emailService = this.instances.get('emailService');
     if (emailService) {
       emailService.correlationId = correlationId;
+    }
+
+    const externalLicenseApiService = this.instances.get('externalLicenseApiService');
+    if (externalLicenseApiService && externalLicenseApiService.setCorrelationId) {
+      externalLicenseApiService.setCorrelationId(correlationId);
     }
 
     // Set on middleware
@@ -134,6 +149,25 @@ class Container {
     return this.instances.get('licenseRepository');
   }
 
+  async getExternalLicenseRepository() {
+    if (!this.instances.has('externalLicenseRepository')) {
+      try {
+        let db = getDB();
+        this.instances.set('externalLicenseRepository', new ExternalLicenseRepository(db));
+      } catch (error) {
+        if (error.message === 'Database not initialized. Call connectDB first.') {
+          // Initialize database connection if not already done
+          await connectDB();
+          const db = getDB();
+          this.instances.set('externalLicenseRepository', new ExternalLicenseRepository(db));
+        } else {
+          throw error;
+        }
+      }
+    }
+    return this.instances.get('externalLicenseRepository');
+  }
+
   getAuthService() {
     if (!this.instances.has('authService')) {
       this.instances.set('authService', new AuthService());
@@ -171,6 +205,13 @@ class Container {
       }
     }
     return this.instances.get('emailService');
+  }
+
+  getExternalLicenseApiService() {
+    if (!this.instances.has('externalLicenseApiService')) {
+      this.instances.set('externalLicenseApiService', new ExternalLicenseApiService());
+    }
+    return this.instances.get('externalLicenseApiService');
   }
 
   async getLicenseService() {
@@ -269,6 +310,27 @@ class Container {
     return new RecordLoginUseCase(await this.getUserProfileRepository());
   }
 
+  // External License Use Cases
+  async getSyncExternalLicensesUseCase() {
+    if (!this.instances.has('syncExternalLicensesUseCase')) {
+      this.instances.set('syncExternalLicensesUseCase', new SyncExternalLicensesUseCase(
+        await this.getExternalLicenseRepository(),
+        this.getExternalLicenseApiService(),
+        await this.getLicenseRepository() // Add internal license repository for sync-to-internal functionality
+      ));
+    }
+    return this.instances.get('syncExternalLicensesUseCase');
+  }
+
+  async getManageExternalLicensesUseCase() {
+    if (!this.instances.has('manageExternalLicensesUseCase')) {
+      this.instances.set('manageExternalLicensesUseCase', new ManageExternalLicensesUseCase(
+        await this.getExternalLicenseRepository()
+      ));
+    }
+    return this.instances.get('manageExternalLicensesUseCase');
+  }
+
   // Controllers
   async getAuthController() {
     return new AuthController(
@@ -308,6 +370,18 @@ class Container {
       this.instances.set('licenseController', new LicenseController(licenseService));
     }
     return this.instances.get('licenseController');
+  }
+
+  async getExternalLicenseController() {
+    if (!this.instances.has('externalLicenseController')) {
+      const syncExternalLicensesUseCase = await this.getSyncExternalLicensesUseCase();
+      const manageExternalLicensesUseCase = await this.getManageExternalLicensesUseCase();
+      this.instances.set('externalLicenseController', new ExternalLicenseController(
+        syncExternalLicensesUseCase,
+        manageExternalLicensesUseCase
+      ));
+    }
+    return this.instances.get('externalLicenseController');
   }
 
   // Middleware

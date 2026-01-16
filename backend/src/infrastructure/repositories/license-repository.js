@@ -67,6 +67,75 @@ export class LicenseRepository extends ILicenseRepository {
     }
   }
 
+  /**
+   * Find license by external App ID
+   */
+  async findByAppId(appId) {
+    if (!appId) {
+      throw new Error('App ID is required for findByAppId');
+    }
+
+    try {
+      const licenseRow = await this.db(this.licensesTable)
+        .where('external_appid', appId)
+        .first();
+      return licenseRow ? this._toLicenseEntity(licenseRow) : null;
+    } catch (error) {
+      logger.error('License findByAppId error', {
+        correlationId: this.correlationId,
+        appId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Find license by external email
+   */
+  async findByEmail(email) {
+    if (!email) {
+      throw new Error('Email is required for findByEmail');
+    }
+
+    try {
+      const licenseRow = await this.db(this.licensesTable)
+        .whereRaw('LOWER(external_email) = ?', [email.toLowerCase()])
+        .first();
+      return licenseRow ? this._toLicenseEntity(licenseRow) : null;
+    } catch (error) {
+      logger.error('License findByEmail error', {
+        correlationId: this.correlationId,
+        email,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Find license by external count ID
+   */
+  async findByCountId(countId) {
+    if (countId === undefined || countId === null) {
+      throw new Error('Count ID is required for findByCountId');
+    }
+
+    try {
+      const licenseRow = await this.db(this.licensesTable)
+        .where('external_countid', countId)
+        .first();
+      return licenseRow ? this._toLicenseEntity(licenseRow) : null;
+    } catch (error) {
+      logger.error('License findByCountId error', {
+        correlationId: this.correlationId,
+        countId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
   async findLicenses(options = {}) {
     const {
       page = 1,
@@ -192,6 +261,20 @@ export class LicenseRepository extends ILicenseRepository {
     // ========================================================================
     // Advanced Filters
     // ========================================================================
+
+    // External data filter - licenses that have external identifiers
+    if (filters.hasExternalData) {
+      query = query.where((qb) => {
+        qb.whereNotNull('external_appid')
+          .orWhereNotNull('external_email')
+          .orWhereNotNull('external_countid');
+      });
+      countQuery = countQuery.where((qb) => {
+        qb.whereNotNull('external_appid')
+          .orWhereNotNull('external_email')
+          .orWhereNotNull('external_countid');
+      });
+    }
 
     // Status filter
     if (filters.status) {
@@ -843,6 +926,32 @@ export class LicenseRepository extends ILicenseRepository {
     if (data.updatedBy !== undefined) dbData.updated_by = data.updatedBy;
     if (data.createdAt !== undefined) dbData.created_at = data.createdAt;
     if (data.updatedAt !== undefined) dbData.updated_at = data.updatedAt;
+
+    // External sync fields
+    if (data.externalAppId !== undefined) dbData.external_appid = data.externalAppId;
+    if (data.external_appid !== undefined) dbData.external_appid = data.external_appid;
+    if (data.externalCountId !== undefined) dbData.external_countid = data.externalCountId;
+    if (data.external_countid !== undefined) dbData.external_countid = data.external_countid;
+    if (data.externalEmail !== undefined) dbData.external_email = data.externalEmail;
+    if (data.external_email !== undefined) dbData.external_email = data.external_email;
+    if (data.externalStatus !== undefined) dbData.external_status = data.externalStatus;
+    if (data.external_status !== undefined) dbData.external_status = data.external_status;
+    if (data.externalPackage !== undefined) dbData.external_package = JSON.stringify(data.externalPackage);
+    if (data.external_package !== undefined) {
+      dbData.external_package = typeof data.external_package === 'string'
+        ? data.external_package
+        : JSON.stringify(data.external_package);
+    }
+    if (data.externalSendbatWorkspace !== undefined) dbData.external_sendbat_workspace = data.externalSendbatWorkspace;
+    if (data.external_sendbat_workspace !== undefined) dbData.external_sendbat_workspace = data.external_sendbat_workspace;
+    if (data.externalComingExpired !== undefined) dbData.external_coming_expired = data.externalComingExpired;
+    if (data.external_coming_expired !== undefined) dbData.external_coming_expired = data.external_coming_expired;
+    if (data.externalSyncStatus !== undefined) dbData.external_sync_status = data.externalSyncStatus;
+    if (data.external_sync_status !== undefined) dbData.external_sync_status = data.external_sync_status;
+    if (data.lastExternalSync !== undefined) dbData.last_external_sync = data.lastExternalSync;
+    if (data.last_external_sync !== undefined) dbData.last_external_sync = data.last_external_sync;
+    if (data.externalSyncError !== undefined) dbData.external_sync_error = data.externalSyncError;
+    if (data.external_sync_error !== undefined) dbData.external_sync_error = data.external_sync_error;
 
     return dbData;
   }

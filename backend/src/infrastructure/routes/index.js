@@ -3,6 +3,7 @@ import { createAuthRoutes } from './auth-routes.js';
 import { createUserRoutes } from './user-routes.js';
 import { createProfileRoutes } from './profile-routes.js';
 import { createLicenseRoutes } from './license-routes.js';
+import { createExternalLicenseRoutes } from './external-license-routes.js';
 import { awilixContainer } from '../../shared/kernel/container.js';
 
 /**
@@ -29,6 +30,10 @@ export const createRoutes = async () => {
   const licenseController = await awilixContainer.getLicenseController();
   const authMiddleware = await awilixContainer.getAuthMiddleware();
   router.use('/licenses', createLicenseRoutes(licenseController, authMiddleware));
+
+  // External License routes (real external API integration)
+  const externalLicenseController = await awilixContainer.getExternalLicenseController();
+  router.use('/external-licenses', createExternalLicenseRoutes(externalLicenseController, authMiddleware));
 
   return router;
 };

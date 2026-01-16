@@ -22,7 +22,7 @@ src/
 
 - Node.js 18+
 - npm, yarn, pnpm, or bun
-- Backend server running on port 5000
+- Backend server running on port 5001
 
 ## 🛠️ Technology Stack
 
@@ -116,7 +116,7 @@ The application supports multiple environment configurations:
 
 ```bash
 # Backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
 ```
 
 #### Optional Variables
@@ -135,7 +135,7 @@ NEXT_PUBLIC_SENTRY_DSN=
 #### Development (`.env.development`)
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=true
 NEXT_PUBLIC_ENABLE_ANALYTICS=false
 ```

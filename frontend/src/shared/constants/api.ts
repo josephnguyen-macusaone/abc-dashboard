@@ -15,7 +15,7 @@ const validateAndNormalizeBaseURL = (url: string | undefined): string => {
     return '/api/v1';
   }
 
-  const DEFAULT_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+  const DEFAULT_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
 
   // If URL is empty, undefined, or null, use default
   if (!url || url.trim() === '') {

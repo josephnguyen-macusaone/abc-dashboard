@@ -74,9 +74,9 @@ PORT=5000
 
 **URLs**:
 
-- API: <http://localhost:5000>
-- Docs: <http://localhost:5000/api-docs>
-- Health: <http://localhost:5000/api/v1/health>
+- API: <http://localhost:5001>
+- Docs: <http://localhost:5001/api-docs>
+- Health: <http://localhost:5001/api/v1/health>
 
 ## Scripts
 

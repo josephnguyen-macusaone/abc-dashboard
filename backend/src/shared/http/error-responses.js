@@ -421,6 +421,13 @@ export const createErrorResponse = (errorKey, templateData = {}, additionalData 
 
 export const sendErrorResponse = (res, errorKey, templateData = {}, additionalData = {}) => {
   const errorResponse = new ErrorResponse(errorKey, templateData, additionalData);
+
+  // Ensure CORS headers are included for error responses
+  res.header('Access-Control-Allow-Origin', res.req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
   return res.status(errorResponse.statusCode).json(errorResponse.toResponse());
 };
 

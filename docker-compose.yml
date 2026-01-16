@@ -36,7 +36,7 @@ services:
     container_name: abc-dashboard-backend
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5001:5000"
     deploy:
       resources:
         limits:
@@ -64,6 +64,7 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
     volumes:
       - ./backend/logs:/app/logs
+      - ./.env:/app/.env:ro
     networks:
       - abc-dashboard-network
     depends_on:
