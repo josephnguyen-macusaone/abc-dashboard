@@ -49,6 +49,12 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
        *           type: boolean
        *           default: false
        *         description: Also sync internal license changes back to external API
+       *       - in: query
+       *         name: comprehensive
+       *         schema:
+       *           type: boolean
+       *           default: true
+       *         description: Use comprehensive reconciliation (external-first, internal-second, compare gaps)
    *     responses:
    *       200:
    *         description: Sync completed successfully

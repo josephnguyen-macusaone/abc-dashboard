@@ -79,9 +79,9 @@ app.use(securityHeaders);
 // CORS configuration - simplified for development
 const corsOptions = {
   origin: true, // Allow all origins
-  credentials: true,
+        credentials: true,
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
-};
+      };
 
 app.use(cors(corsOptions));
 

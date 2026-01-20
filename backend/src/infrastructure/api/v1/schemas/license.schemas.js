@@ -92,11 +92,9 @@ export const licenseSchemas = {
       'string.max': 'Product cannot exceed 100 characters',
     }),
 
-    dba: Joi.string().trim().min(1).max(255).required().messages({
-      'string.min': 'DBA cannot be empty',
+    dba: Joi.string().trim().allow('').max(255).required().messages({
       'string.max': 'DBA cannot exceed 255 characters',
       'any.required': 'DBA is required',
-      'string.empty': 'DBA cannot be empty',
     }),
 
     zip: Joi.string().trim().max(10).messages({
@@ -168,8 +166,7 @@ export const licenseSchemas = {
    * Update license schema
    */
   updateLicense: Joi.object({
-    dba: Joi.string().trim().min(1).max(255).messages({
-      'string.min': 'DBA cannot be empty',
+    dba: Joi.string().trim().allow('').max(255).messages({
       'string.max': 'DBA cannot exceed 255 characters',
     }),
 
@@ -253,8 +250,7 @@ export const licenseSchemas = {
             'string.empty': 'License ID cannot be empty',
           }),
           updates: Joi.object({
-            dba: Joi.string().trim().min(1).max(255).messages({
-              'string.min': 'DBA cannot be empty',
+            dba: Joi.string().trim().allow('').max(255).messages({
               'string.max': 'DBA cannot exceed 255 characters',
             }),
             zip: Joi.string().trim().max(10).messages({
@@ -309,7 +305,10 @@ export const licenseSchemas = {
         Joi.object({
           key: Joi.string().trim().min(1).max(255).required(),
           product: Joi.string().trim().min(1).max(100).default('ABC Business Suite'),
-          dba: Joi.string().trim().min(1).max(255).required(),
+          dba: Joi.string().trim().allow('').max(255).required().messages({
+            'string.max': 'DBA cannot exceed 255 characters',
+            'any.required': 'DBA is required',
+          }),
           zip: Joi.string().trim().max(10),
           startDay: Joi.string().required(),
           status: Joi.string()

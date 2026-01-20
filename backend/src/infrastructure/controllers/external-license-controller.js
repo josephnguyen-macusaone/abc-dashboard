@@ -23,10 +23,11 @@ export class ExternalLicenseController {
     try {
       const options = {
         forceFullSync: req.query.force === 'true',
-        batchSize: parseInt(req.query.batchSize) || 100,
+        batchSize: parseInt(req.query.batchSize) || 20,
         dryRun: req.query.dryRun === 'true',
         syncToInternalOnly: req.query.syncToInternalOnly === 'true',
-        syncBidirectional: req.query.bidirectional === 'true',
+        bidirectional: req.query.bidirectional === 'true',
+        comprehensive: req.query.comprehensive !== 'false', // Default to true for comprehensive approach
       };
 
       logger.info('Starting external license sync via API', {
@@ -69,9 +70,11 @@ export class ExternalLicenseController {
       const result = await this.syncExternalLicensesUseCase.syncSingleLicense(appid);
 
       if (!result.success) {
-        return res.notFound(
-          `License with appid ${appid} not found or sync failed: ${result.error}`
-        );
+        return res.status(404).json({
+          success: false,
+          message: `License with appid ${appid} not found or sync failed: ${result.error}`,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return res.success(result, 'License synced successfully');
@@ -146,8 +149,14 @@ export class ExternalLicenseController {
   getLicenses = async (req, res) => {
     try {
       const options = {
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 10,
+        // Handle multiple pagination parameter formats from frontend
+        page: parseInt(req.query.page) ||
+              (req.query.offset ? Math.floor(parseInt(req.query.offset) / (parseInt(req.query.limit) || parseInt(req.query.per_page) || parseInt(req.query.size) || 10)) + 1 : 1) ||
+              1,
+        limit: parseInt(req.query.limit) ||
+               parseInt(req.query.per_page) ||
+               parseInt(req.query.size) ||
+               10,
         filters: {
           search: req.query.search,
           appid: req.query.appid,
@@ -167,9 +176,9 @@ export class ExternalLicenseController {
 
       return res.paginated(
         result.licenses,
-        result.total,
         result.page,
-        result.totalPages,
+        options.limit,
+        result.total,
         'External licenses retrieved successfully'
       );
     } catch (error) {
@@ -196,7 +205,11 @@ export class ExternalLicenseController {
       const license = await this.manageExternalLicensesUseCase.getLicenseById(id);
 
       if (!license) {
-        return res.notFound('License not found');
+        return res.status(404).json({
+          success: false,
+          message: 'License not found',
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return res.success({ license }, 'License retrieved successfully');
@@ -221,7 +234,11 @@ export class ExternalLicenseController {
       const license = await this.manageExternalLicensesUseCase.getLicenseByAppId(appid);
 
       if (!license) {
-        return res.notFound('License not found');
+        return res.status(404).json({
+          success: false,
+          message: 'License not found',
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return res.success({ license }, 'License retrieved successfully');
@@ -248,7 +265,11 @@ export class ExternalLicenseController {
       );
 
       if (!license) {
-        return res.notFound('License not found');
+        return res.status(404).json({
+          success: false,
+          message: 'License not found',
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return res.success({ license }, 'License retrieved successfully');
@@ -273,7 +294,11 @@ export class ExternalLicenseController {
       const license = await this.manageExternalLicensesUseCase.getLicenseByCountId(countid);
 
       if (!license) {
-        return res.notFound('License not found');
+        return res.status(404).json({
+          success: false,
+          message: 'License not found',
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return res.success({ license }, 'License retrieved successfully');
@@ -328,7 +353,11 @@ export class ExternalLicenseController {
       const license = await this.manageExternalLicensesUseCase.updateLicense(id, req.body);
 
       if (!license) {
-        return res.notFound('License not found');
+        return res.status(404).json({
+          success: false,
+          message: 'License not found',
+          timestamp: new Date().toISOString(),
+        });
       }
 
       logger.info('External license updated via API', {
@@ -365,7 +394,11 @@ export class ExternalLicenseController {
       const deleted = await this.manageExternalLicensesUseCase.deleteLicense(id);
 
       if (!deleted) {
-        return res.notFound('License not found');
+        return res.status(404).json({
+          success: false,
+          message: 'License not found',
+          timestamp: new Date().toISOString(),
+        });
       }
 
       logger.info('External license deleted via API', {

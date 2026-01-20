@@ -131,7 +131,6 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     const offset = (page - 1) * limit;
 
     let query = this.db(this.licensesTable);
-    let countQuery = this.db(this.licensesTable);
 
     // Apply filters
     if (filters.search) {
@@ -141,56 +140,43 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
           .orWhereRaw('email_license ILIKE ?', [searchTerm])
           .orWhereRaw('dba ILIKE ?', [searchTerm]);
       });
-      countQuery = countQuery.where((qb) => {
-        qb.whereRaw('appid ILIKE ?', [searchTerm])
-          .orWhereRaw('email_license ILIKE ?', [searchTerm])
-          .orWhereRaw('dba ILIKE ?', [searchTerm]);
-      });
     }
 
     // Individual field filters
     if (filters.appid) {
       query = query.whereRaw('appid ILIKE ?', [`%${filters.appid}%`]);
-      countQuery = countQuery.whereRaw('appid ILIKE ?', [`%${filters.appid}%`]);
     }
     if (filters.email) {
       query = query.whereRaw('email_license ILIKE ?', [`%${filters.email}%`]);
-      countQuery = countQuery.whereRaw('email_license ILIKE ?', [`%${filters.email}%`]);
     }
     if (filters.dba) {
       query = query.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
-      countQuery = countQuery.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
     }
 
     // Status filter
     if (filters.status !== undefined) {
       query = query.where('status', filters.status);
-      countQuery = countQuery.where('status', filters.status);
     }
 
     // License type filter
     if (filters.license_type) {
       query = query.where('license_type', filters.license_type);
-      countQuery = countQuery.where('license_type', filters.license_type);
     }
 
     // Sync status filter
     if (filters.syncStatus) {
       query = query.where('sync_status', filters.syncStatus);
-      countQuery = countQuery.where('sync_status', filters.syncStatus);
     }
 
     // Date range filters
     if (filters.createdAtFrom) {
       const fromDate = new Date(filters.createdAtFrom);
       query = query.where('created_at', '>=', fromDate);
-      countQuery = countQuery.where('created_at', '>=', fromDate);
     }
     if (filters.createdAtTo) {
       const toDate = new Date(filters.createdAtTo);
       toDate.setHours(23, 59, 59, 999);
       query = query.where('created_at', '<=', toDate);
-      countQuery = countQuery.where('created_at', '<=', toDate);
     }
 
     const [licenses, stats] = await Promise.all([
@@ -581,12 +567,13 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       throw new Error('License row is null or undefined');
     }
 
+
     return new ExternalLicense({
       countid: licenseRow.countid,
       id: licenseRow.id,
       appid: licenseRow.appid,
       license_type: licenseRow.license_type,
-      dba: licenseRow.dba,
+      dba: licenseRow.dba || licenseRow.email_license || '',
       zip: licenseRow.zip,
       mid: licenseRow.mid,
       status: licenseRow.status,
@@ -619,31 +606,77 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
   _toExternalLicenseDbFormat(data) {
     const dbData = {};
 
-    if (data.countid !== undefined) dbData.countid = data.countid;
-    if (data.id !== undefined) dbData.id = data.id;
-    if (data.appid !== undefined) dbData.appid = data.appid;
-    if (data.license_type !== undefined) dbData.license_type = data.license_type;
-    if (data.dba !== undefined) dbData.dba = data.dba;
-    if (data.zip !== undefined) dbData.zip = data.zip;
-    if (data.mid !== undefined) dbData.mid = data.mid;
-    if (data.status !== undefined) dbData.status = data.status;
-    if (data.ActivateDate !== undefined) dbData.activate_date = data.ActivateDate;
-    if (data.Coming_expired !== undefined) dbData.coming_expired = data.Coming_expired;
-    if (data.monthlyFee !== undefined) dbData.monthly_fee = data.monthlyFee;
-    if (data.smsBalance !== undefined) dbData.sms_balance = data.smsBalance;
-    if (data.Email_license !== undefined) dbData.email_license = data.Email_license;
-    if (data.pass !== undefined) dbData.pass = data.pass;
-    if (data.Package !== undefined) dbData.package = JSON.stringify(data.Package);
-    if (data.Note !== undefined) dbData.note = data.Note;
-    if (data.Sendbat_workspace !== undefined) dbData.sendbat_workspace = data.Sendbat_workspace;
-    if (data.lastActive !== undefined) dbData.last_active = data.lastActive;
+    if (data.countid !== undefined) {
+      dbData.countid = data.countid;
+    }
+    if (data.id !== undefined) {
+      dbData.id = data.id;
+    }
+    if (data.appid !== undefined) {
+      dbData.appid = data.appid;
+    }
+    if (data.license_type !== undefined) {
+      dbData.license_type = data.license_type;
+    }
+    if (data.dba !== undefined) {
+      dbData.dba = data.dba;
+    }
+    if (data.zip !== undefined) {
+      dbData.zip = data.zip;
+    }
+    if (data.mid !== undefined) {
+      dbData.mid = data.mid;
+    }
+    if (data.status !== undefined) {
+      dbData.status = data.status;
+    }
+    if (data.ActivateDate !== undefined) {
+      dbData.activate_date = data.ActivateDate;
+    }
+    if (data.Coming_expired !== undefined) {
+      dbData.coming_expired = data.Coming_expired;
+    }
+    if (data.monthlyFee !== undefined) {
+      dbData.monthly_fee = data.monthlyFee;
+    }
+    if (data.smsBalance !== undefined) {
+      dbData.sms_balance = data.smsBalance;
+    }
+    if (data.Email_license !== undefined) {
+      dbData.email_license = data.Email_license;
+    }
+    if (data.pass !== undefined) {
+      dbData.pass = data.pass;
+    }
+    if (data.Package !== undefined) {
+      dbData.package = JSON.stringify(data.Package);
+    }
+    if (data.Note !== undefined) {
+      dbData.note = data.Note;
+    }
+    if (data.Sendbat_workspace !== undefined) {
+      dbData.sendbat_workspace = data.Sendbat_workspace;
+    }
+    if (data.lastActive !== undefined) {
+      dbData.last_active = data.lastActive;
+    }
 
     // Internal fields
-    if (data.lastSyncedAt !== undefined) dbData.last_synced_at = data.lastSyncedAt;
-    if (data.syncStatus !== undefined) dbData.sync_status = data.syncStatus;
-    if (data.syncError !== undefined) dbData.sync_error = data.syncError;
-    if (data.createdAt !== undefined) dbData.created_at = data.createdAt;
-    if (data.updatedAt !== undefined) dbData.updated_at = data.updatedAt;
+    if (data.lastSyncedAt !== undefined) {
+      dbData.last_synced_at = data.lastSyncedAt;
+    }
+    if (data.syncStatus !== undefined) {
+      dbData.sync_status = data.syncStatus;
+    }
+    if (data.syncError !== undefined) {
+      dbData.sync_error = data.syncError;
+    }
+    if (data.createdAt !== undefined) {
+      dbData.created_at = data.createdAt;
+    }
+    if (data.updatedAt !== undefined) {
+      dbData.updated_at = data.updatedAt;
+    }
 
     return dbData;
   }
@@ -653,8 +686,289 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
    * This method updates the internal licenses table with external API data
    */
   /**
-   * Sync external licenses to internal licenses
-   * This pulls data from external API and updates/merges with internal licenses
+   * Sync external licenses to internal licenses using comprehensive reconciliation
+   * This approach gets all external licenses first, then all internal licenses,
+   * then compares to identify what fields are missing and need synchronization
+   */
+  async syncToInternalLicensesComprehensive(internalLicenseRepo) {
+    console.error('🚨🚨🚨 COMPREHENSIVE SYNC METHOD CALLED 🚨🚨🚨');
+    try {
+      logger.info('Starting comprehensive sync from external to internal licenses');
+
+      // Step 1: Get all external licenses first
+      const externalLicenses = await this.findLicenses({});
+      console.log(`DEBUG: findLicenses returned:`, externalLicenses);
+      logger.info(`Step 1: Retrieved ${externalLicenses.licenses.length} external licenses`);
+      console.log('DEBUG: External licenses array:', externalLicenses.licenses);
+
+      // Step 2: Get all internal licenses second
+      const allInternalLicenses = await internalLicenseRepo.findLicenses({
+        page: 1,
+        limit: 10000, // Get all for comprehensive comparison
+        filters: {},
+      });
+      logger.info(`Step 2: Retrieved ${allInternalLicenses.licenses.length} internal licenses`);
+
+      // Step 3: Create lookup maps for efficient matching
+      const externalByAppId = new Map();
+      const externalByCountId = new Map();
+
+      externalLicenses.licenses.forEach((extLicense) => {
+        if (extLicense.appid) {
+          externalByAppId.set(extLicense.appid, extLicense);
+        }
+        if (extLicense.countid !== undefined && extLicense.countid !== null) {
+          externalByCountId.set(extLicense.countid, extLicense);
+        }
+      });
+
+      // Step 4: Analyze what fields are missing in internal licenses
+      const syncOperations = [];
+      let syncedCount = 0;
+      let updatedCount = 0;
+      let createdCount = 0;
+
+      logger.info('Step 3: Analyzing field gaps between external and internal licenses');
+
+      // Analyze each internal license to see what external data it needs
+      for (const internalLicense of allInternalLicenses.licenses) {
+        const syncOp = this._analyzeInternalLicenseGaps(internalLicense, {
+          externalByAppId,
+          externalByCountId,
+        });
+
+        if (syncOp.needsSync) {
+          syncOperations.push(syncOp);
+        }
+      }
+
+      // Also check for external licenses that don't have internal counterparts
+      logger.info(`Checking ${externalLicenses.licenses.length} external licenses for creation`);
+      for (const externalLicense of externalLicenses.licenses) {
+        const hasInternalMatch = allInternalLicenses.licenses.some(
+          (intLicense) =>
+            intLicense.appid === externalLicense.appid ||
+            intLicense.countid === externalLicense.countid
+        );
+
+        logger.debug(`External license ${externalLicense.appid || externalLicense.countid}: hasInternalMatch=${hasInternalMatch}`);
+
+        if (!hasInternalMatch) {
+          logger.info(`Creating new internal license for external ${externalLicense.appid || externalLicense.countid}`);
+          syncOperations.push({
+            type: 'create',
+            externalLicense,
+            reason: 'No internal license match found',
+          });
+        }
+      }
+
+      logger.info(`Step 4: Identified ${syncOperations.length} sync operations needed`);
+
+      // Step 5: Execute sync operations
+      for (const operation of syncOperations) {
+        try {
+          if (operation.type === 'update') {
+            const updateData = this._createExternalUpdateData(operation.externalLicense);
+            updateData.external_sync_status = 'synced';
+            updateData.last_external_sync = new Date();
+
+            await internalLicenseRepo.update(operation.internalLicense.id, updateData);
+            updatedCount++;
+
+            logger.debug(`Updated internal license with missing external data`, {
+              internal_id: operation.internalLicense.id,
+              external_appid: operation.externalLicense.appid,
+              missing_fields: operation.missingFields,
+              updated_fields: Object.keys(updateData).filter(
+                (key) => key !== 'external_sync_status' && key !== 'last_external_sync'
+              ),
+            });
+          } else if (operation.type === 'create') {
+            const licenseKey = this._generateLicenseKey(operation.externalLicense);
+            const internalLicenseData = this._externalToInternalFormat(operation.externalLicense);
+
+            const newLicense = await internalLicenseRepo.save({
+              ...internalLicenseData,
+              key: licenseKey,
+              external_sync_status: 'synced',
+              last_external_sync: new Date(),
+            });
+            createdCount++;
+
+            logger.debug(`Created new internal license from external data`, {
+              external_appid: operation.externalLicense.appid,
+              internal_id: newLicense.id,
+              generated_key: licenseKey,
+              reason: operation.reason,
+            });
+          }
+
+          syncedCount++;
+        } catch (error) {
+          logger.error(`Failed to execute sync operation:`, {
+            operation: operation.type,
+            external_appid: operation.externalLicense?.appid,
+            internal_id: operation.internalLicense?.id,
+            error: error.message,
+          });
+        }
+      }
+
+      logger.info('Comprehensive sync completed', {
+        total_external: externalLicenses.licenses.length,
+        total_internal: allInternalLicenses.licenses.length,
+        sync_operations_identified: syncOperations.length,
+        sync_operations_executed: syncedCount,
+        updated: updatedCount,
+        created: createdCount,
+      });
+
+      return { syncedCount, updatedCount, createdCount };
+    } catch (error) {
+      console.log('DEBUG: Comprehensive sync failed:', error.message);
+      logger.error('Failed to perform comprehensive sync:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze what external data is missing from an internal license
+   * @private
+   */
+  _analyzeInternalLicenseGaps(internalLicense, externalLookups) {
+    const { externalByAppId, externalByCountId } = externalLookups;
+    const missingFields = [];
+    let matchingExternalLicense = null;
+
+    // Try to find matching external license
+    if (internalLicense.appid && externalByAppId.has(internalLicense.appid)) {
+      matchingExternalLicense = externalByAppId.get(internalLicense.appid);
+    } else if (
+      internalLicense.countid !== undefined &&
+      externalByCountId.has(internalLicense.countid)
+    ) {
+      matchingExternalLicense = externalByCountId.get(internalLicense.countid);
+    }
+
+    if (!matchingExternalLicense) {
+      return { needsSync: false };
+    }
+
+    // Check for missing or outdated fields
+    // Business contact info
+    if (!internalLicense.dba && matchingExternalLicense.dba) {
+      missingFields.push('dba');
+    }
+    if (!internalLicense.zip && matchingExternalLicense.zip) {
+      missingFields.push('zip');
+    }
+
+    // Financial/payment data
+    if (!internalLicense.lastPayment && matchingExternalLicense.monthlyFee !== undefined) {
+      missingFields.push('lastPayment');
+    }
+
+    // Activity and status data
+    if (!internalLicense.lastActive && matchingExternalLicense.lastActive) {
+      missingFields.push('lastActive');
+    }
+
+    // SMS data
+    if (!internalLicense.smsBalance && matchingExternalLicense.smsBalance !== undefined) {
+      missingFields.push('smsBalance');
+    }
+    if (!internalLicense.smsPurchased && matchingExternalLicense.smsPurchased !== undefined) {
+      missingFields.push('smsPurchased');
+    }
+
+    // License timing data
+    if (!internalLicense.startsAt && matchingExternalLicense.ActivateDate) {
+      missingFields.push('startsAt');
+    }
+
+    // Notes and additional info
+    if (!internalLicense.notes && matchingExternalLicense.Note) {
+      missingFields.push('notes');
+    }
+
+    // Check for outdated data (simple comparison)
+    if (
+      internalLicense.lastPayment !== undefined &&
+      matchingExternalLicense.monthlyFee !== undefined &&
+      internalLicense.lastPayment !== matchingExternalLicense.monthlyFee
+    ) {
+      missingFields.push('lastPayment_update');
+    }
+
+    if (
+      internalLicense.smsBalance !== undefined &&
+      matchingExternalLicense.smsBalance !== undefined &&
+      internalLicense.smsBalance !== matchingExternalLicense.smsBalance
+    ) {
+      missingFields.push('smsBalance_update');
+    }
+
+    // Status updates
+    if (
+      matchingExternalLicense.status !== undefined &&
+      internalLicense.external_status !== matchingExternalLicense.status
+    ) {
+      missingFields.push('status_update');
+    }
+
+    // External identifier updates
+    if (
+      matchingExternalLicense.mid !== undefined &&
+      internalLicense.mid !== matchingExternalLicense.mid
+    ) {
+      missingFields.push('mid_update');
+    }
+
+    if (
+      matchingExternalLicense.license_type !== undefined &&
+      internalLicense.license_type !== matchingExternalLicense.license_type
+    ) {
+      missingFields.push('license_type_update');
+    }
+
+    // Package/workspace updates
+    if (
+      matchingExternalLicense.Package &&
+      JSON.stringify(internalLicense.package_data) !==
+        JSON.stringify(matchingExternalLicense.Package)
+    ) {
+      missingFields.push('package_update');
+    }
+
+    if (
+      matchingExternalLicense.Sendbat_workspace &&
+      internalLicense.external_sendbat_workspace !== matchingExternalLicense.Sendbat_workspace
+    ) {
+      missingFields.push('workspace_update');
+    }
+
+    // Coming expired date updates
+    if (
+      matchingExternalLicense.Coming_expired &&
+      internalLicense.external_coming_expired !== matchingExternalLicense.Coming_expired
+    ) {
+      missingFields.push('coming_expired_update');
+    }
+
+    return {
+      needsSync: missingFields.length > 0,
+      type: 'update',
+      internalLicense,
+      externalLicense: matchingExternalLicense,
+      missingFields,
+      matchedBy: internalLicense.appid ? 'appid' : 'countid',
+    };
+  }
+
+  /**
+   * Legacy method - kept for backward compatibility
+   * Sync external licenses to internal licenses using external-driven approach
    */
   async syncToInternalLicenses(internalLicenseRepo) {
     try {
@@ -725,7 +1039,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
             // Generate a unique key for the new license
             const licenseKey = this._generateLicenseKey(externalLicense);
 
-            const newLicense = await internalLicenseRepo.create({
+            const newLicense = await internalLicenseRepo.save({
               ...internalLicenseData,
               key: licenseKey,
               external_sync_status: 'synced',
@@ -949,7 +1263,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     }
 
     if (externalLicense.smsBalance !== undefined && externalLicense.smsBalance !== null) {
-      updateData.smsBalance = externalLicense.smsBalance;
+      updateData.smsBalance = Math.round(externalLicense.smsBalance);
     }
 
     if (externalLicense.note !== undefined && externalLicense.note !== null) {
@@ -958,21 +1272,18 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
 
     // Always update external identifiers and status
     if (externalLicense.appid !== undefined) {
-      updateData.external_appid = externalLicense.appid;
+      updateData.appid = externalLicense.appid;
     }
 
     if (externalLicense.countid !== undefined) {
-      updateData.external_countid = externalLicense.countid;
+      updateData.countid = externalLicense.countid;
     }
 
-    if (externalLicense.emailLicense !== undefined) {
-      updateData.external_email = externalLicense.emailLicense;
-    }
-
-    updateData.external_status = externalLicense.status;
-    updateData.external_package = externalLicense.package;
-    updateData.external_sendbat_workspace = externalLicense.sendbatWorkspace;
-    updateData.external_coming_expired = externalLicense.comingExpired;
+    updateData.mid = externalLicense.mid;
+    updateData.license_type = externalLicense.license_type;
+    updateData.package_data = externalLicense.package;
+    updateData.sendbat_workspace = externalLicense.sendbatWorkspace;
+    updateData.coming_expired = externalLicense.comingExpired;
 
     return updateData;
   }
@@ -984,7 +1295,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
   _externalToInternalFormat(externalLicense) {
     return {
       product: 'ABC Business Suite', // Default product for external licenses
-      dba: externalLicense.dba || '',
+      dba: externalLicense.dba || externalLicense.Email_license || '',
       zip: externalLicense.zip || '',
       startsAt: externalLicense.activateDate || new Date().toISOString().split('T')[0],
       status: externalLicense.status === 1 ? 'active' : 'inactive',
@@ -994,7 +1305,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       lastActive: externalLicense.lastActive || new Date().toISOString(),
       smsPurchased: 0, // External API doesn't provide this
       smsSent: 0,
-      smsBalance: externalLicense.smsBalance || 0,
+      smsBalance: Math.round(externalLicense.smsBalance || 0),
       seatsTotal: 1, // Default to 1 seat for external licenses
       seatsUsed: 0,
       agents: 0,
@@ -1002,14 +1313,14 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       agentsCost: 0,
       notes: externalLicense.note || '',
 
-      // Store external API identifiers for future sync
-      external_appid: externalLicense.appid,
-      external_countid: externalLicense.countid,
-      external_email: externalLicense.emailLicense,
-      external_status: externalLicense.status,
-      external_package: externalLicense.package,
-      external_sendbat_workspace: externalLicense.sendbatWorkspace,
-      external_coming_expired: externalLicense.comingExpired,
+      // Store external API identifiers for future sync (unified)
+      appid: externalLicense.appid,
+      countid: externalLicense.countid,
+      mid: externalLicense.mid,
+      license_type: externalLicense.license_type,
+      package_data: externalLicense.package,
+      sendbat_workspace: externalLicense.sendbatWorkspace,
+      coming_expired: externalLicense.comingExpired,
     };
   }
 }

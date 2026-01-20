@@ -36,7 +36,7 @@ services:
     container_name: abc-dashboard-backend
     restart: unless-stopped
     ports:
-      - "5001:5000"
+      - "5002:5000"
     deploy:
       resources:
         limits:
@@ -62,6 +62,8 @@ services:
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
+      - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
+      - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
     volumes:
       - ./backend/logs:/app/logs
       - ./.env:/app/.env:ro

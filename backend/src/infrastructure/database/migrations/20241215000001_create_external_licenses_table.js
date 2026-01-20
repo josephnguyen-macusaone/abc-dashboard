@@ -59,11 +59,7 @@ export async function up(knex) {
     CHECK (monthly_fee >= 0);
   `);
 
-  await knex.raw(`
-    ALTER TABLE external_licenses
-    ADD CONSTRAINT chk_external_licenses_sms_balance_non_negative
-    CHECK (sms_balance >= 0);
-  `);
+  // Removed SMS balance non-negative constraint to allow negative values from external API
 
   // Add index for expiring licenses queries (will be used with WHERE clauses)
   await knex.raw(`

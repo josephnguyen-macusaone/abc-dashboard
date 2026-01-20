@@ -24,9 +24,11 @@ export class SyncExternalLicensesUseCase {
   async execute(options = {}) {
     const {
       forceFullSync = false,
-      batchSize = 100,
+      batchSize = 20,
       dryRun = false,
-      syncToInternalOnly = false, // New option to only sync existing external data to internal
+      syncToInternalOnly = false,
+      bidirectional = false,
+      comprehensive = true, // Use comprehensive reconciliation approach (external first, internal second, then compare)
     } = options;
 
     const startTime = Date.now();
@@ -47,6 +49,7 @@ export class SyncExternalLicensesUseCase {
         batchSize,
         dryRun,
         syncToInternalOnly,
+        comprehensive,
       });
 
       let externalData = null;
@@ -55,11 +58,43 @@ export class SyncExternalLicensesUseCase {
         // First, sync external API data to external_licenses table
         logger.info('Fetching licenses from external API...');
         externalData = await this.externalLicenseApiService.getAllLicenses({
-        batchSize,
-      });
+          batchSize,
+          concurrencyLimit: 3, // Fetch 3 pages concurrently
+        });
 
-      if (!externalData.success || !externalData.data) {
-        throw new Error('Failed to fetch licenses from external API');
+      if (!externalData.success) {
+        // External API failed - check if it's an auth issue or other error
+        const isAuthError = externalData.error?.includes('401') || externalData.error?.includes('403') || externalData.error?.includes('Unauthorized');
+        const isRateLimitError = externalData.error?.includes('429') || externalData.error?.includes('Too many requests');
+
+        logger.warn('External API call failed', {
+          success: externalData.success,
+          error: externalData.error,
+          isAuthError,
+          isRateLimitError,
+          dryRun,
+        });
+
+        if (dryRun) {
+          // In dry run mode, return structured response about API status
+          syncResults.success = true; // Dry run is successful even if API fails
+          syncResults.dryRun = true;
+          syncResults.apiStatus = {
+            authenticated: !isAuthError,
+            rateLimited: isRateLimitError,
+            reachable: true, // We got a response, just not successful
+            error: externalData.error,
+          };
+          syncResults.duration = Date.now() - startTime;
+          logger.info('Dry run completed with API status check', syncResults.apiStatus);
+          return syncResults;
+        } else {
+          throw new Error(`Failed to fetch licenses from external API: ${externalData.error}`);
+        }
+      }
+
+      if (!externalData.data) {
+        throw new Error('External API returned success but no data');
       }
 
       syncResults.totalFetched = externalData.data.length;
@@ -74,57 +109,81 @@ export class SyncExternalLicensesUseCase {
         syncResults.success = true;
         syncResults.dryRun = true;
         syncResults.validatedLicenses = externalData.data.length;
+        syncResults.apiStatus = {
+          authenticated: true,
+          rateLimited: false,
+          dataAvailable: true,
+        };
         syncResults.duration = Date.now() - startTime;
         return syncResults;
       }
 
-      // Process licenses in batches for performance
+      // Process licenses in batches concurrently for better performance
       const batches = this._createBatches(externalData.data, batchSize);
       const syncTimestamp = new Date();
+      const concurrencyLimit = Math.min(batches.length, 5); // Process up to 5 batches concurrently
 
-      logger.info('Processing licenses in batches', {
+      logger.info('Processing licenses in concurrent batches', {
         totalBatches: batches.length,
         batchSize,
+        concurrencyLimit,
       });
 
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const batchStartTime = Date.now();
+      // Process batches in concurrent chunks
+      for (let batchStart = 0; batchStart < batches.length; batchStart += concurrencyLimit) {
+        const batchPromises = [];
 
-        logger.debug(`Processing batch ${i + 1}/${batches.length}`, {
-          batchSize: batch.length,
-          progress: `${i + 1}/${batches.length}`,
-        });
+        // Create concurrent batch processing promises
+        for (let i = 0; i < concurrencyLimit && (batchStart + i) < batches.length; i++) {
+          const batchIndex = batchStart + i;
+          const batch = batches[batchIndex];
 
-        try {
-          const batchResults = await this._processBatch(batch, syncTimestamp);
+          batchPromises.push(
+            this._processBatch(batch, syncTimestamp).then(batchResults => ({
+              batchIndex: batchIndex + 1,
+              batchResults,
+              duration: Date.now() - Date.now(), // Will be set properly
+            })).catch(batchError => ({
+              batchIndex: batchIndex + 1,
+              error: batchError,
+              batchSize: batch.length,
+            }))
+          );
+        }
 
-          syncResults.created += batchResults.created;
-          syncResults.updated += batchResults.updated;
-          syncResults.failed += batchResults.failed;
-          syncResults.errors.push(...batchResults.errors);
+        // Wait for this chunk of batches to complete
+        const batchChunkStartTime = Date.now();
+        const batchResults = await Promise.all(batchPromises);
 
-          logger.debug(`Batch ${i + 1} completed`, {
-            created: batchResults.created,
-            updated: batchResults.updated,
-            failed: batchResults.failed,
-            duration: Date.now() - batchStartTime,
-          });
-
-        } catch (batchError) {
-          logger.error(`Batch ${i + 1} failed`, {
-            error: batchError.message,
-            batchSize: batch.length,
-          });
-
-          // Add all items in failed batch as errors
-          batch.forEach((licenseData) => {
-            syncResults.errors.push({
-              appid: licenseData.appid,
-              error: `Batch processing failed: ${batchError.message}`,
+        // Process results
+        for (const result of batchResults) {
+          if (result.error) {
+            logger.error(`Batch ${result.batchIndex} failed`, {
+              error: result.error.message,
+              batchSize: result.batchSize,
             });
-            syncResults.failed++;
-          });
+
+            // Add all items in failed batch as errors
+            batches[result.batchIndex - 1].forEach((licenseData) => {
+              syncResults.errors.push({
+                appid: licenseData.appid,
+                error: `Batch processing failed: ${result.error.message}`,
+              });
+              syncResults.failed++;
+            });
+          } else {
+            syncResults.created += result.batchResults.created;
+            syncResults.updated += result.batchResults.updated;
+            syncResults.failed += result.batchResults.failed;
+            syncResults.errors.push(...result.batchResults.errors);
+
+            logger.debug(`Batch ${result.batchIndex} completed`, {
+              created: result.batchResults.created,
+              updated: result.batchResults.updated,
+              failed: result.batchResults.failed,
+              duration: Date.now() - batchChunkStartTime,
+            });
+          }
         }
       }
 
@@ -135,18 +194,46 @@ export class SyncExternalLicensesUseCase {
       } else {
         // syncToInternalOnly mode - skip external API fetch
         logger.info('Skipping external API fetch, syncing existing external data to internal...');
+        // Get current external license count for reporting
+        try {
+          const externalLicenses = await this.externalLicenseRepository.findAll({ limit: 100000 });
+          syncResults.totalFetched = externalLicenses.length;
+        } catch (error) {
+          logger.warn('Could not get external license count', { error: error.message });
+          syncResults.totalFetched = 0;
+        }
         syncResults.success = true;
       }
       // If internal license repository is provided, sync external data to internal licenses
       // Run in both normal sync and syncToInternalOnly modes
+      console.log(`DEBUG: Checking internal sync condition: internalLicenseRepository=${!!this.internalLicenseRepository}, dryRun=${dryRun}, syncToInternalOnly=${syncToInternalOnly}`);
       if (this.internalLicenseRepository && (!dryRun || syncToInternalOnly)) {
+        console.log('DEBUG: Entering internal sync block');
         try {
-          logger.info('Starting sync to internal licenses table...');
-          const internalSyncResults = await this.externalLicenseRepository.syncToInternalLicenses(this.internalLicenseRepository);
+          console.log(`DEBUG: About to call internal sync, comprehensive=${comprehensive}, internalLicenseRepository exists=${!!this.internalLicenseRepository}`);
+          console.error(`🚨🚨🚨 ABOUT TO CALL INTERNAL SYNC: comprehensive=${comprehensive} 🚨🚨🚨`);
+          let internalSyncResults;
+          if (comprehensive) {
+            console.error('🚨🚨🚨 CALLING COMPREHENSIVE SYNC 🚨🚨🚨');
+            console.log('DEBUG: Calling comprehensive sync');
+            logger.info('Starting comprehensive sync to internal licenses table (external-first approach)...');
+            internalSyncResults = await this.externalLicenseRepository.syncToInternalLicensesComprehensive(this.internalLicenseRepository);
+            console.log('DEBUG: Comprehensive sync completed');
+          } else {
+            logger.info('Starting legacy sync to internal licenses table (external-driven approach)...');
+            internalSyncResults = await this.externalLicenseRepository.syncToInternalLicenses(this.internalLicenseRepository);
+          }
 
           syncResults.internalSynced = internalSyncResults.syncedCount;
           syncResults.internalUpdated = internalSyncResults.updatedCount;
           syncResults.internalCreated = internalSyncResults.createdCount;
+
+          // For syncToInternalOnly mode, map these to the main response fields
+          if (syncToInternalOnly) {
+            syncResults.totalFetched = syncResults.totalFetched || 0;
+            syncResults.created = internalSyncResults.createdCount;
+            syncResults.updated = internalSyncResults.updatedCount;
+          }
 
           logger.info('External to internal licenses sync completed', {
             synced: internalSyncResults.syncedCount,
@@ -274,7 +361,7 @@ export class SyncExternalLicensesUseCase {
    * @returns {Promise<Object>} Sync results
    */
   async syncPendingLicenses(options = {}) {
-    const { limit = 100, batchSize = 25 } = options;
+    const { limit = 100, batchSize = 20 } = options;
 
     try {
       logger.info('Syncing pending external licenses', { limit, batchSize });

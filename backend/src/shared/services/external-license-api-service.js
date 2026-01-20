@@ -18,8 +18,17 @@ import {
  */
 export class ExternalLicenseApiService {
   constructor() {
-    this.baseUrl = 'http://155.138.247.131:2341';
-    this.apiKey = 'Egyy3C2fJ2Fx3006iQ5jfN79139NAwgEIBF6O8ek7CtYr8M49IBIwOXGpig671Z6BIOO2NaRAYgXAkgyc2LknzEkPlBszad0eOgYjOzYGcwL8ucjWu7uN4TwOF2joDd1';
+    this.baseUrl = process.env.EXTERNAL_LICENSE_API_URL || 'http://155.138.247.131:2341';
+    this.apiKey = process.env.EXTERNAL_LICENSE_API_KEY;
+
+    if (!this.apiKey) {
+      throw new Error('EXTERNAL_LICENSE_API_KEY environment variable is required');
+    }
+
+    if (!this.baseUrl) {
+      throw new Error('EXTERNAL_LICENSE_API_URL environment variable is required');
+    }
+
     this.correlationId = null;
     this.operationId = null;
     this.isHealthy = true;
@@ -38,12 +47,17 @@ export class ExternalLicenseApiService {
   /**
    * Create authenticated headers
    */
-  getHeaders() {
-    return {
-      'Content-Type': 'application/json',
+  getHeaders(includeContentType = false) {
+    const headers = {
       'x-api-key': this.apiKey,
       'User-Agent': 'ABC-Dashboard-Backend/1.0',
     };
+
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    return headers;
   }
 
   /**
@@ -51,14 +65,15 @@ export class ExternalLicenseApiService {
    */
   async makeRequest(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
+    const hasBody = options.body !== undefined;
     const requestOptions = {
       method: options.method || 'GET',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(hasBody),
       ...options,
     };
 
     // Add body if provided
-    if (options.body) {
+    if (hasBody) {
       requestOptions.body = JSON.stringify(options.body);
     }
 
@@ -134,7 +149,7 @@ export class ExternalLicenseApiService {
         );
       },
       {
-        maxRetries: 5,
+        maxRetries: 3, // Reduced from 5 for better performance
         retryDelay: 2000, // 2 seconds between retries
         retryOn: (error) => {
           // Retry on network errors, 5xx errors, and timeouts
@@ -210,79 +225,139 @@ export class ExternalLicenseApiService {
    */
   async getAllLicenses(options = {}) {
     const allLicenses = [];
-    let currentPage = 1;
-    let hasNextPage = true;
-    const batchSize = options.batchSize || 100; // Fetch in batches of 100
+    const batchSize = options.batchSize || 20; // Fetch in batches of 20
+    const concurrencyLimit = options.concurrencyLimit || 3; // Fetch 3 pages concurrently
+    let pagesFetched = 0;
 
     logger.info('Starting bulk license fetch from external API', {
       correlationId: this.correlationId,
       batchSize,
+      concurrencyLimit,
     });
 
-    while (hasNextPage) {
-      try {
-        const response = await this.getLicenses({
-          ...options,
-          page: currentPage,
-          limit: batchSize,
-        });
+    try {
+      // First, get the first page to determine total pages
+      const firstResponse = await this.getLicenses({
+        ...options,
+        page: 1,
+        limit: batchSize,
+      });
 
-        if (response.data && Array.isArray(response.data)) {
-          allLicenses.push(...response.data);
+      if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
+        return {
+          success: false,
+          error: 'Failed to fetch first page',
+          meta: {
+            pagesAttempted: 1,
+            licensesFetched: 0,
+          },
+        };
+      }
 
-          logger.debug(`Fetched page ${currentPage}, got ${response.data.length} licenses`, {
-            correlationId: this.correlationId,
-            totalFetched: allLicenses.length,
-          });
+      allLicenses.push(...firstResponse.data);
+      pagesFetched = 1;
 
-          // Check if there are more pages
-          if (response.meta && response.meta.hasNext !== undefined) {
-            hasNextPage = response.meta.hasNext;
-          } else if (response.data.length < batchSize) {
-            // If we got fewer items than requested, we've reached the end
-            hasNextPage = false;
-          }
-        } else {
-          hasNextPage = false;
+      // Calculate total pages (if available) or estimate
+      let totalPages = 1;
+      if (firstResponse.meta && firstResponse.meta.totalPages) {
+        totalPages = firstResponse.meta.totalPages;
+      } else if (firstResponse.meta && firstResponse.meta.total) {
+        totalPages = Math.ceil(firstResponse.meta.total / batchSize);
+      } else {
+        // If we don't know the total, we'll fetch until we get an empty page
+        totalPages = 1000; // Safety limit
+      }
+
+      logger.info('Bulk fetch info', {
+        correlationId: this.correlationId,
+        firstPageCount: firstResponse.data.length,
+        estimatedTotalPages: totalPages,
+        totalFetched: allLicenses.length,
+      });
+
+      // Fetch remaining pages in parallel batches
+      for (let pageBatchStart = 2; pageBatchStart <= totalPages; pageBatchStart += concurrencyLimit) {
+        const pagePromises = [];
+
+        // Create concurrent requests for this batch
+        for (let i = 0; i < concurrencyLimit && (pageBatchStart + i) <= totalPages; i++) {
+          const pageNum = pageBatchStart + i;
+          pagePromises.push(
+            this.getLicenses({
+              ...options,
+              page: pageNum,
+              limit: batchSize,
+            }).catch(error => {
+              logger.error(`Error fetching page ${pageNum}`, {
+                correlationId: this.correlationId,
+                error: error.message,
+              });
+              return null; // Return null for failed pages
+            })
+          );
         }
 
-        currentPage++;
+        // Wait for this batch of pages to complete
+        const pageResults = await Promise.all(pagePromises);
 
-        // Safety check to prevent infinite loops
-        if (currentPage > 1000) {
-          logger.error('Too many pages, stopping bulk fetch to prevent infinite loop', {
-            correlationId: this.correlationId,
-            currentPage,
-            totalFetched: allLicenses.length,
-          });
+        // Process results
+        let hasMorePages = false;
+        let pagesInThisBatch = 0;
+        for (const response of pageResults) {
+          pagesInThisBatch++;
+          if (response && response.data && Array.isArray(response.data)) {
+            if (response.data.length > 0) {
+              allLicenses.push(...response.data);
+              hasMorePages = true;
+
+              logger.debug(`Fetched page batch, total licenses: ${allLicenses.length}`, {
+                correlationId: this.correlationId,
+                pageBatchStart,
+                batchSize: response.data.length,
+              });
+            }
+
+            // If any page has fewer items than requested, we've reached the end
+            if (response.data.length < batchSize) {
+              hasMorePages = false;
+              break;
+            }
+          }
+        }
+
+        pagesFetched += pagesInThisBatch;
+
+        // If no pages in this batch had data, stop fetching
+        if (!hasMorePages) {
           break;
         }
-
-      } catch (error) {
-        logger.error('Error fetching page during bulk operation', {
-          correlationId: this.correlationId,
-          page: currentPage,
-          error: error.message,
-        });
-        throw error;
       }
+
+      logger.info('Completed bulk license fetch from external API', {
+        correlationId: this.correlationId,
+        totalFetched: allLicenses.length,
+        pagesFetched,
+      });
+
+      return {
+        success: true,
+        data: allLicenses,
+        total: allLicenses.length,
+        meta: {
+          fetchedAt: new Date(),
+          pagesFetched,
+        },
+      };
+    } catch (error) {
+      logger.error('Bulk license fetch failed', {
+        correlationId: this.correlationId,
+        error: error.message,
+      });
+      return {
+        success: false,
+        error: error.message,
+      };
     }
-
-    logger.info('Completed bulk license fetch from external API', {
-      correlationId: this.correlationId,
-      totalFetched: allLicenses.length,
-      pagesFetched: currentPage - 1,
-    });
-
-    return {
-      success: true,
-      data: allLicenses,
-      total: allLicenses.length,
-      meta: {
-        fetchedAt: new Date(),
-        pagesFetched: currentPage - 1,
-      },
-    };
   }
 
   /**

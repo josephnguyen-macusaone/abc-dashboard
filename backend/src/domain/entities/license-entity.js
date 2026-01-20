@@ -4,59 +4,113 @@
  */
 export class License {
   constructor({
+    // Identity
     id,
     key,
+
+    // Product & Service
     product,
     plan,
     status,
     term,
+
+    // Capacity & Usage
     seatsTotal,
     seatsUsed,
-    startsAt,
-    expiresAt,
-    cancelDate,
-    lastActive,
-    dba,
-    zip,
+    agents,
+    agentsName,
+
+    // Financial
     lastPayment,
     smsPurchased,
     smsSent,
     smsBalance,
-    agents,
-    agentsName,
     agentsCost,
+
+    // Location
+    dba,
+    zip,
+
+    // Dates & Timeline
+    startsAt,
+    expiresAt,
+    cancelDate,
+    lastActive,
+
+    // Content
     notes,
+
+    // Audit
     createdBy,
     updatedBy,
     createdAt,
     updatedAt,
+
+    // External sync fields (unified - no external_ prefix)
+    appid,
+    countid,
+    mid,
+    license_type,
+    package_data,
+    sendbat_workspace,
+    coming_expired,
+    external_sync_status,
+    last_external_sync,
+    external_sync_error,
   }) {
+    // Identity
     this.id = id;
     this.key = key;
+
+    // Product & Service
     this.product = product;
     this.plan = plan;
     this.status = status;
     this.term = term;
+
+    // Capacity & Usage
     this.seatsTotal = seatsTotal;
     this.seatsUsed = seatsUsed;
-    this.startsAt = startsAt;
-    this.expiresAt = expiresAt;
-    this.cancelDate = cancelDate;
-    this.lastActive = lastActive;
-    this.dba = dba;
-    this.zip = zip;
+    this.agents = agents;
+    this.agentsName = agentsName;
+
+    // Financial
     this.lastPayment = lastPayment;
     this.smsPurchased = smsPurchased;
     this.smsSent = smsSent;
     this.smsBalance = smsBalance;
-    this.agents = agents;
-    this.agentsName = agentsName;
     this.agentsCost = agentsCost;
+
+    // Location
+    this.dba = dba;
+    this.zip = zip;
+
+    // Dates & Timeline
+    this.startsAt = startsAt;
+    this.expiresAt = expiresAt;
+    this.cancelDate = cancelDate;
+    this.lastActive = lastActive;
+
+    // Content
     this.notes = notes;
+
+    // Audit
     this.createdBy = createdBy;
     this.updatedBy = updatedBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+
+    // External sync fields (unified)
+    this.appid = appid;
+    this.countid = countid;
+    this.mid = mid;
+    this.license_type = license_type;
+    this.package_data = package_data;
+    this.sendbat_workspace = sendbat_workspace;
+    this.coming_expired = coming_expired;
+    this.external_sync_status = external_sync_status;
+    this.last_external_sync = last_external_sync;
+    this.external_sync_error = external_sync_error;
 
     this.validate();
   }
@@ -220,42 +274,68 @@ export class License {
    */
   toJSON() {
     return {
+      // Identity
       id: this.id,
       key: this.key,
+
+      // Product & Service
       product: this.product,
       plan: this.plan,
       status: this.status,
       term: this.term,
+
+      // Capacity & Usage
       seatsTotal: this.seatsTotal,
       seatsUsed: this.seatsUsed,
-      utilizationPercent: this.getUtilizationPercent(),
-      availableSeats: this.getAvailableSeats(),
-      startsAt: this.startsAt,
-      expiresAt: this.expiresAt,
-      cancelDate: this.cancelDate,
-      lastActive: this.lastActive,
-      dba: this.dba,
-      zip: this.zip,
+      agents: this.agents,
+      agentsName: this.agentsName,
+
+      // Financial
       lastPayment: this.lastPayment,
       smsPurchased: this.smsPurchased,
       smsSent: this.smsSent,
       smsBalance: this.getSmsBalance(),
-      agents: this.agents,
-      agentsName: this.agentsName,
       agentsCost: this.agentsCost,
+
+      // Location
+      dba: this.dba,
+      zip: this.zip,
+
+      // Dates & Timeline
+      startsAt: this.startsAt,
+      expiresAt: this.expiresAt,
+      cancelDate: this.cancelDate,
+      lastActive: this.lastActive,
+
+      // Content
       notes: this.notes,
+
+      // Audit
       createdBy: this.createdBy,
       updatedBy: this.updatedBy,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+
       // Computed properties
+      utilizationPercent: this.getUtilizationPercent(),
+      availableSeats: this.getAvailableSeats(),
       isActive: this.isActive(),
       isExpired: this.isExpired(),
       isExpiringSoon: this.isExpiringSoon(),
       canAssign: this.canAssign(),
       statusDisplay: this.getStatusDisplay(),
+
+      // External sync fields (unified)
+      appid: this.appid,
+      countid: this.countid,
+      mid: this.mid,
+      license_type: this.license_type,
+      package_data: this.package_data,
+      sendbat_workspace: this.sendbat_workspace,
+      coming_expired: this.coming_expired,
+      external_sync_status: this.external_sync_status,
+      last_external_sync: this.last_external_sync,
+      external_sync_error: this.external_sync_error,
     };
   }
 }
-
-

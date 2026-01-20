@@ -76,9 +76,7 @@ export class LicenseRepository extends ILicenseRepository {
     }
 
     try {
-      const licenseRow = await this.db(this.licensesTable)
-        .where('external_appid', appId)
-        .first();
+      const licenseRow = await this.db(this.licensesTable).where('appid', appId).first();
       return licenseRow ? this._toLicenseEntity(licenseRow) : null;
     } catch (error) {
       logger.error('License findByAppId error', {
@@ -122,9 +120,7 @@ export class LicenseRepository extends ILicenseRepository {
     }
 
     try {
-      const licenseRow = await this.db(this.licensesTable)
-        .where('external_countid', countId)
-        .first();
+      const licenseRow = await this.db(this.licensesTable).where('countid', countId).first();
       return licenseRow ? this._toLicenseEntity(licenseRow) : null;
     } catch (error) {
       logger.error('License findByCountId error', {
@@ -165,7 +161,6 @@ export class LicenseRepository extends ILicenseRepository {
     const offset = (page - 1) * limit;
 
     let query = this.db(this.licensesTable);
-    let countQuery = this.db(this.licensesTable);
 
     if (filters.search) {
       const searchTerm = `%${filters.search}%`;
@@ -182,17 +177,10 @@ export class LicenseRepository extends ILicenseRepository {
 
         if (dbField) {
           query = query.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
-          countQuery = countQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
         }
       } else {
         // Multi-field search (default): search across all fields
         query = query.where((qb) => {
-          qb.whereRaw('key ILIKE ?', [searchTerm])
-            .orWhereRaw('dba ILIKE ?', [searchTerm])
-            .orWhereRaw('product ILIKE ?', [searchTerm])
-            .orWhereRaw('plan ILIKE ?', [searchTerm]);
-        });
-        countQuery = countQuery.where((qb) => {
           qb.whereRaw('key ILIKE ?', [searchTerm])
             .orWhereRaw('dba ILIKE ?', [searchTerm])
             .orWhereRaw('product ILIKE ?', [searchTerm])
@@ -204,58 +192,48 @@ export class LicenseRepository extends ILicenseRepository {
     // Individual field filters
     if (filters.key && !filters.search) {
       query = query.whereRaw('key ILIKE ?', [`%${filters.key}%`]);
-      countQuery = countQuery.whereRaw('key ILIKE ?', [`%${filters.key}%`]);
     }
     if (filters.dba && !filters.search) {
       query = query.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
-      countQuery = countQuery.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
     }
     if (filters.product && !filters.search) {
       query = query.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
-      countQuery = countQuery.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
     if (filters.plan && !filters.search) {
       query = query.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
-      countQuery = countQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
     }
 
     // Start date range
     if (filters.startsAtFrom) {
       const fromDate = new Date(filters.startsAtFrom);
       query = query.where('starts_at', '>=', fromDate);
-      countQuery = countQuery.where('starts_at', '>=', fromDate);
     }
     if (filters.startsAtTo) {
       const toDate = new Date(filters.startsAtTo);
       toDate.setHours(23, 59, 59, 999);
       query = query.where('starts_at', '<=', toDate);
-      countQuery = countQuery.where('starts_at', '<=', toDate);
     }
 
     // Expiry date range
     if (filters.expiresAtFrom) {
       const fromDate = new Date(filters.expiresAtFrom);
       query = query.where('expires_at', '>=', fromDate);
-      countQuery = countQuery.where('expires_at', '>=', fromDate);
     }
     if (filters.expiresAtTo) {
       const toDate = new Date(filters.expiresAtTo);
       toDate.setHours(23, 59, 59, 999);
       query = query.where('expires_at', '<=', toDate);
-      countQuery = countQuery.where('expires_at', '<=', toDate);
     }
 
     // Updated date range
     if (filters.updatedAtFrom) {
       const fromDate = new Date(filters.updatedAtFrom);
       query = query.where('updated_at', '>=', fromDate);
-      countQuery = countQuery.where('updated_at', '>=', fromDate);
     }
     if (filters.updatedAtTo) {
       const toDate = new Date(filters.updatedAtTo);
       toDate.setHours(23, 59, 59, 999);
       query = query.where('updated_at', '<=', toDate);
-      countQuery = countQuery.where('updated_at', '<=', toDate);
     }
 
     // ========================================================================
@@ -265,14 +243,7 @@ export class LicenseRepository extends ILicenseRepository {
     // External data filter - licenses that have external identifiers
     if (filters.hasExternalData) {
       query = query.where((qb) => {
-        qb.whereNotNull('external_appid')
-          .orWhereNotNull('external_email')
-          .orWhereNotNull('external_countid');
-      });
-      countQuery = countQuery.where((qb) => {
-        qb.whereNotNull('external_appid')
-          .orWhereNotNull('external_email')
-          .orWhereNotNull('external_countid');
+        qb.whereNotNull('appid').orWhereNotNull('countid');
       });
     }
 
@@ -280,53 +251,43 @@ export class LicenseRepository extends ILicenseRepository {
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         query = query.whereIn('status', filters.status);
-        countQuery = countQuery.whereIn('status', filters.status);
       } else {
-      query = query.where('status', filters.status);
-      countQuery = countQuery.where('status', filters.status);
+        query = query.where('status', filters.status);
       }
     }
 
     // Term filter
     if (filters.term) {
       query = query.where('term', filters.term);
-      countQuery = countQuery.where('term', filters.term);
     }
 
     // Zip filter
     if (filters.zip) {
       query = query.where('zip', filters.zip);
-      countQuery = countQuery.where('zip', filters.zip);
     }
 
     // Utilization percentage filter (using computed column)
     if (filters.utilizationMin !== undefined) {
       query = query.whereRaw('utilization_percent >= ?', [filters.utilizationMin]);
-      countQuery = countQuery.whereRaw('utilization_percent >= ?', [filters.utilizationMin]);
     }
     if (filters.utilizationMax !== undefined) {
       query = query.whereRaw('utilization_percent <= ?', [filters.utilizationMax]);
-      countQuery = countQuery.whereRaw('utilization_percent <= ?', [filters.utilizationMax]);
     }
 
     // Seats filters
     if (filters.seatsMin !== undefined) {
       query = query.where('seats_total', '>=', filters.seatsMin);
-      countQuery = countQuery.where('seats_total', '>=', filters.seatsMin);
     }
     if (filters.seatsMax !== undefined) {
       query = query.where('seats_total', '<=', filters.seatsMax);
-      countQuery = countQuery.where('seats_total', '<=', filters.seatsMax);
     }
 
     // Has available seats filter
     if (filters.hasAvailableSeats !== undefined) {
       if (filters.hasAvailableSeats) {
         query = query.whereRaw('seats_used < seats_total');
-        countQuery = countQuery.whereRaw('seats_used < seats_total');
       } else {
         query = query.whereRaw('seats_used >= seats_total');
-        countQuery = countQuery.whereRaw('seats_used >= seats_total');
       }
     }
 
@@ -486,7 +447,7 @@ export class LicenseRepository extends ILicenseRepository {
       if (Array.isArray(filters.status)) {
         baseQuery = baseQuery.whereIn('status', filters.status);
       } else {
-      baseQuery = baseQuery.where('status', filters.status);
+        baseQuery = baseQuery.where('status', filters.status);
       }
     }
     if (filters.term) {
@@ -725,37 +686,32 @@ export class LicenseRepository extends ILicenseRepository {
     const offset = (page - 1) * limit;
 
     let query = this.db(this.auditEventsTable);
-    let countQuery = this.db(this.auditEventsTable);
+    const countQuery = this.db(this.auditEventsTable);
 
     // Filter by entity type
     if (filters.entityType) {
       query = query.where('entity_type', filters.entityType);
-      countQuery = countQuery.where('entity_type', filters.entityType);
     }
 
     // Filter by event type
     if (filters.type) {
       query = query.where('type', filters.type);
-      countQuery = countQuery.where('type', filters.type);
     }
 
     // Filter by actor
     if (filters.actorId) {
       query = query.where('actor_id', filters.actorId);
-      countQuery = countQuery.where('actor_id', filters.actorId);
     }
 
     // Date range filter
     if (filters.createdAtFrom) {
       const fromDate = new Date(filters.createdAtFrom);
       query = query.where('created_at', '>=', fromDate);
-      countQuery = countQuery.where('created_at', '>=', fromDate);
     }
     if (filters.createdAtTo) {
       const toDate = new Date(filters.createdAtTo);
       toDate.setHours(23, 59, 59, 999);
       query = query.where('created_at', '<=', toDate);
-      countQuery = countQuery.where('created_at', '<=', toDate);
     }
 
     const [events, countResult] = await Promise.all([
@@ -796,7 +752,6 @@ export class LicenseRepository extends ILicenseRepository {
 
           if (updatedRow) {
             updatedLicenses.push(this._toLicenseEntity(updatedRow));
-          } else {
           }
         } catch (updateError) {
           throw updateError;
@@ -890,6 +845,17 @@ export class LicenseRepository extends ILicenseRepository {
       updatedBy: licenseRow.updated_by,
       createdAt: licenseRow.created_at,
       updatedAt: licenseRow.updated_at,
+      // External sync fields (unified)
+      appid: licenseRow.appid,
+      countid: licenseRow.countid,
+      mid: licenseRow.mid,
+      license_type: licenseRow.license_type,
+      package_data: licenseRow.package,
+      sendbat_workspace: licenseRow.sendbat_workspace,
+      coming_expired: licenseRow.coming_expired,
+      external_sync_status: licenseRow.external_sync_status,
+      last_external_sync: licenseRow.last_external_sync,
+      external_sync_error: licenseRow.external_sync_error,
     });
   }
 
@@ -899,59 +865,131 @@ export class LicenseRepository extends ILicenseRepository {
   _toLicenseDbFormat(data) {
     const dbData = {};
 
-    if (data.id !== undefined) dbData.id = data.id;
-    if (data.key !== undefined) dbData.key = data.key;
-    if (data.product !== undefined) dbData.product = data.product;
-    if (data.plan !== undefined) dbData.plan = data.plan;
-    if (data.status !== undefined) dbData.status = data.status;
-    if (data.term !== undefined) dbData.term = data.term;
-    if (data.seatsTotal !== undefined) dbData.seats_total = data.seatsTotal;
-    if (data.seatsUsed !== undefined) dbData.seats_used = data.seatsUsed;
-    if (data.startsAt !== undefined) dbData.starts_at = data.startsAt;
-    if (data.startDay !== undefined) dbData.starts_at = data.startDay; // Handle API field name
-    if (data.expiresAt !== undefined) dbData.expires_at = data.expiresAt;
-    if (data.cancelDate !== undefined) dbData.cancel_date = data.cancelDate;
-    if (data.lastActive !== undefined) dbData.last_active = data.lastActive;
-    if (data.dba !== undefined) dbData.dba = data.dba;
-    if (data.zip !== undefined) dbData.zip = data.zip;
-    if (data.lastPayment !== undefined) dbData.last_payment = data.lastPayment;
-    if (data.smsPurchased !== undefined) dbData.sms_purchased = data.smsPurchased;
-    if (data.smsSent !== undefined) dbData.sms_sent = data.smsSent;
-    if (data.smsBalance !== undefined) dbData.sms_balance = data.smsBalance;
-    if (data.agents !== undefined) dbData.agents = data.agents;
-    if (data.agentsName !== undefined) dbData.agents_name = JSON.stringify(data.agentsName);
-    if (data.agentsCost !== undefined) dbData.agents_cost = data.agentsCost;
-    if (data.notes !== undefined) dbData.notes = data.notes;
-    if (data.createdBy !== undefined) dbData.created_by = data.createdBy;
-    if (data.updatedBy !== undefined) dbData.updated_by = data.updatedBy;
-    if (data.createdAt !== undefined) dbData.created_at = data.createdAt;
-    if (data.updatedAt !== undefined) dbData.updated_at = data.updatedAt;
-
-    // External sync fields
-    if (data.externalAppId !== undefined) dbData.external_appid = data.externalAppId;
-    if (data.external_appid !== undefined) dbData.external_appid = data.external_appid;
-    if (data.externalCountId !== undefined) dbData.external_countid = data.externalCountId;
-    if (data.external_countid !== undefined) dbData.external_countid = data.external_countid;
-    if (data.externalEmail !== undefined) dbData.external_email = data.externalEmail;
-    if (data.external_email !== undefined) dbData.external_email = data.external_email;
-    if (data.externalStatus !== undefined) dbData.external_status = data.externalStatus;
-    if (data.external_status !== undefined) dbData.external_status = data.external_status;
-    if (data.externalPackage !== undefined) dbData.external_package = JSON.stringify(data.externalPackage);
-    if (data.external_package !== undefined) {
-      dbData.external_package = typeof data.external_package === 'string'
-        ? data.external_package
-        : JSON.stringify(data.external_package);
+    if (data.id !== undefined) {
+      dbData.id = data.id;
     }
-    if (data.externalSendbatWorkspace !== undefined) dbData.external_sendbat_workspace = data.externalSendbatWorkspace;
-    if (data.external_sendbat_workspace !== undefined) dbData.external_sendbat_workspace = data.external_sendbat_workspace;
-    if (data.externalComingExpired !== undefined) dbData.external_coming_expired = data.externalComingExpired;
-    if (data.external_coming_expired !== undefined) dbData.external_coming_expired = data.external_coming_expired;
-    if (data.externalSyncStatus !== undefined) dbData.external_sync_status = data.externalSyncStatus;
-    if (data.external_sync_status !== undefined) dbData.external_sync_status = data.external_sync_status;
-    if (data.lastExternalSync !== undefined) dbData.last_external_sync = data.lastExternalSync;
-    if (data.last_external_sync !== undefined) dbData.last_external_sync = data.last_external_sync;
-    if (data.externalSyncError !== undefined) dbData.external_sync_error = data.externalSyncError;
-    if (data.external_sync_error !== undefined) dbData.external_sync_error = data.external_sync_error;
+    if (data.key !== undefined) {
+      dbData.key = data.key;
+    }
+    if (data.product !== undefined) {
+      dbData.product = data.product;
+    }
+    if (data.plan !== undefined) {
+      dbData.plan = data.plan;
+    }
+    if (data.status !== undefined) {
+      dbData.status = data.status;
+    }
+    if (data.term !== undefined) {
+      dbData.term = data.term;
+    }
+    if (data.seatsTotal !== undefined) {
+      dbData.seats_total = data.seatsTotal;
+    }
+    if (data.seatsUsed !== undefined) {
+      dbData.seats_used = data.seatsUsed;
+    }
+    if (data.startsAt !== undefined) {
+      dbData.starts_at = data.startsAt;
+    }
+    if (data.startDay !== undefined) {
+      dbData.starts_at = data.startDay;
+    } // Handle API field name
+    if (data.expiresAt !== undefined) {
+      dbData.expires_at = data.expiresAt;
+    }
+    if (data.cancelDate !== undefined) {
+      dbData.cancel_date = data.cancelDate;
+    }
+    if (data.lastActive !== undefined) {
+      dbData.last_active = data.lastActive;
+    }
+    if (data.dba !== undefined) {
+      dbData.dba = data.dba;
+    }
+    if (data.zip !== undefined) {
+      dbData.zip = data.zip;
+    }
+    if (data.lastPayment !== undefined) {
+      dbData.last_payment = data.lastPayment;
+    }
+    if (data.smsPurchased !== undefined) {
+      dbData.sms_purchased = data.smsPurchased;
+    }
+    if (data.smsSent !== undefined) {
+      dbData.sms_sent = data.smsSent;
+    }
+    if (data.smsBalance !== undefined) {
+      dbData.sms_balance = data.smsBalance;
+    }
+    if (data.agents !== undefined) {
+      dbData.agents = data.agents;
+    }
+    if (data.agentsName !== undefined) {
+      dbData.agents_name = JSON.stringify(data.agentsName);
+    }
+    if (data.agentsCost !== undefined) {
+      dbData.agents_cost = data.agentsCost;
+    }
+    if (data.notes !== undefined) {
+      dbData.notes = data.notes;
+    }
+    if (data.createdBy !== undefined) {
+      dbData.created_by = data.createdBy;
+    }
+    if (data.updatedBy !== undefined) {
+      dbData.updated_by = data.updatedBy;
+    }
+    if (data.createdAt !== undefined) {
+      dbData.created_at = data.createdAt;
+    }
+    if (data.updatedAt !== undefined) {
+      dbData.updated_at = data.updatedAt;
+    }
+
+    // External sync fields (unified)
+    if (data.appid !== undefined) {
+      dbData.appid = data.appid;
+    }
+    if (data.countid !== undefined) {
+      dbData.countid = data.countid;
+    }
+    if (data.mid !== undefined) {
+      dbData.mid = data.mid;
+    }
+    if (data.license_type !== undefined) {
+      dbData.license_type = data.license_type;
+    }
+    if (data.package_data !== undefined) {
+      dbData.package =
+        typeof data.package_data === 'string'
+          ? data.package_data
+          : JSON.stringify(data.package_data);
+    }
+    if (data.sendbat_workspace !== undefined) {
+      dbData.sendbat_workspace = data.sendbat_workspace;
+    }
+    if (data.coming_expired !== undefined) {
+      dbData.coming_expired = data.coming_expired;
+    }
+    if (data.externalSyncStatus !== undefined) {
+      dbData.external_sync_status = data.externalSyncStatus;
+    }
+    if (data.external_sync_status !== undefined) {
+      dbData.external_sync_status = data.external_sync_status;
+    }
+    if (data.lastExternalSync !== undefined) {
+      dbData.last_external_sync = data.lastExternalSync;
+    }
+    if (data.last_external_sync !== undefined) {
+      dbData.last_external_sync = data.last_external_sync;
+    }
+    if (data.externalSyncError !== undefined) {
+      dbData.external_sync_error = data.externalSyncError;
+    }
+    if (data.external_sync_error !== undefined) {
+      dbData.external_sync_error = data.external_sync_error;
+    }
 
     return dbData;
   }

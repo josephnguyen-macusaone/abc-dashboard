@@ -4,14 +4,14 @@
  */
 export async function up(knex) {
   await knex.schema.alterTable('licenses', (table) => {
-    // External API synchronization fields
-    table.string('external_appid', 255).nullable();
-    table.integer('external_countid').nullable();
-    table.string('external_email', 255).nullable();
-    table.integer('external_status').nullable();
-    table.jsonb('external_package').nullable();
-    table.string('external_sendbat_workspace', 255).nullable();
-    table.timestamp('external_coming_expired', { useTz: true }).nullable();
+    // External API synchronization fields (unified)
+    table.string('appid', 255).nullable();
+    table.integer('countid').nullable();
+    table.string('mid', 255).nullable(); // Merchant ID
+    table.string('license_type', 50).nullable(); // demo/product
+    table.jsonb('package').nullable();
+    table.string('sendbat_workspace', 255).nullable();
+    table.timestamp('coming_expired', { useTz: true }).nullable();
 
     // Sync tracking
     table.enu('external_sync_status', ['pending', 'synced', 'failed']).defaultTo('pending');
@@ -19,9 +19,10 @@ export async function up(knex) {
     table.text('external_sync_error').nullable();
 
     // Indexes for external data
-    table.index('external_appid');
-    table.index('external_email');
-    table.index('external_countid');
+    table.index('appid');
+    table.index('countid');
+    table.index('mid');
+    table.index('license_type');
     table.index('external_sync_status');
     table.index('last_external_sync');
   });
@@ -30,13 +31,13 @@ export async function up(knex) {
 export async function down(knex) {
   await knex.schema.alterTable('licenses', (table) => {
     // Drop external fields
-    table.dropColumn('external_appid');
-    table.dropColumn('external_countid');
-    table.dropColumn('external_email');
-    table.dropColumn('external_status');
-    table.dropColumn('external_package');
-    table.dropColumn('external_sendbat_workspace');
-    table.dropColumn('external_coming_expired');
+    table.dropColumn('appid');
+    table.dropColumn('countid');
+    table.dropColumn('mid');
+    table.dropColumn('license_type');
+    table.dropColumn('package');
+    table.dropColumn('sendbat_workspace');
+    table.dropColumn('coming_expired');
     table.dropColumn('external_sync_status');
     table.dropColumn('last_external_sync');
     table.dropColumn('external_sync_error');

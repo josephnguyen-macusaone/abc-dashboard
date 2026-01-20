@@ -34,7 +34,7 @@ export class ExternalLicense {
     this.id = id;
     this.appid = appid;
     this.license_type = license_type || 'product';
-    this.dba = dba;
+    this.dba = dba || Email_license || '';
     this.zip = zip;
     this.mid = mid;
     this.status = status;
@@ -84,7 +84,7 @@ export class ExternalLicense {
     }
 
     // License type validation
-    const validTypes = ['product', 'service', 'trial', 'enterprise'];
+    const validTypes = ['product', 'service', 'trial', 'enterprise', 'demo'];
     if (this.license_type && !validTypes.includes(this.license_type)) {
       errors.push(`License type must be one of: ${validTypes.join(', ')}`);
     }
@@ -94,10 +94,8 @@ export class ExternalLicense {
       errors.push('Monthly fee cannot be negative');
     }
 
-    // SMS balance validation
-    if (this.smsBalance !== undefined && this.smsBalance < 0) {
-      errors.push('SMS balance cannot be negative');
-    }
+    // SMS balance validation - allow negative values (can represent debt/overages)
+    // No validation needed for SMS balance as external API may return negative values
 
     // Date validation
     if (this.ActivateDate && isNaN(Date.parse(this.ActivateDate))) {
@@ -213,7 +211,7 @@ export class ExternalLicense {
       countid: this.countid,
       Email_license: this.Email_license,
       license_type: this.license_type,
-      dba: this.dba,
+      dba: this.dba || this.Email_license || '',
       status: this.status,
       monthlyFee: this.monthlyFee,
       smsBalance: this.smsBalance,
