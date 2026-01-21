@@ -617,4 +617,302 @@ export class ExternalLicenseController {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
+
+  // ========================================================================
+  // MISSING ENDPOINTS FROM EXTERNAL API
+  // ========================================================================
+
+  /**
+   * Update license by email (PUT /api/v1/licenses/email/{email})
+   */
+  updateLicenseByEmail = async (req, res) => {
+    try {
+      const { email } = req.params;
+      const updates = req.body;
+
+      logger.info('Updating external license by email via API', {
+        correlationId: req.correlationId,
+        email,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.updateLicenseByEmail(email, updates);
+
+      return res.success(result, 'License updated successfully');
+    } catch (error) {
+      logger.error('Update external license by email failed via API', {
+        correlationId: req.correlationId,
+        email: req.params.email,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Delete license by email (DELETE /api/v1/licenses/email/{email})
+   */
+  deleteLicenseByEmail = async (req, res) => {
+    try {
+      const { email } = req.params;
+
+      logger.info('Deleting external license by email via API', {
+        correlationId: req.correlationId,
+        email,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.deleteLicenseByEmail(email);
+
+      return res.success(result, 'License deleted successfully');
+    } catch (error) {
+      logger.error('Delete external license by email failed via API', {
+        correlationId: req.correlationId,
+        email: req.params.email,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Update license by countid (PUT /api/v1/licenses/countid/{countid})
+   */
+  updateLicenseByCountId = async (req, res) => {
+    try {
+      const { countid } = req.params;
+      const updates = req.body;
+
+      logger.info('Updating external license by countid via API', {
+        correlationId: req.correlationId,
+        countid,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.updateLicenseByCountId(parseInt(countid), updates);
+
+      return res.success(result, 'License updated successfully');
+    } catch (error) {
+      logger.error('Update external license by countid failed via API', {
+        correlationId: req.correlationId,
+        countid: req.params.countid,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Delete license by countid (DELETE /api/v1/licenses/countid/{countid})
+   */
+  deleteLicenseByCountId = async (req, res) => {
+    try {
+      const { countid } = req.params;
+
+      logger.info('Deleting external license by countid via API', {
+        correlationId: req.correlationId,
+        countid,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.deleteLicenseByCountId(parseInt(countid));
+
+      return res.success(result, 'License deleted successfully');
+    } catch (error) {
+      logger.error('Delete external license by countid failed via API', {
+        correlationId: req.correlationId,
+        countid: req.params.countid,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Reset license ID (POST /api/v1/licenses/reset)
+   */
+  resetLicense = async (req, res) => {
+    try {
+      const { appid, email } = req.body;
+
+      logger.info('Resetting external license ID via API', {
+        correlationId: req.correlationId,
+        appid,
+        email,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.resetLicense({ appid, email });
+
+      return res.success(result, 'License reset successfully');
+    } catch (error) {
+      logger.error('Reset external license failed via API', {
+        correlationId: req.correlationId,
+        appid: req.body.appid,
+        email: req.body.email,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Bulk create licenses (POST /api/v1/licenses/bulk)
+   */
+  bulkCreateLicenses = async (req, res) => {
+    try {
+      const { licenses } = req.body;
+
+      logger.info('Bulk creating external licenses via API', {
+        correlationId: req.correlationId,
+        count: licenses?.length || 0,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.bulkCreateLicenses(licenses);
+
+      return res.success(result, 'Licenses bulk created successfully');
+    } catch (error) {
+      logger.error('Bulk create external licenses failed via API', {
+        correlationId: req.correlationId,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Add row license (POST /api/v1/licenses/row)
+   */
+  addRowLicense = async (req, res) => {
+    try {
+      const licenseData = req.body;
+
+      logger.info('Adding row license via API', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.addRowLicense(licenseData);
+
+      return res.success(result, 'License row added successfully');
+    } catch (error) {
+      logger.error('Add row license failed via API', {
+        correlationId: req.correlationId,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Get SMS payments (GET /api/v1/sms-payments)
+   */
+  getSmsPayments = async (req, res) => {
+    try {
+      const options = {
+        appid: req.query.appid,
+        emailLicense: req.query.emailLicense,
+        countid: req.query.countid ? parseInt(req.query.countid) : undefined,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 10,
+        sortBy: req.query.sortBy,
+        sortOrder: req.query.sortOrder,
+      };
+
+      logger.info('Getting SMS payments via API', {
+        correlationId: req.correlationId,
+        options,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.getSmsPayments(options);
+
+      return res.success(result, 'SMS payments retrieved successfully');
+    } catch (error) {
+      logger.error('Get SMS payments failed via API', {
+        correlationId: req.correlationId,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Add SMS payment (POST /api/v1/add-sms-payment)
+   */
+  addSmsPayment = async (req, res) => {
+    try {
+      const paymentData = req.body;
+
+      logger.info('Adding SMS payment via API', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.addSmsPayment(paymentData);
+
+      return res.success(result, 'SMS payment added successfully');
+    } catch (error) {
+      logger.error('Add SMS payment failed via API', {
+        correlationId: req.correlationId,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  /**
+   * Get license analytics (GET /api/v1/license-analytic)
+   */
+  getLicenseAnalytics = async (req, res) => {
+    try {
+      const options = {
+        month: req.query.month ? parseInt(req.query.month) : undefined,
+        year: req.query.year ? parseInt(req.query.year) : undefined,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        status: req.query.status ? parseInt(req.query.status) : undefined,
+        license_type: req.query.license_type,
+      };
+
+      logger.info('Getting license analytics via API', {
+        correlationId: req.correlationId,
+        options,
+        userId: req.user?.id,
+      });
+
+      const result = await this.manageExternalLicensesUseCase.getLicenseAnalytics(options);
+
+      return res.success(result, 'License analytics retrieved successfully');
+    } catch (error) {
+      logger.error('Get license analytics failed via API', {
+        correlationId: req.correlationId,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
 }

@@ -185,14 +185,7 @@ export function checkLicenseAccessPermission(operation) {
           },
         });
       }
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 500,
-          message: 'Internal server error',
-          category: 'server',
-        },
-      });
+      throw error;
     }
   };
 }

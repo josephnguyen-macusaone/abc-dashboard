@@ -35,6 +35,7 @@ import { config } from './src/infrastructure/config/config.js';
 import swaggerSpec from './src/infrastructure/config/swagger.js';
 import { monitorMiddleware, getHealthWithMetrics } from './src/infrastructure/config/monitoring.js';
 import { responseHelpersMiddleware } from './src/shared/http/response-transformer.js';
+import { awilixContainer } from './src/shared/kernel/container.js';
 
 const app = express();
 const PORT = config.PORT;
@@ -247,11 +248,24 @@ const startServer = async () => {
     });
 
     // Start the HTTP server
-    server = app.listen(PORT, () => {
+    server = app.listen(PORT, async () => {
       logger.startup(`Server started successfully on port ${PORT}`);
       logger.startup(`API available at http://localhost:${PORT}`);
       logger.startup(`API Documentation at http://localhost:${PORT}/api-docs`);
       logger.startup(`Health Check at http://localhost:${PORT}/api/v1/health`);
+
+      // Initialize and start license lifecycle scheduler
+      try {
+        const lifecycleScheduler = await awilixContainer.getLicenseLifecycleScheduler();
+        await lifecycleScheduler.start();
+        logger.startup('License lifecycle scheduler started successfully');
+      } catch (error) {
+        logger.error('Failed to start license lifecycle scheduler', {
+          error: error.message,
+          stack: error.stack,
+        });
+        // Don't fail server startup for scheduler issues
+      }
     });
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`);
@@ -264,6 +278,17 @@ const gracefulShutdown = async (signal) => {
   logger.startup(`Received ${signal}, starting graceful shutdown...`);
 
   try {
+    // Stop license lifecycle scheduler
+    try {
+      const lifecycleScheduler = await awilixContainer.getLicenseLifecycleScheduler();
+      await lifecycleScheduler.gracefulShutdown();
+      logger.startup('License lifecycle scheduler stopped');
+    } catch (error) {
+      logger.error('Error stopping license lifecycle scheduler', {
+        error: error.message,
+      });
+    }
+
     // Close server
     if (server) {
       await new Promise((resolve) => {

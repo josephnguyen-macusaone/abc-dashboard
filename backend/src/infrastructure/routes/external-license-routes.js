@@ -878,5 +878,288 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    */
   router.delete('/bulk/delete', controller.bulkDeleteLicenses);
 
+  // ========================================================================
+  // MISSING ENDPOINTS FROM EXTERNAL API
+  // ========================================================================
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/email/{email}:
+   *   put:
+   *     summary: Update License By Email
+   *     description: PUT /api/v1/external-licenses/licenses/email/{email} - Update external license by email
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: email
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: License updated successfully
+   */
+  router.put('/licenses/email/:email', controller.updateLicenseByEmail);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/email/{email}:
+   *   delete:
+   *     summary: Delete License By Email
+   *     description: DELETE /api/v1/external-licenses/licenses/email/{email} - Delete external license by email
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: email
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: License deleted successfully
+   */
+  router.delete('/licenses/email/:email', controller.deleteLicenseByEmail);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/countid/{countid}:
+   *   put:
+   *     summary: Update License By Countid
+   *     description: PUT /api/v1/external-licenses/licenses/countid/{countid} - Update external license by countid
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: countid
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: License updated successfully
+   */
+  router.put('/licenses/countid/:countid', controller.updateLicenseByCountId);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/countid/{countid}:
+   *   delete:
+   *     summary: Delete License By Countid
+   *     description: DELETE /api/v1/external-licenses/licenses/countid/{countid} - Delete external license by countid
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: countid
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: License deleted successfully
+   */
+  router.delete('/licenses/countid/:countid', controller.deleteLicenseByCountId);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/reset:
+   *   post:
+   *     summary: Reset License ID
+   *     description: POST /api/v1/external-licenses/licenses/reset - Reset license ID to NULL by appid or email
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               appid:
+   *                 type: string
+   *               email:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: License reset successfully
+   */
+  router.post('/licenses/reset', controller.resetLicense);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/bulk:
+   *   post:
+   *     summary: Bulk Create Licenses
+   *     description: POST /api/v1/external-licenses/licenses/bulk - Bulk create external licenses
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               licenses:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *     responses:
+   *       201:
+   *         description: Licenses bulk created successfully
+   */
+  router.post('/licenses/bulk', controller.bulkCreateLicenses);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/licenses/row:
+   *   post:
+   *     summary: Add Row License
+   *     description: POST /api/v1/external-licenses/licenses/row - Add row to DataGrid
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       201:
+   *         description: License row added successfully
+   */
+  router.post('/licenses/row', controller.addRowLicense);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/sms-payments:
+   *   get:
+   *     summary: Get SMS Payments
+   *     description: GET /api/v1/external-licenses/sms-payments - Get SMS payment records
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: appid
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: emailLicense
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: countid
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: startDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 10
+   *     responses:
+   *       200:
+   *         description: SMS payments retrieved successfully
+   */
+  router.get('/sms-payments', controller.getSmsPayments);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/add-sms-payment:
+   *   post:
+   *     summary: Add SMS Payment
+   *     description: POST /api/v1/external-licenses/add-sms-payment - Create SMS payment and update balance
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: SMS payment added successfully
+   */
+  router.post('/add-sms-payment', controller.addSmsPayment);
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/license-analytic:
+   *   get:
+   *     summary: Get License Analytics
+   *     description: GET /api/v1/external-licenses/license-analytic - Get license analytics with filtering
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: month
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 12
+   *       - in: query
+   *         name: year
+   *         schema:
+   *           type: integer
+   *           minimum: 1900
+   *       - in: query
+   *         name: startDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: license_type
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: License analytics retrieved successfully
+   */
+  router.get('/license-analytic', controller.getLicenseAnalytics);
+
   return router;
 };

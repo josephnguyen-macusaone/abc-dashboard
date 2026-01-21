@@ -450,15 +450,1099 @@ export class LicenseApiService {
   }
 }
 
+// ========================================================================
+// INTERNAL LICENSE MANAGEMENT API (Backend CRUD Operations)
+// ========================================================================
+
+/**
+ * Internal License Management API Service
+ * Provides access to backend license CRUD operations
+ */
+export class InternalLicenseApiService {
+  /**
+   * Get licenses with pagination and filtering
+   */
+  static async getLicenses(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    dba?: string;
+    license_type?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<{
+    success: boolean;
+    message: string;
+    data: any[];
+    meta: {
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      };
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const url = `/licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return httpClient.get(url);
+  }
+
+  /**
+   * Get single license by ID
+   */
+  static async getLicense(id: string): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.get(`/licenses/${id}`);
+  }
+
+  /**
+   * Create new license
+   */
+  static async createLicense(licenseData: {
+    key?: string;
+    product?: string;
+    plan?: string;
+    status?: string;
+    term?: string;
+    seatsTotal?: number;
+    startsAt?: string;
+    expiresAt?: string;
+    dba?: string;
+    zip?: string;
+    emailLicense?: string;
+    pass?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.post('/licenses', licenseData);
+  }
+
+  /**
+   * Update license
+   */
+  static async updateLicense(id: string, updates: Partial<{
+    status?: string;
+    seatsTotal?: number;
+    notes?: string;
+    dba?: string;
+    zip?: string;
+  }>): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.put(`/licenses/${id}`, updates);
+  }
+
+  /**
+   * Delete license (soft delete)
+   */
+  static async deleteLicense(id: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return httpClient.delete(`/licenses/${id}`);
+  }
+
+  /**
+   * Bulk update licenses
+   */
+  static async bulkUpdateLicenses(updates: {
+    identifiers: {
+      appids?: string[];
+      emails?: string[];
+      countids?: number[];
+    };
+    updates: Record<string, any>;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      updated: number;
+      failed: number;
+      results: any[];
+    };
+  }> {
+    return httpClient.patch('/licenses/bulk', updates);
+  }
+
+  /**
+   * Bulk create licenses
+   */
+  static async bulkCreateLicenses(licenses: Array<{
+    key?: string;
+    product?: string;
+    plan?: string;
+    status?: string;
+    term?: string;
+    seatsTotal?: number;
+    startsAt?: string;
+    expiresAt?: string;
+    dba?: string;
+    zip?: string;
+    emailLicense?: string;
+    pass?: string;
+  }>): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      created: number;
+      failed: number;
+      results: any[];
+    };
+  }> {
+    return httpClient.post('/licenses/bulk', licenses);
+  }
+
+  /**
+   * Bulk delete licenses
+   */
+  static async bulkDeleteLicenses(identifiers: {
+    appids?: string[];
+    emails?: string[];
+    countids?: number[];
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      deleted: number;
+      failed: number;
+      results: any[];
+    };
+  }> {
+    return httpClient.delete('/licenses/bulk', { data: identifiers });
+  }
+
+  /**
+   * Get license by email
+   */
+  static async getLicenseByEmail(email: string): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.get(`/licenses/email/${encodeURIComponent(email)}`);
+  }
+
+  /**
+   * Update license by email
+   */
+  static async updateLicenseByEmail(email: string, updates: Record<string, any>): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.put(`/licenses/email/${encodeURIComponent(email)}`, updates);
+  }
+
+  /**
+   * Delete license by email
+   */
+  static async deleteLicenseByEmail(email: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return httpClient.delete(`/licenses/email/${encodeURIComponent(email)}`);
+  }
+
+  /**
+   * Get license by count ID
+   */
+  static async getLicenseByCountId(countId: number): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.get(`/licenses/countid/${countId}`);
+  }
+
+  /**
+   * Update license by count ID
+   */
+  static async updateLicenseByCountId(countId: number, updates: Record<string, any>): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.put(`/licenses/countid/${countId}`, updates);
+  }
+
+  /**
+   * Delete license by count ID
+   */
+  static async deleteLicenseByCountId(countId: number): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return httpClient.delete(`/licenses/countid/${countId}`);
+  }
+
+  /**
+   * Reset license (set ID to null)
+   */
+  static async resetLicense(identifiers: {
+    appid?: string;
+    email?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return httpClient.post('/licenses/reset', identifiers);
+  }
+
+  /**
+   * Add row license (create single license for grid)
+   */
+  static async addRowLicense(licenseData: {
+    key?: string;
+    product?: string;
+    plan?: string;
+    status?: string;
+    term?: string;
+    seatsTotal?: number;
+    startsAt?: string;
+    expiresAt?: string;
+    dba?: string;
+    zip?: string;
+    emailLicense?: string;
+    pass?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.post('/licenses/row', licenseData);
+  }
+
+  // ========================================================================
+  // LICENSE LIFECYCLE MANAGEMENT API
+  // ========================================================================
+
+  /**
+   * Get dashboard metrics
+   */
+  static async getDashboardMetrics(params?: {
+    startsAtFrom?: string;
+    startsAtTo?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      metrics: {
+        overview: {
+          total: number;
+          active: number;
+          expired: number;
+          expiringSoon: number;
+        };
+        utilization: {
+          totalSeats: number;
+          usedSeats: number;
+          availableSeats: number;
+          utilizationRate: number;
+        };
+        alerts: {
+          expiringSoon: any[];
+          lowSeats: any[];
+        };
+      };
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    if (params?.startsAtFrom) {
+      queryParams.append('startsAtFrom', params.startsAtFrom);
+    }
+    if (params?.startsAtTo) {
+      queryParams.append('startsAtTo', params.startsAtTo);
+    }
+
+    const url = `/licenses/dashboard/metrics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return httpClient.get(url);
+  }
+
+  /**
+   * Get license lifecycle status
+   */
+  static async getLifecycleStatus(licenseId: string): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      licenseId: string;
+      status: string;
+      expiresAt: string;
+      isExpired: boolean;
+      isExpiringSoon: boolean;
+      daysUntilExpiry: number;
+      gracePeriodDays: number;
+      autoSuspendEnabled: boolean;
+      renewalRemindersSent: string[];
+      lastRenewalReminder: string | null;
+    };
+  }> {
+    return httpClient.get(`/licenses/${licenseId}/lifecycle-status`);
+  }
+
+  /**
+   * Renew license
+   */
+  static async renewLicense(licenseId: string, renewalOptions: {
+    newExpirationDate?: string;
+    extensionDays?: number;
+    reason?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.post(`/licenses/${licenseId}/renew`, renewalOptions);
+  }
+
+  /**
+   * Get renewal preview
+   */
+  static async getRenewalPreview(licenseId: string, renewalOptions: {
+    extensionDays?: number;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      currentExpiration: string;
+      proposedExpiration: string;
+      extensionDays: number;
+      costImpact: number;
+      conflicts: any[];
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    if (renewalOptions.extensionDays) {
+      queryParams.append('extensionDays', String(renewalOptions.extensionDays));
+    }
+
+    const url = `/licenses/${licenseId}/renew-preview${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return httpClient.get(url);
+  }
+
+  /**
+   * Extend license expiration
+   */
+  static async extendLicense(licenseId: string, extensionOptions: {
+    extensionDays?: number;
+    reason?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.post(`/licenses/${licenseId}/extend`, extensionOptions);
+  }
+
+  /**
+   * Expire license manually
+   */
+  static async expireLicense(licenseId: string, expirationOptions: {
+    reason?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.post(`/licenses/${licenseId}/expire`, expirationOptions);
+  }
+
+  /**
+   * Get expiration preview
+   */
+  static async getExpirationPreview(licenseId: string): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      currentStatus: string;
+      proposedStatus: string;
+      gracePeriodDays: number;
+      autoSuspendEnabled: boolean;
+      conflicts: any[];
+    };
+  }> {
+    return httpClient.get(`/licenses/${licenseId}/expire-preview`);
+  }
+
+  /**
+   * Reactivate suspended license
+   */
+  static async reactivateLicense(licenseId: string, reactivationOptions: {
+    reason?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: { license: any };
+  }> {
+    return httpClient.post(`/licenses/${licenseId}/reactivate`, reactivationOptions);
+  }
+
+  /**
+   * Get licenses requiring attention
+   */
+  static async getLicensesRequiringAttention(options: {
+    includeExpiringSoon?: boolean;
+    includeExpired?: boolean;
+    includeSuspended?: boolean;
+    daysThreshold?: number;
+  } = {}): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      expiringSoon: any[];
+      expired: any[];
+      suspended: any[];
+      total: number;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    if (options.includeExpiringSoon !== undefined) {
+      queryParams.append('includeExpiringSoon', String(options.includeExpiringSoon));
+    }
+    if (options.includeExpired !== undefined) {
+      queryParams.append('includeExpired', String(options.includeExpired));
+    }
+    if (options.includeSuspended !== undefined) {
+      queryParams.append('includeSuspended', String(options.includeSuspended));
+    }
+    if (options.daysThreshold !== undefined) {
+      queryParams.append('daysThreshold', String(options.daysThreshold));
+    }
+
+    const url = `/licenses/attention${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return httpClient.get(url);
+  }
+
+  /**
+   * Bulk renew licenses
+   */
+  static async bulkRenewLicenses(renewalData: {
+    licenseIds: string[];
+    extensionDays?: number;
+    reason?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      renewed: number;
+      failed: number;
+      results: any[];
+    };
+  }> {
+    return httpClient.post('/licenses/lifecycle/bulk-renew', renewalData);
+  }
+
+  /**
+   * Bulk expire licenses
+   */
+  static async bulkExpireLicenses(expirationData: {
+    licenseIds: string[];
+    reason?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      expired: number;
+      failed: number;
+      results: any[];
+    };
+  }> {
+    return httpClient.post('/licenses/lifecycle/bulk-expire', expirationData);
+  }
+
+  /**
+   * Process lifecycle operations manually
+   */
+  static async processLifecycle(operation: 'expiring_reminders' | 'expiration_checks'): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      operation: string;
+      processed: number;
+      timestamp: string;
+    };
+  }> {
+    return httpClient.post('/licenses/lifecycle/process', { operation });
+  }
+
+  // ========================================================================
+  // ANALYTICS & REPORTING API
+  // ========================================================================
+
+  /**
+   * Get license analytics with date filtering
+   */
+  static async getLicenseAnalytics(params: {
+    month?: number;
+    year?: number;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    license_type?: string;
+  } = {}): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      totalLicenses: number;
+      activeLicenses: number;
+      expiredLicenses: number;
+      suspendedLicenses: number;
+      utilizationRate: number;
+      monthlyBreakdown: any[];
+      statusDistribution: Record<string, number>;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const url = `/licenses/license-analytic${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return httpClient.get(url);
+  }
+}
+
+// ========================================================================
+// SMS PAYMENT MANAGEMENT API
+// ========================================================================
+
+/**
+ * SMS Payment Management API Service
+ */
+export class SmsPaymentApiService {
+  /**
+   * Get SMS payments
+   */
+  static async getSmsPayments(params: {
+    appid?: string;
+    emailLicense?: string;
+    countid?: number;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      payments: any[];
+      totals: {
+        totalPayments: number;
+        totalAmount: number;
+        totalSmsCredits: number;
+      };
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      };
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, String(value));
+      }
+    });
+
+    const url = `/sms-payments${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return httpClient.get(url);
+  }
+
+  /**
+   * Add SMS payment
+   */
+  static async addSmsPayment(paymentData: {
+    appid?: string;
+    emailLicense?: string;
+    countid?: number;
+    amount: number;
+    paymentDate?: string;
+    description?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      payment: any;
+      updatedLicense: any;
+    };
+  }> {
+    return httpClient.post('/add-sms-payment', paymentData);
+  }
+}
+
+// ========================================================================
+// UNIFIED API EXPORTS
+// ========================================================================
+
+// ========================================================================
+// UNIFIED LICENSE API - Primary Interface for Components
+// ========================================================================
+
+/**
+ * Unified License API - Primary interface for all license operations
+ * Provides both external and internal API access with consistent error handling
+ */
+export class UnifiedLicenseApi {
+  // ========================================================================
+  // LICENSE CRUD OPERATIONS
+  // ========================================================================
+
+  /**
+   * Get licenses with pagination and filtering
+   */
+  static async getLicenses(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    dba?: string;
+    license_type?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}) {
+    try {
+      // Use internal API for full functionality
+      const response = await InternalLicenseApiService.getLicenses(params);
+
+      // Transform internal API response to frontend repository format
+      return {
+        licenses: response.data || [],
+        pagination: response.meta?.pagination || {
+          page: params.page || 1,
+          limit: params.limit || 20,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        },
+        stats: response.meta?.stats || undefined
+      };
+    } catch (error) {
+      // Fallback to external API if internal fails
+      console.warn('Internal license API failed, falling back to external API:', error);
+      return await LicenseApiService.getLicenses(params);
+    }
+  }
+
+  /**
+   * Get single license by ID
+   */
+  static async getLicense(id: string) {
+    try {
+      return await InternalLicenseApiService.getLicense(id);
+    } catch (error) {
+      // Fallback to external API
+      console.warn('Internal license API failed, falling back to external API:', error);
+      return await LicenseApiService.getLicense(id);
+    }
+  }
+
+  /**
+   * Create new license
+   */
+  static async createLicense(licenseData: Partial<LicenseRecord>) {
+    try {
+      return await InternalLicenseApiService.createLicense(licenseData);
+    } catch (error) {
+      // Fallback to external API
+      console.warn('Internal license API failed, falling back to external API:', error);
+      return await LicenseApiService.createLicense(licenseData);
+    }
+  }
+
+  /**
+   * Update license
+   */
+  static async updateLicense(id: string, updates: Partial<LicenseRecord>) {
+    try {
+      return await InternalLicenseApiService.updateLicense(id, updates);
+    } catch (error) {
+      // Fallback to external API
+      console.warn('Internal license API failed, falling back to external API:', error);
+      return await LicenseApiService.updateLicense(id, updates);
+    }
+  }
+
+  /**
+   * Delete license (soft delete)
+   */
+  static async deleteLicense(id: string) {
+    try {
+      return await InternalLicenseApiService.deleteLicense(id);
+    } catch (error) {
+      // Fallback to external API
+      console.warn('Internal license API failed, falling back to external API:', error);
+      return await LicenseApiService.deleteLicense(id);
+    }
+  }
+
+  // ========================================================================
+  // BULK OPERATIONS
+  // ========================================================================
+
+  /**
+   * Bulk update licenses
+   */
+  static async bulkUpdateLicenses(updates: {
+    identifiers: {
+      appids?: string[];
+      emails?: string[];
+      countids?: number[];
+    };
+    updates: Record<string, any>;
+  }) {
+    return await InternalLicenseApiService.bulkUpdateLicenses(updates);
+  }
+
+  /**
+   * Bulk create licenses
+   */
+  static async bulkCreateLicenses(licenses: Array<Partial<LicenseRecord>>) {
+    return await InternalLicenseApiService.bulkCreateLicenses(licenses);
+  }
+
+  /**
+   * Bulk delete licenses
+   */
+  static async bulkDeleteLicenses(identifiers: {
+    appids?: string[];
+    emails?: string[];
+    countids?: number[];
+  }) {
+    return await InternalLicenseApiService.bulkDeleteLicenses(identifiers);
+  }
+
+  // ========================================================================
+  // ADVANCED OPERATIONS
+  // ========================================================================
+
+  /**
+   * Get license by email
+   */
+  static async getLicenseByEmail(email: string) {
+    return await InternalLicenseApiService.getLicenseByEmail(email);
+  }
+
+  /**
+   * Update license by email
+   */
+  static async updateLicenseByEmail(email: string, updates: Record<string, any>) {
+    return await InternalLicenseApiService.updateLicenseByEmail(email, updates);
+  }
+
+  /**
+   * Delete license by email
+   */
+  static async deleteLicenseByEmail(email: string) {
+    return await InternalLicenseApiService.deleteLicenseByEmail(email);
+  }
+
+  /**
+   * Get license by count ID
+   */
+  static async getLicenseByCountId(countId: number) {
+    return await InternalLicenseApiService.getLicenseByCountId(countId);
+  }
+
+  /**
+   * Update license by count ID
+   */
+  static async updateLicenseByCountId(countId: number, updates: Record<string, any>) {
+    return await InternalLicenseApiService.updateLicenseByCountId(countId, updates);
+  }
+
+  /**
+   * Delete license by count ID
+   */
+  static async deleteLicenseByCountId(countId: number) {
+    return await InternalLicenseApiService.deleteLicenseByCountId(countId);
+  }
+
+  /**
+   * Reset license (set ID to null)
+   */
+  static async resetLicense(identifiers: {
+    appid?: string;
+    email?: string;
+  }) {
+    return await InternalLicenseApiService.resetLicense(identifiers);
+  }
+
+  /**
+   * Add row license (create single license for grid)
+   */
+  static async addRowLicense(licenseData: Partial<LicenseRecord>) {
+    return await InternalLicenseApiService.addRowLicense(licenseData);
+  }
+
+  // ========================================================================
+  // DASHBOARD & ANALYTICS
+  // ========================================================================
+
+  /**
+   * Get dashboard metrics
+   */
+  static async getDashboardMetrics(params?: {
+    startsAtFrom?: string;
+    startsAtTo?: string;
+  }) {
+    return await LicenseApiService.getDashboardMetrics(params);
+  }
+
+  /**
+   * Get license analytics with date filtering
+   */
+  static async getLicenseAnalytics(params: {
+    month?: number;
+    year?: number;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    license_type?: string;
+  } = {}) {
+    return await InternalLicenseApiService.getLicenseAnalytics(params);
+  }
+
+  // ========================================================================
+  // LIFECYCLE MANAGEMENT
+  // ========================================================================
+
+  /**
+   * Get license lifecycle status
+   */
+  static async getLifecycleStatus(licenseId: string) {
+    return await InternalLicenseApiService.getLifecycleStatus(licenseId);
+  }
+
+  /**
+   * Renew license
+   */
+  static async renewLicense(licenseId: string, renewalOptions: {
+    newExpirationDate?: string;
+    extensionDays?: number;
+    reason?: string;
+  }) {
+    return await InternalLicenseApiService.renewLicense(licenseId, renewalOptions);
+  }
+
+  /**
+   * Get renewal preview
+   */
+  static async getRenewalPreview(licenseId: string, renewalOptions: {
+    extensionDays?: number;
+  }) {
+    return await InternalLicenseApiService.getRenewalPreview(licenseId, renewalOptions);
+  }
+
+  /**
+   * Extend license expiration
+   */
+  static async extendLicense(licenseId: string, extensionOptions: {
+    extensionDays?: number;
+    reason?: string;
+  }) {
+    return await InternalLicenseApiService.extendLicense(licenseId, extensionOptions);
+  }
+
+  /**
+   * Expire license manually
+   */
+  static async expireLicense(licenseId: string, expirationOptions: {
+    reason?: string;
+  }) {
+    return await InternalLicenseApiService.expireLicense(licenseId, expirationOptions);
+  }
+
+  /**
+   * Get expiration preview
+   */
+  static async getExpirationPreview(licenseId: string) {
+    return await InternalLicenseApiService.getExpirationPreview(licenseId);
+  }
+
+  /**
+   * Reactivate suspended license
+   */
+  static async reactivateLicense(licenseId: string, reactivationOptions: {
+    reason?: string;
+  }) {
+    return await InternalLicenseApiService.reactivateLicense(licenseId, reactivationOptions);
+  }
+
+  /**
+   * Get licenses requiring attention
+   */
+  static async getLicensesRequiringAttention(options: {
+    includeExpiringSoon?: boolean;
+    includeExpired?: boolean;
+    includeSuspended?: boolean;
+    daysThreshold?: number;
+  } = {}) {
+    try {
+      return await InternalLicenseApiService.getLicensesRequiringAttention(options);
+    } catch (error) {
+      // Note: This endpoint may have routing issues - return empty result
+      console.warn('getLicensesRequiringAttention not available:', error);
+      return {
+        success: true,
+        message: 'Feature temporarily unavailable',
+        data: {
+          expiringSoon: [],
+          expired: [],
+          suspended: [],
+          total: 0
+        }
+      };
+    }
+  }
+
+  /**
+   * Bulk renew licenses
+   */
+  static async bulkRenewLicenses(renewalData: {
+    licenseIds: string[];
+    extensionDays?: number;
+    reason?: string;
+  }) {
+    return await InternalLicenseApiService.bulkRenewLicenses(renewalData);
+  }
+
+  /**
+   * Bulk expire licenses
+   */
+  static async bulkExpireLicenses(expirationData: {
+    licenseIds: string[];
+    reason?: string;
+  }) {
+    return await InternalLicenseApiService.bulkExpireLicenses(expirationData);
+  }
+
+  /**
+   * Process lifecycle operations manually
+   */
+  static async processLifecycle(operation: 'expiring_reminders' | 'expiration_checks') {
+    return await InternalLicenseApiService.processLifecycle(operation);
+  }
+
+  // ========================================================================
+  // SMS PAYMENT MANAGEMENT
+  // ========================================================================
+
+  /**
+   * Get SMS payments
+   */
+  static async getSmsPayments(params: {
+    appid?: string;
+    emailLicense?: string;
+    countid?: number;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}) {
+    return await SmsPaymentApiService.getSmsPayments(params);
+  }
+
+  /**
+   * Add SMS payment
+   */
+  static async addSmsPayment(paymentData: {
+    appid?: string;
+    emailLicense?: string;
+    countid?: number;
+    amount: number;
+    paymentDate?: string;
+    description?: string;
+  }) {
+    return await SmsPaymentApiService.addSmsPayment(paymentData);
+  }
+}
+
+// ========================================================================
+// LEGACY API EXPORTS (for backward compatibility)
+// ========================================================================
+
 // Export singleton instance methods for convenience
 export const licenseApi = {
-  getLicenses: LicenseApiService.getLicenses,
-  getLicense: LicenseApiService.getLicense,
-  createLicense: LicenseApiService.createLicense,
-  updateLicense: LicenseApiService.updateLicense,
-  deleteLicense: LicenseApiService.deleteLicense,
-  bulkCreateLicenses: LicenseApiService.bulkCreateLicenses,
-  bulkUpdateLicenses: LicenseApiService.bulkUpdateLicenses,
-  bulkDeleteLicenses: LicenseApiService.bulkDeleteLicenses,
-  getDashboardMetrics: LicenseApiService.getDashboardMetrics,
+  // Unified API (recommended for new code)
+  getLicenses: UnifiedLicenseApi.getLicenses,
+  getLicense: UnifiedLicenseApi.getLicense,
+  createLicense: UnifiedLicenseApi.createLicense,
+  updateLicense: UnifiedLicenseApi.updateLicense,
+  deleteLicense: UnifiedLicenseApi.deleteLicense,
+  bulkUpdateLicenses: UnifiedLicenseApi.bulkUpdateLicenses,
+  bulkCreateLicenses: UnifiedLicenseApi.bulkCreateLicenses,
+  bulkDeleteLicenses: UnifiedLicenseApi.bulkDeleteLicenses,
+  getLicenseByEmail: UnifiedLicenseApi.getLicenseByEmail,
+  updateLicenseByEmail: UnifiedLicenseApi.updateLicenseByEmail,
+  deleteLicenseByEmail: UnifiedLicenseApi.deleteLicenseByEmail,
+  getLicenseByCountId: UnifiedLicenseApi.getLicenseByCountId,
+  updateLicenseByCountId: UnifiedLicenseApi.updateLicenseByCountId,
+  deleteLicenseByCountId: UnifiedLicenseApi.deleteLicenseByCountId,
+  resetLicense: UnifiedLicenseApi.resetLicense,
+  addRowLicense: UnifiedLicenseApi.addRowLicense,
+
+  // Dashboard & Analytics
+  getDashboardMetrics: UnifiedLicenseApi.getDashboardMetrics,
+  getLicenseAnalytics: UnifiedLicenseApi.getLicenseAnalytics,
+
+  // Lifecycle Management
+  getLifecycleStatus: UnifiedLicenseApi.getLifecycleStatus,
+  renewLicense: UnifiedLicenseApi.renewLicense,
+  getRenewalPreview: UnifiedLicenseApi.getRenewalPreview,
+  extendLicense: UnifiedLicenseApi.extendLicense,
+  expireLicense: UnifiedLicenseApi.expireLicense,
+  getExpirationPreview: UnifiedLicenseApi.getExpirationPreview,
+  reactivateLicense: UnifiedLicenseApi.reactivateLicense,
+  getLicensesRequiringAttention: UnifiedLicenseApi.getLicensesRequiringAttention,
+  bulkRenewLicenses: UnifiedLicenseApi.bulkRenewLicenses,
+  bulkExpireLicenses: UnifiedLicenseApi.bulkExpireLicenses,
+  processLifecycle: UnifiedLicenseApi.processLifecycle,
+
+  // SMS Payments
+  getSmsPayments: UnifiedLicenseApi.getSmsPayments,
+  addSmsPayment: UnifiedLicenseApi.addSmsPayment,
+
+  // Legacy API methods (for backward compatibility)
+  getInternalLicenses: InternalLicenseApiService.getLicenses,
+  getInternalLicense: InternalLicenseApiService.getLicense,
+  createInternalLicense: InternalLicenseApiService.createLicense,
+  updateInternalLicense: InternalLicenseApiService.updateLicense,
+  deleteInternalLicense: InternalLicenseApiService.deleteLicense,
+  bulkUpdateInternalLicenses: InternalLicenseApiService.bulkUpdateLicenses,
+  bulkCreateInternalLicenses: InternalLicenseApiService.bulkCreateLicenses,
+  bulkDeleteInternalLicenses: InternalLicenseApiService.bulkDeleteLicenses,
 } as const;

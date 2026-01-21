@@ -855,6 +855,19 @@ export class LicenseRepository extends ILicenseRepository {
       agentsName: licenseRow.agents_name,
       agentsCost: parseFloat(licenseRow.agents_cost) || 0,
       notes: licenseRow.notes,
+
+      // Lifecycle management fields
+      renewalRemindersSent: licenseRow.renewal_reminders_sent || [],
+      lastRenewalReminder: licenseRow.last_renewal_reminder,
+      renewalDueDate: licenseRow.renewal_due_date,
+      autoSuspendEnabled: licenseRow.auto_suspend_enabled,
+      gracePeriodDays: licenseRow.grace_period_days,
+      gracePeriodEnd: licenseRow.grace_period_end,
+      suspensionReason: licenseRow.suspension_reason,
+      suspendedAt: licenseRow.suspended_at,
+      reactivatedAt: licenseRow.reactivated_at,
+      renewalHistory: licenseRow.renewal_history || [],
+
       createdBy: licenseRow.created_by,
       updatedBy: licenseRow.updated_by,
       createdAt: licenseRow.created_at,
@@ -948,6 +961,39 @@ export class LicenseRepository extends ILicenseRepository {
     if (data.notes !== undefined) {
       dbData.notes = data.notes;
     }
+
+    // Lifecycle management fields
+    if (data.renewalRemindersSent !== undefined) {
+      dbData.renewal_reminders_sent = JSON.stringify(data.renewalRemindersSent);
+    }
+    if (data.lastRenewalReminder !== undefined) {
+      dbData.last_renewal_reminder = data.lastRenewalReminder;
+    }
+    if (data.renewalDueDate !== undefined) {
+      dbData.renewal_due_date = data.renewalDueDate;
+    }
+    if (data.autoSuspendEnabled !== undefined) {
+      dbData.auto_suspend_enabled = data.autoSuspendEnabled;
+    }
+    if (data.gracePeriodDays !== undefined) {
+      dbData.grace_period_days = data.gracePeriodDays;
+    }
+    if (data.gracePeriodEnd !== undefined) {
+      dbData.grace_period_end = data.gracePeriodEnd;
+    }
+    if (data.suspensionReason !== undefined) {
+      dbData.suspension_reason = data.suspensionReason;
+    }
+    if (data.suspendedAt !== undefined) {
+      dbData.suspended_at = data.suspendedAt;
+    }
+    if (data.reactivatedAt !== undefined) {
+      dbData.reactivated_at = data.reactivatedAt;
+    }
+    if (data.renewalHistory !== undefined) {
+      dbData.renewal_history = JSON.stringify(data.renewalHistory);
+    }
+
     if (data.createdBy !== undefined) {
       dbData.created_by = data.createdBy;
     }
@@ -1050,5 +1096,315 @@ export class LicenseRepository extends ILicenseRepository {
       userAgent: eventRow.user_agent,
       createdAt: eventRow.created_at,
     });
+  }
+
+  // ========================================================================
+  // LIFECYCLE MANAGEMENT METHODS
+  // ========================================================================
+
+  /**
+   * Find licenses that are expiring soon (within specified days)
+   */
+  async findExpiringLicenses(daysThreshold = 30) {
+    return withTimeout(
+      async () => {
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
+
+        const licenseRows = await this.db(this.licensesTable)
+          .where('expires_at', '<=', thresholdDate)
+          .where('expires_at', '>', new Date())
+          .whereNotIn('status', ['expired', 'revoked', 'cancel'])
+          .orderBy('expires_at', 'asc');
+
+        return licenseRows.map(row => this._toLicenseEntity(row));
+      },
+      TimeoutPresets.DATABASE,
+      'findExpiringLicenses',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('findExpiringLicenses timed out', {
+            correlationId: this.correlationId,
+            daysThreshold,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Find licenses that are expired and should be suspended
+   */
+  async findExpiredLicensesForSuspension() {
+    return withTimeout(
+      async () => {
+        const now = new Date();
+
+        const licenseRows = await this.db(this.licensesTable)
+          .where('expires_at', '<', now)
+          .where('auto_suspend_enabled', true)
+          .where('grace_period_end', '<', now)
+          .whereNotIn('status', ['expired', 'revoked', 'cancel'])
+          .orderBy('expires_at', 'asc');
+
+        return licenseRows.map(row => this._toLicenseEntity(row));
+      },
+      TimeoutPresets.DATABASE,
+      'findExpiredLicensesForSuspension',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('findExpiredLicensesForSuspension timed out', {
+            correlationId: this.correlationId,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Find licenses that need renewal reminders
+   */
+  async findLicensesNeedingReminders(reminderType) {
+    return withTimeout(
+      async () => {
+        const now = new Date();
+        let expiryCondition;
+
+        switch (reminderType) {
+          case '30days':
+            const thirtyDaysFromNow = new Date();
+            thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+            const sevenDaysFromNow = new Date();
+            sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+            expiryCondition = ['expires_at', '<=', thirtyDaysFromNow, 'and', 'expires_at', '>', sevenDaysFromNow];
+            break;
+          case '7days':
+            const sevenDaysFromNow2 = new Date();
+            sevenDaysFromNow2.setDate(sevenDaysFromNow2.getDate() + 7);
+            const oneDayFromNow = new Date();
+            oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
+            expiryCondition = ['expires_at', '<=', sevenDaysFromNow2, 'and', 'expires_at', '>', oneDayFromNow];
+            break;
+          case '1day':
+            const oneDayFromNow2 = new Date();
+            oneDayFromNow2.setDate(oneDayFromNow2.getDate() + 1);
+            expiryCondition = ['expires_at', '<=', oneDayFromNow2, 'and', 'expires_at', '>', now];
+            break;
+          default:
+            throw new Error(`Invalid reminder type: ${reminderType}`);
+        }
+
+        const licenseRows = await this.db(this.licensesTable)
+          .where(...expiryCondition)
+          .whereNotIn('status', ['expired', 'revoked', 'cancel'])
+          .whereRaw("NOT (renewal_reminders_sent::jsonb ? ?)", [reminderType])
+          .orderBy('expires_at', 'asc');
+
+        return licenseRows.map(row => this._toLicenseEntity(row));
+      },
+      TimeoutPresets.DATABASE,
+      'findLicensesNeedingReminders',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('findLicensesNeedingReminders timed out', {
+            correlationId: this.correlationId,
+            reminderType,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Update license renewal reminders
+   */
+  async updateRenewalReminders(licenseId, remindersSent, lastReminder) {
+    return withTimeout(
+      async () => {
+        await this.db(this.licensesTable)
+          .where('id', licenseId)
+          .update({
+            renewal_reminders_sent: JSON.stringify(remindersSent),
+            last_renewal_reminder: lastReminder,
+            updated_at: new Date(),
+          });
+
+        return true;
+      },
+      TimeoutPresets.DATABASE,
+      'updateRenewalReminders',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('updateRenewalReminders timed out', {
+            correlationId: this.correlationId,
+            licenseId,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Suspend expired licenses
+   */
+  async suspendExpiredLicenses(licenseIds, suspensionReason = 'Auto-suspended due to expiration') {
+    return withTimeout(
+      async () => {
+        const suspendedAt = new Date();
+
+        const updated = await this.db(this.licensesTable)
+          .whereIn('id', licenseIds)
+          .update({
+            status: 'expired',
+            suspension_reason: suspensionReason,
+            suspended_at: suspendedAt,
+            updated_at: suspendedAt,
+          });
+
+        return updated;
+      },
+      TimeoutPresets.DATABASE,
+      'suspendExpiredLicenses',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('suspendExpiredLicenses timed out', {
+            correlationId: this.correlationId,
+            licenseIds: licenseIds.length,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Extend license expiration
+   */
+  async extendLicenseExpiration(licenseId, newExpirationDate, context) {
+    return withTimeout(
+      async () => {
+        const updateData = {
+          expires_at: newExpirationDate,
+          grace_period_end: null, // Recalculate when needed
+          updated_by: context.userId,
+          updated_at: new Date(),
+        };
+
+        // Recalculate grace period if auto-suspend is enabled
+        const license = await this.findById(licenseId);
+        if (license && license.autoSuspendEnabled) {
+          const graceEnd = new Date(newExpirationDate);
+          graceEnd.setDate(newExpirationDate.getDate() + license.gracePeriodDays);
+          updateData.grace_period_end = graceEnd;
+        }
+
+        await this.db(this.licensesTable)
+          .where('id', licenseId)
+          .update(updateData);
+
+        return await this.findById(licenseId);
+      },
+      TimeoutPresets.DATABASE,
+      'extendLicenseExpiration',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('extendLicenseExpiration timed out', {
+            correlationId: this.correlationId,
+            licenseId,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Reactivate suspended license
+   */
+  async reactivateLicense(licenseId, context) {
+    return withTimeout(
+      async () => {
+        const reactivatedAt = new Date();
+
+        await this.db(this.licensesTable)
+          .where('id', licenseId)
+          .update({
+            status: 'active',
+            suspension_reason: null,
+            suspended_at: null,
+            reactivated_at: reactivatedAt,
+            updated_by: context.userId,
+            updated_at: reactivatedAt,
+          });
+
+        return await this.findById(licenseId);
+      },
+      TimeoutPresets.DATABASE,
+      'reactivateLicense',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('reactivateLicense timed out', {
+            correlationId: this.correlationId,
+            licenseId,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Update license renewal history
+   */
+  async addRenewalHistory(licenseId, action, details = {}) {
+    return withTimeout(
+      async () => {
+        const license = await this.findById(licenseId);
+        if (!license) {
+          throw new Error('License not found');
+        }
+
+        const historyEntry = {
+          action,
+          timestamp: new Date(),
+          ...details
+        };
+
+        license.renewalHistory.push(historyEntry);
+
+        await this.db(this.licensesTable)
+          .where('id', licenseId)
+          .update({
+            renewal_history: JSON.stringify(license.renewalHistory),
+            updated_at: new Date(),
+          });
+
+        return license.renewalHistory;
+      },
+      TimeoutPresets.DATABASE,
+      'addRenewalHistory',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('addRenewalHistory timed out', {
+            correlationId: this.correlationId,
+            licenseId,
+            action,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
   }
 }

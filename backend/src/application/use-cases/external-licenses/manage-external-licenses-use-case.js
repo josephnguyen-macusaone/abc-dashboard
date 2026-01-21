@@ -237,4 +237,270 @@ export class ManageExternalLicensesUseCase {
       }
     );
   }
+
+  // ========================================================================
+  // MISSING METHODS FOR EXTERNAL API ENDPOINTS
+  // ========================================================================
+
+  /**
+   * Update license by email
+   */
+  async updateLicenseByEmail(email, updates) {
+    return withTimeout(
+      async () => {
+        const existingLicense = await this.externalLicenseRepository.findByEmail(email);
+        if (!existingLicense) {
+          throw new Error('License not found');
+        }
+
+        return await this.externalLicenseRepository.update(existingLicense.id, updates);
+      },
+      TimeoutPresets.DATABASE,
+      'update_external_license_by_email',
+      {
+        onTimeout: () => {
+          logger.error('Update external license by email timed out', {
+            email,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Delete license by email
+   */
+  async deleteLicenseByEmail(email) {
+    return withTimeout(
+      async () => {
+        const existingLicense = await this.externalLicenseRepository.findByEmail(email);
+        if (!existingLicense) {
+          throw new Error('License not found');
+        }
+
+        return await this.externalLicenseRepository.delete(existingLicense.id);
+      },
+      TimeoutPresets.DATABASE,
+      'delete_external_license_by_email',
+      {
+        onTimeout: () => {
+          logger.error('Delete external license by email timed out', {
+            email,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Update license by countid
+   */
+  async updateLicenseByCountId(countid, updates) {
+    return withTimeout(
+      async () => {
+        const existingLicense = await this.externalLicenseRepository.findByCountId(countid);
+        if (!existingLicense) {
+          throw new Error('License not found');
+        }
+
+        return await this.externalLicenseRepository.update(existingLicense.id, updates);
+      },
+      TimeoutPresets.DATABASE,
+      'update_external_license_by_countid',
+      {
+        onTimeout: () => {
+          logger.error('Update external license by countid timed out', {
+            countid,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Delete license by countid
+   */
+  async deleteLicenseByCountId(countid) {
+    return withTimeout(
+      async () => {
+        const existingLicense = await this.externalLicenseRepository.findByCountId(countid);
+        if (!existingLicense) {
+          throw new Error('License not found');
+        }
+
+        return await this.externalLicenseRepository.delete(existingLicense.id);
+      },
+      TimeoutPresets.DATABASE,
+      'delete_external_license_by_countid',
+      {
+        onTimeout: () => {
+          logger.error('Delete external license by countid timed out', {
+            countid,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Reset license ID
+   */
+  async resetLicense({ appid, email }) {
+    return withTimeout(
+      async () => {
+        let license = null;
+
+        if (appid) {
+          license = await this.externalLicenseRepository.findByAppId(appid);
+        } else if (email) {
+          license = await this.externalLicenseRepository.findByEmail(email);
+        }
+
+        if (!license) {
+          throw new Error('License not found');
+        }
+
+        // Reset the ID to null (this would typically be a special operation)
+        // Note: This might need to be implemented differently based on business requirements
+        const updates = { id: null };
+        return await this.externalLicenseRepository.update(license.id, updates);
+      },
+      TimeoutPresets.DATABASE,
+      'reset_external_license',
+      {
+        onTimeout: () => {
+          logger.error('Reset external license timed out', {
+            appid,
+            email,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Bulk create licenses
+   */
+  async bulkCreateLicenses(licenses) {
+    return withTimeout(
+      async () => {
+        // This would typically call the external API to create licenses
+        // For now, we'll store them locally
+        const results = [];
+        for (const licenseData of licenses) {
+          try {
+            const result = await this.createLicense(licenseData);
+            results.push(result);
+          } catch (error) {
+            logger.error('Failed to create license in bulk operation', {
+              error: error.message,
+              licenseData,
+            });
+            // Continue with other licenses
+          }
+        }
+
+        return {
+          created: results.length,
+          totalRequested: licenses.length,
+          results,
+        };
+      },
+      TimeoutPresets.DATABASE * 5, // Longer timeout for bulk operations
+      'bulk_create_external_licenses',
+      {
+        onTimeout: () => {
+          logger.error('Bulk create external licenses timed out', {
+            requested: licenses.length,
+            timeout: TimeoutPresets.DATABASE * 5,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Add row license (create single license for DataGrid)
+   */
+  async addRowLicense(licenseData) {
+    return await this.createLicense(licenseData);
+  }
+
+  /**
+   * Get SMS payments
+   */
+  async getSmsPayments(options = {}) {
+    return withTimeout(
+      async () => {
+        // This would typically call the external API
+        // For now, return mock data or call external API service
+        const { externalLicenseApiService } = await import('../../../shared/services/external-license-api-service.js');
+
+        return await externalLicenseApiService.getSmsPayments(options);
+      },
+      TimeoutPresets.SLOW,
+      'get_sms_payments',
+      {
+        onTimeout: () => {
+          logger.error('Get SMS payments timed out', {
+            options,
+            timeout: TimeoutPresets.SLOW,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Add SMS payment
+   */
+  async addSmsPayment(paymentData) {
+    return withTimeout(
+      async () => {
+        // This would typically call the external API
+        const { externalLicenseApiService } = await import('../../../shared/services/external-license-api-service.js');
+
+        return await externalLicenseApiService.addSmsPayment(paymentData);
+      },
+      TimeoutPresets.SLOW,
+      'add_sms_payment',
+      {
+        onTimeout: () => {
+          logger.error('Add SMS payment timed out', {
+            paymentData,
+            timeout: TimeoutPresets.SLOW,
+          });
+        },
+      }
+    );
+  }
+
+  /**
+   * Get license analytics
+   */
+  async getLicenseAnalytics(options = {}) {
+    return withTimeout(
+      async () => {
+        // This would typically call the external API
+        const { externalLicenseApiService } = await import('../../../shared/services/external-license-api-service.js');
+
+        return await externalLicenseApiService.getLicenseAnalytics(options);
+      },
+      TimeoutPresets.SLOW,
+      'get_license_analytics',
+      {
+        onTimeout: () => {
+          logger.error('Get license analytics timed out', {
+            options,
+            timeout: TimeoutPresets.SLOW,
+          });
+        },
+      }
+    );
+  }
 }

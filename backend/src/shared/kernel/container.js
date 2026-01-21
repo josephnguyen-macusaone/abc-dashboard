@@ -7,8 +7,12 @@ import { AuthController } from '../../infrastructure/controllers/auth-controller
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
 import { LicenseController } from '../../infrastructure/controllers/license-controller.js';
+import { LicenseLifecycleController } from '../../infrastructure/controllers/license-lifecycle-controller.js';
 import { ExternalLicenseController } from '../../infrastructure/controllers/external-license-controller.js';
 import { LicenseService } from '../services/license-service.js';
+import { LicenseLifecycleService } from '../../infrastructure/services/license-lifecycle-service.js';
+import { LicenseNotificationService } from '../../infrastructure/services/license-notification-service.js';
+import { LicenseLifecycleScheduler } from '../../infrastructure/jobs/license-lifecycle-scheduler.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
@@ -25,6 +29,8 @@ import { UpdateProfileUseCase as ProfileUpdateProfileUseCase } from '../../appli
 import { RecordLoginUseCase } from '../../application/use-cases/profiles/record-login-use-case.js';
 import { SyncExternalLicensesUseCase } from '../../application/use-cases/external-licenses/sync-external-licenses-use-case.js';
 import { ManageExternalLicensesUseCase } from '../../application/use-cases/external-licenses/manage-external-licenses-use-case.js';
+import { RenewLicenseUseCase } from '../../application/use-cases/licenses/renew-license-use-case.js';
+import { ExpireLicenseUseCase } from '../../application/use-cases/licenses/expire-license-use-case.js';
 import { AuthService } from '../services/auth-service.js';
 import { TokenService } from '../services/token-service.js';
 import { EmailService } from '../services/email-service.js';
@@ -223,6 +229,31 @@ class Container {
     return this.instances.get('licenseService');
   }
 
+  async getLicenseLifecycleService() {
+    if (!this.instances.has('licenseLifecycleService')) {
+      const licenseRepository = await this.getLicenseRepository();
+      const notificationService = await this.getLicenseNotificationService();
+      this.instances.set('licenseLifecycleService', new LicenseLifecycleService(licenseRepository, notificationService));
+    }
+    return this.instances.get('licenseLifecycleService');
+  }
+
+  async getLicenseNotificationService() {
+    if (!this.instances.has('licenseNotificationService')) {
+      // For now, create without a notification provider (logs to console)
+      this.instances.set('licenseNotificationService', new LicenseNotificationService());
+    }
+    return this.instances.get('licenseNotificationService');
+  }
+
+  async getLicenseLifecycleScheduler() {
+    if (!this.instances.has('licenseLifecycleScheduler')) {
+      const lifecycleService = await this.getLicenseLifecycleService();
+      this.instances.set('licenseLifecycleScheduler', new LicenseLifecycleScheduler(lifecycleService));
+    }
+    return this.instances.get('licenseLifecycleScheduler');
+  }
+
   // Use cases
   async getLoginUseCase() {
     return new LoginUseCase(
@@ -331,6 +362,26 @@ class Container {
     return this.instances.get('manageExternalLicensesUseCase');
   }
 
+  async getRenewLicenseUseCase() {
+    if (!this.instances.has('renewLicenseUseCase')) {
+      this.instances.set('renewLicenseUseCase', new RenewLicenseUseCase(
+        await this.getLicenseRepository(),
+        await this.getLicenseLifecycleService()
+      ));
+    }
+    return this.instances.get('renewLicenseUseCase');
+  }
+
+  async getExpireLicenseUseCase() {
+    if (!this.instances.has('expireLicenseUseCase')) {
+      this.instances.set('expireLicenseUseCase', new ExpireLicenseUseCase(
+        await this.getLicenseRepository(),
+        await this.getLicenseLifecycleService()
+      ));
+    }
+    return this.instances.get('expireLicenseUseCase');
+  }
+
   // Controllers
   async getAuthController() {
     return new AuthController(
@@ -370,6 +421,25 @@ class Container {
       this.instances.set('licenseController', new LicenseController(licenseService));
     }
     return this.instances.get('licenseController');
+  }
+
+  async getLicenseLifecycleController() {
+    if (!this.instances.has('licenseLifecycleController')) {
+      console.log('🏗️ Container: Creating license lifecycle controller');
+      const lifecycleService = await this.getLicenseLifecycleService();
+      const renewLicenseUseCase = await this.getRenewLicenseUseCase();
+      const expireLicenseUseCase = await this.getExpireLicenseUseCase();
+      const licenseRepository = await this.getLicenseRepository();
+      const controller = new LicenseLifecycleController(
+        lifecycleService,
+        renewLicenseUseCase,
+        expireLicenseUseCase,
+        licenseRepository
+      );
+      console.log('✅ Container: License lifecycle controller created successfully');
+      this.instances.set('licenseLifecycleController', controller);
+    }
+    return this.instances.get('licenseLifecycleController');
   }
 
   async getExternalLicenseController() {

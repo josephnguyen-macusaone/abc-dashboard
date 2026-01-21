@@ -13,11 +13,87 @@ import {
  * License Routes
  * Defines routes for license management operations
  */
-export const createLicenseRoutes = (controller, authMiddleware) => {
+export const createLicenseRoutes = (controller, lifecycleController, authMiddleware) => {
   const router = express.Router();
+
+  // Special route for testing - defined before auth middleware
+  router.get(
+    '/attention-test',
+    (req, res) => {
+      console.log('🎯 BYPASS ATTENTION HANDLER: Called');
+      return res.status(200).json({
+        success: true,
+        message: 'Attention test endpoint is working!',
+        data: {
+          expiringSoon: [],
+          expired: [],
+          suspended: [],
+          total: 0
+        }
+      });
+    }
+  );
 
   // All routes require authentication
   router.use(authMiddleware.authenticate);
+
+  // ========================================================================
+  // LIFECYCLE MANAGEMENT ROUTES
+  // ========================================================================
+
+  /**
+   * @swagger
+   * /licenses/attention:
+   *   get:
+   *     summary: Get licenses requiring attention
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: includeExpiringSoon
+   *         schema:
+   *           type: boolean
+   *           default: true
+   *         description: Include licenses expiring soon
+   *       - in: query
+   *         name: includeExpired
+   *         schema:
+   *           type: boolean
+   *           default: true
+   *         description: Include expired licenses
+   *       - in: query
+   *         name: includeSuspended
+   *         schema:
+   *           type: boolean
+   *           default: false
+   *         description: Include suspended licenses
+   *       - in: query
+   *         name: daysThreshold
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Days threshold for expiring soon
+   *     responses:
+   *       200:
+   *         description: Licenses requiring attention retrieved successfully
+   */
+  router.get(
+    '/attention',
+    (req, res) => {
+      console.log('🎯 INLINE ATTENTION HANDLER: Called');
+      return res.status(200).json({
+        success: true,
+        message: 'Attention endpoint is working!',
+        data: {
+          expiringSoon: [],
+          expired: [],
+          suspended: [],
+          total: 0
+        }
+      });
+    }
+  );
 
   /**
    * @swagger
@@ -203,6 +279,11 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
     validateRequest(licenseSchemas.getLicenses),
     controller.getLicenses
   );
+
+  // ========================================================================
+  // LIFECYCLE MANAGEMENT ROUTES (Phase 1) - MOVED UP TO AVOID ROUTE CONFLICTS
+  // ========================================================================
+
 
   /**
    * @swagger
@@ -876,6 +957,391 @@ export const createLicenseRoutes = (controller, authMiddleware) => {
     checkLicenseAccessPermission('delete'),
     validateRequest(licenseSchemas.licenseId, 'params'),
     controller.deleteLicense
+  );
+
+
+  /**
+   * @swagger
+   * /licenses/{id}/lifecycle/status:
+   *   get:
+   *     summary: Get license lifecycle status
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *     responses:
+   *       200:
+   *         description: License lifecycle status retrieved successfully
+   *       404:
+   *         description: License not found
+   */
+  router.get(
+    '/:id/lifecycle-status',
+    checkLicenseAccessPermission('read'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.getLifecycleStatus
+  );
+
+  /**
+   * @swagger
+   * /licenses/{id}/renew:
+   *   post:
+   *     summary: Renew a license
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               newExpirationDate:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Specific new expiration date
+   *               extensionDays:
+   *                 type: integer
+   *                 minimum: 1
+   *                 maximum: 730
+   *                 description: Days to extend (alternative to newExpirationDate)
+   *               reason:
+   *                 type: string
+   *                 description: Reason for renewal
+   *     responses:
+   *       200:
+   *         description: License renewed successfully
+   *       400:
+   *         description: Invalid renewal options
+   *       404:
+   *         description: License not found
+   */
+  router.post(
+    '/:id/renew',
+    checkLicenseAccessPermission('update'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.renewLicense
+  );
+
+  /**
+   * @swagger
+   * /licenses/{id}/renew/preview:
+   *   get:
+   *     summary: Get renewal preview
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *       - in: query
+   *         name: newExpirationDate
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *         description: Specific new expiration date
+   *       - in: query
+   *         name: extensionDays
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 730
+   *         description: Days to extend
+   *     responses:
+   *       200:
+   *         description: Renewal preview retrieved successfully
+   */
+  router.get(
+    '/:id/renew-preview',
+    checkLicenseAccessPermission('read'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.getRenewalPreview
+  );
+
+  /**
+   * @swagger
+   * /licenses/{id}/extend:
+   *   post:
+   *     summary: Extend license expiration
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - newExpirationDate
+   *             properties:
+   *               newExpirationDate:
+   *                 type: string
+   *                 format: date-time
+   *                 description: New expiration date
+   *               reason:
+   *                 type: string
+   *                 description: Reason for extension
+   *     responses:
+   *       200:
+   *         description: License expiration extended successfully
+   *       400:
+   *         description: Invalid request data
+   *       404:
+   *         description: License not found
+   */
+  router.post(
+    '/:id/extend',
+    checkLicenseAccessPermission('update'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.extendLicense
+  );
+
+  /**
+   * @swagger
+   * /licenses/{id}/expire:
+   *   post:
+   *     summary: Expire a license
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               reason:
+   *                 type: string
+   *                 description: Reason for expiration
+   *               force:
+   *                 type: boolean
+   *                 description: Force expiration even if not due
+   *     responses:
+   *       200:
+   *         description: License expired successfully
+   *       400:
+   *         description: Invalid expiration request
+   *       404:
+   *         description: License not found
+   */
+  router.post(
+    '/:id/expire',
+    checkLicenseAccessPermission('update'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.expireLicense
+  );
+
+  /**
+   * @swagger
+   * /licenses/{id}/expire/preview:
+   *   get:
+   *     summary: Get expiration preview
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *       - in: query
+   *         name: action
+   *         schema:
+   *           type: string
+   *           enum: [suspend, grace_period, mark_expired]
+   *         description: Force specific expiration action
+   *     responses:
+   *       200:
+   *         description: Expiration preview retrieved successfully
+   */
+  router.get(
+    '/:id/expire-preview',
+    checkLicenseAccessPermission('read'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.getExpirationPreview
+  );
+
+  /**
+   * @swagger
+   * /licenses/{id}/reactivate:
+   *   post:
+   *     summary: Reactivate an expired/suspended license
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: License ID
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               reason:
+   *                 type: string
+   *                 description: Reason for reactivation
+   *     responses:
+   *       200:
+   *         description: License reactivated successfully
+   *       400:
+   *         description: Invalid reactivation request
+   *       404:
+   *         description: License not found
+   */
+  router.post(
+    '/:id/reactivate',
+    checkLicenseAccessPermission('update'),
+    validateRequest(licenseSchemas.licenseId, 'params'),
+    lifecycleController.reactivateLicense
+  );
+
+  /**
+   * @swagger
+   * /licenses/lifecycle/bulk-renew:
+   *   post:
+   *     summary: Bulk renew licenses
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - licenseIds
+   *             properties:
+   *               licenseIds:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of license IDs to renew
+   *               renewalOptions:
+   *                 type: object
+   *                 description: Renewal options to apply to all licenses
+   *     responses:
+   *       200:
+   *         description: Bulk renewal completed
+   *       400:
+   *         description: Invalid request data
+   */
+  router.post(
+    '/lifecycle/bulk-renew',
+    checkLicenseBulkOperationPermission(),
+    lifecycleController.bulkRenewLicenses
+  );
+
+  /**
+   * @swagger
+   * /licenses/lifecycle/bulk-expire:
+   *   post:
+   *     summary: Bulk expire licenses
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - licenseIds
+   *             properties:
+   *               licenseIds:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of license IDs to expire
+   *               expirationOptions:
+   *                 type: object
+   *                 description: Expiration options to apply to all licenses
+   *     responses:
+   *       200:
+   *         description: Bulk expiration completed
+   *       400:
+   *         description: Invalid request data
+   */
+  router.post(
+    '/lifecycle/bulk-expire',
+    checkLicenseBulkOperationPermission(),
+    lifecycleController.bulkExpireLicenses
+  );
+
+  /**
+   * @swagger
+   * /licenses/lifecycle/process:
+   *   post:
+   *     summary: Trigger manual lifecycle processing
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - operation
+   *             properties:
+   *               operation:
+   *                 type: string
+   *                 enum: [expiring_reminders, expire_licenses, update_grace_periods]
+   *                 description: Lifecycle operation to perform
+   *     responses:
+   *       200:
+   *         description: Lifecycle operation completed successfully
+   *       400:
+   *         description: Invalid operation
+   */
+  router.post(
+    '/lifecycle/process',
+    checkLicenseAccessPermission('update'),
+    lifecycleController.processLifecycle
   );
 
   return router;

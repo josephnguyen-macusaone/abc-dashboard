@@ -40,6 +40,18 @@ export class License {
     // Content
     notes,
 
+    // Lifecycle Management
+    renewalRemindersSent,
+    lastRenewalReminder,
+    renewalDueDate,
+    autoSuspendEnabled,
+    gracePeriodDays,
+    gracePeriodEnd,
+    suspensionReason,
+    suspendedAt,
+    reactivatedAt,
+    renewalHistory,
+
     // Audit
     createdBy,
     updatedBy,
@@ -93,6 +105,18 @@ export class License {
 
     // Content
     this.notes = notes;
+
+    // Lifecycle Management
+    this.renewalRemindersSent = renewalRemindersSent || [];
+    this.lastRenewalReminder = lastRenewalReminder;
+    this.renewalDueDate = renewalDueDate;
+    this.autoSuspendEnabled = autoSuspendEnabled !== undefined ? autoSuspendEnabled : false;
+    this.gracePeriodDays = gracePeriodDays !== undefined ? gracePeriodDays : 30;
+    this.gracePeriodEnd = gracePeriodEnd;
+    this.suspensionReason = suspensionReason;
+    this.suspendedAt = suspendedAt;
+    this.reactivatedAt = reactivatedAt;
+    this.renewalHistory = renewalHistory || [];
 
     // Audit
     this.createdBy = createdBy;
@@ -274,6 +298,341 @@ export class License {
     return this.status.charAt(0).toUpperCase() + this.status.slice(1);
   }
 
+  // ========================================================================
+  // LIFECYCLE MANAGEMENT METHODS
+  // ========================================================================
+
+  /**
+   * Check if license is expired
+   */
+  isExpired() {
+    if (!this.expiresAt) return false;
+    return new Date() > new Date(this.expiresAt);
+  }
+
+  /**
+   * Check if license is expiring soon (within 30 days)
+   */
+  isExpiringSoon(daysThreshold = 30) {
+    if (!this.expiresAt || this.isExpired()) return false;
+    const now = new Date();
+    const expiryDate = new Date(this.expiresAt);
+    const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiry <= daysThreshold && daysUntilExpiry > 0;
+  }
+
+  /**
+   * Check if license is in grace period
+   */
+  isInGracePeriod() {
+    if (!this.isExpired() || !this.gracePeriodEnd) return false;
+    return new Date() <= new Date(this.gracePeriodEnd);
+  }
+
+  /**
+   * Check if license should be suspended
+   */
+  shouldBeSuspended() {
+    if (!this.autoSuspendEnabled) return false;
+    if (!this.isExpired()) return false;
+    if (this.isInGracePeriod()) return false;
+    return this.status !== 'revoked' && this.status !== 'cancel';
+  }
+
+  /**
+   * Check if renewal reminder should be sent
+   */
+  shouldSendRenewalReminder(reminderType) {
+    if (this.isExpired()) return false;
+    if (!this.expiresAt) return false;
+
+    const now = new Date();
+    const expiryDate = new Date(this.expiresAt);
+    const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+    let shouldSend = false;
+    switch (reminderType) {
+      case '30days':
+        shouldSend = daysUntilExpiry <= 30 && daysUntilExpiry > 7;
+        break;
+      case '7days':
+        shouldSend = daysUntilExpiry <= 7 && daysUntilExpiry > 1;
+        break;
+      case '1day':
+        shouldSend = daysUntilExpiry === 1;
+        break;
+      default:
+        return false;
+    }
+
+    // Check if reminder was already sent
+    return shouldSend && !this.renewalRemindersSent.includes(reminderType);
+  }
+
+  /**
+   * Mark renewal reminder as sent
+   */
+  markRenewalReminderSent(reminderType) {
+    if (!this.renewalRemindersSent.includes(reminderType)) {
+      this.renewalRemindersSent.push(reminderType);
+      this.lastRenewalReminder = new Date();
+    }
+  }
+
+  /**
+   * Calculate grace period end date
+   */
+  calculateGracePeriodEnd() {
+    if (!this.expiresAt) return null;
+    const expiryDate = new Date(this.expiresAt);
+    const graceEnd = new Date(expiryDate);
+    graceEnd.setDate(expiryDate.getDate() + this.gracePeriodDays);
+    return graceEnd;
+  }
+
+  /**
+   * Calculate renewal due date (typically 30 days before expiry)
+   */
+  calculateRenewalDueDate() {
+    if (!this.expiresAt) return null;
+    const expiryDate = new Date(this.expiresAt);
+    const renewalDue = new Date(expiryDate);
+    renewalDue.setDate(expiryDate.getDate() - 30); // 30 days before expiry
+    return renewalDue;
+  }
+
+  /**
+   * Get days until expiration
+   */
+  getDaysUntilExpiration() {
+    if (!this.expiresAt) return null;
+    const now = new Date();
+    const expiryDate = new Date(this.expiresAt);
+    return Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+  }
+
+  /**
+   * Get days until grace period ends
+   */
+  getDaysUntilGracePeriodEnd() {
+    if (!this.gracePeriodEnd) return null;
+    const now = new Date();
+    const graceEnd = new Date(this.gracePeriodEnd);
+    return Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24));
+  }
+
+  /**
+   * Add renewal history entry
+   */
+  addRenewalHistory(action, details = {}) {
+    const historyEntry = {
+      action,
+      timestamp: new Date(),
+      ...details
+    };
+    this.renewalHistory.push(historyEntry);
+  }
+
+  // ========================================================================
+  // STATUS TRANSITION LOGIC
+  // ========================================================================
+
+  /**
+   * Valid status transitions with business rules
+   */
+  static VALID_TRANSITIONS = {
+    draft: ['active', 'cancel'],
+    active: ['expiring', 'expired', 'revoked', 'cancel'],
+    expiring: ['active', 'expired', 'revoked', 'cancel'],
+    expired: ['active', 'revoked'], // Can reactivate expired licenses
+    revoked: [], // Terminal state - cannot transition out
+    cancel: ['active'], // Can reactivate cancelled licenses
+    pending: ['active', 'draft', 'cancel'],
+  };
+
+  /**
+   * Check if a status transition is valid
+   */
+  static isValidTransition(fromStatus, toStatus) {
+    return License.VALID_TRANSITIONS[fromStatus]?.includes(toStatus) || false;
+  }
+
+  /**
+   * Validate status transition with business rules
+   */
+  validateStatusTransition(newStatus, context = {}) {
+    if (this.status === newStatus) {
+      return { valid: true, warnings: [] }; // No change needed
+    }
+
+    // Check basic transition validity
+    if (!License.isValidTransition(this.status, newStatus)) {
+      return {
+        valid: false,
+        errors: [`Invalid status transition from '${this.status}' to '${newStatus}'`],
+        warnings: [],
+      };
+    }
+
+    const errors = [];
+    const warnings = [];
+
+    // Business rule validations
+    switch (newStatus) {
+      case 'active':
+        errors.push(...this.validateTransitionToActive(context));
+        break;
+      case 'expired':
+        errors.push(...this.validateTransitionToExpired(context));
+        break;
+      case 'revoked':
+        warnings.push(...this.validateTransitionToRevoked(context));
+        break;
+      case 'cancel':
+        warnings.push(...this.validateTransitionToCancelled(context));
+        break;
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * Validate transition to active status
+   */
+  validateTransitionToActive(context) {
+    const errors = [];
+
+    // Cannot activate without expiration date
+    if (!this.expiresAt) {
+      errors.push('Cannot activate license without expiration date');
+    }
+
+    // Cannot activate expired licenses without renewal
+    if (this.isExpired() && !context.force && !context.renewal) {
+      errors.push('Expired licenses require renewal to reactivate');
+    }
+
+    // Cannot activate revoked licenses
+    if (this.status === 'revoked') {
+      errors.push('Revoked licenses cannot be reactivated');
+    }
+
+    return errors;
+  }
+
+  /**
+   * Validate transition to expired status
+   */
+  validateTransitionToExpired(context) {
+    const errors = [];
+
+    // Must have expiration date to expire
+    if (!this.expiresAt) {
+      errors.push('Cannot expire license without expiration date');
+    }
+
+    // Cannot expire revoked licenses (already terminal)
+    if (this.status === 'revoked') {
+      errors.push('Revoked licenses cannot be expired');
+    }
+
+    return errors;
+  }
+
+  /**
+   * Validate transition to revoked status (warnings only)
+   */
+  validateTransitionToRevoked(context) {
+    const warnings = [];
+
+    // Warning for revoking active licenses
+    if (this.status === 'active') {
+      warnings.push('Revoking active license will immediately disable access');
+    }
+
+    // Warning for revoking without reason
+    if (!context.reason) {
+      warnings.push('Consider providing a reason for license revocation');
+    }
+
+    return warnings;
+  }
+
+  /**
+   * Validate transition to cancelled status (warnings only)
+   */
+  validateTransitionToCancelled(context) {
+    const warnings = [];
+
+    // Warning for cancelling active licenses
+    if (this.status === 'active') {
+      warnings.push('Cancelling active license will disable future access');
+    }
+
+    return warnings;
+  }
+
+  /**
+   * Perform status transition with validation
+   */
+  transitionStatus(newStatus, context = {}) {
+    const validation = this.validateStatusTransition(newStatus, context);
+
+    if (!validation.valid) {
+      throw new Error(`Status transition failed: ${validation.errors.join(', ')}`);
+    }
+
+    // Log warnings if any
+    if (validation.warnings.length > 0) {
+      // In a real system, this might log warnings or send notifications
+      console.warn(`Status transition warnings for license ${this.key}:`, validation.warnings);
+    }
+
+    const oldStatus = this.status;
+    this.status = newStatus;
+
+    // Add transition to history
+    this.addRenewalHistory('status_changed', {
+      fromStatus: oldStatus,
+      toStatus: newStatus,
+      changedBy: context.userId,
+      reason: context.reason,
+      force: context.force,
+    });
+
+    return {
+      success: true,
+      oldStatus,
+      newStatus,
+      warnings: validation.warnings,
+    };
+  }
+
+  /**
+   * Get available status transitions for current state
+   */
+  getAvailableTransitions() {
+    return License.VALID_TRANSITIONS[this.status] || [];
+  }
+
+  /**
+   * Check if license is in a terminal state
+   */
+  isTerminalState() {
+    return ['revoked'].includes(this.status);
+  }
+
+  /**
+   * Check if license can be modified
+   */
+  canBeModified() {
+    return !this.isTerminalState();
+  }
+
   /**
    * Sanitize license for API response (remove sensitive data)
    */
@@ -314,6 +673,18 @@ export class License {
 
       // Content
       notes: this.notes,
+
+      // Lifecycle Management
+      renewalRemindersSent: this.renewalRemindersSent,
+      lastRenewalReminder: this.lastRenewalReminder,
+      renewalDueDate: this.renewalDueDate,
+      autoSuspendEnabled: this.autoSuspendEnabled,
+      gracePeriodDays: this.gracePeriodDays,
+      gracePeriodEnd: this.gracePeriodEnd,
+      suspensionReason: this.suspensionReason,
+      suspendedAt: this.suspendedAt,
+      reactivatedAt: this.reactivatedAt,
+      renewalHistory: this.renewalHistory,
 
       // Audit
       createdBy: this.createdBy,

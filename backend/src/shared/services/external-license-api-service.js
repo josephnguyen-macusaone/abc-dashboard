@@ -824,6 +824,59 @@ export class ExternalLicenseApiService {
   // ========================================================================
 
   /**
+   * Get SMS payments with filtering and pagination
+   */
+  async getSmsPayments(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options.appid) params.append('appid', options.appid);
+    if (options.emailLicense) params.append('emailLicense', options.emailLicense);
+    if (options.countid !== undefined) params.append('countid', options.countid.toString());
+    if (options.startDate) params.append('startDate', options.startDate);
+    if (options.endDate) params.append('endDate', options.endDate);
+    if (options.page) params.append('page', options.page.toString());
+    if (options.limit) params.append('limit', options.limit.toString());
+    if (options.sortBy) params.append('sortBy', options.sortBy);
+    if (options.sortOrder) params.append('sortOrder', options.sortOrder);
+
+    const endpoint = `/api/v1/sms-payments?${params.toString()}`;
+
+    return await this.makeRequest(endpoint);
+  }
+
+  /**
+   * Add SMS payment and update balance
+   */
+  async addSmsPayment(paymentData) {
+    if (!paymentData || !paymentData.amount) {
+      throw new ValidationException('Payment data with amount is required');
+    }
+
+    return await this.makeRequest('/api/v1/add-sms-payment', {
+      method: 'POST',
+      body: paymentData,
+    });
+  }
+
+  /**
+   * Get license analytics with date filtering
+   */
+  async getLicenseAnalytics(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options.month !== undefined) params.append('month', options.month.toString());
+    if (options.year !== undefined) params.append('year', options.year.toString());
+    if (options.startDate) params.append('startDate', options.startDate);
+    if (options.endDate) params.append('endDate', options.endDate);
+    if (options.status !== undefined) params.append('status', options.status.toString());
+    if (options.license_type) params.append('license_type', options.license_type);
+
+    const endpoint = `/api/v1/license-analytic?${params.toString()}`;
+
+    return await this.makeRequest(endpoint);
+  }
+
+  /**
    * Get API information and capabilities
    */
   async getApiInfo() {
@@ -843,14 +896,26 @@ export class ExternalLicenseApiService {
           'PUT /api/v1/licenses/email/{email}',
           'DELETE /api/v1/licenses/email/{email}',
           'GET /api/v1/licenses/countid/{countid}',
+          'PUT /api/v1/licenses/countid/{countid}',
           'DELETE /api/v1/licenses/countid/{countid}',
+          'POST /api/v1/licenses/reset',
+          'POST /api/v1/licenses/bulk',
+          'PATCH /api/v1/licenses/bulk',
+          'DELETE /api/v1/licenses/bulk',
+          'POST /api/v1/licenses/row',
+          'GET /api/v1/sms-payments',
+          'POST /api/v1/add-sms-payment',
+          'GET /api/v1/license-analytic',
         ],
         features: [
           'Pagination support',
-          'Filtering by status, dba',
+          'Filtering by status, dba, date ranges',
           'Sorting capabilities',
           'Bulk operations',
           'Multiple identifier types (appid, email, countid)',
+          'SMS payment management',
+          'License analytics',
+          'Data validation and sanitization',
         ],
       };
     } catch (error) {
