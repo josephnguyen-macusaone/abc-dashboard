@@ -69,7 +69,9 @@ COPY --from=builder /app/.next/standalone ./
 
 # Copy static assets
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+
+# Create public directory (optional for Next.js, no assets to copy)
+RUN mkdir -p ./public
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

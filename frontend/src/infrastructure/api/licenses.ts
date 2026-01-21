@@ -16,7 +16,7 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
         status = 'active';
         break;
       case 0:
-        status = 'inactive';
+        status = 'cancel'; // Changed from 'inactive' to 'cancel' (valid LicenseStatus)
         break;
       default:
         status = 'pending';
@@ -119,7 +119,7 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
       case 'active':
         apiLicense.status = 1;
         break;
-      case 'inactive':
+      case 'cancel': // Changed from 'inactive' to 'cancel' (valid LicenseStatus)
         apiLicense.status = 0;
         break;
       default:
@@ -410,7 +410,7 @@ export class LicenseApiService {
         }
       }
       const response = { data: results };
-      const apiLicenses = response.data?.licenses || response.data || [];
+      const apiLicenses = Array.isArray(response.data) ? response.data : [];
 
       return apiLicenses.map(transformApiLicenseToRecord);
     } catch (error) {
@@ -427,21 +427,23 @@ export class LicenseApiService {
       const stringIds = ids.map(id => String(id));
       // External API expects individual license deletion, not bulk
       let deletedCount = 0;
-      const notFound = [];
-      for (const id of stringIds) {
+      const notFound: number[] = [];
+
+      for (let index = 0; index < stringIds.length; index++) {
+        const id = stringIds[index];
         try {
           await httpClient.delete<any>(`/external-licenses/${id}`);
           deletedCount++;
         } catch (error) {
-          if (error.status === 404) {
-            notFound.push(id);
+          if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
+            notFound.push(index); // Push the index of the failed deletion
           } else {
             console.error('Failed to delete license:', id, error);
           }
         }
       }
-      const response = { data: { deleted: deletedCount, notFound } };
-      return response.data || { deleted: ids.length, notFound: [] };
+
+      return { deleted: deletedCount, notFound };
     } catch (error) {
       throw error;
     }

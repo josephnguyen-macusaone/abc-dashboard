@@ -1,4 +1,12 @@
 import express from 'express';
+import { syncOperationRateLimit, generalApiRateLimit } from '../middleware/rate-limiting-middleware.js';
+import {
+  requireLicenseSync,
+  requireExternalLicenseSync,
+  requireComprehensiveSync,
+  requireLicenseRead,
+  suspiciousActivityMonitor,
+} from '../middleware/license-access-control-middleware.js';
 
 /**
  * External License Routes
@@ -10,8 +18,14 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
   // All routes require authentication
   router.use(authMiddleware.authenticate);
 
+  // Apply general API rate limiting to all routes
+  router.use(generalApiRateLimit);
+
+  // Apply suspicious activity monitoring
+  router.use(suspiciousActivityMonitor);
+
   // ========================================================================
-  // Sync Operations Routes
+  // Sync Operations Routes (Require sync permissions)
   // ========================================================================
 
   /**
@@ -88,7 +102,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                           type: string
    *                           format: date-time
    */
-  router.post('/sync', controller.syncLicenses);
+  router.post('/sync', requireExternalLicenseSync, syncOperationRateLimit, controller.syncLicenses);
 
   /**
    * @swagger

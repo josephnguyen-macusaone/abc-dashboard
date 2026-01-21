@@ -1,5 +1,6 @@
 import { ExternalLicense } from '../../domain/entities/external-license-entity.js';
 import { IExternalLicenseRepository } from '../../domain/repositories/interfaces/i-external-license-repository.js';
+import { licenseSyncConfig } from '../config/license-sync-config.js';
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
 import logger from '../config/logger.js';
 
@@ -335,45 +336,86 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     const errors = [];
 
     // Process in smaller batches to avoid database timeouts
-    const batchSize = 50;
+    const batchSize = licenseSyncConfig.database.maxBulkUpsertBatchSize;
+
+    logger.info('Starting bulk upsert operation', {
+      totalLicenses: licensesData.length,
+      batchSize,
+      totalBatches: Math.ceil(licensesData.length / batchSize),
+    });
 
     for (let i = 0; i < licensesData.length; i += batchSize) {
       const batch = licensesData.slice(i, i + batchSize);
+      const batchNumber = Math.floor(i / batchSize) + 1;
+
+      logger.debug(`Processing bulk upsert batch ${batchNumber}`, {
+        batchSize: batch.length,
+        totalProcessed: i,
+        remaining: licensesData.length - i,
+      });
 
       try {
         await this.db.transaction(async (trx) => {
+          // Pre-validate batch data and prepare for bulk operation
+          const validBatchData = [];
+          const batchErrors = [];
+
           for (const licenseData of batch) {
             try {
               const dbData = this._toExternalLicenseDbFormat(licenseData);
-              const appid = licenseData.appid;
-
-              // Check if license exists
-              const existing = await trx(this.licensesTable)
-                .whereRaw('LOWER(appid) = ?', [appid.toLowerCase()])
-                .first();
-
-              const [result] = await trx(this.licensesTable)
-                .insert(dbData)
-                .onConflict('appid')
-                .merge()
-                .returning('*');
-
-              if (existing) {
-                updated.push(this._toExternalLicenseEntity(result));
-              } else {
-                created.push(this._toExternalLicenseEntity(result));
-              }
+              validBatchData.push(dbData);
             } catch (itemError) {
-              errors.push({
+              batchErrors.push({
                 data: licenseData,
-                error: itemError.message,
+                error: `Data formatting error: ${itemError.message}`,
               });
+            }
+          }
+
+          // Add validation errors to main errors array
+          errors.push(...batchErrors);
+
+          if (validBatchData.length === 0) {
+            logger.warn('No valid data in batch, skipping upsert', { batchNumber });
+            return;
+          }
+
+          // Use bulk upsert with ON CONFLICT for better performance
+          // This approach is more efficient than individual checks
+          const results = await trx(this.licensesTable)
+            .insert(validBatchData)
+            .onConflict('appid')
+            .merge()
+            .returning(['id', 'appid', 'created_at', 'updated_at']);
+
+          logger.debug(`Bulk upsert completed for batch ${batchNumber}`, {
+            inserted: results.length,
+            batchSize: validBatchData.length,
+          });
+
+          // Determine which were created vs updated by checking timestamps
+          // This is an approximation since we can't easily distinguish without additional queries
+          // In a production system, you might want to track this differently
+          const now = new Date();
+          const timeThreshold = new Date(now.getTime() - 1000); // 1 second ago
+
+          for (const result of results) {
+            // If created_at and updated_at are very close, it was likely created
+            // If updated_at is newer than created_at, it was likely updated
+            const createdAt = new Date(result.created_at);
+            const updatedAt = new Date(result.updated_at);
+
+            if (Math.abs(updatedAt.getTime() - createdAt.getTime()) < 1000) {
+              created.push(result);
+            } else {
+              updated.push(result);
             }
           }
         });
       } catch (batchError) {
         logger.error('Bulk upsert batch failed', {
           correlationId: this.correlationId,
+          batchNumber,
           batchStart: i,
           batchEnd: Math.min(i + batchSize, licensesData.length),
           error: batchError.message,
@@ -389,39 +431,82 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       }
     }
 
-    return {
+    const summary = {
       created: created.length,
       updated: updated.length,
-      errors,
+      errors: errors.length,
       totalProcessed: created.length + updated.length + errors.length,
+      successRate: licensesData.length > 0 ? Math.round(((created.length + updated.length) / licensesData.length) * 100) : 0,
     };
+
+    logger.info('Bulk upsert operation completed', summary);
+
+    return summary;
   }
 
   async bulkUpdate(updates) {
     const updatedLicenses = [];
+    const batchSize = licenseSyncConfig.database.maxIndividualUpdatesBatchSize;
 
-    await this.db.transaction(async (trx) => {
-      for (const { id, updates: data } of updates) {
-        try {
-          const dbUpdates = this._toExternalLicenseDbFormat(data);
-          dbUpdates.updated_at = new Date();
+    // Process in batches to avoid overwhelming the database
+    for (let i = 0; i < updates.length; i += batchSize) {
+      const batch = updates.slice(i, i + batchSize);
 
-          const [updatedRow] = await trx(this.licensesTable)
-            .where('id', id)
-            .update(dbUpdates)
-            .returning('*');
+      logger.debug('Processing bulk update batch', {
+        batchNumber: Math.floor(i / batchSize) + 1,
+        batchSize: batch.length,
+        totalProcessed: i,
+        remaining: updates.length - i,
+      });
 
-          if (updatedRow) {
-            updatedLicenses.push(this._toExternalLicenseEntity(updatedRow));
+      await this.db.transaction(async (trx) => {
+        // Use Promise.allSettled for better error handling in bulk operations
+        const updatePromises = batch.map(async ({ id, updates: data }) => {
+          try {
+            const dbUpdates = this._toExternalLicenseDbFormat(data);
+            dbUpdates.updated_at = new Date();
+
+            const [updatedRow] = await trx(this.licensesTable)
+              .where('id', id)
+              .update(dbUpdates)
+              .returning('*');
+
+            if (updatedRow) {
+              return { success: true, data: this._toExternalLicenseEntity(updatedRow) };
+            } else {
+              return { success: false, error: 'No rows updated', id };
+            }
+          } catch (updateError) {
+            logger.warn('Bulk update item failed', {
+              correlationId: this.correlationId,
+              licenseId: id,
+              error: updateError.message,
+            });
+            return { success: false, error: updateError.message, id };
           }
-        } catch (updateError) {
-          logger.error('Bulk update item failed', {
-            correlationId: this.correlationId,
-            licenseId: id,
-            error: updateError.message,
-          });
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+        // Process results
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value.success) {
+            updatedLicenses.push(result.value.data);
+          } else if (result.status === 'rejected') {
+            logger.error('Bulk update promise rejected', {
+              correlationId: this.correlationId,
+              error: result.reason?.message || result.reason,
+            });
+          }
+          // Failed updates are logged but don't stop the batch
         }
-      }
+      });
+    }
+
+    logger.debug('Bulk update completed', {
+      totalRequested: updates.length,
+      totalUpdated: updatedLicenses.length,
+      successRate: updates.length > 0 ? Math.round((updatedLicenses.length / updates.length) * 100) : 0,
     });
 
     return updatedLicenses;
@@ -691,127 +776,217 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
    * then compares to identify what fields are missing and need synchronization
    */
   async syncToInternalLicensesComprehensive(internalLicenseRepo) {
-    console.error('🚨🚨🚨 COMPREHENSIVE SYNC METHOD CALLED 🚨🚨🚨');
     try {
       logger.info('Starting comprehensive sync from external to internal licenses');
 
-      // Step 1: Get all external licenses first
-      const externalLicenses = await this.findLicenses({});
-      console.log(`DEBUG: findLicenses returned:`, externalLicenses);
-      logger.info(`Step 1: Retrieved ${externalLicenses.licenses.length} external licenses`);
-      console.log('DEBUG: External licenses array:', externalLicenses.licenses);
+      // Step 1: Get total count of external licenses first (memory efficient)
+      const externalStats = await this.getLicenseStatsWithFilters({});
+      const totalExternalLicenses = externalStats.total || 0;
 
-      // Step 2: Get all internal licenses second
-      const allInternalLicenses = await internalLicenseRepo.findLicenses({
-        page: 1,
-        limit: 10000, // Get all for comprehensive comparison
-        filters: {},
-      });
-      logger.info(`Step 2: Retrieved ${allInternalLicenses.licenses.length} internal licenses`);
+      logger.info(`Step 1: Found ${totalExternalLicenses} external licenses to process`);
 
-      // Step 3: Create lookup maps for efficient matching
-      const externalByAppId = new Map();
-      const externalByCountId = new Map();
+      // Early exit if no external licenses
+      if (totalExternalLicenses === 0) {
+        logger.info('No external licenses found, skipping comprehensive sync');
+        return { syncedCount: 0, updatedCount: 0, createdCount: 0 };
+      }
 
-      externalLicenses.licenses.forEach((extLicense) => {
-        if (extLicense.appid) {
-          externalByAppId.set(extLicense.appid, extLicense);
-        }
-        if (extLicense.countid !== undefined && extLicense.countid !== null) {
-          externalByCountId.set(extLicense.countid, extLicense);
-        }
+      // Step 2: Process external licenses in chunks to manage memory
+      const chunkSize = licenseSyncConfig.database.maxBulkUpsertBatchSize;
+      const externalLookupMaps = await this._buildExternalLookupMapsInChunks(chunkSize);
+
+      logger.info('Step 2: Built external license lookup maps', {
+        appIdCount: externalLookupMaps.externalByAppId.size,
+        countIdCount: externalLookupMaps.externalByCountId.size,
       });
 
-      // Step 4: Analyze what fields are missing in internal licenses
+      // Step 3: Process internal licenses in chunks and analyze gaps
       const syncOperations = [];
+      let processedInternalCount = 0;
+
+      logger.info('Step 3: Analyzing field gaps between external and internal licenses');
+
+      // Process internal licenses in chunks to manage memory
+      const internalChunkSize = 1000; // Process internal licenses in smaller chunks
+      let internalPage = 1;
+      let hasMoreInternal = true;
+
+      while (hasMoreInternal) {
+        const internalChunk = await internalLicenseRepo.findLicenses({
+          page: internalPage,
+          limit: internalChunkSize,
+          filters: {},
+        });
+
+        if (internalChunk.licenses.length === 0) {
+          hasMoreInternal = false;
+          break;
+        }
+
+        logger.debug(`Processing internal license chunk ${internalPage}`, {
+          chunkSize: internalChunk.licenses.length,
+          totalProcessed: processedInternalCount,
+        });
+
+        // Analyze each internal license in this chunk
+        for (const internalLicense of internalChunk.licenses) {
+          const syncOp = this._analyzeInternalLicenseGaps(internalLicense, externalLookupMaps);
+
+          if (syncOp.needsSync) {
+            syncOperations.push(syncOp);
+          }
+        }
+
+        processedInternalCount += internalChunk.licenses.length;
+        internalPage++;
+
+        // Safety check to prevent infinite loops
+        if (internalPage > 1000) {
+          logger.warn('Reached maximum internal page limit, stopping processing');
+          break;
+        }
+      }
+
+      // Step 4: Check for external licenses that don't have internal counterparts
+      logger.info('Step 4: Checking for external licenses without internal matches');
+
+      // Process external licenses in chunks to find ones without internal matches
+      let externalPage = 1;
+      const externalPageSize = 500; // Check external licenses in smaller batches
+      let hasMoreExternal = true;
+
+      while (hasMoreExternal && syncOperations.length < licenseSyncConfig.sync.maxLicensesForComprehensive) {
+        const externalChunk = await this.findLicenses({
+          page: externalPage,
+          limit: externalPageSize,
+          filters: {},
+        });
+
+        if (externalChunk.licenses.length === 0) {
+          hasMoreExternal = false;
+          break;
+        }
+
+        logger.debug(`Checking external license chunk ${externalPage} for new licenses`, {
+          chunkSize: externalChunk.licenses.length,
+        });
+
+        for (const externalLicense of externalChunk.licenses) {
+          // Check if this external license has an internal match
+          let hasInternalMatch = false;
+
+          // Try appid match first
+          if (externalLicense.appid) {
+            try {
+              const internalMatch = await internalLicenseRepo.findByAppId(externalLicense.appid);
+              if (internalMatch) {
+                hasInternalMatch = true;
+              }
+            } catch (error) {
+              logger.debug('Error checking appid match', { appid: externalLicense.appid, error: error.message });
+            }
+          }
+
+          // Try countid match if no appid match
+          if (!hasInternalMatch && externalLicense.countid !== undefined && externalLicense.countid !== null) {
+            try {
+              const internalMatch = await internalLicenseRepo.findByCountId(externalLicense.countid);
+              if (internalMatch) {
+                hasInternalMatch = true;
+              }
+            } catch (error) {
+              logger.debug('Error checking countid match', { countid: externalLicense.countid, error: error.message });
+            }
+          }
+
+          if (!hasInternalMatch) {
+            logger.debug(`Creating new internal license for external ${externalLicense.appid || externalLicense.countid}`);
+            syncOperations.push({
+              type: 'create',
+              externalLicense,
+              reason: 'No internal license match found',
+            });
+          }
+        }
+
+        externalPage++;
+
+        // Safety check
+        if (externalPage > 1000) {
+          logger.warn('Reached maximum external page limit, stopping processing');
+          break;
+        }
+      }
+
+      logger.info(`Step 5: Identified ${syncOperations.length} sync operations needed`, {
+        totalInternalProcessed: processedInternalCount,
+      });
+
+      // Step 6: Execute sync operations in batches for better performance
+      const operationBatchSize = 50; // Process operations in smaller batches
       let syncedCount = 0;
       let updatedCount = 0;
       let createdCount = 0;
 
-      logger.info('Step 3: Analyzing field gaps between external and internal licenses');
+      logger.info('Step 6: Executing sync operations in batches');
 
-      // Analyze each internal license to see what external data it needs
-      for (const internalLicense of allInternalLicenses.licenses) {
-        const syncOp = this._analyzeInternalLicenseGaps(internalLicense, {
-          externalByAppId,
-          externalByCountId,
+      for (let i = 0; i < syncOperations.length; i += operationBatchSize) {
+        const operationBatch = syncOperations.slice(i, i + operationBatchSize);
+
+        logger.debug(`Processing operation batch ${Math.floor(i / operationBatchSize) + 1}`, {
+          batchSize: operationBatch.length,
+          totalProcessed: i,
+          remaining: syncOperations.length - i,
         });
 
-        if (syncOp.needsSync) {
-          syncOperations.push(syncOp);
-        }
-      }
+        // Execute operations in this batch (can be parallelized if needed)
+        for (const operation of operationBatch) {
+          try {
+            if (operation.type === 'update') {
+              const updateData = this._createExternalUpdateData(operation.externalLicense);
+              updateData.external_sync_status = 'synced';
+              updateData.last_external_sync = new Date();
 
-      // Also check for external licenses that don't have internal counterparts
-      logger.info(`Checking ${externalLicenses.licenses.length} external licenses for creation`);
-      for (const externalLicense of externalLicenses.licenses) {
-        const hasInternalMatch = allInternalLicenses.licenses.some(
-          (intLicense) =>
-            intLicense.appid === externalLicense.appid ||
-            intLicense.countid === externalLicense.countid
-        );
+              await internalLicenseRepo.update(operation.internalLicense.id, updateData);
+              updatedCount++;
 
-        logger.debug(`External license ${externalLicense.appid || externalLicense.countid}: hasInternalMatch=${hasInternalMatch}`);
+              logger.debug(`Updated internal license with missing external data`, {
+                internal_id: operation.internalLicense.id,
+                external_appid: operation.externalLicense.appid,
+                missing_fields: operation.missingFields,
+                updated_fields: Object.keys(updateData).filter(
+                  (key) => key !== 'external_sync_status' && key !== 'last_external_sync'
+                ),
+              });
+            } else if (operation.type === 'create') {
+              const licenseKey = this._generateLicenseKey(operation.externalLicense);
+              const internalLicenseData = this._externalToInternalFormat(operation.externalLicense);
 
-        if (!hasInternalMatch) {
-          logger.info(`Creating new internal license for external ${externalLicense.appid || externalLicense.countid}`);
-          syncOperations.push({
-            type: 'create',
-            externalLicense,
-            reason: 'No internal license match found',
-          });
-        }
-      }
+              const newLicense = await internalLicenseRepo.save({
+                ...internalLicenseData,
+                key: licenseKey,
+                external_sync_status: 'synced',
+                last_external_sync: new Date(),
+              });
+              createdCount++;
 
-      logger.info(`Step 4: Identified ${syncOperations.length} sync operations needed`);
+              logger.debug(`Created new internal license from external data`, {
+                external_appid: operation.externalLicense.appid,
+                internal_id: newLicense.id,
+                generated_key: licenseKey,
+                reason: operation.reason,
+              });
+            }
 
-      // Step 5: Execute sync operations
-      for (const operation of syncOperations) {
-        try {
-          if (operation.type === 'update') {
-            const updateData = this._createExternalUpdateData(operation.externalLicense);
-            updateData.external_sync_status = 'synced';
-            updateData.last_external_sync = new Date();
-
-            await internalLicenseRepo.update(operation.internalLicense.id, updateData);
-            updatedCount++;
-
-            logger.debug(`Updated internal license with missing external data`, {
-              internal_id: operation.internalLicense.id,
-              external_appid: operation.externalLicense.appid,
-              missing_fields: operation.missingFields,
-              updated_fields: Object.keys(updateData).filter(
-                (key) => key !== 'external_sync_status' && key !== 'last_external_sync'
-              ),
-            });
-          } else if (operation.type === 'create') {
-            const licenseKey = this._generateLicenseKey(operation.externalLicense);
-            const internalLicenseData = this._externalToInternalFormat(operation.externalLicense);
-
-            const newLicense = await internalLicenseRepo.save({
-              ...internalLicenseData,
-              key: licenseKey,
-              external_sync_status: 'synced',
-              last_external_sync: new Date(),
-            });
-            createdCount++;
-
-            logger.debug(`Created new internal license from external data`, {
-              external_appid: operation.externalLicense.appid,
-              internal_id: newLicense.id,
-              generated_key: licenseKey,
-              reason: operation.reason,
+            syncedCount++;
+          } catch (error) {
+            logger.error(`Failed to execute sync operation:`, {
+              operation: operation.type,
+              external_appid: operation.externalLicense?.appid,
+              internal_id: operation.internalLicense?.id,
+              error: error.message,
             });
           }
-
-          syncedCount++;
-        } catch (error) {
-          logger.error(`Failed to execute sync operation:`, {
-            operation: operation.type,
-            external_appid: operation.externalLicense?.appid,
-            internal_id: operation.internalLicense?.id,
-            error: error.message,
-          });
         }
       }
 
@@ -826,10 +1001,65 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
 
       return { syncedCount, updatedCount, createdCount };
     } catch (error) {
-      console.log('DEBUG: Comprehensive sync failed:', error.message);
-      logger.error('Failed to perform comprehensive sync:', error);
+      logger.error('Failed to perform comprehensive sync', {
+        error: error.message,
+        correlationId: this.correlationId,
+      });
       throw error;
     }
+  }
+
+  /**
+   * Build external license lookup maps in chunks to manage memory usage
+   * @private
+   */
+  async _buildExternalLookupMapsInChunks(chunkSize) {
+    const externalByAppId = new Map();
+    const externalByCountId = new Map();
+
+    let page = 1;
+    let hasMorePages = true;
+
+    logger.debug('Building external license lookup maps in chunks', { chunkSize });
+
+    while (hasMorePages) {
+      const chunk = await this.findLicenses({
+        page,
+        limit: chunkSize,
+        filters: {},
+      });
+
+      if (chunk.licenses.length === 0) {
+        hasMorePages = false;
+        break;
+      }
+
+      // Build lookup maps for this chunk
+      for (const extLicense of chunk.licenses) {
+        if (extLicense.appid) {
+          externalByAppId.set(extLicense.appid, extLicense);
+        }
+        if (extLicense.countid !== undefined && extLicense.countid !== null) {
+          externalByCountId.set(extLicense.countid, extLicense);
+        }
+      }
+
+      logger.debug(`Processed external chunk ${page}`, {
+        chunkSize: chunk.licenses.length,
+        totalAppIds: externalByAppId.size,
+        totalCountIds: externalByCountId.size,
+      });
+
+      page++;
+
+      // Safety check to prevent infinite loops
+      if (page > 1000) {
+        logger.warn('Reached maximum page limit while building lookup maps');
+        break;
+      }
+    }
+
+    return { externalByAppId, externalByCountId };
   }
 
   /**
@@ -1293,9 +1523,13 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
    * This provides defaults for creating new licenses from external data
    */
   _externalToInternalFormat(externalLicense) {
+    // Ensure DBA always has a meaningful value
+    const dba = externalLicense.dba || externalLicense.Email_license;
+    const defaultDba = dba && dba.trim() ? dba.trim() : 'External License';
+
     return {
       product: 'ABC Business Suite', // Default product for external licenses
-      dba: externalLicense.dba || externalLicense.Email_license || '',
+      dba: defaultDba,
       zip: externalLicense.zip || '',
       startsAt: externalLicense.activateDate || new Date().toISOString().split('T')[0],
       status: externalLicense.status === 1 ? 'active' : 'inactive',

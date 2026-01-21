@@ -1,4 +1,7 @@
 import { config } from '../../infrastructure/config/config.js';
+import { licenseSyncConfig } from '../../infrastructure/config/license-sync-config.js';
+import { externalLicenseValidator } from '../utils/validation/external-license-validator.js';
+import { licenseSyncMonitor } from '../../infrastructure/monitoring/license-sync-monitor.js';
 import logger from '../../infrastructure/config/logger.js';
 import { withServiceRetry, withTimeout, TimeoutPresets } from '../utils/reliability/retry.js';
 import { withCircuitBreaker } from '../utils/reliability/circuit-breaker.js';
@@ -13,13 +16,13 @@ import {
  * External License API Service
  * Client for interacting with the external license management API
  *
- * API Base URL: http://155.138.247.131:2341
+ * API Base URL: Configurable via LICENSE_SYNC_CONFIG
  * Authentication: x-api-key header
  */
 export class ExternalLicenseApiService {
   constructor() {
-    this.baseUrl = process.env.EXTERNAL_LICENSE_API_URL || 'http://155.138.247.131:2341';
-    this.apiKey = process.env.EXTERNAL_LICENSE_API_KEY;
+    this.baseUrl = licenseSyncConfig.external.baseUrl;
+    this.apiKey = licenseSyncConfig.external.apiKey;
 
     if (!this.apiKey) {
       throw new Error('EXTERNAL_LICENSE_API_KEY environment variable is required');
@@ -33,7 +36,7 @@ export class ExternalLicenseApiService {
     this.operationId = null;
     this.isHealthy = true;
     this.lastHealthCheck = null;
-    this.defaultTimeout = TimeoutPresets.SLOW; // 30 seconds for external API calls
+    this.defaultTimeout = licenseSyncConfig.external.timeout;
   }
 
   /**
@@ -50,7 +53,7 @@ export class ExternalLicenseApiService {
   getHeaders(includeContentType = false) {
     const headers = {
       'x-api-key': this.apiKey,
-      'User-Agent': 'ABC-Dashboard-Backend/1.0',
+      'User-Agent': licenseSyncConfig.external.userAgent,
     };
 
     if (includeContentType) {
@@ -86,29 +89,38 @@ export class ExternalLicenseApiService {
             const startTime = Date.now();
 
             try {
-              logger.debug('Making external API request', {
-                correlationId: this.correlationId,
-                url,
-                method: requestOptions.method,
-                headers: requestOptions.headers,
-                operationName,
-              });
+              if (licenseSyncConfig.monitoring.enableDetailedLogging) {
+                logger.debug('Making external API request', {
+                  correlationId: this.correlationId,
+                  url,
+                  method: requestOptions.method,
+                  operationName,
+                });
+              }
 
               const response = await fetch(url, requestOptions);
               const duration = Date.now() - startTime;
 
+              // Record API request metrics
+              licenseSyncMonitor.recordApiRequest(endpoint, requestOptions.method, startTime);
+
               // Log response time
-              logger.debug('External API response received', {
-                correlationId: this.correlationId,
-                url,
-                status: response.status,
-                duration: `${duration}ms`,
-                operationName,
-              });
+              if (licenseSyncConfig.monitoring.enableDetailedLogging) {
+                logger.debug('External API response received', {
+                  correlationId: this.correlationId,
+                  status: response.status,
+                  duration: `${duration}ms`,
+                  operationName,
+                });
+              }
 
               // Handle non-OK responses
               if (!response.ok) {
                 const errorText = await response.text();
+
+                // Record API error
+                licenseSyncMonitor.recordApiError(endpoint, requestOptions.method, new Error(`HTTP ${response.status}: ${errorText}`));
+
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
               }
 
@@ -149,8 +161,8 @@ export class ExternalLicenseApiService {
         );
       },
       {
-        maxRetries: 3, // Reduced from 5 for better performance
-        retryDelay: 2000, // 2 seconds between retries
+        maxRetries: licenseSyncConfig.sync.retryAttempts,
+        retryDelay: licenseSyncConfig.sync.retryDelay,
         retryOn: (error) => {
           // Retry on network errors, 5xx errors, and timeouts
           return error.message.includes('fetch') ||
@@ -221,13 +233,25 @@ export class ExternalLicenseApiService {
 
   /**
    * Get all licenses by fetching all pages
-   * Handles pagination automatically for large datasets
+   * Handles pagination automatically for large datasets with memory-efficient processing
    */
   async getAllLicenses(options = {}) {
     const allLicenses = [];
-    const batchSize = options.batchSize || 20; // Fetch in batches of 20
-    const concurrencyLimit = options.concurrencyLimit || 3; // Fetch 3 pages concurrently
+    const batchSize = options.batchSize || licenseSyncConfig.sync.batchSize;
+    const concurrencyLimit = Math.min(
+      options.concurrencyLimit || licenseSyncConfig.sync.concurrencyLimit,
+      licenseSyncConfig.sync.maxConcurrentBatches
+    );
     let pagesFetched = 0;
+
+    // Early validation for memory limits
+    if (options.maxLicenses && options.maxLicenses > licenseSyncConfig.sync.maxLicensesForComprehensive) {
+      logger.warn('Requested license limit exceeds maximum allowed', {
+        requested: options.maxLicenses,
+        maximum: licenseSyncConfig.sync.maxLicensesForComprehensive,
+      });
+      options.maxLicenses = licenseSyncConfig.sync.maxLicensesForComprehensive;
+    }
 
     logger.info('Starting bulk license fetch from external API', {
       correlationId: this.correlationId,
@@ -315,6 +339,29 @@ export class ExternalLicenseApiService {
                 pageBatchStart,
                 batchSize: response.data.length,
               });
+
+              // Memory safety check - prevent excessive memory usage
+              if (allLicenses.length > licenseSyncConfig.sync.maxLicensesForComprehensive) {
+                logger.warn('Reached maximum license limit, truncating results', {
+                  correlationId: this.correlationId,
+                  currentCount: allLicenses.length,
+                  maxAllowed: licenseSyncConfig.sync.maxLicensesForComprehensive,
+                });
+                allLicenses.splice(licenseSyncConfig.sync.maxLicensesForComprehensive);
+                hasMorePages = false;
+                break;
+              }
+
+              // Check custom limit if specified
+              if (options.maxLicenses && allLicenses.length >= options.maxLicenses) {
+                logger.info('Reached requested license limit, stopping pagination', {
+                  correlationId: this.correlationId,
+                  currentCount: allLicenses.length,
+                  requestedLimit: options.maxLicenses,
+                });
+                hasMorePages = false;
+                break;
+              }
             }
 
             // If any page has fewer items than requested, we've reached the end
@@ -339,13 +386,51 @@ export class ExternalLicenseApiService {
         pagesFetched,
       });
 
+      // Validate license data if enabled
+      let validatedLicenses = allLicenses;
+      let validationSummary = null;
+
+      if (licenseSyncConfig.validation.strictMode || allLicenses.length > 0) {
+        logger.debug('Validating external license data', {
+          correlationId: this.correlationId,
+          licenseCount: allLicenses.length,
+        });
+
+        const validation = externalLicenseValidator.validateLicenses(allLicenses, {
+          continueOnError: !licenseSyncConfig.validation.strictMode,
+        });
+
+        validatedLicenses = validation.validLicenses;
+        validationSummary = {
+          total: validation.total,
+          valid: validation.valid,
+          invalid: validation.invalid,
+          validationErrors: validation.errors.slice(0, 10), // Limit for logging
+          totalErrors: validation.errors.length,
+        };
+
+        if (validation.invalid > 0) {
+          logger.warn('External license data validation found issues', {
+            correlationId: this.correlationId,
+            validationSummary,
+          });
+
+          if (licenseSyncConfig.validation.strictMode && validation.invalid > 0) {
+            throw new ValidationException(
+              `External license data validation failed: ${validation.invalid} of ${validation.total} licenses invalid`
+            );
+          }
+        }
+      }
+
       return {
         success: true,
-        data: allLicenses,
-        total: allLicenses.length,
+        data: validatedLicenses,
+        total: validatedLicenses.length,
         meta: {
           fetchedAt: new Date(),
           pagesFetched,
+          validation: validationSummary,
         },
       };
     } catch (error) {
@@ -368,7 +453,25 @@ export class ExternalLicenseApiService {
       throw new ValidationException('App ID is required');
     }
 
-    return await this.makeRequest(`/api/v1/licenses/${encodeURIComponent(appid)}`);
+    const response = await this.makeRequest(`/api/v1/licenses/${encodeURIComponent(appid)}`);
+
+    // Validate single license if validation is enabled
+    if (licenseSyncConfig.validation.strictMode && response) {
+      const validation = externalLicenseValidator.validateLicense(response);
+      if (!validation.isValid) {
+        logger.warn('Single license validation failed', {
+          correlationId: this.correlationId,
+          appid,
+          errors: validation.errors,
+        });
+        throw new ValidationException(
+          `License validation failed: ${validation.errors.join(', ')}`
+        );
+      }
+      return validation.sanitizedData;
+    }
+
+    return response;
   }
 
   /**

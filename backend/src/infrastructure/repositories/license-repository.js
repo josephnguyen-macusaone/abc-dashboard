@@ -314,6 +314,11 @@ export class LicenseRepository extends ILicenseRepository {
       throw new Error('Missing required license data fields');
     }
 
+    // Ensure DBA has a meaningful value
+    if (!licenseData.dba || licenseData.dba.trim() === '') {
+      licenseData.dba = 'Unknown Business';
+    }
+
     const dbData = this._toLicenseDbFormat(licenseData);
     const [savedRow] = await this.db(this.licensesTable).insert(dbData).returning('*');
 
@@ -323,6 +328,11 @@ export class LicenseRepository extends ILicenseRepository {
   async update(id, updates) {
     return withTimeout(
       async () => {
+        // Ensure DBA has a meaningful value if being updated
+        if (updates.dba !== undefined && (!updates.dba || updates.dba.trim() === '')) {
+          updates.dba = 'Unknown Business';
+        }
+
         const dbUpdates = this._toLicenseDbFormat(updates);
         dbUpdates.updated_at = new Date();
 
@@ -818,6 +828,10 @@ export class LicenseRepository extends ILicenseRepository {
       throw new Error('License row is null or undefined');
     }
 
+    // Ensure DBA always has a meaningful value to prevent frontend validation errors
+    const dba = licenseRow.dba;
+    const safeDba = (dba && dba.trim()) ? dba.trim() : 'Unknown Business';
+
     return new License({
       id: licenseRow.id,
       key: licenseRow.key,
@@ -831,7 +845,7 @@ export class LicenseRepository extends ILicenseRepository {
       expiresAt: licenseRow.expires_at,
       cancelDate: licenseRow.cancel_date,
       lastActive: licenseRow.last_active,
-      dba: licenseRow.dba,
+      dba: safeDba,
       zip: licenseRow.zip,
       lastPayment: parseFloat(licenseRow.last_payment) || 0,
       smsPurchased: licenseRow.sms_purchased,

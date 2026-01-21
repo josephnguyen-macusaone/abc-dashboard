@@ -4,6 +4,8 @@
  * Supports bulk operations, error handling, and performance optimization for large datasets
  */
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
+import { licenseSyncConfig } from '../../../infrastructure/config/license-sync-config.js';
+import { licenseSyncMonitor } from '../../../infrastructure/monitoring/license-sync-monitor.js';
 import logger from '../../../infrastructure/config/logger.js';
 
 export class SyncExternalLicensesUseCase {
@@ -24,12 +26,21 @@ export class SyncExternalLicensesUseCase {
   async execute(options = {}) {
     const {
       forceFullSync = false,
-      batchSize = 20,
+      batchSize = licenseSyncConfig.sync.batchSize,
       dryRun = false,
       syncToInternalOnly = false,
-      bidirectional = false,
-      comprehensive = true, // Use comprehensive reconciliation approach (external first, internal second, then compare)
+      bidirectional = licenseSyncConfig.features.enableBidirectionalSync,
+      comprehensive = licenseSyncConfig.features.enableComprehensiveSync,
     } = options;
+
+    // Start monitoring this sync operation
+    const operationContext = licenseSyncMonitor.recordSyncStart('external_licenses_sync', {
+      forceFullSync,
+      batchSize,
+      dryRun,
+      syncToInternalOnly,
+      comprehensive,
+    });
 
     const startTime = Date.now();
     const syncResults = {
@@ -45,6 +56,7 @@ export class SyncExternalLicensesUseCase {
 
     try {
       logger.info('Starting external licenses sync', {
+        operationId: operationContext.operationId,
         forceFullSync,
         batchSize,
         dryRun,
@@ -118,10 +130,21 @@ export class SyncExternalLicensesUseCase {
         return syncResults;
       }
 
-      // Process licenses in batches concurrently for better performance
+      // Process licenses in batches with adaptive concurrency for better performance
       const batches = this._createBatches(externalData.data, batchSize);
       const syncTimestamp = new Date();
-      const concurrencyLimit = Math.min(batches.length, 5); // Process up to 5 batches concurrently
+
+      // Adaptive concurrency based on batch size and system capacity
+      const adaptiveConcurrency = this._calculateAdaptiveConcurrency(batches.length, batchSize);
+      const concurrencyLimit = Math.min(batches.length, adaptiveConcurrency);
+
+      logger.debug('Adaptive concurrency calculated', {
+        totalBatches: batches.length,
+        batchSize,
+        requestedConcurrency: licenseSyncConfig.sync.concurrencyLimit,
+        adaptiveConcurrency,
+        finalConcurrencyLimit: concurrencyLimit,
+      });
 
       logger.info('Processing licenses in concurrent batches', {
         totalBatches: batches.length,
@@ -206,19 +229,19 @@ export class SyncExternalLicensesUseCase {
       }
       // If internal license repository is provided, sync external data to internal licenses
       // Run in both normal sync and syncToInternalOnly modes
-      console.log(`DEBUG: Checking internal sync condition: internalLicenseRepository=${!!this.internalLicenseRepository}, dryRun=${dryRun}, syncToInternalOnly=${syncToInternalOnly}`);
       if (this.internalLicenseRepository && (!dryRun || syncToInternalOnly)) {
-        console.log('DEBUG: Entering internal sync block');
         try {
-          console.log(`DEBUG: About to call internal sync, comprehensive=${comprehensive}, internalLicenseRepository exists=${!!this.internalLicenseRepository}`);
-          console.error(`🚨🚨🚨 ABOUT TO CALL INTERNAL SYNC: comprehensive=${comprehensive} 🚨🚨🚨`);
+          logger.debug('Preparing internal license sync', {
+            comprehensive,
+            dryRun,
+            syncToInternalOnly,
+            hasInternalRepo: !!this.internalLicenseRepository,
+          });
+
           let internalSyncResults;
           if (comprehensive) {
-            console.error('🚨🚨🚨 CALLING COMPREHENSIVE SYNC 🚨🚨🚨');
-            console.log('DEBUG: Calling comprehensive sync');
             logger.info('Starting comprehensive sync to internal licenses table (external-first approach)...');
             internalSyncResults = await this.externalLicenseRepository.syncToInternalLicensesComprehensive(this.internalLicenseRepository);
-            console.log('DEBUG: Comprehensive sync completed');
           } else {
             logger.info('Starting legacy sync to internal licenses table (external-driven approach)...');
             internalSyncResults = await this.externalLicenseRepository.syncToInternalLicenses(this.internalLicenseRepository);
@@ -271,8 +294,24 @@ export class SyncExternalLicensesUseCase {
       }
 
       syncResults.duration = Date.now() - startTime;
+      syncResults.success = true;
+
+      // Record data processing metrics
+      licenseSyncMonitor.recordDataProcessed(syncResults.totalFetched, 'external_sync');
+
+      // Record sync completion
+      licenseSyncMonitor.recordSyncEnd(operationContext, {
+        success: true,
+        totalFetched: syncResults.totalFetched,
+        created: syncResults.created,
+        updated: syncResults.updated,
+        failed: syncResults.failed,
+        internalSynced: syncResults.internalSynced,
+        duration: syncResults.duration,
+      });
 
       logger.info('External licenses sync completed', {
+        operationId: operationContext.operationId,
         totalFetched: syncResults.totalFetched,
         created: syncResults.created,
         updated: syncResults.updated,
@@ -290,7 +329,17 @@ export class SyncExternalLicensesUseCase {
       syncResults.error = error.message;
       syncResults.duration = Date.now() - startTime;
 
+      // Record sync failure
+      licenseSyncMonitor.recordSyncEnd(operationContext, {
+        success: false,
+        error: error.message,
+        errorType: 'sync_failure',
+        totalFetched: syncResults.totalFetched,
+        duration: syncResults.duration,
+      });
+
       logger.error('External licenses sync failed', {
+        operationId: operationContext.operationId,
         error: error.message,
         totalFetched: syncResults.totalFetched,
         duration: syncResults.duration,
@@ -577,6 +626,27 @@ export class SyncExternalLicensesUseCase {
         error: error.message,
       });
     }
+  }
+
+  /**
+   * Calculate adaptive concurrency based on workload and system capacity
+   * @private
+   */
+  _calculateAdaptiveConcurrency(totalBatches, batchSize) {
+    const baseConcurrency = licenseSyncConfig.sync.concurrencyLimit;
+
+    // For small datasets, use lower concurrency to avoid overhead
+    if (totalBatches <= 3) {
+      return Math.min(baseConcurrency, 2);
+    }
+
+    // For large datasets, gradually increase concurrency but cap it
+    if (totalBatches > 50) {
+      return Math.min(baseConcurrency, 8); // Allow higher concurrency for large datasets
+    }
+
+    // For medium datasets, use base concurrency
+    return baseConcurrency;
   }
 
   /**

@@ -136,6 +136,11 @@ export class License {
       errors.push('Plan is required');
     }
 
+    // DBA is required
+    if (!this.dba || this.dba.trim() === '') {
+      errors.push('DBA is required');
+    }
+
     // Status validation
     const validStatuses = [
       'draft',
