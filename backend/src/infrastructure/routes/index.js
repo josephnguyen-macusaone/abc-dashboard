@@ -56,6 +56,19 @@ export const createRoutes = async () => {
     return res.json({ success: true, message: 'Bypass route works' });
   });
 
+  // Debug external licenses route
+  router.get('/debug-external-licenses', async (req, res) => {
+    console.log('DEBUG: External licenses debug route called');
+    try {
+      const externalLicenseController = await awilixContainer.getExternalLicenseController();
+      console.log('DEBUG: External license controller obtained');
+      return res.json({ success: true, message: 'External license controller works' });
+    } catch (error) {
+      console.log('DEBUG: Error getting external license controller:', error.message);
+      return res.json({ success: false, error: error.message });
+    }
+  });
+
   // External License routes (real external API integration)
   const externalLicenseController = await awilixContainer.getExternalLicenseController();
   router.use('/external-licenses', createExternalLicenseRoutes(externalLicenseController, authMiddleware));

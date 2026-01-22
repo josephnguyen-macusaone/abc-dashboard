@@ -315,17 +315,38 @@ export const useLicenseStore = create<LicenseState>()(
               try {
                 const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate);
 
-                // Handle the service response format (object with results array)
+                // Handle the service response format
                 let updatedLicenses: LicenseRecord[];
                 const resultObj = updateResult as any;
+
+                storeLogger.debug('Bulk update result received', {
+                  resultType: typeof updateResult,
+                  isArray: Array.isArray(updateResult),
+                  has_isBulkUpdateResult: !!(resultObj && typeof resultObj === 'object' && resultObj._isBulkUpdateResult),
+                  resultsType: resultObj?.results ? typeof resultObj.results : 'undefined',
+                  resultsIsArray: Array.isArray(resultObj?.results)
+                });
+
                 if (resultObj && typeof resultObj === 'object' && resultObj._isBulkUpdateResult) {
                   // New format with ID mapping
                   updatedLicenses = resultObj.results || [];
                 } else if (Array.isArray(updateResult)) {
-                  // Legacy format (direct array)
+                  // Direct array format
                   updatedLicenses = updateResult;
                 } else {
+                  storeLogger.error('Invalid bulk update response format', {
+                    resultType: typeof updateResult,
+                    resultValue: updateResult
+                  });
                   throw new Error('Invalid bulk update response format');
+                }
+
+                if (!Array.isArray(updatedLicenses)) {
+                  storeLogger.error('Updated licenses is not an array', {
+                    updatedLicensesType: typeof updatedLicenses,
+                    updatedLicensesValue: updatedLicenses
+                  });
+                  throw new Error('Bulk update returned invalid license array');
                 }
 
                 results.push(...updatedLicenses);
@@ -461,6 +482,15 @@ export const useLicenseStore = create<LicenseState>()(
 
             const response = await container.licenseManagementService.bulkUpdateLicenses(updates);
 
+            storeLogger.debug('Bulk update store received response', {
+              responseType: typeof response,
+              isArray: Array.isArray(response),
+              responseKeys: response && typeof response === 'object' ? Object.keys(response) : [],
+              has_isBulkUpdateResult: !!(response && typeof response === 'object' && (response as any)._isBulkUpdateResult),
+              resultsType: response && typeof response === 'object' && (response as any).results ? typeof (response as any).results : 'undefined',
+              resultsIsArray: Array.isArray((response as any)?.results)
+            });
+
             // Handle bulk update result with ID mapping
             let results: any[];
             let idMapping: Record<string, string> = {};
@@ -470,6 +500,12 @@ export const useLicenseStore = create<LicenseState>()(
               // New format with ID mapping
               results = responseObj.results || [];
               idMapping = responseObj.idMapping || {};
+
+              storeLogger.debug('Processing new format response', {
+                resultsType: typeof results,
+                resultsIsArray: Array.isArray(results),
+                resultsLength: Array.isArray(results) ? results.length : 'N/A'
+              });
 
               // Validate that results is an array
               if (!Array.isArray(results)) {
@@ -485,22 +521,29 @@ export const useLicenseStore = create<LicenseState>()(
                 idMappingCount: Object.keys(idMapping).length,
                 sampleMappings: Object.entries(idMapping).slice(0, 3)
               });
-            } else {
-              // Legacy format (direct array)
-              results = Array.isArray(response) ? response : [];
+            } else if (Array.isArray(response)) {
+              // Direct array format
+              results = response;
+
+              storeLogger.debug('Processing direct array format response', {
+                resultsLength: results.length,
+                sampleResponse: results.slice(0, 2)
+              });
 
               if (!Array.isArray(results)) {
-                storeLogger.error('Legacy bulk update response is not an array', {
+                storeLogger.error('Direct array response is not an array', {
                   responseType: typeof response,
                   responseValue: response
                 });
                 throw new Error('Bulk update response is not an array');
               }
-
-              storeLogger.debug('Bulk update response (legacy format)', {
-                responseCount: results.length,
-                sampleResponse: results.slice(0, 2)
+            } else {
+              // Unknown format
+              storeLogger.error('Unknown bulk update response format', {
+                responseType: typeof response,
+                responseValue: response
               });
+              throw new Error('Unknown bulk update response format');
             }
 
             // Update the licenses in the list with the API response (fully updated records)

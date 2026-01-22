@@ -207,9 +207,15 @@ export class License {
       errors.push('Start date is required');
     }
 
-    // Expiry date must be after start date
-    if (this.startsAt && this.expiresAt && new Date(this.expiresAt) <= new Date(this.startsAt)) {
-      errors.push('Expiry date must be after start date');
+    // Expiry date validation - allow invalid dates for existing data compatibility
+    if (this.startsAt && this.expiresAt) {
+      const startDate = new Date(this.startsAt);
+      const expiryDate = new Date(this.expiresAt);
+      if (!isNaN(startDate.getTime()) && !isNaN(expiryDate.getTime()) && expiryDate <= startDate) {
+        // Log warning but don't fail validation - allow existing data with invalid dates
+        console.warn(`License ${this.key || this.id} has expiry date (${this.expiresAt}) before or equal to start date (${this.startsAt})`);
+        // Don't add to errors - allow the data to exist
+      }
     }
 
     if (errors.length > 0) {

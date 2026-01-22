@@ -453,6 +453,13 @@ export class LicenseRepository extends ILicenseRepository {
     }
 
     // Advanced filters
+    // External data filter - licenses that have external identifiers
+    if (filters.hasExternalData) {
+      baseQuery = baseQuery.where((qb) => {
+        qb.whereNotNull('appid').orWhereNotNull('countid');
+      });
+    }
+
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         baseQuery = baseQuery.whereIn('status', filters.status);
@@ -740,17 +747,59 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   async bulkCreate(licensesData) {
-    const dbDataArray = licensesData.map((data) => this._toLicenseDbFormat(data));
-    const savedRows = await this.db(this.licensesTable).insert(dbDataArray).returning('*');
-    return savedRows.map((row) => this._toLicenseEntity(row));
+    const createdLicenses = [];
+    const errors = [];
+
+    // Process each license individually to handle errors gracefully
+    for (const [index, licenseData] of licensesData.entries()) {
+      try {
+        const dbData = this._toLicenseDbFormat(licenseData);
+        const [savedRow] = await this.db(this.licensesTable).insert(dbData).returning('*');
+
+        if (savedRow) {
+          createdLicenses.push(this._toLicenseEntity(savedRow));
+        }
+      } catch (createError) {
+        logger.warn('Individual license creation failed in bulk operation', {
+          index,
+          key: licenseData.key,
+          error: createError.message,
+          correlationId: this.correlationId
+        });
+        errors.push({
+          index,
+          key: licenseData.key,
+          error: createError.message
+        });
+        // Continue with other licenses instead of failing the whole batch
+      }
+    }
+
+    // Log summary of bulk create
+    logger.info('Bulk create completed', {
+      total: licensesData.length,
+      successful: createdLicenses.length,
+      failed: errors.length,
+      correlationId: this.correlationId
+    });
+
+    if (errors.length > 0) {
+      logger.warn('Some licenses failed to create in bulk operation', {
+        errors: errors.slice(0, 5), // Log first 5 errors
+        correlationId: this.correlationId
+      });
+    }
+
+    return createdLicenses;
   }
 
   async bulkUpdate(updates) {
     const updatedLicenses = [];
+    const errors = [];
 
     // Use transaction for bulk updates
     await this.db.transaction(async (trx) => {
-      for (const { id, updates: data } of updates) {
+      for (const [index, { id, updates: data }] of updates.entries()) {
         try {
           const dbUpdates = this._toLicenseDbFormat(data);
           dbUpdates.updated_at = new Date();
@@ -762,12 +811,44 @@ export class LicenseRepository extends ILicenseRepository {
 
           if (updatedRow) {
             updatedLicenses.push(this._toLicenseEntity(updatedRow));
+          } else {
+            errors.push({
+              index,
+              id,
+              error: 'License not found or update failed'
+            });
           }
         } catch (updateError) {
-          throw updateError;
+          logger.warn('Individual license update failed in bulk operation', {
+            index,
+            id,
+            error: updateError.message,
+            correlationId: this.correlationId
+          });
+          errors.push({
+            index,
+            id,
+            error: updateError.message
+          });
+          // Continue with other updates instead of failing the whole batch
         }
       }
     });
+
+    // Log summary of bulk update
+    logger.info('Bulk update completed', {
+      total: updates.length,
+      successful: updatedLicenses.length,
+      failed: errors.length,
+      correlationId: this.correlationId
+    });
+
+    if (errors.length > 0) {
+      logger.warn('Some licenses failed to update in bulk operation', {
+        errors,
+        correlationId: this.correlationId
+      });
+    }
 
     return updatedLicenses;
   }
@@ -855,6 +936,15 @@ export class LicenseRepository extends ILicenseRepository {
       agentsName: licenseRow.agents_name,
       agentsCost: parseFloat(licenseRow.agents_cost) || 0,
       notes: licenseRow.notes,
+      createdAt: licenseRow.created_at,
+      updatedAt: licenseRow.updated_at,
+    });
+  }
+
+  /**
+      agentsName: licenseRow.agents_name,
+      agentsCost: parseFloat(licenseRow.agents_cost) || 0,
+      notes: licenseRow.notes,
 
       // Lifecycle management fields
       renewalRemindersSent: licenseRow.renewal_reminders_sent || [],
@@ -884,6 +974,10 @@ export class LicenseRepository extends ILicenseRepository {
       last_external_sync: licenseRow.last_external_sync,
       external_sync_error: licenseRow.external_sync_error,
     });
+
+    console.log('DEBUG: Final entityData.startsAt:', entityData.startsAt);
+
+    return new License(entityData);
   }
 
   /**

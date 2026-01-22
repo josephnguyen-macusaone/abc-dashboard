@@ -198,7 +198,11 @@ export class SyncExternalLicensesUseCase {
             syncResults.created += result.batchResults.created;
             syncResults.updated += result.batchResults.updated;
             syncResults.failed += result.batchResults.failed;
-            syncResults.errors.push(...result.batchResults.errors);
+
+            // Safely add batch errors
+            if (result.batchResults.errors && Array.isArray(result.batchResults.errors)) {
+              syncResults.errors.push(...result.batchResults.errors);
+            }
 
             logger.debug(`Batch ${result.batchIndex} completed`, {
               created: result.batchResults.created,

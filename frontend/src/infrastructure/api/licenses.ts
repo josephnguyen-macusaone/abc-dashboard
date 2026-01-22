@@ -1,6 +1,7 @@
 import { httpClient } from '@/infrastructure/api/client';
 import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
 import type { LicenseRecord } from '@/types';
+import type { LicenseBulkResponse } from '@/application/services/license-services';
 
 /**
  * Transform backend license data to frontend LicenseRecord
@@ -413,6 +414,43 @@ export class LicenseApiService {
       const apiLicenses = Array.isArray(response.data) ? response.data : [];
 
       return apiLicenses.map(transformApiLicenseToRecord);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk update internal licenses
+   */
+  static async bulkUpdateInternalLicenses(updates: Array<Partial<LicenseRecord> & { id: number | string }>): Promise<LicenseRecord[]> {
+    try {
+      // Send the array directly to the internal bulk update endpoint
+      const response = await httpClient.patch('/licenses/bulk', updates) as any;
+
+      // Extract results from the response
+      console.log('Bulk update API response:', {
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        hasResults: !!(response.data && response.data.results),
+        resultsType: response.data?.results ? typeof response.data.results : 'undefined',
+        resultsIsArray: Array.isArray(response.data?.results),
+        resultsLength: Array.isArray(response.data?.results) ? response.data.results.length : 'N/A'
+      });
+
+      if (response.data && response.data.results) {
+        const transformed = response.data.results.map(transformApiLicenseToRecord);
+        console.log('Bulk update API returning transformed results:', transformed.length);
+        return transformed;
+      } else if (Array.isArray(response.data)) {
+        // Fallback for old format
+        const transformed = response.data.map(transformApiLicenseToRecord);
+        console.log('Bulk update API returning fallback transformed results:', transformed.length);
+        return transformed;
+      } else {
+        console.warn('Unexpected bulk update response format:', response.data);
+        return [];
+      }
     } catch (error) {
       throw error;
     }
@@ -1134,7 +1172,7 @@ export class UnifiedLicenseApi {
   } = {}) {
     try {
       // Use internal API for full functionality
-      const response = await InternalLicenseApiService.getLicenses(params);
+      const response = await InternalLicenseApiService.getLicenses(params) as any;
 
       // Transform internal API response to frontend repository format
       return {
@@ -1226,9 +1264,28 @@ export class UnifiedLicenseApi {
   }
 
   /**
+   * Bulk update internal licenses (by IDs)
+   */
+  static async bulkUpdateInternalLicenses(updates: Array<Partial<LicenseRecord> & { id: number | string }>): Promise<LicenseRecord[]> {
+    // Send the array directly to the internal bulk update endpoint
+    const response = await httpClient.patch('/licenses/bulk', updates) as any;
+
+    // Extract results from the response - backend returns array directly
+    return Array.isArray(response) ? response : (response.data || []);
+  }
+
+  /**
    * Bulk create licenses
    */
-  static async bulkCreateLicenses(licenses: Array<Partial<LicenseRecord>>) {
+  static async bulkCreateLicenses(licenses: Array<Partial<LicenseRecord>>): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      created: number;
+      failed: number;
+      results: any[];
+    };
+  }> {
     return await InternalLicenseApiService.bulkCreateLicenses(licenses);
   }
 
@@ -1504,6 +1561,7 @@ export const licenseApi = {
   updateLicense: UnifiedLicenseApi.updateLicense,
   deleteLicense: UnifiedLicenseApi.deleteLicense,
   bulkUpdateLicenses: UnifiedLicenseApi.bulkUpdateLicenses,
+  bulkUpdateInternalLicenses: UnifiedLicenseApi.bulkUpdateInternalLicenses,
   bulkCreateLicenses: UnifiedLicenseApi.bulkCreateLicenses,
   bulkDeleteLicenses: UnifiedLicenseApi.bulkDeleteLicenses,
   getLicenseByEmail: UnifiedLicenseApi.getLicenseByEmail,
@@ -1542,7 +1600,6 @@ export const licenseApi = {
   createInternalLicense: InternalLicenseApiService.createLicense,
   updateInternalLicense: InternalLicenseApiService.updateLicense,
   deleteInternalLicense: InternalLicenseApiService.deleteLicense,
-  bulkUpdateInternalLicenses: InternalLicenseApiService.bulkUpdateLicenses,
   bulkCreateInternalLicenses: InternalLicenseApiService.bulkCreateLicenses,
   bulkDeleteInternalLicenses: InternalLicenseApiService.bulkDeleteLicenses,
 } as const;

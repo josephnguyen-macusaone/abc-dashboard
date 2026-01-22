@@ -134,7 +134,7 @@ app.use('/api-docs', (req, res, next) => {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https:",
-      "connect-src 'self' http://localhost:5000 http://localhost:3000 ws://localhost:3000",
+      "connect-src 'self' http://localhost:5000 http://localhost:5002 http://localhost:3000 ws://localhost:3000",
       "frame-src 'none'",
       "object-src 'none'",
     ].join('; ')
@@ -266,6 +266,19 @@ const startServer = async () => {
         });
         // Don't fail server startup for scheduler issues
       }
+
+      // Initialize and start license sync scheduler
+      try {
+        const syncScheduler = await awilixContainer.getLicenseSyncScheduler();
+        await syncScheduler.start();
+        logger.startup('License sync scheduler started successfully');
+      } catch (error) {
+        logger.error('Failed to start license sync scheduler', {
+          error: error.message,
+          stack: error.stack,
+        });
+        // Don't fail server startup for scheduler issues
+      }
     });
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`);
@@ -285,6 +298,17 @@ const gracefulShutdown = async (signal) => {
       logger.startup('License lifecycle scheduler stopped');
     } catch (error) {
       logger.error('Error stopping license lifecycle scheduler', {
+        error: error.message,
+      });
+    }
+
+    // Stop license sync scheduler
+    try {
+      const syncScheduler = await awilixContainer.getLicenseSyncScheduler();
+      await syncScheduler.gracefulShutdown();
+      logger.startup('License sync scheduler stopped');
+    } catch (error) {
+      logger.error('Error stopping license sync scheduler', {
         error: error.message,
       });
     }

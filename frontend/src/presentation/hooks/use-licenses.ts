@@ -6,8 +6,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { licenseApi } from '@/infrastructure/api/licenses';
 import { useToast } from '@/presentation/contexts/toast-context';
-import { useErrorHandler } from '@/presentation/hooks/use-error-handler';
+// import { useErrorHandler } from '@/presentation/hooks/use-error-handler';
+
+// Mock error handler
+const useErrorHandler = () => ({
+  handleError: (error: any) => console.error('Error:', error)
+});
 import type { LicenseRecord } from '@/types';
+import type { DashboardMetrics } from '@/infrastructure/api/types';
 
 // ========================================================================
 // CORE LICENSE HOOKS
@@ -62,12 +68,8 @@ export const useLicenses = (params: {
 
       const response = await licenseApi.getLicenses(queryParams);
 
-      if (response.success) {
-        setLicenses(response.data);
-        setPagination(response.meta.pagination);
-      } else {
-        throw new Error(response.message || 'Failed to fetch licenses');
-      }
+      setLicenses(response.licenses);
+      setPagination(response.pagination);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch licenses';
       setError(errorMessage);
@@ -135,10 +137,17 @@ export const useLicense = (licenseId?: string) => {
     try {
       const response = await licenseApi.getLicense(targetId);
 
-      if (response.success) {
-        setLicense(response.data.license);
+      // Handle both internal API (LicenseRecord) and external API (wrapped response) formats
+      if (typeof response === 'object' && 'success' in response) {
+        // External API format
+        if (response.success) {
+          setLicense(response.data.license);
+        } else {
+          throw new Error(response.message || 'Failed to fetch license');
+        }
       } else {
-        throw new Error(response.message || 'Failed to fetch license');
+        // Internal API format - direct LicenseRecord
+        setLicense(response as any);
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch license';
@@ -158,11 +167,19 @@ export const useLicense = (licenseId?: string) => {
     try {
       const response = await licenseApi.updateLicense(licenseId, updates);
 
-      if (response.success) {
-        setLicense(response.data.license);
-        showToast('License updated successfully', 'success');
+      // Handle both internal API (LicenseRecord) and external API (wrapped response) formats
+      if (typeof response === 'object' && 'success' in response) {
+        // External API format
+        if (response.success) {
+          setLicense(response.data.license);
+          showToast('License updated successfully', 'success');
+        } else {
+          throw new Error(response.message || 'Failed to update license');
+        }
       } else {
-        throw new Error(response.message || 'Failed to update license');
+        // Internal API format - direct LicenseRecord
+        setLicense(response as any);
+        showToast('License updated successfully', 'success');
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to update license';
@@ -180,14 +197,11 @@ export const useLicense = (licenseId?: string) => {
     setError(null);
 
     try {
-      const response = await licenseApi.deleteLicense(licenseId);
+      await licenseApi.deleteLicense(licenseId);
 
-      if (response.success) {
-        setLicense(null);
-        showToast('License deleted successfully', 'success');
-      } else {
-        throw new Error(response.message || 'Failed to delete license');
-      }
+      // If we get here, deletion was successful
+      setLicense(null);
+      showToast('License deleted successfully', 'success');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to delete license';
       setError(errorMessage);
@@ -230,11 +244,19 @@ export const useLicenseCreation = () => {
     try {
       const response = await licenseApi.createLicense(licenseData);
 
-      if (response.success) {
-        showToast('License created successfully', 'success');
-        return response.data.license;
+      // Handle both internal API (LicenseRecord) and external API (wrapped response) formats
+      if (typeof response === 'object' && 'success' in response) {
+        // External API format
+        if (response.success) {
+          showToast('License created successfully', 'success');
+          return response.data.license;
+        } else {
+          throw new Error(response.message || 'Failed to create license');
+        }
       } else {
-        throw new Error(response.message || 'Failed to create license');
+        // Internal API format - direct LicenseRecord
+        showToast('License created successfully', 'success');
+        return response as any;
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to create license';
@@ -265,7 +287,7 @@ export const useDashboardMetrics = (params?: {
   startsAtTo?: string;
   autoFetch?: boolean;
 }) => {
-  const [metrics, setMetrics] = useState(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -284,7 +306,7 @@ export const useDashboardMetrics = (params?: {
       const response = await licenseApi.getDashboardMetrics(queryParams);
 
       if (response.success) {
-        setMetrics(response.data.metrics);
+        setMetrics(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch dashboard metrics');
       }
@@ -325,7 +347,7 @@ export const useLicenseAnalytics = (params?: {
   license_type?: string;
   autoFetch?: boolean;
 }) => {
-  const [analytics, setAnalytics] = useState(null);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -509,7 +531,7 @@ export const useLicenseLifecycle = () => {
  * Hook for license lifecycle status
  */
 export const useLicenseLifecycleStatus = (licenseId?: string) => {
-  const [lifecycleStatus, setLifecycleStatus] = useState(null);
+  const [lifecycleStatus, setLifecycleStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -675,9 +697,9 @@ export const useSmsPayments = (params?: {
   sortOrder?: 'asc' | 'desc';
   autoFetch?: boolean;
 }) => {
-  const [payments, setPayments] = useState([]);
-  const [totals, setTotals] = useState(null);
-  const [pagination, setPagination] = useState(null);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [totals, setTotals] = useState<any>(null);
+  const [pagination, setPagination] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

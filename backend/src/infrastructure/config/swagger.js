@@ -149,10 +149,12 @@ const swaggerDefinition = {
           accessToken: {
             type: 'string',
             description: 'JWT access token',
+            example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5MDQ3OTM2LCJleHAiOjE3NjkwNTE1MzYsImF1ZCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiaXNzIjoiYWJjLWRhc2hib2FyZCJ9.example_signature',
           },
           refreshToken: {
             type: 'string',
             description: 'JWT refresh token',
+            example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwidHlwZSI6InJlZnJlc2giLCJ0b2tlblZlcnNpb24iOjEsImlzc3VlZEF0IjoxNzY5MDQ3OTM2LCJpYXQiOjE3NjkwNDc5MzYsImV4cCI6MTc2OTY1MjczNiwiaXNzIjoiYWJjLWRhc2hib2FyZCJ9.example_signature',
           },
         },
       },

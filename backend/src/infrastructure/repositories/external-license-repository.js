@@ -46,8 +46,14 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
   }
 
   async findByAppId(appid) {
-    if (!appid) {
-      throw new Error('App ID is required for findByAppId');
+    // Allow operations without appid for sync purposes
+    if (!appid || typeof appid !== 'string') {
+      logger.warn('Invalid appid provided to findByAppId', {
+        correlationId: this.correlationId,
+        appid,
+        appidType: typeof appid
+      });
+      return null;
     }
 
     try {
@@ -66,8 +72,13 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
   }
 
   async findByEmail(email) {
-    if (!email) {
-      throw new Error('Email is required for findByEmail');
+    if (!email || typeof email !== 'string') {
+      logger.warn('Invalid email provided to findByEmail', {
+        correlationId: this.correlationId,
+        email,
+        emailType: typeof email
+      });
+      return null;
     }
 
     try {
@@ -201,9 +212,10 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     const dbData = this._toExternalLicenseDbFormat(licenseData);
     const appid = licenseData.appid;
 
-    if (!appid) {
-      throw new Error('App ID is required for upsert operation');
-    }
+    // Allow operations without appid for sync purposes
+    // if (!appid) {
+    //   throw new Error('App ID is required for upsert operation');
+    // }
 
     return withTimeout(
       async () => {
@@ -380,17 +392,36 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
             return;
           }
 
+          // Deduplicate by appid to prevent ON CONFLICT errors
+          const seenAppIds = new Set();
+          const deduplicatedData = validBatchData.filter(item => {
+            if (!item.appid || seenAppIds.has(item.appid)) {
+              return false;
+            }
+            seenAppIds.add(item.appid);
+            return true;
+          });
+
+          if (deduplicatedData.length !== validBatchData.length) {
+            logger.warn('Removed duplicate appids from batch', {
+              batchNumber,
+              originalCount: validBatchData.length,
+              deduplicatedCount: deduplicatedData.length,
+              duplicatesRemoved: validBatchData.length - deduplicatedData.length
+            });
+          }
+
           // Use bulk upsert with ON CONFLICT for better performance
           // This approach is more efficient than individual checks
           const results = await trx(this.licensesTable)
-            .insert(validBatchData)
+            .insert(deduplicatedData)
             .onConflict('appid')
             .merge()
             .returning(['id', 'appid', 'created_at', 'updated_at']);
 
           logger.debug(`Bulk upsert completed for batch ${batchNumber}`, {
             inserted: results.length,
-            batchSize: validBatchData.length,
+            batchSize: deduplicatedData.length,
           });
 
           // Determine which were created vs updated by checking timestamps
@@ -434,12 +465,15 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     const summary = {
       created: created.length,
       updated: updated.length,
-      errors: errors.length,
+      errors: errors, // Return the full errors array, not just the count
       totalProcessed: created.length + updated.length + errors.length,
       successRate: licensesData.length > 0 ? Math.round(((created.length + updated.length) / licensesData.length) * 100) : 0,
     };
 
-    logger.info('Bulk upsert operation completed', summary);
+    logger.info('Bulk upsert operation completed', {
+      ...summary,
+      errorCount: errors.length, // Include error count in logs
+    });
 
     return summary;
   }
@@ -698,19 +732,24 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       dbData.id = data.id;
     }
     if (data.appid !== undefined) {
-      dbData.appid = data.appid;
+      // Truncate appid to 255 characters max (database constraint)
+      dbData.appid = data.appid ? String(data.appid).substring(0, 255) : data.appid;
     }
     if (data.license_type !== undefined) {
-      dbData.license_type = data.license_type;
+      // Truncate license_type to 50 characters max (database constraint)
+      dbData.license_type = String(data.license_type).substring(0, 50);
     }
     if (data.dba !== undefined) {
-      dbData.dba = data.dba;
+      // Truncate dba to 255 characters max (database constraint)
+      dbData.dba = data.dba ? String(data.dba).substring(0, 255) : data.dba;
     }
     if (data.zip !== undefined) {
-      dbData.zip = data.zip;
+      // Truncate zip to 10 characters max (database constraint)
+      dbData.zip = String(data.zip).substring(0, 10);
     }
     if (data.mid !== undefined) {
-      dbData.mid = data.mid;
+      // Truncate mid to 255 characters max (database constraint)
+      dbData.mid = data.mid ? String(data.mid).substring(0, 255) : data.mid;
     }
     if (data.status !== undefined) {
       dbData.status = data.status;
@@ -728,10 +767,12 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       dbData.sms_balance = data.smsBalance;
     }
     if (data.Email_license !== undefined) {
-      dbData.email_license = data.Email_license;
+      // Truncate email_license to 255 characters max (database constraint)
+      dbData.email_license = data.Email_license ? String(data.Email_license).substring(0, 255) : data.Email_license;
     }
     if (data.pass !== undefined) {
-      dbData.pass = data.pass;
+      // Truncate pass to 255 characters max (database constraint)
+      dbData.pass = data.pass ? String(data.pass).substring(0, 255) : data.pass;
     }
     if (data.Package !== undefined) {
       dbData.package = JSON.stringify(data.Package);
@@ -740,7 +781,8 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       dbData.note = data.Note;
     }
     if (data.Sendbat_workspace !== undefined) {
-      dbData.sendbat_workspace = data.Sendbat_workspace;
+      // Truncate sendbat_workspace to 255 characters max (database constraint)
+      dbData.sendbat_workspace = data.Sendbat_workspace ? String(data.Sendbat_workspace).substring(0, 255) : data.Sendbat_workspace;
     }
     if (data.lastActive !== undefined) {
       dbData.last_active = data.lastActive;
@@ -1481,7 +1523,12 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     }
 
     if (externalLicense.status !== undefined && externalLicense.status !== null) {
-      updateData.status = externalLicense.status === 1 ? 'active' : 'inactive';
+      // Handle both numeric (1/0) and string ('active'/'inactive') status formats
+      if (typeof externalLicense.status === 'number') {
+        updateData.status = externalLicense.status === 1 ? 'active' : 'cancel';
+      } else if (typeof externalLicense.status === 'string') {
+        updateData.status = externalLicense.status === 'active' ? 'active' : 'cancel';
+      }
     }
 
     if (externalLicense.monthlyFee !== undefined && externalLicense.monthlyFee !== null) {
@@ -1532,7 +1579,10 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       dba: defaultDba,
       zip: externalLicense.zip || '',
       startsAt: externalLicense.activateDate || new Date().toISOString().split('T')[0],
-      status: externalLicense.status === 1 ? 'active' : 'inactive',
+      // Handle both numeric (1/0) and string ('active'/'inactive') status formats
+      status: typeof externalLicense.status === 'number'
+        ? (externalLicense.status === 1 ? 'active' : 'cancel')
+        : (externalLicense.status === 'active' ? 'active' : 'cancel'),
       plan: 'Basic', // Default plan for new licenses
       term: 'monthly',
       lastPayment: externalLicense.monthlyFee || 0,

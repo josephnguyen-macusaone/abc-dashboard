@@ -440,6 +440,11 @@ export class LicenseSyncMonitor {
   }
 
   _calculateErrorRate() {
+    if (!this.metrics) {
+      logger.warn('LicenseSyncMonitor metrics not initialized');
+      return 0;
+    }
+
     const totalOps = this.metrics.get('sync_operations_total')?.value || 0;
     const errors = this.metrics.get('sync_operations_errors_total')?.value || 0;
 

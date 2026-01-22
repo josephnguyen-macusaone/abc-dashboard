@@ -56,7 +56,7 @@ export const licenseSyncConfig = {
 
   // Database Configuration
   database: {
-    maxBulkUpsertBatchSize: parseInt(process.env.LICENSE_SYNC_DB_BULK_BATCH_SIZE) || 1000,
+    maxBulkUpsertBatchSize: parseInt(process.env.LICENSE_SYNC_DB_BULK_BATCH_SIZE) || 100,
     maxIndividualUpdatesBatchSize: parseInt(process.env.LICENSE_SYNC_DB_UPDATE_BATCH_SIZE) || 25,
   },
 

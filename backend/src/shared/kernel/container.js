@@ -13,6 +13,7 @@ import { LicenseService } from '../services/license-service.js';
 import { LicenseLifecycleService } from '../../infrastructure/services/license-lifecycle-service.js';
 import { LicenseNotificationService } from '../../infrastructure/services/license-notification-service.js';
 import { LicenseLifecycleScheduler } from '../../infrastructure/jobs/license-lifecycle-scheduler.js';
+import { LicenseSyncScheduler } from '../../infrastructure/jobs/license-sync-scheduler.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
@@ -254,6 +255,14 @@ class Container {
     return this.instances.get('licenseLifecycleScheduler');
   }
 
+  async getLicenseSyncScheduler() {
+    if (!this.instances.has('licenseSyncScheduler')) {
+      const syncUseCase = await this.getSyncExternalLicensesUseCase();
+      this.instances.set('licenseSyncScheduler', new LicenseSyncScheduler(syncUseCase));
+    }
+    return this.instances.get('licenseSyncScheduler');
+  }
+
   // Use cases
   async getLoginUseCase() {
     return new LoginUseCase(
@@ -418,7 +427,8 @@ class Container {
   async getLicenseController() {
     if (!this.instances.has('licenseController')) {
       const licenseService = await this.getLicenseService();
-      this.instances.set('licenseController', new LicenseController(licenseService));
+      const syncExternalLicensesUseCase = await this.getSyncExternalLicensesUseCase();
+      this.instances.set('licenseController', new LicenseController(licenseService, syncExternalLicensesUseCase));
     }
     return this.instances.get('licenseController');
   }

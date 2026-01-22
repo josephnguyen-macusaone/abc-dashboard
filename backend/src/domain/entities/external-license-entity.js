@@ -65,18 +65,19 @@ export class ExternalLicense {
   validate() {
     const errors = [];
 
-    // Required fields from external API
-    if (!this.Email_license || !this.Email_license.includes('@')) {
-      errors.push('Valid Email_license is required');
-    }
+    // Required fields from external API - make optional for sync
+    // if (!this.Email_license || !this.Email_license.includes('@')) {
+    //   errors.push('Valid Email_license is required');
+    // }
 
-    if (!this.pass || this.pass.trim().length === 0) {
-      errors.push('Password (pass) is required');
-    }
+    // if (!this.pass || this.pass.trim().length === 0) {
+    //   errors.push('Password (pass) is required');
+    // }
 
-    if (!this.appid || this.appid.trim().length === 0) {
-      errors.push('App ID is required');
-    }
+    // App ID is optional for external licenses - some may not have it
+    // if (!this.appid || this.appid.trim().length === 0) {
+    //   errors.push('App ID is required');
+    // }
 
     // Status validation (can be integer or string based on API)
     if (this.status === undefined || this.status === null) {

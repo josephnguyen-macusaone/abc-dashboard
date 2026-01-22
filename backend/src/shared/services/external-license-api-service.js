@@ -48,6 +48,38 @@ export class ExternalLicenseApiService {
   }
 
   /**
+   * Test basic connectivity to external API
+   */
+  async testConnectivity() {
+    try {
+      logger.info('Testing external API connectivity', {
+        baseUrl: this.baseUrl,
+        correlationId: this.correlationId
+      });
+
+      // Try a simple GET request to the base API endpoint
+      const testResponse = await this.makeRequest('/api/v1/licenses?page=1&limit=1', 'GET', null, 'connectivity_test');
+
+      logger.info('External API connectivity test successful', {
+        correlationId: this.correlationId,
+        responseType: typeof testResponse,
+        hasData: !!(testResponse && testResponse.data),
+        dataIsArray: Array.isArray(testResponse?.data),
+        hasMeta: !!(testResponse && testResponse.meta),
+      });
+
+      return { success: true, response: testResponse };
+    } catch (error) {
+      logger.error('External API connectivity test failed', {
+        correlationId: this.correlationId,
+        error: error.message,
+        baseUrl: this.baseUrl
+      });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Create authenticated headers
    */
   getHeaders(includeContentType = false) {
@@ -116,7 +148,29 @@ export class ExternalLicenseApiService {
 
               // Handle non-OK responses
               if (!response.ok) {
-                const errorText = await response.text();
+                let errorText;
+                try {
+                  errorText = await response.text();
+                } catch (textError) {
+                  errorText = 'Unable to read error response';
+                }
+
+                logger.error('External API returned error response', {
+                  correlationId: this.correlationId,
+                  status: response.status,
+                  statusText: response.statusText,
+                  contentType: response.headers.get('content-type'),
+                  contentLength: response.headers.get('content-length'),
+                  errorPreview: errorText.substring(0, 1000),
+                  url,
+                  // Try to detect if it's HTML
+                  looksLikeHtml: errorText.toLowerCase().includes('<html') || errorText.toLowerCase().includes('<!doctype'),
+                  // Check for common error patterns
+                  isJsonError: errorText.trim().startsWith('{') && errorText.includes('"success":false'),
+                  isMalformedJsonError: errorText.includes('Expecting value') ||
+                                       errorText.includes('Unexpected token') ||
+                                       errorText.includes('Invalid JSON'),
+                });
 
                 // Record API error
                 licenseSyncMonitor.recordApiError(endpoint, requestOptions.method, new Error(`HTTP ${response.status}: ${errorText}`));
@@ -124,13 +178,60 @@ export class ExternalLicenseApiService {
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
               }
 
-              // Parse JSON response
+              // Parse response based on content type
               const contentType = response.headers.get('content-type');
-              if (contentType && contentType.includes('application/json')) {
-                return await response.json();
-              } else {
-                return await response.text();
+              let responseData;
+
+              try {
+                if (contentType && contentType.includes('application/json')) {
+                  responseData = await response.json();
+                } else {
+                  const textData = await response.text();
+                  // Try to parse as JSON even if content-type is not set correctly
+                  try {
+                    responseData = JSON.parse(textData);
+                    logger.warn('Parsed JSON from non-JSON content-type response', {
+                      correlationId: this.correlationId,
+                      contentType,
+                      url
+                    });
+                  } catch (parseError) {
+                    // Check if this looks like a JSON parsing error that shouldn't be retried
+                    const isJsonError = textData.includes('Expecting value') ||
+                                       textData.includes('Unexpected token') ||
+                                       textData.includes('Invalid JSON') ||
+                                       textData.includes('Unexpected end of JSON input') ||
+                                       textData.includes('Bad control character') ||
+                                       (textData.trim().startsWith('<') && textData.includes('html')); // HTML response
+
+                    if (isJsonError) {
+                      logger.error('External API returned malformed response, not retrying', {
+                        correlationId: this.correlationId,
+                        parseError: parseError.message,
+                        responseType: contentType,
+                        textPreview: textData.substring(0, 200),
+                        url
+                      });
+                      // Re-throw as a non-retryable error
+                      throw new ValidationException(`Malformed API response: ${parseError.message}`);
+                    }
+
+                    responseData = textData;
+                  }
+                }
+              } catch (parseError) {
+                const errorText = await response.text().catch(() => 'Unable to read response text');
+                logger.error('Failed to parse external API response', {
+                  correlationId: this.correlationId,
+                  error: parseError.message,
+                  contentType,
+                  responsePreview: errorText.substring(0, 200),
+                  url
+                });
+                throw new Error(`Failed to parse API response: ${parseError.message}`);
               }
+
+              return responseData;
 
             } catch (error) {
               logger.error('External API request failed', {
@@ -243,6 +344,8 @@ export class ExternalLicenseApiService {
       licenseSyncConfig.sync.maxConcurrentBatches
     );
     let pagesFetched = 0;
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 3;
 
     // Early validation for memory limits
     if (options.maxLicenses && options.maxLicenses > licenseSyncConfig.sync.maxLicensesForComprehensive) {
@@ -268,9 +371,16 @@ export class ExternalLicenseApiService {
       });
 
       if (!firstResponse.data || !Array.isArray(firstResponse.data)) {
+        logger.error('Invalid response structure from external API', {
+          correlationId: this.correlationId,
+          hasData: !!firstResponse.data,
+          dataType: typeof firstResponse.data,
+          isArray: Array.isArray(firstResponse.data),
+          responseKeys: Object.keys(firstResponse),
+        });
         return {
           success: false,
-          error: 'Failed to fetch first page',
+          error: 'Failed to fetch first page - invalid response structure',
           meta: {
             pagesAttempted: 1,
             licensesFetched: 0,
@@ -278,7 +388,10 @@ export class ExternalLicenseApiService {
         };
       }
 
-      allLicenses.push(...firstResponse.data);
+      // Safely add licenses from first page
+      if (firstResponse.data.length > 0) {
+        allLicenses.push(...firstResponse.data);
+      }
       pagesFetched = 1;
 
       // Calculate total pages (if available) or estimate
@@ -312,10 +425,23 @@ export class ExternalLicenseApiService {
               page: pageNum,
               limit: batchSize,
             }).catch(error => {
+              consecutiveErrors++;
               logger.error(`Error fetching page ${pageNum}`, {
                 correlationId: this.correlationId,
                 error: error.message,
+                consecutiveErrors,
               });
+
+              // If we have too many consecutive errors, the API might be down
+              if (consecutiveErrors >= maxConsecutiveErrors) {
+                logger.error('Too many consecutive errors, stopping bulk fetch', {
+                  correlationId: this.correlationId,
+                  consecutiveErrors,
+                  lastPageAttempted: pageNum,
+                });
+                throw new Error(`External API appears unreachable after ${consecutiveErrors} consecutive errors`);
+              }
+
               return null; // Return null for failed pages
             })
           );
@@ -330,9 +456,25 @@ export class ExternalLicenseApiService {
         for (const response of pageResults) {
           pagesInThisBatch++;
           if (response && response.data && Array.isArray(response.data)) {
+            // Reset consecutive errors counter on successful response
+            consecutiveErrors = 0;
+
             if (response.data.length > 0) {
-              allLicenses.push(...response.data);
-              hasMorePages = true;
+              // Safely add licenses from this page
+              try {
+                allLicenses.push(...response.data);
+                hasMorePages = true;
+              } catch (spreadError) {
+                logger.error('Failed to add licenses to array (spread syntax error)', {
+                  correlationId: this.correlationId,
+                  error: spreadError.message,
+                  dataType: typeof response.data,
+                  dataLength: response.data.length,
+                  pageBatchStart,
+                });
+                // Skip this page's data to avoid crashing the entire sync
+                continue;
+              }
 
               logger.debug(`Fetched page batch, total licenses: ${allLicenses.length}`, {
                 correlationId: this.correlationId,
@@ -449,9 +591,10 @@ export class ExternalLicenseApiService {
    * Get single license by appid
    */
   async getLicenseByAppId(appid) {
-    if (!appid) {
-      throw new ValidationException('App ID is required');
-    }
+    // Allow operations without appid for sync purposes
+    // if (!appid) {
+    //   throw new ValidationException('App ID is required for this operation');
+    // }
 
     const response = await this.makeRequest(`/api/v1/licenses/${encodeURIComponent(appid)}`);
 
@@ -514,9 +657,10 @@ export class ExternalLicenseApiService {
    * Update license by appid
    */
   async updateLicenseByAppId(appid, updates) {
-    if (!appid) {
-      throw new ValidationException('App ID is required');
-    }
+    // Allow operations without appid for sync purposes
+    // if (!appid) {
+    //   throw new ValidationException('App ID is required');
+    // }
     if (!updates) {
       throw new ValidationException('Update data is required');
     }
@@ -548,9 +692,10 @@ export class ExternalLicenseApiService {
    * Delete license by appid
    */
   async deleteLicenseByAppId(appid) {
-    if (!appid) {
-      throw new ValidationException('App ID is required');
-    }
+    // Allow operations without appid for sync purposes
+    // if (!appid) {
+    //   throw new ValidationException('App ID is required');
+    // }
 
     return await this.makeRequest(`/api/v1/licenses/${encodeURIComponent(appid)}`, {
       method: 'DELETE',

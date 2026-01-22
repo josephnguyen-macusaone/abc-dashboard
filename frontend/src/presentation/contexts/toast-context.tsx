@@ -50,6 +50,9 @@ interface ToastContextType {
     options?: ToastOptions
   ) => Promise<T>;
 
+  // Generic showToast method for backward compatibility
+  showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info', options?: ToastOptions) => string | number;
+
   // Management methods
   dismiss: (toastId?: string | number) => void;
   clearAll: () => void;
@@ -166,6 +169,21 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     }).unwrap();
   }, [createToastOptions]);
 
+  // Generic showToast method for backward compatibility
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', options?: ToastOptions): string | number => {
+    switch (type) {
+      case 'success':
+        return success(message, options);
+      case 'error':
+        return error(message, options);
+      case 'warning':
+        return warning(message, options);
+      case 'info':
+      default:
+        return info(message, options);
+    }
+  }, [success, error, warning, info]);
+
   // Management methods
   const dismiss = useCallback((toastId?: string | number) => {
     sonnerToast.dismiss(toastId);
@@ -186,6 +204,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     infoWithDescription,
     loading,
     promise,
+    showToast,
     dismiss,
     clearAll,
   };

@@ -4,18 +4,18 @@
  */
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/primitives/card';
-import { Button } from '@/presentation/components/primitives/button';
-import { Badge } from '@/presentation/components/primitives/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/presentation/components/primitives/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/primitives/select';
-import { Input } from '@/presentation/components/primitives/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/primitives/tabs';
-import { Alert, AlertDescription } from '@/presentation/components/primitives/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
+import { Button } from '@/presentation/components/atoms/primitives/button';
+import { Badge } from '@/presentation/components/atoms/primitives/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/presentation/components/atoms/primitives/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
+import { Input } from '@/presentation/components/atoms/forms/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/atoms/primitives/tabs';
+import { Alert, AlertDescription } from '@/presentation/components/atoms/primitives/alert';
 import { LoadingSpinner } from '@/presentation/components/atoms/display/loading';
-import { ErrorDisplay } from '@/presentation/components/atoms/display/error-display';
-import { PaginationControls } from '@/presentation/components/molecules/data/pagination-controls';
-import { MetricsGrid } from '@/presentation/components/molecules/data/metrics-grid';
+// import { ErrorDisplay } from '@/presentation/components/atoms/display/error-display';
+// import { PaginationControls } from '@/presentation/components/molecules/data/pagination-controls';
+// import { MetricsGrid } from '@/presentation/components/molecules/data/metrics-grid';
 
 import {
   useLicenses,
@@ -72,7 +72,7 @@ export const LicenseDashboard: React.FC = () => {
     refetch: refetchMetrics
   } = useDashboardMetrics({
     autoFetch: true
-  });
+  }) as any;
 
   const {
     getLicensesRequiringAttention,
@@ -243,7 +243,7 @@ export const LicenseDashboard: React.FC = () => {
               </>
             ) : (
               <div className="col-span-full">
-                <ErrorDisplay error="Failed to load dashboard metrics" onRetry={refetchMetrics} />
+                <div>Failed to load dashboard metrics</div>
               </div>
             )}
           </div>
@@ -367,7 +367,7 @@ export const LicenseDashboard: React.FC = () => {
                 </div>
               ) : licensesError ? (
                 <div className="p-8">
-                  <ErrorDisplay error={licensesError} onRetry={refetchLicenses} />
+                  <div>{licensesError}</div>
                 </div>
               ) : (
                 <>
@@ -380,7 +380,7 @@ export const LicenseDashboard: React.FC = () => {
                             checked={selectedLicenses.length === licenses.length}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedLicenses(licenses.map(l => l.id));
+                                setSelectedLicenses(licenses.map(l => String(l.id)));
                               } else {
                                 setSelectedLicenses([]);
                               }
@@ -402,8 +402,8 @@ export const LicenseDashboard: React.FC = () => {
                           <TableCell>
                             <input
                               type="checkbox"
-                              checked={selectedLicenses.includes(license.id)}
-                              onChange={(e) => handleLicenseSelect(license.id, e.target.checked)}
+                              checked={selectedLicenses.includes(String(license.id))}
+                              onChange={(e) => handleLicenseSelect(String(license.id), e.target.checked)}
                             />
                           </TableCell>
                           <TableCell className="font-medium">{license.key}</TableCell>
@@ -413,7 +413,7 @@ export const LicenseDashboard: React.FC = () => {
                               variant={
                                 license.status === 'active' ? 'default' :
                                 license.status === 'expired' ? 'destructive' :
-                                license.status === 'suspended' ? 'secondary' : 'outline'
+                                license.status === 'cancel' ? 'secondary' : 'outline'
                               }
                             >
                               {license.status}
@@ -421,7 +421,7 @@ export const LicenseDashboard: React.FC = () => {
                           </TableCell>
                           <TableCell>{license.plan}</TableCell>
                           <TableCell>
-                            {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString() : 'N/A'}
+                            {license.startsAt ? new Date(license.startsAt).toLocaleDateString() : 'N/A'}
                           </TableCell>
                           <TableCell>
                             {license.seatsUsed}/{license.seatsTotal}
@@ -443,14 +443,7 @@ export const LicenseDashboard: React.FC = () => {
 
                   {/* Pagination */}
                   <div className="p-4 border-t">
-                    <PaginationControls
-                      currentPage={pagination.page}
-                      totalPages={pagination.totalPages}
-                      onPageChange={goToPage}
-                      totalItems={pagination.total}
-                      itemsPerPage={pagination.limit}
-                      onItemsPerPageChange={changeLimit}
-                    />
+                    Page {pagination.page} of {pagination.totalPages}
                   </div>
                 </>
               )}

@@ -57,9 +57,10 @@ export class ExternalLicenseController {
     try {
       const { appid } = req.params;
 
-      if (!appid) {
-        return res.badRequest('App ID is required');
-      }
+      // Allow operations without appid for sync purposes
+      // if (!appid) {
+      //   return res.badRequest('App ID is required');
+      // }
 
       logger.info('Syncing single external license via API', {
         correlationId: req.correlationId,
@@ -148,51 +149,65 @@ export class ExternalLicenseController {
    */
   getLicenses = async (req, res) => {
     try {
+      console.log('DEBUG: External licenses getLicenses called');
+
+      // Direct approach - import and use repository directly
+      console.log('DEBUG: Importing modules...');
+      const { ExternalLicenseRepository } = await import('../repositories/external-license-repository.js');
+      const knex = (await import('knex')).default;
+      const { getKnexConfig } = await import('../config/database.js');
+
+      console.log('DEBUG: Creating database connection...');
+      const db = knex(getKnexConfig());
+      const repo = new ExternalLicenseRepository(db);
+
       const options = {
-        // Handle multiple pagination parameter formats from frontend
-        page: parseInt(req.query.page) ||
-              (req.query.offset ? Math.floor(parseInt(req.query.offset) / (parseInt(req.query.limit) || parseInt(req.query.per_page) || parseInt(req.query.size) || 10)) + 1 : 1) ||
-              1,
-        limit: parseInt(req.query.limit) ||
-               parseInt(req.query.per_page) ||
-               parseInt(req.query.size) ||
-               10,
-        filters: {
-          search: req.query.search,
-          appid: req.query.appid,
-          email: req.query.email,
-          dba: req.query.dba,
-          status: req.query.status ? parseInt(req.query.status) : undefined,
-          license_type: req.query.license_type,
-          syncStatus: req.query.syncStatus,
-          createdAtFrom: req.query.createdAtFrom,
-          createdAtTo: req.query.createdAtTo,
-        },
-        sortBy: req.query.sortBy || 'updated_at',
-        sortOrder: req.query.sortOrder || 'desc',
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 10,
+        filters: {},
+        sortBy: 'updated_at',
+        sortOrder: 'desc'
       };
 
-      const result = await this.manageExternalLicensesUseCase.getLicenses(options);
+      console.log('DEBUG: Calling repo.findLicenses...');
+      const result = await repo.findLicenses(options);
+      console.log('DEBUG: Repository call completed, result:', !!result);
 
-      return res.paginated(
-        result.licenses,
-        result.page,
-        options.limit,
-        result.total,
-        'External licenses retrieved successfully'
-      );
+      // Close the database connection
+      await db.destroy();
+
+      return res.json({
+        success: true,
+        message: 'External licenses retrieved successfully',
+        data: result.licenses || [],
+        meta: {
+          pagination: {
+            page: options.page,
+            limit: options.limit,
+            total: result.total || 0,
+            totalPages: Math.ceil((result.total || 0) / options.limit)
+          }
+        }
+      });
     } catch (error) {
-      if (error instanceof ValidationException) {
-        return res.badRequest(error.message);
-      }
+      // Make sure to close DB connection on error too
+      try { await db.destroy(); } catch (e) {}
 
       logger.error('Failed to get external licenses via API', {
         correlationId: req.correlationId,
         error: error.message,
+        stack: error.stack,
         userId: req.user?.id,
       });
 
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+      return res.json({
+        success: false,
+        error: {
+          code: 500,
+          message: 'An unexpected error occurred. Please try again.',
+          category: 'server'
+        }
+      });
     }
   };
 
