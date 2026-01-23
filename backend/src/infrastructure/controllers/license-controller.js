@@ -12,50 +12,149 @@ export class LicenseController {
   getLicenses = async (req, res) => {
     try {
       const query = LicenseValidator.validateListQuery(req.query);
+
+      logger.info('License API request initiated', {
+        correlationId: req.correlationId,
+        hasSearch: !!req.query.search,
+        searchTerm: req.query.search,
+        searchField: req.query.searchField,
+        page: query.page,
+        limit: query.limit,
+      });
+
       const result = await this.licenseService.getLicenses(query);
 
-      // Get the correct total count from external API for display
-      let correctedMeta = result.getMeta();
-      try {
-        if (this.syncExternalLicensesUseCase && this.syncExternalLicensesUseCase.externalLicenseApiService) {
-          // Try to get the real total from external API
-          const externalApiService = this.syncExternalLicensesUseCase.externalLicenseApiService;
-          const externalStats = await externalApiService.getLicenses({ page: 1, limit: 1 });
-          if (externalStats.meta && externalStats.meta.total) {
-            correctedMeta = {
-              ...correctedMeta,
-              stats: {
-                ...correctedMeta.stats,
-                total: externalStats.meta.total, // Use external API total
-              },
-              pagination: {
-                ...correctedMeta.pagination,
-                totalPages: Math.ceil(externalStats.meta.total / (query.limit || 10)),
-              }
-            };
-            logger.debug('Corrected license count using external API total', {
-              internalTotal: result.getMeta().stats.total,
-              externalTotal: externalStats.meta.total,
-              correlationId: req.correlationId,
-            });
-          }
-        }
-      } catch (externalError) {
-        logger.warn('Failed to get external license count, using internal count', {
-          error: externalError.message,
+      // VALIDATION: Check for external API data contamination
+      const integrityCheck = this._validateInternalDataIntegrity(result, query, req.correlationId);
+
+      // ALERT: Report data integrity violations
+      if (integrityCheck.violations.length > 0) {
+        logger.error('🚨 DATA INTEGRITY ALERT: External API contamination detected', {
           correlationId: req.correlationId,
+          violations: integrityCheck.violations,
+          query: req.query,
+          userId: req.user?.id,
+          action: 'alert_security_team'
         });
       }
 
-      // Use success with corrected meta to show the right total count
+      logger.info('License service returned result', {
+        correlationId: req.correlationId,
+        dataLength: result.getData()?.length || 0,
+        metaStatsTotal: result.getMeta()?.stats?.total,
+        metaPaginationTotalPages: result.getMeta()?.pagination?.totalPages,
+      });
+
+      // Get the correct total count from external API for display
+      // BUT ONLY when no filters are applied - when filters are active, use the filtered total
+      let correctedMeta = { ...result.getMeta() }; // Deep copy to avoid mutation
+      const hasFilters = query.filters && Object.keys(query.filters).length > 0;
+
+      logger.info('License controller processing', {
+        correlationId: req.correlationId,
+        hasFilters,
+        filters: Object.keys(query.filters || {}),
+        originalTotal: result.getMeta().stats?.total,
+      });
+
+      // Always use internal database results - no external API override
+      correctedMeta = { ...result.getMeta() };
+
+      // Return result with correct meta (filtered total when filters are active)
       return res.success(result.getData(), 'Licenses retrieved successfully', correctedMeta);
     } catch (error) {
+      logger.error('License controller getLicenses error', {
+        correlationId: req.correlationId,
+        error: error.message,
+        stack: error.stack,
+        query: req.query,
+      });
+
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
       }
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
+
+  /**
+   * Validate that license data comes from internal database, not external API
+   * @returns {Object} Validation result with violations array
+   */
+  _validateInternalDataIntegrity(result, query, correlationId) {
+    const data = result.getData();
+    const meta = result.getMeta();
+    const hasFilters = query.filters && Object.keys(query.filters).length > 0;
+
+    // Check for signs of external API data contamination
+    const violations = [];
+
+    // 1. Check if we have filters but total is suspiciously high
+    if (hasFilters && meta.stats?.total > 1000) {
+      violations.push({
+        type: 'high_total_with_filters',
+        description: `High total (${meta.stats.total}) with filters applied`,
+        severity: 'high'
+      });
+    }
+
+    // 2. Check if filtered query returns data but total suggests unfiltered results
+    if (hasFilters && data.length === 1 && meta.stats?.total > 100) {
+      violations.push({
+        type: 'single_result_high_total',
+        description: `Single result but high total (${meta.stats.total}) suggests unfiltered data`,
+        severity: 'high'
+      });
+    }
+
+    // 3. Check for known external API total (2836)
+    if (meta.stats?.total === 2836) {
+      violations.push({
+        type: 'known_external_total',
+        description: 'Total matches known external API value (2836)',
+        severity: 'critical'
+      });
+    }
+
+    // 4. Check for data length vs total mismatch
+    if (hasFilters && data.length > 0 && meta.stats?.total !== data.length) {
+      violations.push({
+        type: 'length_total_mismatch',
+        description: `Data length (${data.length}) doesn't match reported total (${meta.stats.total})`,
+        severity: 'medium'
+      });
+    }
+
+    if (violations.length > 0) {
+      logger.error('EXTERNAL API DATA CONTAMINATION DETECTED', {
+        correlationId,
+        violations: violations.map(v => v.description),
+        hasFilters,
+        dataLength: data.length,
+        reportedTotal: meta.stats?.total,
+        filters: Object.keys(query.filters || {}),
+      });
+
+      // Force correction for filtered queries
+      if (hasFilters && violations.some(v => v.severity === 'high' || v.severity === 'critical')) {
+        logger.warn('Auto-correcting contaminated data for filtered query', { correlationId });
+        // The repository guard should have already corrected this, but let's be extra sure
+        if (data.length === 0 && meta.stats.total > 0) {
+          meta.stats.total = 0;
+          meta.pagination.totalPages = 0;
+        }
+      }
+    } else {
+      logger.debug('Data integrity check passed', {
+        correlationId,
+        hasFilters,
+        dataLength: data.length,
+        total: meta.stats?.total,
+      });
+    }
+
+    return { violations, hasViolations: violations.length > 0 };
+  }
 
   /**
    * Manually trigger license sync (for admin use)

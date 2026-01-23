@@ -285,7 +285,10 @@ export class LicenseRepository implements ILicenseRepository {
       // Convert specification to API query parameters
       const queryParams: any = {};
 
-      if (specification.dba) queryParams.search = specification.dba;
+      if (specification.dba) {
+        queryParams.search = specification.dba;
+        queryParams.searchField = 'dba'; // Specify that we're searching in DBA field for precise filtering
+      }
       if (specification.status) queryParams.status = specification.status;
       if (specification.plan) queryParams.plan = specification.plan;
       if (specification.term) queryParams.term = specification.term;
@@ -312,7 +315,7 @@ export class LicenseRepository implements ILicenseRepository {
 
       const result = {
         licenses,
-        total: response.stats?.total || licenses.length,
+        total: response.stats?.total || response.pagination?.total || licenses.length,
         pagination: response.pagination
       };
 

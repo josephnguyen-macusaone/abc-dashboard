@@ -208,7 +208,7 @@ export class LicenseApiService {
         }
       });
 
-      const url = `/external-licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const url = `/api/v1/licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await httpClient.get<{
         success: boolean;
         message: string;

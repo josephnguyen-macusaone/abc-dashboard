@@ -1524,10 +1524,22 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
 
     if (externalLicense.status !== undefined && externalLicense.status !== null) {
       // Handle both numeric (1/0) and string ('active'/'inactive') status formats
+      let newStatus;
       if (typeof externalLicense.status === 'number') {
-        updateData.status = externalLicense.status === 1 ? 'active' : 'cancel';
+        newStatus = externalLicense.status === 1 ? 'active' : 'cancel';
       } else if (typeof externalLicense.status === 'string') {
-        updateData.status = externalLicense.status === 'active' ? 'active' : 'cancel';
+        newStatus = externalLicense.status === 'active' ? 'active' : 'cancel';
+      }
+
+      updateData.status = newStatus;
+
+      // Set cancel date if status is being changed to 'cancel'
+      if (newStatus === 'cancel') {
+        updateData.cancelDate = externalLicense.lastActive || new Date().toISOString();
+        logger.debug('Setting cancel date for license status update', {
+          cancelDate: updateData.cancelDate,
+          lastActive: externalLicense.lastActive,
+        });
       }
     }
 
@@ -1574,15 +1586,21 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     const dba = externalLicense.dba || externalLicense.Email_license;
     const defaultDba = dba && dba.trim() ? dba.trim() : 'External License';
 
+    // Handle both numeric (1/0) and string ('active'/'inactive') status formats
+    const status = typeof externalLicense.status === 'number'
+      ? (externalLicense.status === 1 ? 'active' : 'cancel')
+      : (externalLicense.status === 'active' ? 'active' : 'cancel');
+
+    // Set cancel date for cancelled licenses
+    const cancelDate = status === 'cancel' ? (externalLicense.lastActive || new Date().toISOString()) : undefined;
+
     return {
       product: 'ABC Business Suite', // Default product for external licenses
       dba: defaultDba,
       zip: externalLicense.zip || '',
       startsAt: externalLicense.activateDate || new Date().toISOString().split('T')[0],
-      // Handle both numeric (1/0) and string ('active'/'inactive') status formats
-      status: typeof externalLicense.status === 'number'
-        ? (externalLicense.status === 1 ? 'active' : 'cancel')
-        : (externalLicense.status === 'active' ? 'active' : 'cancel'),
+      status,
+      cancelDate,
       plan: 'Basic', // Default plan for new licenses
       term: 'monthly',
       lastPayment: externalLicense.monthlyFee || 0,

@@ -8,8 +8,7 @@ export async function seed(knex) {
   await knex('licenses').del();
 
   const now = new Date();
-  const adminUser = await knex('users').where({ email: 'admin@example.com' }).first();
-  const managerUser = await knex('users').where({ email: 'hr.manager@example.com' }).first();
+  const adminUser = await knex('users').where({ email: 'admin@abcsalon.us' }).first();
 
   if (!adminUser) {
     console.warn('Warning: Admin user not found. Skipping license seeds.');

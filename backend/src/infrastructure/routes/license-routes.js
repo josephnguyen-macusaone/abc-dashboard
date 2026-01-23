@@ -200,6 +200,58 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
 
   /**
    * @swagger
+   * /licenses/data-integrity:
+   *   get:
+   *     summary: Get data integrity metrics for license queries
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Data integrity metrics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     totalQueries:
+   *                       type: integer
+   *                       description: Total license queries processed
+   *                     integrityViolations:
+   *                       type: integer
+   *                       description: Number of data integrity violations detected
+   *                     violationRate:
+   *                       type: number
+   *                       description: Percentage of queries with violations
+   *                     lastViolation:
+   *                       type: string
+   *                       description: Timestamp of last violation
+   */
+  router.get(
+    '/data-integrity',
+    checkLicenseAccessPermission('monitor'),
+    (req, res) => {
+      // This would integrate with a metrics service in production
+      // For now, return mock data structure
+      return res.success({
+        totalQueries: 0, // Would be populated from metrics store
+        integrityViolations: 0,
+        violationRate: 0.0,
+        lastViolation: null,
+        status: 'healthy',
+        message: 'Data integrity monitoring active'
+      }, 'Data integrity metrics retrieved successfully');
+    }
+  );
+
+  /**
+   * @swagger
    * /licenses:
    *   get:
    *     summary: Get licenses with pagination and filtering

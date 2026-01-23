@@ -17,7 +17,7 @@ export const licenseSyncConfig = {
   sync: {
     // Batch processing
     batchSize: parseInt(process.env.LICENSE_SYNC_BATCH_SIZE) || 50,
-    concurrencyLimit: parseInt(process.env.LICENSE_SYNC_CONCURRENCY) || 5,
+    concurrencyLimit: parseInt(process.env.LICENSE_SYNC_CONCURRENCY) || 1,
     maxLicensesForComprehensive: parseInt(process.env.LICENSE_SYNC_MAX_COMPREHENSIVE) || 10000,
 
     // Timeouts and retries
@@ -77,12 +77,12 @@ export const licenseSyncConfig = {
 };
 
 /**
- * Validate configuration on startup
+ * Validate configuration before sync operations
  */
 export function validateLicenseSyncConfig() {
   const errors = [];
 
-  // Required configurations
+  // Required configurations (only validate if we're actually going to use sync)
   if (!licenseSyncConfig.external.apiKey) {
     errors.push('EXTERNAL_LICENSE_API_KEY environment variable is required');
   }
@@ -109,7 +109,7 @@ export function validateLicenseSyncConfig() {
   }
 }
 
-// Validate configuration on module load
-validateLicenseSyncConfig();
+// Note: Validation is now called explicitly when needed, not on module load
+// This allows environment variables to be loaded first
 
 export default licenseSyncConfig;

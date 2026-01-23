@@ -124,19 +124,52 @@ export class License {
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
 
-    // External sync fields (unified)
-    this.appid = appid;
-    this.countid = countid;
-    this.mid = mid;
-    this.license_type = license_type;
-    this.package_data = package_data;
-    this.sendbat_workspace = sendbat_workspace;
-    this.coming_expired = coming_expired;
-    this.external_sync_status = external_sync_status;
-    this.last_external_sync = last_external_sync;
-    this.external_sync_error = external_sync_error;
+    // External sync fields (unified) - sanitize external data
+    this.appid = this._sanitizeExternalValue(appid);
+    this.countid = this._sanitizeExternalValue(countid);
+    this.mid = this._sanitizeExternalValue(mid);
+    this.license_type = this._sanitizeExternalValue(license_type);
+    this.package_data = this._sanitizeExternalValue(package_data);
+    this.sendbat_workspace = this._sanitizeExternalValue(sendbat_workspace);
+    this.coming_expired = this._sanitizeExternalValue(coming_expired);
+    this.external_sync_status = this._sanitizeExternalValue(external_sync_status);
+    this.last_external_sync = this._sanitizeExternalValue(last_external_sync);
+    this.external_sync_error = this._sanitizeExternalValue(external_sync_error);
 
     this.validate();
+  }
+
+  /**
+   * Sanitize external API values to handle null/empty/malformed data
+   * @private
+   */
+  _sanitizeExternalValue(value) {
+    // Handle null/undefined
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    // Handle empty strings
+    if (typeof value === 'string' && value.trim() === '') {
+      return null;
+    }
+
+    // Handle malformed JSON strings (common external API issue)
+    if (typeof value === 'string' && value.includes('Expecting value')) {
+      return null;
+    }
+
+    // Handle arrays that might be empty
+    if (Array.isArray(value) && value.length === 0) {
+      return null;
+    }
+
+    // Handle objects that might be empty
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+      return null;
+    }
+
+    return value;
   }
 
   /**
@@ -145,24 +178,36 @@ export class License {
   validate() {
     const errors = [];
 
-    // License key is required
+    // License key is required (but allow generation for external sync)
     if (!this.key || this.key.trim() === '') {
-      errors.push('License key is required');
+      // For external sync, we can auto-generate keys, but for internal creation it's required
+      if (!this.external_sync_status) {
+        errors.push('License key is required');
+      }
     }
 
-    // Product is required
-    if (!this.product || this.product.trim() === '') {
-      errors.push('Product is required');
+    // Product is required (but be more lenient for external data)
+    if (!this.product || (typeof this.product === 'string' && this.product.trim() === '')) {
+      if (!this.external_sync_status) {
+        errors.push('Product is required');
+      }
     }
 
-    // Plan is required
-    if (!this.plan || this.plan.trim() === '') {
-      errors.push('Plan is required');
+    // Plan is required (but be more lenient for external data)
+    if (!this.plan || (typeof this.plan === 'string' && this.plan.trim() === '')) {
+      if (!this.external_sync_status) {
+        errors.push('Plan is required');
+      }
     }
 
-    // DBA is required
-    if (!this.dba || this.dba.trim() === '') {
-      errors.push('DBA is required');
+    // DBA is required (but be more lenient for external data)
+    if (!this.dba || (typeof this.dba === 'string' && this.dba.trim() === '')) {
+      if (!this.external_sync_status) {
+        errors.push('DBA is required');
+      } else {
+        // For external sync, provide a fallback
+        this.dba = this.dba || 'Unknown Business';
+      }
     }
 
     // Status validation

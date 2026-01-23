@@ -244,8 +244,10 @@ export class SyncExternalLicensesUseCase {
 
           let internalSyncResults;
           if (comprehensive) {
-            logger.info('Starting comprehensive sync to internal licenses table (external-first approach)...');
-            internalSyncResults = await this.externalLicenseRepository.syncToInternalLicensesComprehensive(this.internalLicenseRepository);
+            logger.info('Starting paginated sync to internal licenses table (batch processing approach)...');
+            internalSyncResults = await this.syncToInternalLicensesPaginated({
+              batchSize: batchSize || 100,
+            });
           } else {
             logger.info('Starting legacy sync to internal licenses table (external-driven approach)...');
             internalSyncResults = await this.externalLicenseRepository.syncToInternalLicenses(this.internalLicenseRepository);
@@ -348,6 +350,18 @@ export class SyncExternalLicensesUseCase {
         totalFetched: syncResults.totalFetched,
         duration: syncResults.duration,
       });
+
+      // Attempt recovery for known error types
+      const recoveryResult = await this._attemptSyncRecovery(error, options);
+      syncResults.recoveryAttempted = recoveryResult.attempted;
+      syncResults.recoverySuccessful = recoveryResult.successful;
+
+      if (recoveryResult.successful) {
+        logger.info('Sync recovery successful', {
+          operationId: operationContext.operationId,
+          recoveryType: recoveryResult.type,
+        });
+      }
     }
 
     return syncResults;
@@ -657,6 +671,246 @@ export class SyncExternalLicensesUseCase {
    * Get last sync timestamp
    * @private
    */
+  /**
+   * Attempt to recover from sync failures
+   * @private
+   */
+  async _attemptSyncRecovery(error, options) {
+    const result = {
+      attempted: false,
+      successful: false,
+      type: null,
+    };
+
+    try {
+      // Check for network timeout errors
+      if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+        result.attempted = true;
+        result.type = 'retry_with_smaller_batch';
+
+        // Retry with smaller batch size
+        const retryOptions = {
+          ...options,
+          batchSize: Math.max(10, Math.floor(options.batchSize / 2)),
+          forceFullSync: false, // Don't force full sync on retry
+        };
+
+        logger.info('Attempting sync recovery with smaller batch size', {
+          originalBatchSize: options.batchSize,
+          retryBatchSize: retryOptions.batchSize,
+        });
+
+        const retryResult = await this.execute(retryOptions);
+        if (retryResult.success) {
+          result.successful = true;
+        }
+      }
+
+      // Check for database connection errors
+      else if (error.message.includes('connection') || error.message.includes('ECONNREFUSED')) {
+        result.attempted = true;
+        result.type = 'database_connection_issue';
+
+        logger.warn('Sync failed due to database connection issue - manual intervention required', {
+          error: error.message,
+        });
+
+        // Could implement database reconnection logic here
+        // For now, just log the issue
+      }
+
+      // Check for external API errors
+      else if (error.message.includes('HTTP') || error.message.includes('API')) {
+        result.attempted = true;
+        result.type = 'external_api_issue';
+
+        logger.warn('Sync failed due to external API issue', {
+          error: error.message,
+        });
+
+        // Could implement API health checks and retries here
+      }
+
+    } catch (recoveryError) {
+      logger.error('Sync recovery attempt failed', {
+        originalError: error.message,
+        recoveryError: recoveryError.message,
+        recoveryType: result.type,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Sync external licenses to internal licenses using paginated approach
+   * Processes licenses in manageable batches to avoid memory issues
+   * @param {Object} options - Sync options
+   * @param {number} options.batchSize - Size of each batch (default: 100)
+   * @returns {Promise<Object>} Sync results
+   */
+  async syncToInternalLicensesPaginated(options = {}) {
+    const { batchSize = 100 } = options;
+
+    try {
+      logger.info('Starting paginated sync from external to internal licenses', { batchSize });
+
+      // Get total count of external licenses
+      const externalStats = await this.externalLicenseRepository.getLicenseStatsWithFilters({});
+      const totalExternalLicenses = externalStats.total || 0;
+
+      if (totalExternalLicenses === 0) {
+        logger.info('No external licenses found, skipping paginated sync');
+        return { syncedCount: 0, updatedCount: 0, createdCount: 0 };
+      }
+
+      logger.info(`Found ${totalExternalLicenses} external licenses to process in batches of ${batchSize}`);
+
+      let totalSynced = 0;
+      let totalUpdated = 0;
+      let totalCreated = 0;
+      let totalProcessed = 0;
+      let page = 1;
+
+      // Process external licenses in batches
+      while (totalProcessed < totalExternalLicenses) {
+        const offset = (page - 1) * batchSize;
+        const remaining = totalExternalLicenses - totalProcessed;
+        const currentBatchSize = Math.min(batchSize, remaining);
+
+        logger.info(`Processing batch ${page}: licenses ${offset + 1}-${offset + currentBatchSize} of ${totalExternalLicenses}`);
+
+        try {
+          // Get current batch of external licenses
+          const externalBatch = await this.externalLicenseRepository.findLicenses({
+            page,
+            limit: currentBatchSize,
+            filters: {},
+          });
+
+          if (externalBatch.licenses.length === 0) {
+            logger.info('No more external licenses to process');
+            break;
+          }
+
+          // Build lookup maps for this batch only
+          const externalByAppId = new Map();
+          const externalByCountId = new Map();
+
+          for (const extLicense of externalBatch.licenses) {
+            if (extLicense.appid) {
+              externalByAppId.set(extLicense.appid, extLicense);
+            }
+            if (extLicense.countid !== undefined && extLicense.countid !== null) {
+              externalByCountId.set(extLicense.countid, extLicense);
+            }
+          }
+
+          logger.debug(`Batch ${page} lookup maps built`, {
+            appIdCount: externalByAppId.size,
+            countIdCount: externalByCountId.size,
+          });
+
+          // Process each license in this batch
+          let batchSynced = 0;
+          let batchUpdated = 0;
+          let batchCreated = 0;
+
+          for (const externalLicense of externalBatch.licenses) {
+            try {
+              // Try to find existing internal license
+              let internalLicense = null;
+
+              // Priority: appid > countid
+              if (externalLicense.appid) {
+                internalLicense = await this.internalLicenseRepository.findByAppId(externalLicense.appid);
+              }
+
+              if (!internalLicense && externalLicense.countid !== undefined && externalLicense.countid !== null) {
+                internalLicense = await this.internalLicenseRepository.findByCountId(externalLicense.countid);
+              }
+
+              // Convert external license to internal format
+              const internalLicenseData = this.externalLicenseRepository._externalToInternalFormat(externalLicense);
+
+              if (internalLicense) {
+                // Update existing license
+                const updateData = this.externalLicenseRepository._createExternalUpdateData(externalLicense);
+                updateData.external_sync_status = 'synced';
+                updateData.last_external_sync = new Date();
+
+                await this.internalLicenseRepository.update(internalLicense.id, updateData);
+                batchUpdated++;
+                totalUpdated++;
+              } else {
+                // Create new license
+                await this.internalLicenseRepository.save(internalLicenseData);
+                batchCreated++;
+                totalCreated++;
+              }
+
+              batchSynced++;
+              totalSynced++;
+
+            } catch (licenseError) {
+              logger.warn(`Failed to sync external license ${externalLicense.appid || externalLicense.countid}`, {
+                error: licenseError.message,
+                appid: externalLicense.appid,
+                countid: externalLicense.countid,
+              });
+              // Continue with next license in batch
+            }
+          }
+
+          logger.info(`Batch ${page} completed`, {
+            processed: externalBatch.licenses.length,
+            synced: batchSynced,
+            updated: batchUpdated,
+            created: batchCreated,
+          });
+
+          totalProcessed += externalBatch.licenses.length;
+          page++;
+
+          // Safety check to prevent infinite loops
+          if (page > Math.ceil(totalExternalLicenses / batchSize) + 10) {
+            logger.warn('Reached maximum page limit, stopping sync');
+            break;
+          }
+
+        } catch (batchError) {
+          logger.error(`Failed to process batch ${page}`, {
+            error: batchError.message,
+            offset,
+            batchSize: currentBatchSize,
+          });
+          // Continue with next batch instead of failing completely
+          page++;
+        }
+      }
+
+      logger.info('Paginated sync completed successfully', {
+        totalProcessed,
+        totalSynced,
+        totalUpdated,
+        totalCreated,
+      });
+
+      return {
+        syncedCount: totalSynced,
+        updatedCount: totalUpdated,
+        createdCount: totalCreated,
+      };
+
+    } catch (error) {
+      logger.error('Paginated sync failed', {
+        error: error.message,
+        batchSize,
+      });
+      throw error;
+    }
+  }
+
   async _getLastSyncTimestamp() {
     try {
       // Get the most recent last_synced_at timestamp

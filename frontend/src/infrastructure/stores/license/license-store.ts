@@ -206,7 +206,8 @@ export const useLicenseStore = create<LicenseState>()(
               licenses: response.data,
               pagination: {
                 ...response.pagination,
-                total: response.pagination.total || response.data.length
+                // Use pagination.total from service response (which comes from use case)
+                total: response.pagination?.total || response.data.length
               },
               loading: false
             });

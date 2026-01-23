@@ -23,6 +23,20 @@ export class ExternalLicenseApiService {
   constructor() {
     this.baseUrl = licenseSyncConfig.external.baseUrl;
     this.apiKey = licenseSyncConfig.external.apiKey;
+    this.correlationId = null;
+    this.operationId = null;
+    this.isHealthy = true;
+    this.lastHealthCheck = null;
+    this.defaultTimeout = licenseSyncConfig.external.timeout;
+    this._validated = false; // Lazy validation flag
+  }
+
+  /**
+   * Validate configuration before making API calls
+   * This allows environment variables to be loaded first
+   */
+  _validateConfig() {
+    if (this._validated) return; // Only validate once
 
     if (!this.apiKey) {
       throw new Error('EXTERNAL_LICENSE_API_KEY environment variable is required');
@@ -32,11 +46,7 @@ export class ExternalLicenseApiService {
       throw new Error('EXTERNAL_LICENSE_API_URL environment variable is required');
     }
 
-    this.correlationId = null;
-    this.operationId = null;
-    this.isHealthy = true;
-    this.lastHealthCheck = null;
-    this.defaultTimeout = licenseSyncConfig.external.timeout;
+    this._validated = true;
   }
 
   /**
@@ -51,6 +61,8 @@ export class ExternalLicenseApiService {
    * Test basic connectivity to external API
    */
   async testConnectivity() {
+    this._validateConfig();
+
     try {
       logger.info('Testing external API connectivity', {
         baseUrl: this.baseUrl,
@@ -99,6 +111,8 @@ export class ExternalLicenseApiService {
    * Make authenticated HTTP request with retry logic
    */
   async makeRequest(endpoint, options = {}) {
+    this._validateConfig();
+
     const url = `${this.baseUrl}${endpoint}`;
     const hasBody = options.body !== undefined;
     const requestOptions = {
@@ -212,7 +226,18 @@ export class ExternalLicenseApiService {
                         textPreview: textData.substring(0, 200),
                         url
                       });
-                      // Re-throw as a non-retryable error
+
+                      // For 500 errors with JSON parsing issues, log and return null to skip this record
+                      if (response.status === 500 && textData.includes('Expecting value')) {
+                        logger.warn('External API server error - likely malformed data in their database, skipping this record', {
+                          correlationId: this.correlationId,
+                          url,
+                          errorMessage: textData
+                        });
+                        return null; // Skip this problematic record
+                      }
+
+                      // Re-throw as a non-retryable error for other cases
                       throw new ValidationException(`Malformed API response: ${parseError.message}`);
                     }
 
@@ -337,6 +362,7 @@ export class ExternalLicenseApiService {
    * Handles pagination automatically for large datasets with memory-efficient processing
    */
   async getAllLicenses(options = {}) {
+    this._validateConfig();
     const allLicenses = [];
     const batchSize = options.batchSize || licenseSyncConfig.sync.batchSize;
     const concurrencyLimit = Math.min(
@@ -450,11 +476,27 @@ export class ExternalLicenseApiService {
         // Wait for this batch of pages to complete
         const pageResults = await Promise.all(pagePromises);
 
+        // Add a delay between batches to be respectful to the API
+        if (pageBatchStart + concurrencyLimit <= totalPages) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between batches
+        }
+
         // Process results
         let hasMorePages = false;
         let pagesInThisBatch = 0;
         for (const response of pageResults) {
           pagesInThisBatch++;
+
+          // Skip null responses (failed/skipped pages)
+          if (response === null) {
+            logger.warn('Skipping null response (likely malformed data on external API)', {
+              correlationId: this.correlationId,
+              batchIndex: Math.floor((pageBatchStart + pagesInThisBatch - 1) / concurrencyLimit) + 1,
+              pageInBatch: pagesInThisBatch
+            });
+            continue;
+          }
+
           if (response && response.data && Array.isArray(response.data)) {
             // Reset consecutive errors counter on successful response
             consecutiveErrors = 0;

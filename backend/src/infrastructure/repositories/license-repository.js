@@ -88,28 +88,6 @@ export class LicenseRepository extends ILicenseRepository {
     }
   }
 
-  /**
-   * Find license by external email
-   */
-  async findByEmail(email) {
-    if (!email) {
-      throw new Error('Email is required for findByEmail');
-    }
-
-    try {
-      const licenseRow = await this.db(this.licensesTable)
-        .whereRaw('LOWER(external_email) = ?', [email.toLowerCase()])
-        .first();
-      return licenseRow ? this._toLicenseEntity(licenseRow) : null;
-    } catch (error) {
-      logger.error('License findByEmail error', {
-        correlationId: this.correlationId,
-        email,
-        error: error.message,
-      });
-      throw error;
-    }
-  }
 
   /**
    * Find license by external count ID
@@ -291,21 +269,61 @@ export class LicenseRepository extends ILicenseRepository {
       }
     }
 
+    logger.debug('LicenseRepository.findLicenses executing queries', {
+      hasFilters: !!(filters && Object.keys(filters).length > 0),
+      filters: Object.keys(filters || {}),
+      page,
+      limit,
+      offset,
+    });
+
     const [licenses, stats] = await Promise.all([
       query.orderBy(sortColumn, sortOrder).offset(offset).limit(limit),
       this.getLicenseStatsWithFilters(filters),
     ]);
 
+    logger.debug('LicenseRepository.findLicenses query results', {
+      licensesCount: licenses?.length || 0,
+      statsTotal: stats?.total,
+      hasLicenses: (licenses?.length || 0) > 0,
+    });
+
     const total = stats.total || 0;
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    const result = {
       licenses: licenses.map((license) => this._toLicenseEntity(license)),
       total,
       page,
       totalPages,
       stats,
     };
+
+    // DATA INTEGRITY GUARD: Ensure results come from internal database
+    // If we have filters but no results, total should be 0 (not external API total)
+    const hasFilters = filters && Object.keys(filters).length > 0;
+    if (hasFilters && result.licenses.length === 0 && result.total > 0) {
+      logger.error('DATA INTEGRITY VIOLATION: Filtered query returned no licenses but non-zero total', {
+        filters,
+        licensesCount: result.licenses.length,
+        reportedTotal: result.total,
+        statsTotal: result.stats?.total,
+      });
+
+      // Force correct totals for filtered queries
+      result.total = 0;
+      result.totalPages = 0;
+      result.stats.total = 0;
+    }
+
+    logger.debug('LicenseRepository.findLicenses returning', {
+      licensesCount: result.licenses?.length || 0,
+      total: result.total,
+      totalPages: result.totalPages,
+      dataIntegrityCheck: hasFilters ? 'applied' : 'skipped',
+    });
+
+    return result;
   }
 
   async save(licenseData) {
@@ -317,6 +335,16 @@ export class LicenseRepository extends ILicenseRepository {
     // Ensure DBA has a meaningful value
     if (!licenseData.dba || licenseData.dba.trim() === '') {
       licenseData.dba = 'Unknown Business';
+    }
+
+    // Ensure cancelled licenses have a cancel date
+    if (licenseData.status === 'cancel' && !licenseData.cancelDate) {
+      licenseData.cancelDate = new Date();
+      logger.warn(`License ${licenseData.key} has status 'cancel' but no cancel_date. Setting to current date.`, {
+        correlationId: this.correlationId,
+        licenseKey: licenseData.key,
+        cancelDate: licenseData.cancelDate,
+      });
     }
 
     const dbData = this._toLicenseDbFormat(licenseData);
@@ -331,6 +359,16 @@ export class LicenseRepository extends ILicenseRepository {
         // Ensure DBA has a meaningful value if being updated
         if (updates.dba !== undefined && (!updates.dba || updates.dba.trim() === '')) {
           updates.dba = 'Unknown Business';
+        }
+
+        // Ensure cancelled licenses have a cancel date
+        if (updates.status === 'cancel' && !updates.cancelDate) {
+          updates.cancelDate = new Date();
+          logger.warn(`License update sets status to 'cancel' but no cancel_date provided. Setting to current date.`, {
+            correlationId: this.correlationId,
+            licenseId: id,
+            cancelDate: updates.cancelDate,
+          });
         }
 
         const dbUpdates = this._toLicenseDbFormat(updates);
@@ -376,8 +414,9 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   async getLicenseStatsWithFilters(filters = {}) {
-    // Start with base query that applies the same filters as findLicenses
-    let baseQuery = this.db(this.licensesTable);
+    // Build the same filtered query used for data retrieval in findLicenses
+    // This ensures pagination totals match the filtered data results
+    let filteredQuery = this.db(this.licensesTable);
 
     // Apply the same filters as findLicenses method
     if (filters.search) {
@@ -394,11 +433,11 @@ export class LicenseRepository extends ILicenseRepository {
         const dbField = fieldMap[filters.searchField];
 
         if (dbField) {
-          baseQuery = baseQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+          filteredQuery = filteredQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
         }
       } else {
         // Multi-field search (default): search across all fields
-        baseQuery = baseQuery.where((qb) => {
+        filteredQuery = filteredQuery.where((qb) => {
           qb.whereRaw('key ILIKE ?', [searchTerm])
             .orWhereRaw('dba ILIKE ?', [searchTerm])
             .orWhereRaw('product ILIKE ?', [searchTerm])
@@ -409,97 +448,110 @@ export class LicenseRepository extends ILicenseRepository {
 
     // Individual field filters
     if (filters.key && !filters.search) {
-      baseQuery = baseQuery.whereRaw('key ILIKE ?', [`%${filters.key}%`]);
+      filteredQuery = filteredQuery.whereRaw('key ILIKE ?', [`%${filters.key}%`]);
     }
     if (filters.dba && !filters.search) {
-      baseQuery = baseQuery.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
+      filteredQuery = filteredQuery.whereRaw('dba ILIKE ?', [`%${filters.dba}%`]);
     }
     if (filters.product && !filters.search) {
-      baseQuery = baseQuery.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
+      filteredQuery = filteredQuery.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
     if (filters.plan && !filters.search) {
-      baseQuery = baseQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+      filteredQuery = filteredQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
     }
 
     // Date range filters
     if (filters.startsAtFrom) {
       const fromDate = new Date(filters.startsAtFrom);
-      baseQuery = baseQuery.where('starts_at', '>=', fromDate);
+      filteredQuery = filteredQuery.where('starts_at', '>=', fromDate);
     }
     if (filters.startsAtTo) {
       const toDate = new Date(filters.startsAtTo);
       toDate.setHours(23, 59, 59, 999);
-      baseQuery = baseQuery.where('starts_at', '<=', toDate);
+      filteredQuery = filteredQuery.where('starts_at', '<=', toDate);
     }
 
     if (filters.expiresAtFrom) {
       const fromDate = new Date(filters.expiresAtFrom);
-      baseQuery = baseQuery.where('expires_at', '>=', fromDate);
+      filteredQuery = filteredQuery.where('expires_at', '>=', fromDate);
     }
     if (filters.expiresAtTo) {
       const toDate = new Date(filters.expiresAtTo);
       toDate.setHours(23, 59, 59, 999);
-      baseQuery = baseQuery.where('expires_at', '<=', toDate);
+      filteredQuery = filteredQuery.where('expires_at', '<=', toDate);
     }
 
     if (filters.updatedAtFrom) {
       const fromDate = new Date(filters.updatedAtFrom);
-      baseQuery = baseQuery.where('updated_at', '>=', fromDate);
+      filteredQuery = filteredQuery.where('updated_at', '>=', fromDate);
     }
     if (filters.updatedAtTo) {
       const toDate = new Date(filters.updatedAtTo);
       toDate.setHours(23, 59, 59, 999);
-      baseQuery = baseQuery.where('updated_at', '<=', toDate);
+      filteredQuery = filteredQuery.where('updated_at', '<=', toDate);
     }
 
-    // Advanced filters
+    // ========================================================================
+    // Advanced Filters (same as findLicenses)
+    // ========================================================================
+
     // External data filter - licenses that have external identifiers
     if (filters.hasExternalData) {
-      baseQuery = baseQuery.where((qb) => {
+      filteredQuery = filteredQuery.where((qb) => {
         qb.whereNotNull('appid').orWhereNotNull('countid');
       });
     }
 
+    // Status filter
     if (filters.status) {
       if (Array.isArray(filters.status)) {
-        baseQuery = baseQuery.whereIn('status', filters.status);
+        filteredQuery = filteredQuery.whereIn('status', filters.status);
       } else {
-        baseQuery = baseQuery.where('status', filters.status);
-      }
-    }
-    if (filters.term) {
-      baseQuery = baseQuery.where('term', filters.term);
-    }
-    if (filters.zip) {
-      baseQuery = baseQuery.where('zip', filters.zip);
-    }
-    if (filters.utilizationMin !== undefined) {
-      baseQuery = baseQuery.whereRaw('utilization_percent >= ?', [filters.utilizationMin]);
-    }
-    if (filters.utilizationMax !== undefined) {
-      baseQuery = baseQuery.whereRaw('utilization_percent <= ?', [filters.utilizationMax]);
-    }
-    if (filters.seatsMin !== undefined) {
-      baseQuery = baseQuery.where('seats_total', '>=', filters.seatsMin);
-    }
-    if (filters.seatsMax !== undefined) {
-      baseQuery = baseQuery.where('seats_total', '<=', filters.seatsMax);
-    }
-    if (filters.hasAvailableSeats !== undefined) {
-      if (filters.hasAvailableSeats) {
-        baseQuery = baseQuery.whereRaw('seats_used < seats_total');
-      } else {
-        baseQuery = baseQuery.whereRaw('seats_used >= seats_total');
+        filteredQuery = filteredQuery.where('status', filters.status);
       }
     }
 
-    // Calculate stats based on filtered query
+    // Term filter
+    if (filters.term) {
+      filteredQuery = filteredQuery.where('term', filters.term);
+    }
+
+    // Zip filter
+    if (filters.zip) {
+      filteredQuery = filteredQuery.where('zip', filters.zip);
+    }
+    // Utilization percentage filter (using computed column)
+    if (filters.utilizationMin !== undefined) {
+      filteredQuery = filteredQuery.whereRaw('utilization_percent >= ?', [filters.utilizationMin]);
+    }
+    if (filters.utilizationMax !== undefined) {
+      filteredQuery = filteredQuery.whereRaw('utilization_percent <= ?', [filters.utilizationMax]);
+    }
+
+    // Seats filters
+    if (filters.seatsMin !== undefined) {
+      filteredQuery = filteredQuery.where('seats_total', '>=', filters.seatsMin);
+    }
+    if (filters.seatsMax !== undefined) {
+      filteredQuery = filteredQuery.where('seats_total', '<=', filters.seatsMax);
+    }
+
+    // Has available seats filter
+    if (filters.hasAvailableSeats !== undefined) {
+      if (filters.hasAvailableSeats) {
+        filteredQuery = filteredQuery.whereRaw('seats_used < seats_total');
+      } else {
+        filteredQuery = filteredQuery.whereRaw('seats_used >= seats_total');
+      }
+    }
+
+    // Calculate stats based on the properly filtered query
     const [totalCount, activeCount, expiredCount, pendingCount, cancelCount] = await Promise.all([
-      baseQuery.clone().count('id as count').first(),
-      baseQuery.clone().where('status', 'active').count('id as count').first(),
-      baseQuery.clone().where('status', 'expired').count('id as count').first(),
-      baseQuery.clone().where('status', 'pending').count('id as count').first(),
-      baseQuery.clone().where('status', 'cancel').count('id as count').first(),
+      filteredQuery.clone().count('id as count').first(),
+      filteredQuery.clone().where('status', 'active').count('id as count').first(),
+      filteredQuery.clone().where('status', 'expired').count('id as count').first(),
+      filteredQuery.clone().where('status', 'pending').count('id as count').first(),
+      filteredQuery.clone().where('status', 'cancel').count('id as count').first(),
     ]);
 
     return {
@@ -749,43 +801,53 @@ export class LicenseRepository extends ILicenseRepository {
   async bulkCreate(licensesData) {
     const createdLicenses = [];
     const errors = [];
+    const startTime = Date.now();
 
-    // Process each license individually to handle errors gracefully
-    for (const [index, licenseData] of licensesData.entries()) {
-      try {
-        const dbData = this._toLicenseDbFormat(licenseData);
-        const [savedRow] = await this.db(this.licensesTable).insert(dbData).returning('*');
+    // Use transaction for atomicity - either all succeed or all fail
+    await this.db.transaction(async (trx) => {
+      // Process each license individually to handle errors gracefully
+      for (const [index, licenseData] of licensesData.entries()) {
+        try {
+          const dbData = this._toLicenseDbFormat(licenseData);
+          const [savedRow] = await trx(this.licensesTable).insert(dbData).returning('*');
 
-        if (savedRow) {
-          createdLicenses.push(this._toLicenseEntity(savedRow));
+          if (savedRow) {
+            createdLicenses.push(this._toLicenseEntity(savedRow));
+          }
+        } catch (createError) {
+          logger.warn('Individual license creation failed in bulk operation', {
+            index,
+            key: licenseData.key,
+            error: createError.message,
+            correlationId: this.correlationId
+          });
+          errors.push({
+            index,
+            key: licenseData.key,
+            error: createError.message
+          });
+          // Continue with other licenses instead of failing the whole batch
+          // Note: Transaction will still commit successful inserts
         }
-      } catch (createError) {
-        logger.warn('Individual license creation failed in bulk operation', {
-          index,
-          key: licenseData.key,
-          error: createError.message,
-          correlationId: this.correlationId
-        });
-        errors.push({
-          index,
-          key: licenseData.key,
-          error: createError.message
-        });
-        // Continue with other licenses instead of failing the whole batch
       }
-    }
+    });
 
-    // Log summary of bulk create
+    const duration = Date.now() - startTime;
+
+    // Log performance metrics
     logger.info('Bulk create completed', {
       total: licensesData.length,
       successful: createdLicenses.length,
       failed: errors.length,
+      duration: `${duration}ms`,
+      avgTimePerLicense: licensesData.length > 0 ? `${(duration / licensesData.length).toFixed(2)}ms` : 'N/A',
       correlationId: this.correlationId
     });
 
     if (errors.length > 0) {
       logger.warn('Some licenses failed to create in bulk operation', {
-        errors: errors.slice(0, 5), // Log first 5 errors
+        failedCount: errors.length,
+        errorSample: errors.slice(0, 3).map(e => ({ key: e.key, error: e.error })),
         correlationId: this.correlationId
       });
     }
@@ -804,8 +866,22 @@ export class LicenseRepository extends ILicenseRepository {
           const dbUpdates = this._toLicenseDbFormat(data);
           dbUpdates.updated_at = new Date();
 
+          // Find license by key (id parameter is the license key, not UUID)
+          const licenseToUpdate = await trx(this.licensesTable)
+            .where('key', id)
+            .first();
+
+          if (!licenseToUpdate) {
+            errors.push({
+              index,
+              id,
+              error: 'License not found'
+            });
+            continue;
+          }
+
           const [updatedRow] = await trx(this.licensesTable)
-            .where('id', id)
+            .where('key', id)
             .update(dbUpdates)
             .returning('*');
 
@@ -815,7 +891,7 @@ export class LicenseRepository extends ILicenseRepository {
             errors.push({
               index,
               id,
-              error: 'License not found or update failed'
+              error: 'License update failed'
             });
           }
         } catch (updateError) {
@@ -913,6 +989,18 @@ export class LicenseRepository extends ILicenseRepository {
     const dba = licenseRow.dba;
     const safeDba = (dba && dba.trim()) ? dba.trim() : 'Unknown Business';
 
+    // Handle cancel date requirement for cancelled licenses
+    let cancelDate = licenseRow.cancel_date;
+    if (licenseRow.status === 'cancel' && !cancelDate) {
+      // For cancelled licenses without a cancel date, use updated_at or created_at as fallback
+      cancelDate = licenseRow.updated_at || licenseRow.created_at || new Date();
+      logger.warn(`License ${licenseRow.key || licenseRow.id} has status 'cancel' but no cancel_date. Using ${cancelDate} as fallback.`, {
+        correlationId: this.correlationId,
+        licenseId: licenseRow.id,
+        licenseKey: licenseRow.key,
+      });
+    }
+
     return new License({
       id: licenseRow.id,
       key: licenseRow.key,
@@ -924,7 +1012,7 @@ export class LicenseRepository extends ILicenseRepository {
       seatsUsed: licenseRow.seats_used,
       startsAt: licenseRow.starts_at,
       expiresAt: licenseRow.expires_at,
-      cancelDate: licenseRow.cancel_date,
+      cancelDate: cancelDate,
       lastActive: licenseRow.last_active,
       dba: safeDba,
       zip: licenseRow.zip,
@@ -938,6 +1026,18 @@ export class LicenseRepository extends ILicenseRepository {
       notes: licenseRow.notes,
       createdAt: licenseRow.created_at,
       updatedAt: licenseRow.updated_at,
+
+      // External sync fields (map from database columns to entity fields)
+      appid: licenseRow.appid,
+      countid: licenseRow.countid,
+      mid: licenseRow.mid,
+      license_type: licenseRow.license_type,
+      package_data: licenseRow.package,
+      sendbat_workspace: licenseRow.sendbat_workspace,
+      coming_expired: licenseRow.coming_expired,
+      external_sync_status: licenseRow.external_sync_status,
+      last_external_sync: licenseRow.last_external_sync,
+      external_sync_error: licenseRow.external_sync_error,
     });
   }
 
@@ -1088,10 +1188,11 @@ export class LicenseRepository extends ILicenseRepository {
       dbData.renewal_history = JSON.stringify(data.renewalHistory);
     }
 
-    if (data.createdBy !== undefined) {
+    // Set audit fields if they have valid values
+    if (data.createdBy && typeof data.createdBy === 'string' && data.createdBy.trim() !== '') {
       dbData.created_by = data.createdBy;
     }
-    if (data.updatedBy !== undefined) {
+    if (data.updatedBy && typeof data.updatedBy === 'string' && data.updatedBy.trim() !== '') {
       dbData.updated_by = data.updatedBy;
     }
     if (data.createdAt !== undefined) {
@@ -1101,7 +1202,7 @@ export class LicenseRepository extends ILicenseRepository {
       dbData.updated_at = data.updatedAt;
     }
 
-    // External sync fields (unified)
+    // External sync fields (map to database columns)
     if (data.appid !== undefined) {
       dbData.appid = data.appid;
     }
