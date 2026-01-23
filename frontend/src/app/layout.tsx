@@ -42,25 +42,25 @@ const RouteSuspense = dynamic(() => import('@/presentation/components/routes/sus
 import "./globals.css";
 
 // Configure Archivo font for display/headings
-// Only preload the most commonly used weights to reduce initial load
+// Optimized: reduced weights and subsets for better performance
 const archivo = Archivo({
-  subsets: ["latin", "latin-ext", "vietnamese"],
+  subsets: ["latin", "latin-ext"], // Removed vietnamese to reduce size
   display: "swap", // Prevents invisible text during font load
   variable: "--font-archivo",
-  weight: ["400", "500", "600", "700"], // Removed 800, 900 to reduce bundle size
-  preload: false, // Don't preload - let browser handle loading
-  fallback: ["system-ui", "sans-serif"], // Better fallbacks
+  weight: ["500", "600"], // Only load weights actually used (500 for display-m, 600 for xl/l)
+  preload: false, // Don't preload display font - let body font load first
+  fallback: ["system-ui", "sans-serif"],
 });
 
 // Configure Inter font for body/UI text
-// Inter is more commonly used, so preload the regular weight
+// Optimized: reduced weights and improved preloading strategy
 const inter = Inter({
-  subsets: ["latin", "latin-ext", "vietnamese"],
-  display: "swap", // Prevents invisible text during font load
+  subsets: ["latin", "latin-ext"], // Removed vietnamese to reduce size
+  display: "optional", // Better performance - use system font initially, swap only if web font loads quickly
   variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"], // Removed 700 - use 600 as bold (semibold is sufficient)
   preload: true, // Preload the most common weight for better UX
-  fallback: ["system-ui", "sans-serif"], // Better fallbacks
+  fallback: ["system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {

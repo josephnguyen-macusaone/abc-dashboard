@@ -138,7 +138,7 @@ export const LicenseDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">License Management</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">License Management</h1>
           <p className="text-muted-foreground">
             Comprehensive license lifecycle management and analytics
           </p>
@@ -189,7 +189,7 @@ export const LicenseDashboard: React.FC = () => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{metrics.overview.active}</div>
+                    <div className="text-2xl font-semibold">{metrics.overview.active}</div>
                     <p className="text-xs text-muted-foreground">
                       +{metrics.utilization.newLicensesThisMonth} from last month
                     </p>
@@ -202,7 +202,7 @@ export const LicenseDashboard: React.FC = () => {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-orange-600">
+                    <div className="text-2xl font-semibold text-orange-600">
                       {metrics.overview.expiringSoon}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -217,7 +217,7 @@ export const LicenseDashboard: React.FC = () => {
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {Math.round(metrics.utilization.utilizationRate)}%
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -232,7 +232,7 @@ export const LicenseDashboard: React.FC = () => {
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       ${metrics.utilization.licenseIncomeThisMonth}
                     </div>
                     <p className="text-xs text-muted-foreground">

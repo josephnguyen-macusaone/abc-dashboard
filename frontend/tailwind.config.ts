@@ -50,34 +50,59 @@ module.exports = {
          MAC USA ONE Typography Scale
          ======================================== */
       fontSize: {
-        /* Display sizes */
-        "display-xl": ["4.5rem", { lineHeight: "1", fontWeight: "600", letterSpacing: "-0.02em" }],
-        "display-l": ["3.5rem", { lineHeight: "1", fontWeight: "600", letterSpacing: "-0.02em" }],
-        "display-m": ["2.75rem", { lineHeight: "1.1", fontWeight: "500", letterSpacing: "-0.01em" }],
+        /* ========================================
+           FLUID DISPLAY SIZES
+           Using clamp() for responsive scaling
+           ======================================== */
 
-        /* Title sizes */
-        "title-xl": ["2.25rem", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
-        "title-l": ["1.75rem", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
-        "title-m": ["1.5rem", { lineHeight: "1.3", fontWeight: "500" }],
-        "title-s": ["1.25rem", { lineHeight: "1.4", fontWeight: "500" }],
-        "title-xs": ["1.125rem", { lineHeight: "1.4", fontWeight: "500" }],
+        /* Display XL: Scales from 48px (mobile) to 72px (desktop) */
+        "display-xl": ["clamp(3rem, 6vw + 1rem, 4.5rem)", { lineHeight: "1", fontWeight: "600", letterSpacing: "-0.02em" }],
+        "display-l": ["clamp(2.5rem, 4.5vw + 0.8rem, 3.5rem)", { lineHeight: "1", fontWeight: "600", letterSpacing: "-0.02em" }],
+        "display-m": ["clamp(2rem, 3.5vw + 0.6rem, 2.75rem)", { lineHeight: "1.1", fontWeight: "500", letterSpacing: "-0.01em" }],
 
-        /* Body sizes */
-        "body-m": ["1rem", { lineHeight: "1.5", fontWeight: "400" }],
-        "body-s": ["0.875rem", { lineHeight: "1.5", fontWeight: "400" }],
-        "body-xs": ["0.75rem", { lineHeight: "1.4", fontWeight: "400" }],
+        /* ========================================
+           FLUID TITLE SIZES
+           Moderate scaling for headings
+           ======================================== */
 
-        /* Label sizes */
+        /* Title XL: Scales from 28px (mobile) to 36px (desktop) */
+        "title-xl": ["clamp(1.75rem, 3vw + 0.5rem, 2.25rem)", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
+        "title-l": ["clamp(1.375rem, 2.5vw + 0.4rem, 1.75rem)", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
+        "title-m": ["clamp(1.25rem, 2vw + 0.4rem, 1.5rem)", { lineHeight: "1.3", fontWeight: "500" }],
+        "title-s": ["clamp(1.125rem, 1.5vw + 0.4rem, 1.25rem)", { lineHeight: "1.4", fontWeight: "500" }],
+        "title-xs": ["clamp(1rem, 1.2vw + 0.4rem, 1.125rem)", { lineHeight: "1.4", fontWeight: "500" }],
+
+        /* ========================================
+           SEMI-FLUID BODY SIZES
+           Subtle scaling for content readability
+           ======================================== */
+
+        /* Body M: Scales from 15px (mobile) to 16px (desktop) */
+        "body-m": ["clamp(0.9375rem, 1vw + 0.8rem, 1rem)", { lineHeight: "1.5", fontWeight: "400" }],
+        "body-s": ["clamp(0.8125rem, 0.8vw + 0.75rem, 0.875rem)", { lineHeight: "1.5", fontWeight: "400" }],
+        "body-xs": ["clamp(0.75rem, 0.5vw + 0.7rem, 0.75rem)", { lineHeight: "1.4", fontWeight: "400" }],
+
+        /* ========================================
+           FIXED LABEL SIZES
+           UI elements need consistent sizing
+           ======================================== */
+
+        /* Label sizes - kept fixed for UI consistency */
         "label-l": ["1rem", { lineHeight: "1", fontWeight: "500" }],
         "label-m": ["0.875rem", { lineHeight: "1", fontWeight: "500" }],
         "label-s": ["0.75rem", { lineHeight: "1", fontWeight: "500" }],
 
-        /* Caption */
+        /* Caption - kept fixed for metadata consistency */
         "caption": ["0.75rem", { lineHeight: "1.3", fontWeight: "400" }],
 
-        /* Button sizes */
-        "button-l": ["1rem", { lineHeight: "1", fontWeight: "600" }],
-        "button-m": ["0.875rem", { lineHeight: "1", fontWeight: "600" }],
+        /* ========================================
+           SEMI-FLUID BUTTON SIZES
+           Slight scaling for better touch targets
+           ======================================== */
+
+        /* Button sizes - minimal scaling for consistency */
+        "button-l": ["clamp(0.9375rem, 1vw + 0.8rem, 1rem)", { lineHeight: "1", fontWeight: "600" }],
+        "button-m": ["clamp(0.8125rem, 0.8vw + 0.75rem, 0.875rem)", { lineHeight: "1", fontWeight: "600" }],
         "button-s": ["0.75rem", { lineHeight: "1", fontWeight: "600" }],
       },
 

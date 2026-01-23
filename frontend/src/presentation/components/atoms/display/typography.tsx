@@ -122,8 +122,8 @@ const typographyVariants = cva("", {
       normal: "font-normal",
       medium: "font-medium",
       semibold: "font-semibold",
-      bold: "font-bold",
-      extrabold: "font-extrabold",
+      bold: "font-semibold", // Map bold to semibold (600) for better performance
+      extrabold: "font-black", // Map extrabold to black (900) if available, or semibold
       black: "font-black",
     },
     decoration: {
@@ -303,26 +303,26 @@ export const Typography = forwardRef<HTMLElement, TypographyProps>(
 
     const colorProps = parseColor(color);
 
-    // Define font size mappings for inline styles as fallback
+    // Define font size mappings using CSS custom properties for fluid scaling
     const fontSizeMap: Record<string, string> = {
-      "display-xl": "4.5rem",
-      "display-l": "3.5rem",
-      "display-m": "2.75rem",
-      "title-xl": "2.25rem",
-      "title-l": "1.75rem",
-      "title-m": "1.5rem",
-      "title-s": "1.25rem",
-      "title-xs": "1.125rem",
-      "body-m": "1rem",
-      "body-s": "0.875rem",
-      "body-xs": "0.75rem",
-      "label-l": "1rem",
-      "label-m": "0.875rem",
-      "label-s": "0.75rem",
-      "caption": "0.75rem",
-      "button-l": "1rem",
-      "button-m": "0.875rem",
-      "button-s": "0.75rem",
+      "display-xl": "var(--text-display-xl)",
+      "display-l": "var(--text-display-l)",
+      "display-m": "var(--text-display-m)",
+      "title-xl": "var(--text-title-xl)",
+      "title-l": "var(--text-title-l)",
+      "title-m": "var(--text-title-m)",
+      "title-s": "var(--text-title-s)",
+      "title-xs": "var(--text-title-xs)",
+      "body-m": "var(--text-body-m)",
+      "body-s": "var(--text-body-s)",
+      "body-xs": "var(--text-body-xs)",
+      "label-l": "var(--text-label-l)",
+      "label-m": "var(--text-label-m)",
+      "label-s": "var(--text-label-s)",
+      "caption": "var(--text-caption)",
+      "button-l": "var(--text-button-l)",
+      "button-m": "var(--text-button-m)",
+      "button-s": "var(--text-button-s)",
     };
 
     // Get font size from variant or use custom fontSize
