@@ -71,6 +71,7 @@ export function StatsCards({
               hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/5 hover:via-primary/10 hover:to-primary/5
               hover:shadow-sm
               transition-all duration-300 ease-out
+              min-w-0 overflow-hidden
               ${stat.onClick ? 'cursor-pointer ring-0 hover:ring-1 hover:ring-primary/20' : ''}
             `}
             onClick={stat.onClick}
@@ -83,7 +84,12 @@ export function StatsCards({
                 <IconComponent className={`h-4 w-4 transition-colors duration-300 ${stat.color || 'text-primary'} ${stat.hoverColor ? `group-hover:${stat.hoverColor}` : 'group-hover:text-primary/80'}`} />
               </div>
             </div>
-            <Typography variant="display-m" weight="bold" className="text-foreground group-hover:text-primary transition-colors duration-300">
+            <Typography
+              variant="display-m"
+              weight="bold"
+              lineHeight="none"
+              className="text-foreground group-hover:text-primary transition-colors duration-300 break-words"
+            >
               {isLoading ? '...' : stat.value}
             </Typography>
             {stat.trend && (

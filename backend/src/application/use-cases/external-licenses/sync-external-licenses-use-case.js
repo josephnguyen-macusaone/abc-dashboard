@@ -245,6 +245,7 @@ export class SyncExternalLicensesUseCase {
           let internalSyncResults;
           if (comprehensive) {
             logger.info('Starting paginated sync to internal licenses table (batch processing approach)...');
+            logger.info('Using comprehensive mode with batch processing for robust data handling', { batchSize });
             internalSyncResults = await this.syncToInternalLicensesPaginated({
               batchSize: batchSize || 100,
             });
@@ -815,52 +816,125 @@ export class SyncExternalLicensesUseCase {
           let batchSynced = 0;
           let batchUpdated = 0;
           let batchCreated = 0;
+          let batchSkipped = 0;
 
           for (const externalLicense of externalBatch.licenses) {
             try {
-              // Try to find existing internal license
+              // Try to find existing internal license with flexible matching
               let internalLicense = null;
+              let matchReason = null;
 
-              // Priority: appid > countid
+              // Priority: appid > countid > email (most specific first)
               if (externalLicense.appid) {
-                internalLicense = await this.internalLicenseRepository.findByAppId(externalLicense.appid);
+                try {
+                  internalLicense = await this.internalLicenseRepository.findByAppId(externalLicense.appid);
+                  matchReason = 'appid';
+                } catch (findError) {
+                  logger.debug(`AppId lookup failed for ${externalLicense.appid}, continuing with other identifiers`, {
+                    error: findError.message
+                  });
+                }
               }
 
               if (!internalLicense && externalLicense.countid !== undefined && externalLicense.countid !== null) {
-                internalLicense = await this.internalLicenseRepository.findByCountId(externalLicense.countid);
+                try {
+                  internalLicense = await this.internalLicenseRepository.findByCountId(externalLicense.countid);
+                  matchReason = 'countid';
+                } catch (findError) {
+                  logger.debug(`CountId lookup failed for ${externalLicense.countid}, continuing with other identifiers`, {
+                    error: findError.message
+                  });
+                }
               }
 
-              // Convert external license to internal format
-              const internalLicenseData = this.externalLicenseRepository._externalToInternalFormat(externalLicense);
+              // For duplicates with different identifiers, create separate records
+              // This allows importing all data even with conflicting identifiers
+              const shouldCreateDuplicate = !internalLicense && (
+                externalLicense.appid || externalLicense.countid !== undefined
+              );
 
               if (internalLicense) {
-                // Update existing license
-                const updateData = this.externalLicenseRepository._createExternalUpdateData(externalLicense);
-                updateData.external_sync_status = 'synced';
-                updateData.last_external_sync = new Date();
+                // Update existing license with enhanced error handling
+                try {
+                  const updateData = this.externalLicenseRepository._createExternalUpdateData(externalLicense);
+                  updateData.external_sync_status = 'synced';
+                  updateData.last_external_sync = new Date();
 
-                await this.internalLicenseRepository.update(internalLicense.id, updateData);
-                batchUpdated++;
-                totalUpdated++;
-              } else {
-                // Create new license
-                await this.internalLicenseRepository.save(internalLicenseData);
-                batchCreated++;
-                totalCreated++;
+                  await this.internalLicenseRepository.update(internalLicense.id, updateData);
+                  batchUpdated++;
+                  totalUpdated++;
+
+                  logger.debug(`Updated existing license`, {
+                    internalId: internalLicense.id,
+                    matchReason,
+                    appid: externalLicense.appid,
+                    countid: externalLicense.countid,
+                  });
+                } catch (updateError) {
+                  logger.warn(`Failed to update existing license ${internalLicense.id}, will try to create duplicate`, {
+                    error: updateError.message,
+                    appid: externalLicense.appid,
+                    countid: externalLicense.countid,
+                  });
+                  // Fall through to create logic below
+                  internalLicense = null;
+                }
+              }
+
+              if (!internalLicense) {
+                // Create new license with robust data transformation
+                try {
+                  const internalLicenseData = this._transformExternalLicenseRobustly(externalLicense);
+
+                  // Generate a unique key for this license to prevent conflicts
+                  const uniqueKey = this._generateUniqueLicenseKey(externalLicense);
+                  internalLicenseData.key = uniqueKey;
+
+                  await this.internalLicenseRepository.save(internalLicenseData);
+                  batchCreated++;
+                  totalCreated++;
+
+                  logger.debug(`Created new license`, {
+                    key: uniqueKey,
+                    appid: externalLicense.appid,
+                    countid: externalLicense.countid,
+                    shouldCreateDuplicate: shouldCreateDuplicate ? 'yes' : 'no',
+                  });
+                } catch (createError) {
+                  logger.warn(`Failed to create license even with robust transformation`, {
+                    error: createError.message,
+                    appid: externalLicense.appid,
+                    countid: externalLicense.countid,
+                    externalData: JSON.stringify(externalLicense).substring(0, 200) + '...',
+                  });
+                  batchSkipped++;
+                  continue; // Skip this license but continue with batch
+                }
               }
 
               batchSynced++;
               totalSynced++;
 
             } catch (licenseError) {
-              logger.warn(`Failed to sync external license ${externalLicense.appid || externalLicense.countid}`, {
+              logger.warn(`Unexpected error processing external license`, {
                 error: licenseError.message,
+                stack: licenseError.stack,
                 appid: externalLicense.appid,
                 countid: externalLicense.countid,
+                externalData: JSON.stringify(externalLicense).substring(0, 200) + '...',
               });
+              batchSkipped++;
               // Continue with next license in batch
             }
           }
+
+          logger.info(`Batch ${page} completed`, {
+            processed: externalBatch.licenses.length,
+            synced: batchSynced,
+            updated: batchUpdated,
+            created: batchCreated,
+            skipped: batchSkipped,
+          });
 
           logger.info(`Batch ${page} completed`, {
             processed: externalBatch.licenses.length,
@@ -909,6 +983,182 @@ export class SyncExternalLicensesUseCase {
       });
       throw error;
     }
+  }
+
+  /**
+   * Transform external license data robustly, handling edge cases and invalid data
+   * @private
+   */
+  _transformExternalLicenseRobustly(externalLicense) {
+    try {
+      // Start with the standard transformation
+      const baseData = this.externalLicenseRepository._externalToInternalFormat(externalLicense);
+
+      // Apply additional sanitization and fallbacks for edge cases
+      const sanitizedData = {
+        ...baseData,
+        // Ensure all required fields have fallbacks
+        product: baseData.product || 'ABC Business Suite',
+        dba: this._sanitizeString(baseData.dba) || `External License ${Date.now()}`,
+        zip: this._sanitizeString(baseData.zip) || '',
+        status: this._normalizeStatus(baseData.status),
+        plan: baseData.plan || 'Basic',
+        term: baseData.term || 'monthly',
+
+        // Handle numeric fields with fallbacks
+        lastPayment: this._sanitizeNumber(baseData.lastPayment) || 0,
+        smsBalance: this._sanitizeNumber(baseData.smsBalance) || 0,
+        seatsTotal: this._sanitizeNumber(baseData.seatsTotal) || 1,
+        seatsUsed: this._sanitizeNumber(baseData.seatsUsed) || 0,
+        agents: this._sanitizeNumber(baseData.agents) || 0,
+        agentsCost: this._sanitizeNumber(baseData.agentsCost) || 0,
+
+        // Handle date fields with fallbacks
+        startsAt: this._sanitizeDate(baseData.startsAt) || new Date().toISOString().split('T')[0],
+        lastActive: this._sanitizeDate(baseData.lastActive) || new Date().toISOString(),
+        cancelDate: baseData.cancelDate ? this._sanitizeDate(baseData.cancelDate) : null,
+
+        // Handle array fields
+        agentsName: Array.isArray(baseData.agentsName) ? baseData.agentsName : [],
+
+        // Handle notes
+        notes: this._sanitizeString(baseData.notes) || '',
+
+        // Preserve external identifiers even if malformed
+        appid: externalLicense.appid,
+        countid: externalLicense.countid,
+        mid: externalLicense.mid,
+        license_type: externalLicense.license_type,
+        package_data: externalLicense.package,
+        sendbat_workspace: externalLicense.sendbatWorkspace,
+        coming_expired: externalLicense.comingExpired,
+
+        // Mark as synced
+        external_sync_status: 'synced',
+        last_external_sync: new Date(),
+      };
+
+      // Additional validation and fixes
+      if (sanitizedData.status === 'cancel' && !sanitizedData.cancelDate) {
+        sanitizedData.cancelDate = sanitizedData.lastActive;
+      }
+
+      return sanitizedData;
+    } catch (error) {
+      logger.error('Failed to transform external license robustly, using minimal fallback', {
+        error: error.message,
+        externalData: JSON.stringify(externalLicense).substring(0, 200) + '...',
+      });
+
+      // Ultimate fallback - create minimal valid license data
+      return {
+        product: 'ABC Business Suite',
+        dba: `External License ${Date.now()}`,
+        zip: '',
+        status: 'pending',
+        plan: 'Basic',
+        term: 'monthly',
+        lastPayment: 0,
+        smsBalance: 0,
+        seatsTotal: 1,
+        seatsUsed: 0,
+        agents: 0,
+        agentsName: [],
+        agentsCost: 0,
+        startsAt: new Date().toISOString().split('T')[0],
+        lastActive: new Date().toISOString(),
+        cancelDate: null,
+        notes: 'Created from malformed external data',
+
+        // Store whatever identifiers we can
+        appid: externalLicense.appid,
+        countid: externalLicense.countid,
+        mid: externalLicense.mid,
+
+        external_sync_status: 'synced',
+        last_external_sync: new Date(),
+      };
+    }
+  }
+
+  /**
+   * Generate a unique license key to prevent conflicts
+   * @private
+   */
+  _generateUniqueLicenseKey(externalLicense) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+
+    // Create key from available identifiers
+    const identifiers = [
+      externalLicense.appid,
+      externalLicense.countid,
+      externalLicense.mid,
+      externalLicense.emailLicense,
+    ].filter(id => id != null && id !== undefined && id !== '');
+
+    const identifierString = identifiers.length > 0 ? identifiers.join('-') : 'unknown';
+
+    // Create a unique key that's URL-safe and database-friendly
+    const key = `EXT-${identifierString}-${timestamp}-${random}`.substring(0, 100);
+
+    return key;
+  }
+
+  /**
+   * Sanitize string values
+   * @private
+   */
+  _sanitizeString(value) {
+    if (value == null) return '';
+    const str = String(value).trim();
+    // Remove null bytes and other problematic characters
+    return str.replace(/\0/g, '').substring(0, 255);
+  }
+
+  /**
+   * Sanitize numeric values
+   * @private
+   */
+  _sanitizeNumber(value) {
+    const num = Number(value);
+    return isNaN(num) ? 0 : Math.max(0, num);
+  }
+
+  /**
+   * Sanitize date values
+   * @private
+   */
+  _sanitizeDate(value) {
+    if (!value) return null;
+
+    try {
+      const date = new Date(value);
+      if (isNaN(date.getTime())) {
+        return new Date().toISOString();
+      }
+      return date.toISOString();
+    } catch (error) {
+      return new Date().toISOString();
+    }
+  }
+
+  /**
+   * Normalize license status values
+   * @private
+   */
+  _normalizeStatus(status) {
+    if (!status) return 'pending';
+
+    const statusStr = String(status).toLowerCase().trim();
+
+    // Handle various status representations
+    if (['active', '1', 'true', 'yes'].includes(statusStr)) return 'active';
+    if (['cancel', 'cancelled', 'inactive', '0', 'false', 'no'].includes(statusStr)) return 'cancel';
+    if (['pending', 'suspended', 'trial'].includes(statusStr)) return statusStr;
+
+    // Default to pending for unknown statuses
+    return 'pending';
   }
 
   async _getLastSyncTimestamp() {

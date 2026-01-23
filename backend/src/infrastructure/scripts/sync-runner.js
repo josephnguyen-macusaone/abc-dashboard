@@ -23,11 +23,11 @@ async function runSync() {
     console.log('📊 Running comprehensive sync with duplicate detection...');
 
     const result = await syncUseCase.execute({
-      comprehensive: false,  // Use legacy approach that works
+      comprehensive: true,   // Use new robust paginated approach
       bidirectional: false,  // Disable bidirectional to avoid errors
       detectDuplicates: true,
       forceFullSync: false,
-      batchSize: 50
+      batchSize: 25  // Smaller batch size for better error handling
     });
 
     console.log('✅ Sync completed successfully!');
