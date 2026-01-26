@@ -455,7 +455,7 @@ graph TB
         D_DC[Docker Compose Dev]
         D_MB[MailHog<br/>localhost:8025]
         D_FE[Frontend<br/>localhost:3000]
-        D_BE[Backend<br/>localhost:5000]
+        D_BE[Backend<br/>localhost:5001]
         D_MG[MongoDB<br/>localhost:27017]
         D_RD[Redis<br/>localhost:6379]
     end

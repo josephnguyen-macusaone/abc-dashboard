@@ -11,6 +11,7 @@ import { AssignLicenseUseCase } from '../../application/use-cases/licenses/assig
 import { RevokeLicenseAssignmentUseCase } from '../../application/use-cases/licenses/revoke-license-assignment-use-case.js';
 import { GetLicenseStatsUseCase } from '../../application/use-cases/licenses/get-license-stats-use-case.js';
 import { GetLicenseDashboardMetricsUseCase } from '../../application/use-cases/licenses/get-license-dashboard-metrics-use-case.js';
+import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../infrastructure/config/logger.js';
 
 export class LicenseService extends ILicenseService {
@@ -36,7 +37,22 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Paginated license list
    */
   async getLicenses(options = {}) {
-    return await this.getLicensesUseCase.execute(options);
+    logger.debug('LicenseService.getLicenses called', {
+      hasFilters: !!(options.filters && Object.keys(options.filters).length > 0),
+      filters: Object.keys(options.filters || {}),
+      page: options.page,
+      limit: options.limit,
+    });
+
+    const result = await this.getLicensesUseCase.execute(options);
+
+    logger.debug('LicenseService.getLicenses returning', {
+      dataLength: result?.licenses?.length || 0,
+      total: result?.total,
+      totalPages: result?.pagination?.totalPages,
+    });
+
+    return result;
   }
 
   /**
@@ -126,7 +142,63 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Array>} Created licenses
    */
   async bulkCreateLicenses(licensesData) {
-    return await this.licenseRepository.bulkCreate(licensesData);
+    const createdLicenses = [];
+    const errors = [];
+    const startTime = Date.now();
+
+    // Validate batch size (prevent excessive memory usage)
+    const MAX_BATCH_SIZE = 1000;
+    if (licensesData.length > MAX_BATCH_SIZE) {
+      throw new ValidationException(`Batch size exceeds maximum limit of ${MAX_BATCH_SIZE} licenses`);
+    }
+
+    // Process each license using the proper create use case for validation and audit
+    for (const [index, licenseData] of licensesData.entries()) {
+      try {
+        // Use the create use case for proper validation and audit logging
+        const userId = licenseData.createdBy || licenseData.updatedBy;
+
+        const createdLicense = await this.createLicenseUseCase.execute(licenseData, {
+          userId: userId,
+        });
+
+        createdLicenses.push(createdLicense);
+      } catch (error) {
+        logger.warn('Individual license creation failed in bulk operation', {
+          index,
+          key: licenseData.key,
+          error: error.message
+        });
+
+        errors.push({
+          index,
+          key: licenseData.key,
+          error: error.message
+        });
+
+        // Continue with other licenses instead of failing the whole batch
+      }
+    }
+
+    const duration = Date.now() - startTime;
+
+    // Log performance metrics
+    logger.info('Bulk create completed via use cases', {
+      total: licensesData.length,
+      successful: createdLicenses.length,
+      failed: errors.length,
+      duration: `${duration}ms`,
+      avgTimePerLicense: licensesData.length > 0 ? `${(duration / licensesData.length).toFixed(2)}ms` : 'N/A'
+    });
+
+    if (errors.length > 0) {
+      logger.warn('Some licenses failed to create in bulk operation', {
+        failedCount: errors.length,
+        errorSample: errors.slice(0, 3).map(e => ({ key: e.key, error: e.error }))
+      });
+    }
+
+    return createdLicenses;
   }
 
   /**
@@ -135,7 +207,70 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Array>} Updated licenses
    */
   async bulkUpdateLicenses(updates) {
-    return await this.licenseRepository.bulkUpdate(updates);
+    const updatedLicenses = [];
+    const errors = [];
+    const startTime = Date.now();
+
+    // Process each update using the proper update use case for validation and audit
+    for (const [index, { id, updates: data }] of updates.entries()) {
+      try {
+        // First, find the license to get its current data
+        const existingLicense = await this.licenseRepository.findById(id);
+        if (!existingLicense) {
+          errors.push({
+            index,
+            key: id,
+            error: 'License not found'
+          });
+          continue;
+        }
+
+        // Merge existing data with updates
+        const licenseData = { ...existingLicense, ...data };
+
+        // Use the update use case for proper validation and audit logging
+        const userId = licenseData.updatedBy;
+        const updatedLicense = await this.updateLicenseUseCase.execute(existingLicense.id, data, {
+          userId: userId,
+        });
+
+        updatedLicenses.push(updatedLicense);
+      } catch (error) {
+        logger.warn('Individual license update failed in bulk operation', {
+          index,
+          key: id,
+          error: error.message
+        });
+
+        errors.push({
+          index,
+          key: id,
+          error: error.message
+        });
+
+        // Continue with other updates instead of failing the whole batch
+      }
+    }
+
+    const duration = Date.now() - startTime;
+
+    // Log performance metrics
+    logger.info('Bulk update completed via use cases', {
+      total: updates.length,
+      successful: updatedLicenses.length,
+      failed: errors.length,
+      duration: `${duration}ms`,
+      avgTimePerLicense: updates.length > 0 ? `${(duration / updates.length).toFixed(2)}ms` : 'N/A'
+    });
+
+    if (errors.length > 0) {
+      logger.warn('Some licenses failed to update in bulk operation', {
+        failedCount: errors.length,
+        errorSample: errors.slice(0, 3).map(e => ({ key: e.key, error: e.error }))
+      });
+    }
+
+    return updatedLicenses;
   }
 
   /**

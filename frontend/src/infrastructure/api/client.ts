@@ -366,7 +366,6 @@ class HttpClient {
     }
 
     this.isHandlingAuthFailure = true;
-    this.authFailureHandled = true; // Mark that auth failure is being handled
 
     try {
       this.httpLogger.warn('Handling authentication failure - clearing state and redirecting', {
@@ -379,11 +378,14 @@ class HttpClient {
       // Clear authentication state (don't throw on logout failure)
       try {
         await useAuthStore.getState().logout();
+        // Mark auth failure as handled only after successful logout
+        this.authFailureHandled = true;
       } catch (logoutError) {
         this.httpLogger.warn('Logout failed during auth failure cleanup, continuing with local cleanup only', {
           category: 'api-auth',
           error: logoutError instanceof Error ? logoutError.message : String(logoutError),
         });
+        // Don't mark as handled if logout failed - allow retry
       }
 
       // Redirect to login page if in browser
@@ -395,8 +397,13 @@ class HttpClient {
           this.httpLogger.info('Redirecting to login page', {
             category: 'api-auth',
           });
-          // Use window.location for reliable client-side navigation
-          window.location.href = '/login';
+
+          // Use window.location.replace for more reliable redirect
+          // This replaces the current history entry instead of adding a new one
+          this.httpLogger.info('Executing redirect to login page', {
+            category: 'api-auth',
+          });
+          window.location.replace('/login');
         }
       }
     } catch (error) {
@@ -407,10 +414,14 @@ class HttpClient {
       });
     } finally {
       this.isHandlingAuthFailure = false;
-      // Reset the auth failure flag after a delay to allow for any queued requests to complete
+      // Reset the auth failure flag and redirect flag after a delay to allow for any queued requests to complete
       setTimeout(() => {
         this.authFailureHandled = false;
-      }, 1000);
+        // Clear the redirect flag as well
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('auth_redirecting');
+        }
+      }, 2000); // Increased delay to ensure redirect completes
     }
   }
 

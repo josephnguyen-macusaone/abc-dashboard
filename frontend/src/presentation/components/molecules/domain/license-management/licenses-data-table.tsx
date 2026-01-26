@@ -51,7 +51,7 @@ export function LicensesDataTable({
     [serverPageCount, data.length, currentPageSize]
   );
 
-  const { table } = useDataTable({
+  const { table, setPage } = useDataTable({
     data,
     columns,
     pageCount,
@@ -87,6 +87,7 @@ export function LicensesDataTable({
   const lastSortRef = useRef<string>("");
   const lastFiltersRef = useRef<string>("");
   const lastManualFiltersRef = useRef<string>("");
+  const lastSearchValueRef = useRef<string>("");
 
   // Use Zustand store for table state management
   const tableId = 'licenses-data-table';
@@ -118,7 +119,14 @@ export function LicensesDataTable({
       updateTableManualFilter(tableId, 'status', statusValues);
       hasPerformedFilteringRef.current = true;
     }
-  }, []);
+
+    // Reset page to 1 if there are any filters on mount
+    const hasFilters = !!(searchParam || statusParam);
+    if (hasFilters) {
+      table.setPageIndex(0);
+      setPage(1); // Reset URL query state
+    }
+  }, [tableId, setTableSearch, updateTableManualFilter, table, setPage]);
 
   // Track filter actions to determine reset button visibility
   const hasPerformedFilteringRef = useRef(false);
@@ -154,8 +162,12 @@ export function LicensesDataTable({
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
+    // Reset page to 1 when filter changes
+    // Reset both table state AND URL query state
+    table.setPageIndex(0);
+    setPage(1); // Reset URL query state
     updateTableManualFilter(tableId, columnId, values);
-  }, [updateTableManualFilter, tableId]);
+  }, [updateTableManualFilter, tableId, table, setPage]);
 
   // Ensure table always has default sorting on mount
   useEffect(() => {
@@ -175,9 +187,25 @@ export function LicensesDataTable({
   const debouncedSearchRef = useRef<NodeJS.Timeout>(null);
 
   const handleSearchChange = useCallback((value: string) => {
+    const trimmedValue = value.trim();
+    const previousSearch = lastSearchValueRef.current;
+
+    // Check if search actually changed
+    const searchChanged = trimmedValue !== previousSearch;
+
     // Update input immediately for responsive UI
     setTableSearch(tableId, value);
     hasPerformedFilteringRef.current = true;
+
+    // Reset page to 1 when search changes (immediately, before debounce)
+    // Reset both table state AND URL query state
+    if (searchChanged) {
+      table.setPageIndex(0);
+      setPage(1); // Reset URL query state
+      // Update ref immediately to prevent race conditions
+      lastSearchValueRef.current = trimmedValue;
+      lastPageIndexRef.current = 0;
+    }
 
     // Clear previous timeout
     if (debouncedSearchRef.current) {
@@ -195,11 +223,11 @@ export function LicensesDataTable({
         limit: tableState.pagination.pageSize,
         sortBy: (activeSort?.id || "startsAt") as keyof LicenseRecord,
         sortOrder: activeSort?.desc ? "desc" : "asc",
-        search: value,
+        search: trimmedValue,
         status: manualFilterValues.status,
       });
     }, 500); // 500ms debounce
-  }, [table, onQueryChange, manualFilterValues]);
+  }, [table, onQueryChange, manualFilterValues, tableId, setTableSearch]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -229,6 +257,7 @@ export function LicensesDataTable({
       lastSortRef.current = currentSortString;
       lastFiltersRef.current = currentFiltersString;
       lastManualFiltersRef.current = currentManualFilters;
+      lastSearchValueRef.current = searchValue.trim(); // Initialize search ref
 
       const initialQueryParams = {
         page: tablePageIndex + 1,
@@ -245,10 +274,24 @@ export function LicensesDataTable({
     const sortChanged = currentSortString !== lastSortRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current ||
       currentManualFilters !== lastManualFiltersRef.current;
+    const searchChanged = searchValue.trim() !== lastSearchValueRef.current;
 
-    if (!paginationChanged && !sortChanged && !filtersChanged) return;
+    // If search or filters changed, reset page to 1
+    // Reset both table state AND URL query state
+    if (searchChanged || filtersChanged) {
+      if (tablePageIndex !== 0) {
+        table.setPageIndex(0);
+        setPage(1); // Reset URL query state
+        // Update refs to reflect the reset
+        lastPageIndexRef.current = 0;
+      }
+    }
+
+    if (!paginationChanged && !sortChanged && !filtersChanged && !searchChanged) return;
 
     // Build query params - ensure default sorting is desc for startsAt
+    // Use page 1 if search or filters changed, otherwise use current page
+    const targetPage = (searchChanged || filtersChanged) ? 1 : (tablePageIndex + 1);
     const queryParams: {
       page: number;
       limit: number;
@@ -257,7 +300,7 @@ export function LicensesDataTable({
       search?: string;
       status?: string | string[];
     } = {
-      page: tablePageIndex + 1,
+      page: targetPage,
       limit: tablePageSize,
       sortBy: (activeSort?.id || "startsAt") as keyof LicenseRecord,
       sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
@@ -283,11 +326,12 @@ export function LicensesDataTable({
     }
 
     // Update refs after API call
-    lastPageIndexRef.current = tablePageIndex;
+    lastPageIndexRef.current = targetPage - 1; // Use targetPage to reflect reset
     lastPageSizeRef.current = tablePageSize;
     lastSortRef.current = currentSortString;
     lastFiltersRef.current = currentFiltersString;
     lastManualFiltersRef.current = currentManualFilters;
+    lastSearchValueRef.current = searchValue.trim();
   }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchValue, manualFilterValues, onQueryChange, table]);
 
   // Update page size when table page size changes

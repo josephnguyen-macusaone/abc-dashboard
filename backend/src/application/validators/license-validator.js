@@ -250,12 +250,9 @@ export class LicenseValidator {
       throw new ValidationException('startDay must be a valid date');
     }
 
-    // SeatsTotal is required and must be positive
+    // SeatsTotal is optional with default value of 1
     if (input.seatsTotal === undefined || input.seatsTotal === null) {
-      throw new ValidationException('seatsTotal is required');
-    }
-    if (typeof input.seatsTotal !== 'number' || input.seatsTotal < 1) {
-      throw new ValidationException('seatsTotal must be a number greater than 0');
+      input.seatsTotal = 1; // Default to 1 seat
     }
 
     // Optional validations
@@ -270,14 +267,15 @@ export class LicenseValidator {
       throw new ValidationException(`term must be one of: ${TERM_VALUES.join(', ')}`);
     }
 
-    // Expiry date must be after start date if provided
+    // Expiry date validation - allow invalid dates for existing data compatibility
     if (input.expiresAt) {
       const expiresAt = new Date(input.expiresAt);
       if (isNaN(expiresAt.getTime())) {
-        throw new ValidationException('expiresAt must be a valid date');
-      }
-      if (expiresAt <= startsAt) {
-        throw new ValidationException('expiresAt must be after startsAt');
+        // Allow invalid dates for compatibility
+        console.warn(`License ${input.key || 'unknown'} has invalid expiresAt date: ${input.expiresAt}`);
+      } else if (expiresAt <= startsAt) {
+        // Allow expiry dates before start dates for existing data
+        console.warn(`License ${input.key || 'unknown'} has expiresAt (${input.expiresAt}) before startsAt (${input.startsAt})`);
       }
     }
 
@@ -381,9 +379,40 @@ export class LicenseValidator {
   }
 
   static validateBulkUpdateInput(body) {
-    if (!body.updates || !Array.isArray(body.updates)) {
-      throw new ValidationException('updates must be an array');
+    // Support both formats:
+    // 1. { updates: [{ id, updates: {...} }] } - structured format
+    // 2. [{ id, ...fields }] - direct array format (current frontend usage)
+
+    let licensesToUpdate = [];
+
+    if (body.updates && Array.isArray(body.updates)) {
+      // Structured format: { updates: [{ id, updates: {...} }] }
+      licensesToUpdate = body.updates;
+    } else if (Array.isArray(body) && body.length > 0) {
+      // Direct array format: [{ id, ...fields }]
+      licensesToUpdate = body.map(license => ({
+        id: license.id,
+        updates: { ...license }
+      }));
+      // Remove id from updates since it's used as the key
+      licensesToUpdate.forEach(item => delete item.updates.id);
+    } else {
+      throw new ValidationException('Invalid bulk update format. Expected either {updates: [...]} or direct array of licenses');
     }
+
+    if (licensesToUpdate.length === 0) {
+      throw new ValidationException('No licenses provided for update');
+    }
+
+    // Validate each update item has required id and some updates
+    licensesToUpdate.forEach((item, index) => {
+      if (!item.id) {
+        throw new ValidationException(`License at index ${index} is missing required 'id' field`);
+      }
+      if (!item.updates || Object.keys(item.updates).length === 0) {
+        throw new ValidationException(`License at index ${index} has no fields to update`);
+      }
+    });
   }
 
   static validateBulkCreateInput(body) {

@@ -75,13 +75,23 @@ export interface LicenseBulkResponse {
   data: LicenseRecord[];
 }
 
+export interface LicenseBulkCreateResponse {
+  success: boolean;
+  message: string;
+  data: {
+    created: number;
+    failed: number;
+    results: LicenseRecord[];
+  };
+}
+
 export interface LicenseServiceContract {
   list(params: LicenseListQuery): Promise<LicenseListResponse>;
   getById(id: number): Promise<LicenseResponse>;
   create(payload: Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>): Promise<LicenseResponse>;
   update(id: number, payload: Partial<LicenseRecord>): Promise<LicenseResponse>;
   bulkUpdate(updates: Partial<LicenseRecord>[]): Promise<LicenseBulkResponse>;
-  bulkCreate(licenses: Array<Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>>): Promise<LicenseBulkResponse>;
+  bulkCreate(licenses: Array<Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>>): Promise<LicenseBulkCreateResponse>;
   delete(id: number): Promise<{ success: boolean; message: string }>;
 }
 
@@ -117,7 +127,7 @@ export const licenseApiService = {
   },
 
   async bulkCreate(licenses: Array<Omit<LicenseRecord, 'id' | 'smsBalance' | 'createdAt' | 'updatedAt'>>) {
-    return httpClient.post<LicenseBulkResponse>('/licenses/bulk', { licenses });
+    return httpClient.post('/licenses/bulk', { licenses }) as Promise<LicenseBulkCreateResponse>;
   },
 
   async addRow(payload: Partial<LicenseRecord>) {
@@ -444,8 +454,11 @@ export class LicenseManagementService {
 
       const bulkCreateResults = await licenseApi.bulkCreateLicenses(normalizedLicenses);
 
+      // Extract the created licenses from the API response
+      const createdLicenses = bulkCreateResults.data?.results || [];
+
       // Convert to the expected response format
-      const results: LicenseResponseDTO[] = bulkCreateResults.map(license => ({
+      const results: LicenseResponseDTO[] = createdLicenses.map(license => ({
         id: String(license.id),
         key: license.key || '',
         product: license.product || '',
@@ -783,7 +796,48 @@ export class LicenseManagementService {
         }))
       });
 
-      const results = await licenseApi.bulkUpdateLicenses(normalizedUpdates);
+      const apiResponse = await (licenseApi as any).bulkUpdateInternalLicenses(normalizedUpdates);
+
+      this.serviceLogger.debug('Bulk license API response received', {
+        correlationId,
+        responseType: typeof apiResponse,
+        isArray: Array.isArray(apiResponse),
+        arrayLength: Array.isArray(apiResponse) ? apiResponse.length : 'N/A',
+        firstItemType: Array.isArray(apiResponse) && apiResponse.length > 0 ? typeof apiResponse[0] : 'N/A'
+      });
+
+      // Handle different response formats from the API
+      let results: LicenseRecord[];
+      if (Array.isArray(apiResponse)) {
+        // API returned direct array of LicenseRecord
+        results = apiResponse;
+      } else if (apiResponse && typeof apiResponse === 'object') {
+        // Check for data property (current backend format)
+        if (apiResponse.data && Array.isArray(apiResponse.data)) {
+          results = apiResponse.data;
+        } else if (apiResponse.results && Array.isArray(apiResponse.results)) {
+          // Fallback for results property
+          results = apiResponse.results;
+        } else {
+          this.serviceLogger.error('Unexpected API response format - no valid data array found', {
+            correlationId,
+            apiResponseType: typeof apiResponse,
+            apiResponseKeys: Object.keys(apiResponse),
+            hasData: !!(apiResponse.data),
+            dataIsArray: Array.isArray(apiResponse.data),
+            hasResults: !!(apiResponse.results),
+            resultsIsArray: Array.isArray(apiResponse.results)
+          });
+          throw new Error('Bulk update API returned unexpected response format');
+        }
+      } else {
+        this.serviceLogger.error('Unexpected API response type', {
+          correlationId,
+          apiResponseType: typeof apiResponse,
+          apiResponseValue: apiResponse
+        });
+        throw new Error('Bulk update API returned unexpected response type');
+      }
 
       this.serviceLogger.debug('Bulk license updates completed successfully', {
         correlationId,
@@ -812,31 +866,37 @@ export class LicenseManagementService {
   }
 
   async bulkCreateLicenses(licenses: any[]): Promise<LicenseRecord[]> {
-    const result = await this.bulkCreate({ licenses });
-    return result.results
-      .filter(r => r.success && r.result)
-      .map(r => ({
-        id: parseInt(r.result!.id),
-        key: r.result!.key,
-        product: r.result!.product,
-        dba: r.result!.dba,
-        zip: r.result!.zip,
-        startsAt: r.result!.startsAt,
-        status: r.result!.status,
-        cancelDate: r.result!.cancelDate,
-        plan: r.result!.plan,
-        term: r.result!.term,
-        seatsTotal: r.result!.seatsTotal,
-        seatsUsed: r.result!.seatsUsed,
-        lastPayment: r.result!.lastPayment,
-        lastActive: r.result!.lastActive,
-        smsPurchased: r.result!.smsPurchased,
-        smsSent: r.result!.smsSent,
-        smsBalance: r.result!.smsBalance,
-        agents: r.result!.agents,
-        agentsName: r.result!.agentsName,
-        agentsCost: r.result!.agentsCost,
-        notes: r.result!.notes
-      }));
+    const result = await licenseApi.bulkCreateLicenses(licenses) as any;
+
+    // Debug logging for troubleshooting
+    this.serviceLogger.debug('Bulk create API response received', {
+      correlationId: 'bulk_create_' + Date.now(),
+      resultType: typeof result,
+      resultKeys: result ? Object.keys(result) : [],
+      hasResults: !!(result && result.results),
+      resultsType: result?.results ? typeof result.results : 'undefined',
+      resultsIsArray: Array.isArray(result?.results),
+      resultsLength: Array.isArray(result?.results) ? result.results.length : 'N/A',
+      successful: result?.successful,
+      failed: result?.failed
+    });
+
+    // Handle the API response - it returns { success, message, data, timestamp }
+    if (result && result.success && result.data && Array.isArray(result.data)) {
+      this.serviceLogger.debug('Bulk create completed', {
+        inputCount: licenses.length,
+        outputCount: result.data.length,
+        message: result.message
+      });
+      return result.data as LicenseRecord[];
+    } else {
+      this.serviceLogger.error('Bulk create failed - invalid response format', {
+        correlationId: 'bulk_create_error_' + Date.now(),
+        resultType: typeof result,
+        resultKeys: result ? Object.keys(result) : [],
+        fullResult: result
+      });
+      throw new Error('Bulk create API returned invalid response format');
+    }
   }
 }

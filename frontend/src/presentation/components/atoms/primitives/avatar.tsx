@@ -39,6 +39,7 @@ const AvatarImage = React.forwardRef<
           sizes="(max-width: 768px) 40px, (max-width: 1200px) 64px, 128px"
           placeholder="blur"
           blurDataURL={generateBlurPlaceholder(40, 40)}
+          suppressHydrationWarning
         />
       </div>
     );

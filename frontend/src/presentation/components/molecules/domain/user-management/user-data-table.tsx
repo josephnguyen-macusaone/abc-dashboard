@@ -110,7 +110,7 @@ export function UsersDataTable({
   );
 
   // Create the table instance using the data table hook (must be declared before use)
-  const { table, setFilterValues } = useDataTable({
+  const { table, setFilterValues, setPage } = useDataTable({
     data,
     columns,
     pageCount: onQueryChange ? pageCount : undefined,
@@ -139,6 +139,7 @@ export function UsersDataTable({
   const lastSortRef = useRef<string>("");
   const lastFiltersRef = useRef<string>("");
   const lastManualFiltersRef = useRef<string>("");
+  const lastSearchValueRef = useRef<string>("");
   // Track if we're in a reset operation to prevent duplicate API calls
   const isResettingRef = useRef(false);
 
@@ -166,7 +167,16 @@ export function UsersDataTable({
       setTableSearch(tableId, userStore.filters.search);
     }
     setTableManualFilters(tableId, initialFilters);
-  }, [userStore.filters, setTableSearch, setTableManualFilters, tableId]);
+
+    // Reset page to 1 if there are any filters on mount
+    const hasFilters = !!(userStore.filters.search || 
+      userStore.filters.role || 
+      userStore.filters.isActive !== undefined);
+    if (hasFilters) {
+      table.setPageIndex(0);
+      setPage(1); // Reset URL query state
+    }
+  }, [userStore.filters, setTableSearch, setTableManualFilters, tableId, table, setPage]);
 
   // Track filter actions to determine reset button visibility
   // Use a ref to track if user has performed any filtering actions
@@ -207,8 +217,12 @@ export function UsersDataTable({
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
+    // Reset page to 1 when filter changes
+    // Reset both table state AND URL query state
+    table.setPageIndex(0);
+    setPage(1); // Reset URL query state
     updateTableManualFilter(tableId, columnId, values);
-  }, [updateTableManualFilter, tableId]);
+  }, [updateTableManualFilter, tableId, table, setPage]);
 
   // Ensure table always has default sorting on mount
   useEffect(() => {
@@ -228,9 +242,25 @@ export function UsersDataTable({
   const debouncedSearchRef = useRef<NodeJS.Timeout>(null);
 
   const handleSearchChange = useCallback((value: string) => {
+    const trimmedValue = value.trim();
+    const previousSearch = lastSearchValueRef.current;
+    
+    // Check if search actually changed
+    const searchChanged = trimmedValue !== previousSearch;
+    
     // Update input immediately for responsive UI
     setTableSearch(tableId, value);
     hasPerformedFilteringRef.current = true;
+
+    // Reset page to 1 when search changes (immediately, before debounce)
+    // Reset both table state AND URL query state
+    if (searchChanged) {
+      table.setPageIndex(0);
+      setPage(1); // Reset URL query state
+      // Update ref immediately to prevent race conditions
+      lastSearchValueRef.current = trimmedValue;
+      lastPageIndexRef.current = 0;
+    }
 
     // Clear previous timeout
     if (debouncedSearchRef.current) {
@@ -248,13 +278,13 @@ export function UsersDataTable({
         limit: tableState.pagination.pageSize,
         sortBy: activeSort?.id || "createdAt",
         sortOrder: activeSort?.desc ? "desc" : "asc",
-        search: value,
-        searchField: value ? 'email' : undefined, // Search in email field
+        search: trimmedValue,
+        searchField: trimmedValue ? 'email' : undefined, // Search in email field
         role: manualFilterValues.role || undefined,
         isActive: manualFilterValues.isActive || undefined,
       });
     }, 500); // 500ms debounce
-  }, [table, onQueryChange, manualFilterValues]);
+  }, [table, onQueryChange, manualFilterValues, tableId, setTableSearch]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -287,6 +317,7 @@ export function UsersDataTable({
       lastSortRef.current = currentSortString;
       lastFiltersRef.current = currentFiltersString;
       lastManualFiltersRef.current = currentManualFilters;
+      lastSearchValueRef.current = searchValue.trim(); // Initialize search ref
 
       const initialQueryParams = {
         page: tablePageIndex + 1,
@@ -303,10 +334,24 @@ export function UsersDataTable({
     const sortChanged = currentSortString !== lastSortRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current ||
       currentManualFilters !== lastManualFiltersRef.current;
+    const searchChanged = searchValue.trim() !== lastSearchValueRef.current;
 
-    if (!paginationChanged && !sortChanged && !filtersChanged) return;
+    // If search or filters changed, reset page to 1
+    // Reset both table state AND URL query state
+    if (searchChanged || filtersChanged) {
+      if (tablePageIndex !== 0) {
+        table.setPageIndex(0);
+        setPage(1); // Reset URL query state
+        // Update refs to reflect the reset
+        lastPageIndexRef.current = 0;
+      }
+    }
+
+    if (!paginationChanged && !sortChanged && !filtersChanged && !searchChanged) return;
 
     // Build query params - ensure default sorting is desc for createdAt
+    // Use page 1 if search or filters changed, otherwise use current page
+    const targetPage = (searchChanged || filtersChanged) ? 1 : (tablePageIndex + 1);
     const queryParams: {
       page: number;
       limit: number;
@@ -317,7 +362,7 @@ export function UsersDataTable({
       role?: string | string[];
       isActive?: string | string[];
     } = {
-      page: tablePageIndex + 1,
+      page: targetPage,
       limit: tablePageSize,
       sortBy: activeSort?.id || "createdAt",
       sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
@@ -348,11 +393,12 @@ export function UsersDataTable({
     }
 
     // Update refs after API call
-    lastPageIndexRef.current = tablePageIndex;
+    lastPageIndexRef.current = targetPage - 1; // Use targetPage to reflect reset
     lastPageSizeRef.current = tablePageSize;
     lastSortRef.current = currentSortString;
     lastFiltersRef.current = currentFiltersString;
     lastManualFiltersRef.current = currentManualFilters;
+    lastSearchValueRef.current = searchValue.trim();
   }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchValue, manualFilterValues, onQueryChange, table]);
 
   // Loading state

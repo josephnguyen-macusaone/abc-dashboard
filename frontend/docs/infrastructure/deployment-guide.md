@@ -112,7 +112,7 @@ NEXT_PUBLIC_CSP_REPORT_URI=/api/csp-report
 
 ```bash
 # Development environment settings
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
 NEXT_PUBLIC_APP_ENV=development
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=true
 NEXT_PUBLIC_ENABLE_ANALYTICS=false

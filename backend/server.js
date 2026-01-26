@@ -3,6 +3,9 @@ import 'joi';
 
 /* global URL */
 
+// Load environment configuration FIRST (this will load the appropriate .env file)
+import './src/infrastructure/config/env.js';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -32,9 +35,7 @@ import { config } from './src/infrastructure/config/config.js';
 import swaggerSpec from './src/infrastructure/config/swagger.js';
 import { monitorMiddleware, getHealthWithMetrics } from './src/infrastructure/config/monitoring.js';
 import { responseHelpersMiddleware } from './src/shared/http/response-transformer.js';
-
-// Load environment configuration (this will load the appropriate .env file)
-import './src/infrastructure/config/env.js';
+import { awilixContainer } from './src/shared/kernel/container.js';
 
 const app = express();
 const PORT = config.PORT;
@@ -76,77 +77,11 @@ app.use(correlationIdMiddleware);
 app.use(helmet());
 app.use(securityHeaders);
 
-// CORS configuration
-const corsOptions =
-  config.NODE_ENV === 'development'
-    ? {
-        origin(origin, callback) {
-          // Allow requests with no origin (mobile apps, curl, etc.)
-          if (!origin) {
-            return callback(null, true);
-          }
-
-          // Allow localhost on any port for development
-          if (origin.match(/^http:\/\/localhost:\d+$/)) {
-            return callback(null, true);
-          }
-
-          // Allow the configured client URL
-          if (origin === config.CLIENT_URL) {
-            return callback(null, true);
-          }
-
-          // Allow frontend container access in Docker (matches any origin ending with :3000)
-          if (origin && origin.match(/:3000$/)) {
-            return callback(null, true);
-          }
-
-          // Reject other origins in development
-          return callback(new Error('Not allowed by CORS'));
-        },
+// CORS configuration - simplified for development
+const corsOptions = {
+  origin: true, // Allow all origins
         credentials: true,
-      }
-    : {
-        origin(origin, callback) {
-          // Allow requests with no origin (mobile apps, curl, server-side requests, etc.)
-          if (!origin) {
-            return callback(null, true);
-          }
-
-          // Allow the configured client URL if set
-          if (config.CLIENT_URL && origin === config.CLIENT_URL) {
-            return callback(null, true);
-          }
-
-          // In production, allow same-origin requests (when frontend and backend are on same domain)
-          // Extract domain from origin and compare with current host
-          try {
-            const originUrl = new URL(origin);
-            const hostUrl = new URL(config.CLIENT_URL || 'http://localhost:3000');
-
-            // Allow if same domain (protocol + hostname + port)
-            if (originUrl.origin === hostUrl.origin) {
-              return callback(null, true);
-            }
-
-            // For HTTPS domains, also allow HTTP localhost for development access
-            if (originUrl.protocol === 'https:' && originUrl.hostname === hostUrl.hostname) {
-              return callback(null, true);
-            }
-
-            // Allow portal.abcsalon.us specifically for production
-            if (origin === 'https://portal.abcsalon.us') {
-              return callback(null, true);
-            }
-          } catch (error) {
-            // Invalid URL format, reject
-            return callback(new Error('Invalid origin'));
-          }
-
-          // Reject other origins in production
-          return callback(new Error('Not allowed by CORS'));
-        },
-        credentials: true,
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
       };
 
 app.use(cors(corsOptions));
@@ -199,7 +134,7 @@ app.use('/api-docs', (req, res, next) => {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https:",
-      "connect-src 'self' http://localhost:5000",
+      "connect-src 'self' http://localhost:5000 http://localhost:5002 http://localhost:3000 ws://localhost:3000",
       "frame-src 'none'",
       "object-src 'none'",
     ].join('; ')
@@ -313,11 +248,37 @@ const startServer = async () => {
     });
 
     // Start the HTTP server
-    server = app.listen(PORT, () => {
+    server = app.listen(PORT, async () => {
       logger.startup(`Server started successfully on port ${PORT}`);
       logger.startup(`API available at http://localhost:${PORT}`);
       logger.startup(`API Documentation at http://localhost:${PORT}/api-docs`);
       logger.startup(`Health Check at http://localhost:${PORT}/api/v1/health`);
+
+      // Initialize and start license lifecycle scheduler
+      try {
+        const lifecycleScheduler = await awilixContainer.getLicenseLifecycleScheduler();
+        await lifecycleScheduler.start();
+        logger.startup('License lifecycle scheduler started successfully');
+      } catch (error) {
+        logger.error('Failed to start license lifecycle scheduler', {
+          error: error.message,
+          stack: error.stack,
+        });
+        // Don't fail server startup for scheduler issues
+      }
+
+      // Initialize and start license sync scheduler
+      try {
+        const syncScheduler = await awilixContainer.getLicenseSyncScheduler();
+        await syncScheduler.start();
+        logger.startup('License sync scheduler started successfully');
+      } catch (error) {
+        logger.error('Failed to start license sync scheduler', {
+          error: error.message,
+          stack: error.stack,
+        });
+        // Don't fail server startup for scheduler issues
+      }
     });
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`);
@@ -330,6 +291,28 @@ const gracefulShutdown = async (signal) => {
   logger.startup(`Received ${signal}, starting graceful shutdown...`);
 
   try {
+    // Stop license lifecycle scheduler
+    try {
+      const lifecycleScheduler = await awilixContainer.getLicenseLifecycleScheduler();
+      await lifecycleScheduler.gracefulShutdown();
+      logger.startup('License lifecycle scheduler stopped');
+    } catch (error) {
+      logger.error('Error stopping license lifecycle scheduler', {
+        error: error.message,
+      });
+    }
+
+    // Stop license sync scheduler
+    try {
+      const syncScheduler = await awilixContainer.getLicenseSyncScheduler();
+      await syncScheduler.gracefulShutdown();
+      logger.startup('License sync scheduler stopped');
+    } catch (error) {
+      logger.error('Error stopping license sync scheduler', {
+        error: error.message,
+      });
+    }
+
     // Close server
     if (server) {
       await new Promise((resolve) => {

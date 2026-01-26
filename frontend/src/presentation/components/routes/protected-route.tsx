@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
 
   // Handle navigation effects in useEffect to avoid calling router during render
   useEffect(() => {
-    // Only run navigation logic on client side after loading and mounting
+    // Only run navigation logic on client side after mounting
     if (!hasMounted || isLoading) return;
 
     // Get route configuration
@@ -46,7 +46,10 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     if (!hasAccess) {
       // If user is not authenticated, redirect to login
       if (!isAuthenticated) {
-        router.push('/login');
+        // Only redirect if we're not already on the login page
+        if (pathname !== '/login') {
+          router.replace('/login');
+        }
         return;
       }
 

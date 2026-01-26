@@ -20,13 +20,13 @@ export function createBulkCreateLicensesUseCase(): BulkCreateLicensesUseCaseCont
       const correlationId = generateCorrelationId();
 
       try {
-        const response = await licenseApiService.bulkCreate(licenses);
+        const response = await licenseApiService.bulkCreate(licenses) as unknown as import('@/application/services/license-services').LicenseBulkCreateResponse;
 
-        if (!Array.isArray(response.data)) {
+        if (!response.data || !Array.isArray(response.data.results)) {
           throw new Error('Invalid response: licenses data not found');
         }
 
-        return response.data;
+        return response.data.results;
       } catch (error) {
         useCaseLogger.error(`Failed to bulk create licenses`, {
           correlationId,

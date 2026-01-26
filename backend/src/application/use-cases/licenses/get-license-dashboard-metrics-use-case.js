@@ -2,6 +2,8 @@
  * Get License Dashboard Metrics Use Case
  * Handles retrieving comprehensive license statistics for dashboard display
  */
+import logger from '../../../infrastructure/config/logger.js';
+
 export class GetLicenseDashboardMetricsUseCase {
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
@@ -17,6 +19,15 @@ export class GetLicenseDashboardMetricsUseCase {
       const now = new Date();
       const filters = options.filters || {};
       const dateRange = options.dateRange || {};
+
+      // Merge dateRange into filters for repository queries
+      const mergedFilters = {
+        ...filters,
+        ...(dateRange.startsAtFrom && { startsAtFrom: dateRange.startsAtFrom }),
+        ...(dateRange.startsAtTo && { startsAtTo: dateRange.startsAtTo }),
+      };
+
+      logger.info('GetLicenseDashboardMetricsUseCase - Options:', { filters: mergedFilters, dateRange });
 
       // Determine the target period based on date range or current month
       let targetPeriodStart, targetPeriodEnd, comparisonPeriodStart, comparisonPeriodEnd;
@@ -40,57 +51,112 @@ export class GetLicenseDashboardMetricsUseCase {
       }
 
       // Get all licenses for comprehensive calculations
-      const allLicenses = await this.licenseRepository.findLicenses({
-        page: 1,
-        limit: 10000, // Get all licenses for accurate stats
-        filters: {},
-      });
+      logger.debug('Fetching all licenses for dashboard metrics calculation');
+      let allLicenses;
+      try {
+        allLicenses = await this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000, // Get all licenses for accurate stats
+          filters: {},
+        });
+        logger.debug('All licenses fetched:', { count: allLicenses?.licenses?.length, total: allLicenses?.total });
+      } catch (allLicensesError) {
+        logger.error('Failed to fetch all licenses:', { error: allLicensesError.message });
+        throw new Error(`Failed to fetch licenses: ${allLicensesError.message}`);
+      }
 
       // Get licenses filtered by date range (if provided) - this affects total counts
-      const filteredLicenses =
-        filters.startsAtFrom || filters.startsAtTo
-          ? await this.licenseRepository.findLicenses({
-              page: 1,
-              limit: 10000,
-              filters,
-            })
-          : allLicenses;
+      let filteredLicenses;
+      try {
+        filteredLicenses =
+          mergedFilters.startsAtFrom || mergedFilters.startsAtTo
+            ? await this.licenseRepository.findLicenses({
+                page: 1,
+                limit: 10000,
+                filters: mergedFilters,
+              })
+            : allLicenses;
+        logger.debug('Date filtering successful');
+      } catch (dateFilterError) {
+        logger.error('Date filtering failed, using all licenses:', {
+          error: dateFilterError.message,
+          filters
+        });
+        filteredLicenses = allLicenses;
+      }
+      logger.debug('Filtered licenses result:', { count: filteredLicenses?.licenses?.length, total: filteredLicenses?.total });
 
       // Get target period licenses (what the user selected as "this month")
-      const targetPeriodLicenses = await this.licenseRepository.findLicenses({
-        page: 1,
-        limit: 10000,
-        filters: {
-          startsAtFrom: targetPeriodStart.toISOString(),
-          startsAtTo: targetPeriodEnd.toISOString(),
-        },
-      });
+      let targetPeriodLicenses;
+      try {
+        targetPeriodLicenses = await this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000,
+          filters: {
+            startsAtFrom: targetPeriodStart.toISOString(),
+            startsAtTo: targetPeriodEnd.toISOString(),
+          },
+        });
+        logger.debug('Target period licenses fetched:', { count: targetPeriodLicenses?.licenses?.length });
+      } catch (targetError) {
+        logger.error('Failed to fetch target period licenses:', { error: targetError.message });
+        targetPeriodLicenses = { licenses: [] };
+      }
 
       // Get comparison period licenses (previous month for trend calculation)
-      const comparisonPeriodLicenses = await this.licenseRepository.findLicenses({
-        page: 1,
-        limit: 10000,
-        filters: {
-          startsAtFrom: comparisonPeriodStart.toISOString(),
-          startsAtTo: comparisonPeriodEnd.toISOString(),
-        },
-      });
+      let comparisonPeriodLicenses;
+      try {
+        comparisonPeriodLicenses = await this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000,
+          filters: {
+            startsAtFrom: comparisonPeriodStart.toISOString(),
+            startsAtTo: comparisonPeriodEnd.toISOString(),
+          },
+        });
+        logger.debug('Comparison period licenses fetched:', { count: comparisonPeriodLicenses?.licenses?.length });
+      } catch (comparisonError) {
+        logger.error('Failed to fetch comparison period licenses:', { error: comparisonError.message });
+        comparisonPeriodLicenses = { licenses: [] };
+      }
 
       // Calculate metrics
+      logger.debug('About to calculate metrics with data:', {
+        filteredLicensesCount: filteredLicenses.licenses?.length,
+        targetPeriodLicensesCount: targetPeriodLicenses.licenses?.length,
+        comparisonPeriodLicensesCount: comparisonPeriodLicenses.licenses?.length,
+        allLicensesCount: allLicenses.licenses?.length,
+        targetPeriodStart,
+        targetPeriodEnd,
+        filters
+      });
+
+      // Ensure all license arrays exist and are arrays
+      const safeFilteredLicenses = filteredLicenses?.licenses || [];
+      const safeTargetPeriodLicenses = targetPeriodLicenses?.licenses || [];
+      const safeComparisonPeriodLicenses = comparisonPeriodLicenses?.licenses || [];
+      const safeAllLicenses = allLicenses?.licenses || [];
+
       const metrics = this._calculateMetrics(
-        filteredLicenses.licenses,
-        targetPeriodLicenses.licenses,
-        comparisonPeriodLicenses.licenses,
-        allLicenses.licenses,
+        safeFilteredLicenses,
+        safeTargetPeriodLicenses,
+        safeComparisonPeriodLicenses,
+        safeAllLicenses,
         targetPeriodStart,
         targetPeriodEnd,
         comparisonPeriodStart,
         comparisonPeriodEnd,
-        filters
+        mergedFilters
       );
 
+      logger.debug('Metrics calculated successfully');
       return metrics;
     } catch (error) {
+      logger.error('Error in GetLicenseDashboardMetricsUseCase:', {
+        error: error.message,
+        stack: error.stack,
+        options
+      });
       throw new Error(`Failed to get dashboard metrics: ${error.message}`);
     }
   }
@@ -128,12 +194,18 @@ export class GetLicenseDashboardMetricsUseCase {
 
     // License Income This Period (sum of lastPayment for licenses started in target period)
     const licenseIncomeThisPeriod = targetPeriodLicenses.reduce(
-      (sum, license) => sum + (parseFloat(license.lastPayment) || 0),
+      (sum, license) => {
+        const payment = license.lastPayment != null ? parseFloat(license.lastPayment) : 0;
+        return sum + (isNaN(payment) ? 0 : payment);
+      },
       0
     );
 
     const licenseIncomeComparisonPeriod = comparisonPeriodLicenses.reduce(
-      (sum, license) => sum + (parseFloat(license.lastPayment) || 0),
+      (sum, license) => {
+        const payment = license.lastPayment != null ? parseFloat(license.lastPayment) : 0;
+        return sum + (isNaN(payment) ? 0 : payment);
+      },
       0
     );
 

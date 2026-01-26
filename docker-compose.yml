@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"  # External port 5433 to avoid conflicts with local PostgreSQL on 5432
+      - "5432:5432"  # External port 5432 for PostgreSQL
     networks:
       - abc-dashboard-network
     healthcheck:
@@ -40,15 +40,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M  # Reduced for 1GB RAM server
-          cpus: '0.3'
+          memory: 1G
+          cpus: '0.5'
         reservations:
-          memory: 128M
+          memory: 512M
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=5000
       - DATABASE_URL=${DATABASE_URL}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_HOST=postgres  # Use postgres service name for Docker networking
       - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -62,8 +62,11 @@ services:
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
+      - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
+      - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
     volumes:
       - ./backend/logs:/app/logs
+      - ./.env:/app/.env:ro
     networks:
       - abc-dashboard-network
     depends_on:

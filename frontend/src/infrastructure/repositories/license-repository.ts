@@ -193,8 +193,8 @@ export class LicenseRepository implements ILicenseRepository {
 
   async findByDba(dba: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ search: dba, searchField: 'dba' });
-      return response.licenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+      const response = await licenseApi.getLicenses({ dba });
+      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by DBA', {
         dba,
@@ -207,7 +207,7 @@ export class LicenseRepository implements ILicenseRepository {
   async findByStatus(status: string): Promise<License[]> {
     try {
       const response = await licenseApi.getLicenses({ status: status as any });
-      return response.licenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by status', {
         status,
@@ -224,13 +224,13 @@ export class LicenseRepository implements ILicenseRepository {
       futureDate.setDate(today.getDate() + days);
 
       const response = await licenseApi.getLicenses({
-        startsAtTo: futureDate.toISOString().split('T')[0]
+        endDate: futureDate.toISOString().split('T')[0]
       });
 
       // Filter licenses that are expiring within the specified days
       return response.licenses
-        .map(apiLicense => this.mapApiLicenseToDomain(apiLicense))
-        .filter(license => {
+        .map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense))
+        .filter((license: any) => {
           const expirationDate = license.calculateExpirationDate();
           const daysUntilExpiration = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           return daysUntilExpiration <= days && daysUntilExpiration > 0;
@@ -246,8 +246,8 @@ export class LicenseRepository implements ILicenseRepository {
 
   async findByPlan(plan: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ plan });
-      return response.licenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+      const response = await licenseApi.getLicenses({ license_type: plan });
+      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by plan', {
         plan,
@@ -259,8 +259,8 @@ export class LicenseRepository implements ILicenseRepository {
 
   async search(query: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ search: query });
-      return response.licenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+      const response = await licenseApi.getLicenses({});
+      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to search licenses', {
         query,
@@ -285,7 +285,10 @@ export class LicenseRepository implements ILicenseRepository {
       // Convert specification to API query parameters
       const queryParams: any = {};
 
-      if (specification.dba) queryParams.search = specification.dba;
+      if (specification.dba) {
+        queryParams.search = specification.dba;
+        queryParams.searchField = 'dba'; // Specify that we're searching in DBA field for precise filtering
+      }
       if (specification.status) queryParams.status = specification.status;
       if (specification.plan) queryParams.plan = specification.plan;
       if (specification.term) queryParams.term = specification.term;
@@ -308,11 +311,11 @@ export class LicenseRepository implements ILicenseRepository {
       }
 
       const response = await licenseApi.getLicenses(queryParams);
-      const licenses = response.licenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+      const licenses = response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
 
       const result = {
         licenses,
-        total: response.stats?.total || licenses.length,
+        total: response.stats?.total || response.pagination?.total || licenses.length,
         pagination: response.pagination
       };
 
@@ -401,7 +404,7 @@ export class LicenseRepository implements ILicenseRepository {
     // Get a sample of licenses for statistics calculation
     // Use a reasonable limit instead of fetching all
     const response = await licenseApi.getLicenses({ limit: 1000 });
-    const licenses = response.licenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+    const licenses = response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
 
     // Use API-provided stats if available, otherwise calculate
     let stats: LicenseStatistics;
@@ -501,10 +504,10 @@ export class LicenseRepository implements ILicenseRepository {
   async bulkCreate(licenses: CreateLicenseProps[]): Promise<License[]> {
     try {
       const apiLicenses = licenses.map(props => this.mapCreatePropsToApi(props));
-      const createdLicenses = await licenseApi.bulkCreateLicenses(apiLicenses);
+      const response = await licenseApi.bulkCreateLicenses(apiLicenses);
 
       // Map back to domain entities
-      const domainLicenses = createdLicenses.map(apiLicense => this.mapApiLicenseToDomain(apiLicense));
+      const domainLicenses = response.data.results.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
 
       // Clear all cache since we added new licenses
       this.clearAllLicenseCache();
@@ -528,7 +531,7 @@ export class LicenseRepository implements ILicenseRepository {
       }));
 
       // Call the bulk API
-      const updatedRecords = await licenseApi.bulkUpdateLicenses(apiUpdates);
+      const updatedRecords = await licenseApi.bulkUpdateInternalLicenses(apiUpdates);
 
       // Convert back to domain entities and clear cache
       const updatedLicenses: License[] = [];

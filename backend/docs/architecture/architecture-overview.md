@@ -201,6 +201,213 @@ Infrastructure Repositories (actual data access)
 Database/External Services
 ```
 
+## External License Management System Flow
+
+The external license management system integrates with a third-party license API and provides a complete CRUD interface for managing synchronized license data.
+
+```mermaid
+graph TB
+    %% External Systems
+    subgraph "External Systems"
+        ExtAPI[External License API<br/>155.138.247.131:2341<br/>x-api-key authentication]
+        PostgreSQL[(PostgreSQL<br/>external_licenses table)]
+        Frontend[React Frontend<br/>localhost:3000]
+    end
+
+    %% Backend Infrastructure Layer
+    subgraph "Backend - Infrastructure Layer"
+        subgraph "API Services"
+            ExtLicenseApiSvc[ExternalLicenseApiService<br/>- HTTP client with retries<br/>- Circuit breaker pattern<br/>- API key authentication]
+        end
+
+        subgraph "Data Access"
+            ExtLicenseRepo[ExternalLicenseRepository<br/>- Knex queries<br/>- Data transformation<br/>- Bulk operations]
+            Migration[Database Migrations<br/>- Schema management<br/>- Indexes & constraints]
+        end
+
+        subgraph "Web Layer"
+            ExtLicenseCtrl[ExternalLicenseController<br/>- Request validation<br/>- Response formatting<br/>- Error handling]
+            Routes[Express Routes<br/>/api/v1/external-licenses]
+        end
+    end
+
+    %% Backend Application Layer
+    subgraph "Backend - Application Layer"
+        subgraph "Use Cases"
+            SyncExtLicensesUC[SyncExternalLicensesUseCase<br/>- Full sync orchestration<br/>- Bulk data processing<br/>- Error recovery]
+            ManageExtLicensesUC[ManageExternalLicensesUseCase<br/>- CRUD operations<br/>- Data validation<br/>- Business rules]
+        end
+
+        subgraph "DTOs & Validation"
+            ExtLicenseDTOs[License DTOs<br/>- Request/Response contracts<br/>- Data transformation]
+        end
+    end
+
+    %% Backend Domain Layer
+    subgraph "Backend - Domain Layer"
+        subgraph "Business Entities"
+            ExtLicenseEntity[ExternalLicense Entity<br/>- Data validation<br/>- Business rules<br/>- JSON serialization]
+        end
+
+        subgraph "Domain Interfaces"
+            IExtLicenseRepo[IExternalLicenseRepository<br/>- Data access contract<br/>- Dependency inversion]
+        end
+    end
+
+    %% Frontend Application Layer
+    subgraph "Frontend - Application Layer"
+        subgraph "API Services"
+            LicenseApi[LicenseApiService<br/>- HTTP client<br/>- Data transformation<br/>- Error handling]
+        end
+
+        subgraph "State Management"
+            LicenseStore[Zustand LicenseStore<br/>- State management<br/>- API integration<br/>- Loading states]
+        end
+
+        subgraph "Business Logic"
+            LicenseMgmtSvc[LicenseManagementService<br/>- Use case orchestration<br/>- Data validation<br/>- Error handling]
+        end
+    end
+
+    %% Frontend Presentation Layer
+    subgraph "Frontend - Presentation Layer"
+        subgraph "Pages"
+            LicenseMgmtPage[LicenseManagementPage<br/>- Route handler<br/>- Data fetching<br/>- State coordination]
+        end
+
+        subgraph "Components"
+            LicenseMgmt[LicenseManagement<br/>Organism<br/>- Data display<br/>- User interactions]
+            LicensesDataGrid[LicensesDataGrid<br/>- Excel-like editing<br/>- Inline CRUD<br/>- Pagination]
+        end
+    end
+
+    %% Data Flow - Sync Process
+    ExtAPI --> ExtLicenseApiSvc
+    ExtLicenseApiSvc --> SyncExtLicensesUC
+    SyncExtLicensesUC --> ExtLicenseRepo
+    ExtLicenseRepo --> PostgreSQL
+
+    %% Data Flow - Management Operations
+    LicenseMgmtPage --> LicenseStore
+    LicenseStore --> LicenseApi
+    LicenseApi --> Routes
+    Routes --> ExtLicenseCtrl
+    ExtLicenseCtrl --> ManageExtLicensesUC
+    ManageExtLicensesUC --> ExtLicenseRepo
+    ExtLicenseRepo --> PostgreSQL
+
+    %% Data Flow - Read Operations
+    PostgreSQL --> ExtLicenseRepo
+    ExtLicenseRepo --> ManageExtLicensesUC
+    ManageExtLicensesUC --> ExtLicenseCtrl
+    ExtLicenseCtrl --> LicenseApi
+    LicenseApi --> LicenseStore
+    LicenseStore --> LicenseMgmtPage
+    LicenseMgmtPage --> LicenseMgmt
+    LicenseMgmt --> LicensesDataGrid
+
+    %% Domain Dependencies
+    ExtLicenseRepo -.-> IExtLicenseRepo
+    ExtLicenseEntity -.-> IExtLicenseRepo
+
+    %% Dependency Injection
+    DI[Dependency Injection<br/>Container] -.-> ExtLicenseCtrl
+    DI -.-> SyncExtLicensesUC
+    DI -.-> ManageExtLicensesUC
+    DI -.-> ExtLicenseRepo
+    DI -.-> ExtLicenseApiSvc
+
+    %% Styling
+    classDef external fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef infrastructure fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef application fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef domain fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef frontend fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef presentation fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+
+    class ExtAPI,PostgreSQL,Frontend external
+    class ExtLicenseApiSvc,ExtLicenseRepo,Migration,ExtLicenseCtrl,Routes infrastructure
+    class SyncExtLicensesUC,ManageExtLicensesUC,ExtLicenseDTOs application
+    class ExtLicenseEntity,IExtLicenseRepo domain
+    class LicenseApi,LicenseStore,LicenseMgmtSvc frontend
+    class LicenseMgmtPage,LicenseMgmt,LicensesDataGrid presentation
+```
+
+### External License Management Data Flow
+
+#### 1. **Sync Process** (Background/Batch Operations)
+```txt
+External API (155.138.247.131:2341)
+    ↓ [HTTP GET with x-api-key]
+ExternalLicenseApiService (Circuit Breaker + Retries)
+    ↓ [Bulk data fetching with pagination]
+SyncExternalLicensesUseCase (Orchestration)
+    ↓ [Data validation & transformation]
+ExternalLicenseRepository (Bulk upsert)
+    ↓ [Database transactions]
+PostgreSQL (external_licenses table)
+```
+
+#### 2. **Read Operations** (Frontend Display)
+```txt
+Frontend LicenseManagementPage
+    ↓ [React useEffect]
+Zustand LicenseStore
+    ↓ [API call with JWT auth]
+LicenseApiService (HTTP client)
+    ↓ [Request formatting]
+Backend Routes (/api/v1/external-licenses)
+    ↓ [Middleware: auth, validation]
+ExternalLicenseController
+    ↓ [Business logic delegation]
+ManageExternalLicensesUseCase
+    ↓ [Repository pattern]
+ExternalLicenseRepository
+    ↓ [Knex queries with filters]
+PostgreSQL → JSON response → Frontend display
+```
+
+#### 3. **CRUD Operations** (User Interactions)
+```txt
+Frontend LicensesDataGrid (Inline editing)
+    ↓ [Save/Update/Delete actions]
+LicenseStore (State updates)
+    ↓ [API calls with changes]
+LicenseApiService
+    ↓ [Individual/bulk operations]
+Backend Controllers
+    ↓ [Transaction management]
+Use Cases → Repository → Database
+    ↓ [Success/error responses]
+Frontend (UI updates + notifications)
+```
+
+### Key Integration Points
+
+#### **Authentication & Security**
+- **External API**: `x-api-key` header authentication
+- **Internal API**: JWT Bearer token authentication
+- **Database**: Row Level Security (future enhancement)
+
+#### **Data Synchronization**
+- **Batch Processing**: 100 records per page, configurable batch sizes
+- **Error Recovery**: Failed records marked for retry
+- **Duplicate Handling**: Upsert logic prevents duplicates
+- **Sync Status Tracking**: `pending`, `synced`, `failed` states
+
+#### **Performance Optimizations**
+- **Circuit Breaker**: Prevents cascade failures
+- **Retry Logic**: Exponential backoff for transient failures
+- **Bulk Operations**: Reduce database round trips
+- **Database Indexes**: Optimized queries for large datasets
+- **Connection Pooling**: Efficient database connections
+
+#### **Error Handling**
+- **Domain Exceptions**: Business rule violations
+- **Service Timeouts**: Configurable timeouts per operation
+- **Graceful Degradation**: Partial failures don't break entire sync
+- **Comprehensive Logging**: Request/response tracking
+
 ## Technology Stack
 
 - **Runtime**: Node.js with ES6 modules

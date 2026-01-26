@@ -152,6 +152,15 @@ export const responseHelpers = {
   },
 
   /**
+   * Send a not found response (404)
+   * @param {string} message - Error message
+   */
+  notFound(message = 'Resource not found') {
+    const response = ResponseTransformer.error(message);
+    return this.status(404).json(response);
+  },
+
+  /**
    * Send a bad request response (400)
    * @param {string} message - Error message
    * @param {object} errors - Optional error details

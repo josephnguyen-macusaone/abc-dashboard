@@ -34,7 +34,7 @@ jest.mock('next/dynamic', () => ({
 }))
 
 // Mock environment variables
-process.env.NEXT_PUBLIC_API_URL = 'http://localhost:5000/api/v1'
+process.env.NEXT_PUBLIC_API_URL = 'http://localhost:5001/api/v1'
 process.env.NEXT_PUBLIC_APP_ENV = 'test'
 
 // Global test utilities

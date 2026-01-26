@@ -99,7 +99,7 @@ export function ProfilePage() {
                     alt={`${displayName}'s avatar`}
                     className="object-cover rounded-2xl"
                   />
-                  <AvatarFallback className="bg-linear-to-br from-primary to-primary/80 text-4xl md:text-5xl font-bold text-primary-foreground rounded-2xl">
+                  <AvatarFallback className="bg-linear-to-br from-primary to-primary/80 text-4xl md:text-5xl font-semibold text-primary-foreground rounded-2xl">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -109,7 +109,7 @@ export function ProfilePage() {
               <div className="flex-1 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   {/* MAC USA ONE Typography: Title XL for user name */}
-                  <Typography variant="title-m" className="font-bold text-foreground">
+                  <Typography variant="title-m" className="font-semibold text-foreground">
                     {displayName}
                   </Typography>
                   <Badge variant="secondary" className="text-xs w-fit mt-1">

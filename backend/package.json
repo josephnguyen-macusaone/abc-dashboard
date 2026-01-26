@@ -33,7 +33,20 @@
     "test:email:config": "node tests/email-suite.test.js config",
     "test:email:send": "node tests/email-suite.test.js send",
     "test:email:templates": "node tests/email-suite.test.js templates",
+    "load-test": "k6 run scripts/load-test.js",
+    "load-test:ci": "k6 run --out json=load-test-results.json scripts/load-test.js",
+    "load-test:simple": "node scripts/simple-load-test.js",
+    "perf-test": "node scripts/quick-perf-test.js",
     "test:email:health": "node tests/email-suite.test.js health",
+
+    "sync:test-connectivity": "node -e \"import('./src/infrastructure/config/env.js').then(() => import('./src/shared/services/external-license-api-service.js')).then(({ExternalLicenseApiService}) => { const service = new ExternalLicenseApiService(); service.testConnectivity().then(result => { console.log('Connectivity Test:', result); process.exit(result.success ? 0 : 1); }); }).catch(console.error)\"",
+    "sync:start": "node -e \"import('./src/infrastructure/config/env.js').then(() => import('./src/infrastructure/scripts/sync-runner.js')).then(({runSync}) => runSync()).catch(console.error)\"",
+    "sync:status": "node -e \"import('./src/infrastructure/config/env.js').then(() => import('./src/infrastructure/scripts/sync-status.js')).then(({checkSyncStatus}) => checkSyncStatus()).catch(console.error)\"",
+
+    "db:create": "createdb abc_dashboard_dev || echo 'Database might already exist'",
+    "db:drop": "dropdb abc_dashboard_dev || echo 'Database might not exist'",
+    "db:reset": "./reset-database.sh",
+
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
@@ -57,6 +70,7 @@
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.1.0",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
     "pg": "^8.16.3",
     "swagger-jsdoc": "^6.2.8",
@@ -67,6 +81,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@jest/globals": "^30.2.0",
+    "autocannon": "^8.0.0",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
