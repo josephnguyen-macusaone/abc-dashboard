@@ -61,13 +61,8 @@ export class LicenseValidator {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.product = query.product.toString();
     }
-    if (query.plan) {
-      sanitized.filters = sanitized.filters || {};
-      sanitized.filters.plan = query.plan.toString();
-    }
-
     // ========================================================================
-    // Status and Term Filters
+    // Status, Plan, and Term Filters (support arrays)
     // ========================================================================
     if (query.status) {
       // Handle comma-separated status values (e.g., "pending,draft")
@@ -91,14 +86,48 @@ export class LicenseValidator {
       sanitized.filters.status = statusValues.length === 1 ? statusValues[0] : statusValues;
     }
 
-    if (query.term) {
-      if (!TERM_VALUES.includes(query.term)) {
-        throw new ValidationException(
-          `Invalid term value. Must be one of: ${TERM_VALUES.join(', ')}`
-        );
+    if (query.plan) {
+      // Handle comma-separated plan values (e.g., "Basic,Premium")
+      const planValues = Array.isArray(query.plan)
+        ? query.plan
+        : query.plan
+            .split(',')
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0);
+
+      // Validate each plan value
+      for (const plan of planValues) {
+        if (!PLAN_VALUES.includes(plan)) {
+          throw new ValidationException(
+            `Invalid plan value "${plan}". Must be one of: ${PLAN_VALUES.join(', ')}`
+          );
+        }
       }
+
       sanitized.filters = sanitized.filters || {};
-      sanitized.filters.term = query.term;
+      sanitized.filters.plan = planValues.length === 1 ? planValues[0] : planValues;
+    }
+
+    if (query.term) {
+      // Handle comma-separated term values (e.g., "monthly,yearly")
+      const termValues = Array.isArray(query.term)
+        ? query.term
+        : query.term
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0);
+
+      // Validate each term value
+      for (const term of termValues) {
+        if (!TERM_VALUES.includes(term)) {
+          throw new ValidationException(
+            `Invalid term value "${term}". Must be one of: ${TERM_VALUES.join(', ')}`
+          );
+        }
+      }
+
+      sanitized.filters = sanitized.filters || {};
+      sanitized.filters.term = termValues.length === 1 ? termValues[0] : termValues;
     }
 
     // ========================================================================

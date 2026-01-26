@@ -34,12 +34,27 @@ export const licenseSchemas = {
       })
       .description('General search term to search DBA field'),
 
-    status: Joi.string()
-      .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
-      .messages({
-        'any.only':
-          'Status must be one of: draft, active, expiring, expired, revoked, cancel, pending',
-      }),
+    status: Joi.alternatives().try(
+      Joi.string().valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'),
+      Joi.array().items(Joi.string().valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'))
+    ).messages({
+      'any.only':
+        'Status must be one of: draft, active, expiring, expired, revoked, cancel, pending',
+    }),
+
+    plan: Joi.alternatives().try(
+      Joi.string().valid('Basic', 'Premium', 'Enterprise'),
+      Joi.array().items(Joi.string().valid('Basic', 'Premium', 'Enterprise'))
+    ).messages({
+      'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
+    }),
+
+    term: Joi.alternatives().try(
+      Joi.string().valid('monthly', 'yearly'),
+      Joi.array().items(Joi.string().valid('monthly', 'yearly'))
+    ).messages({
+      'any.only': 'Term must be one of: monthly, yearly',
+    }),
 
     dba: Joi.string().min(1).max(255).messages({
       'string.min': 'DBA search must contain at least 1 character',

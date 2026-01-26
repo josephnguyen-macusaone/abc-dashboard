@@ -9,6 +9,8 @@ import { container } from '@/shared/di/container';
 export interface LicenseFilters {
   search?: string;
   status?: LicenseStatus | LicenseStatus[];
+  plan?: string | string[];
+  term?: LicenseTerm | LicenseTerm[];
   dba?: string;
 }
 
@@ -78,7 +80,7 @@ interface LicenseState {
   selectedLicenses: (number | string)[];
 
   // Actions
-  fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[] }>) => Promise<void>;
+  fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[] }>) => Promise<void>;
   fetchLicense: (id: number | string) => Promise<LicenseRecord | null>;
   createLicense: (licenseData: CreateLicenseRequest) => Promise<LicenseRecord>;
   updateLicense: (id: number | string, licenseData: UpdateLicenseRequest) => Promise<LicenseRecord>;
@@ -134,12 +136,18 @@ export const useLicenseStore = create<LicenseState>()(
                   delete queryParams[key];
               });
 
-            // Convert status array to comma-separated string for API compatibility
+            // Convert array filters to comma-separated strings for API compatibility
             const apiParams = {
               ...queryParams,
               status: Array.isArray(queryParams.status)
                 ? queryParams.status.join(',')
                 : queryParams.status,
+              plan: Array.isArray(queryParams.plan)
+                ? queryParams.plan.join(',')
+                : queryParams.plan,
+              term: Array.isArray(queryParams.term)
+                ? queryParams.term.join(',')
+                : queryParams.term,
               sortBy: queryParams.sortBy as 'dba' | 'status' | 'plan' | 'startsAt' | 'createdAt' | 'updatedAt' | 'lastActive' | 'seatsTotal' | 'seatsUsed' | 'smsBalance' | 'lastPayment' | undefined
             };
 

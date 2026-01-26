@@ -31,6 +31,8 @@ interface LicensesDataTableProps {
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
     status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
     search?: string;
   }) => void;
 }
@@ -107,6 +109,8 @@ export function LicensesDataTable({
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get('search');
     const statusParam = urlParams.get('status');
+    const planParam = urlParams.get('plan');
+    const termParam = urlParams.get('term');
 
     if (searchParam) {
       setTableSearch(tableId, searchParam);
@@ -120,8 +124,20 @@ export function LicensesDataTable({
       hasPerformedFilteringRef.current = true;
     }
 
+    if (planParam) {
+      const planValues = planParam.includes(',') ? planParam.split(',') : [planParam];
+      updateTableManualFilter(tableId, 'plan', planValues);
+      hasPerformedFilteringRef.current = true;
+    }
+
+    if (termParam) {
+      const termValues = termParam.includes(',') ? termParam.split(',') : [termParam];
+      updateTableManualFilter(tableId, 'term', termValues);
+      hasPerformedFilteringRef.current = true;
+    }
+
     // Reset page to 1 if there are any filters on mount
-    const hasFilters = !!(searchParam || statusParam);
+    const hasFilters = !!(searchParam || statusParam || planParam || termParam);
     if (hasFilters) {
       table.setPageIndex(0);
       setPage(1); // Reset URL query state
@@ -140,7 +156,9 @@ export function LicensesDataTable({
 
     // Check manual filter values (what user has selected)
     const hasManualFilters = (
-      (manualFilterValues.status && manualFilterValues.status.length > 0)
+      (manualFilterValues.status && manualFilterValues.status.length > 0) ||
+      (manualFilterValues.plan && manualFilterValues.plan.length > 0) ||
+      (manualFilterValues.term && manualFilterValues.term.length > 0)
     );
 
     // Check table column filters
@@ -225,6 +243,8 @@ export function LicensesDataTable({
         sortOrder: activeSort?.desc ? "desc" : "asc",
         search: trimmedValue,
         status: manualFilterValues.status,
+        plan: manualFilterValues.plan,
+        term: manualFilterValues.term,
       });
     }, 500); // 500ms debounce
   }, [table, onQueryChange, manualFilterValues, tableId, setTableSearch]);
@@ -299,6 +319,8 @@ export function LicensesDataTable({
       sortOrder?: "asc" | "desc";
       search?: string;
       status?: string | string[];
+      plan?: string | string[];
+      term?: string | string[];
     } = {
       page: targetPage,
       limit: tablePageSize,
@@ -314,6 +336,14 @@ export function LicensesDataTable({
     // Add manual filter values
     if (manualFilterValues.status && manualFilterValues.status.length > 0) {
       queryParams.status = manualFilterValues.status;
+    }
+
+    if (manualFilterValues.plan && manualFilterValues.plan.length > 0) {
+      queryParams.plan = manualFilterValues.plan;
+    }
+
+    if (manualFilterValues.term && manualFilterValues.term.length > 0) {
+      queryParams.term = manualFilterValues.term;
     }
 
     // Create a stable string representation for comparison

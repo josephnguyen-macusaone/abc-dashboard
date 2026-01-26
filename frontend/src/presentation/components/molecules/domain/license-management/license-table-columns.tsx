@@ -29,8 +29,10 @@ import { LICENSE_STATUS_OPTIONS_WITH_ICONS } from "./badges";
 // Status options for filter - Use centralized options with icons
 export const STATUS_OPTIONS = LICENSE_STATUS_OPTIONS_WITH_ICONS;
 
-// Plan options for filter - Use centralized constants with icons
-export const PLAN_OPTIONS = LICENSE_PLAN_OPTIONS_WITH_ICONS;
+// Plan options for filter - Filter to only show Basic and Premium (Pro)
+export const PLAN_OPTIONS = LICENSE_PLAN_OPTIONS_WITH_ICONS.filter(
+  (option) => option.value === "Basic" || option.value === "Premium"
+);
 
 // Term options for filter
 export const TERM_OPTIONS = [
@@ -163,7 +165,17 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
           showIcon={true}
         />
       ),
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const plan = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(plan) : value === plan;
+      },
+      meta: {
+        label: "Plan",
+        variant: "multiSelect",
+        options: PLAN_OPTIONS,
+        icon: Briefcase,
+      },
     },
     {
       id: "term",
@@ -178,7 +190,17 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       size: 100,
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const term = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(term) : value === term;
+      },
+      meta: {
+        label: "Term",
+        variant: "multiSelect",
+        options: TERM_OPTIONS,
+        icon: CalendarRange,
+      },
     },
     {
       id: "lastPayment",

@@ -47,6 +47,8 @@ export interface LicenseTableSectionProps {
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
     status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
     search?: string;
   }) => void;
 }

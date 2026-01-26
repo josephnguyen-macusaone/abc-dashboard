@@ -58,6 +58,8 @@ interface LicenseManagementProps {
     sortOrder?: "asc" | "desc";
     search?: string;
     status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
   }) => void;
   /** Additional CSS classes */
   className?: string;

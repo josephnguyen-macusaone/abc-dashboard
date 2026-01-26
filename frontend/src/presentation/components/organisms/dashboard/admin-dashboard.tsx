@@ -91,15 +91,30 @@ export function AdminDashboard({
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
     status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
     search?: string;
   }) => {
     try {
+      // Convert array filters to comma-separated strings for API
+      const statusParam = Array.isArray(params.status)
+        ? params.status.join(',')
+        : params.status;
+      const planParam = Array.isArray(params.plan)
+        ? params.plan.join(',')
+        : params.plan;
+      const termParam = Array.isArray(params.term)
+        ? params.term.join(',')
+        : params.term;
+
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
-        status: params.status as any,
+        status: statusParam as any,
+        plan: planParam as any,
+        term: termParam as any,
         search: params.search,
       });
     } catch (error) {

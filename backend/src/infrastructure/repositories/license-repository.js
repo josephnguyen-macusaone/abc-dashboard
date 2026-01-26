@@ -177,8 +177,13 @@ export class LicenseRepository extends ILicenseRepository {
     if (filters.product && !filters.search) {
       query = query.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
+    // Plan filter - support single value or array
     if (filters.plan && !filters.search) {
-      query = query.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+      if (Array.isArray(filters.plan)) {
+        query = query.whereIn('plan', filters.plan);
+      } else {
+        query = query.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+      }
     }
 
     // Start date range
@@ -234,9 +239,13 @@ export class LicenseRepository extends ILicenseRepository {
       }
     }
 
-    // Term filter
+    // Term filter - support single value or array
     if (filters.term) {
-      query = query.where('term', filters.term);
+      if (Array.isArray(filters.term)) {
+        query = query.whereIn('term', filters.term);
+      } else {
+        query = query.where('term', filters.term);
+      }
     }
 
     // Zip filter
@@ -456,8 +465,13 @@ export class LicenseRepository extends ILicenseRepository {
     if (filters.product && !filters.search) {
       filteredQuery = filteredQuery.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
+    // Plan filter - support single value or array
     if (filters.plan && !filters.search) {
-      filteredQuery = filteredQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+      if (Array.isArray(filters.plan)) {
+        filteredQuery = filteredQuery.whereIn('plan', filters.plan);
+      } else {
+        filteredQuery = filteredQuery.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+      }
     }
 
     // Date range filters
@@ -511,9 +525,13 @@ export class LicenseRepository extends ILicenseRepository {
       }
     }
 
-    // Term filter
+    // Term filter - support single value or array
     if (filters.term) {
-      filteredQuery = filteredQuery.where('term', filters.term);
+      if (Array.isArray(filters.term)) {
+        filteredQuery = filteredQuery.whereIn('term', filters.term);
+      } else {
+        filteredQuery = filteredQuery.where('term', filters.term);
+      }
     }
 
     // Zip filter

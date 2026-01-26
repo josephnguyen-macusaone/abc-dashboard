@@ -170,12 +170,20 @@ export function LicenseManagementPage() {
     sortOrder?: "asc" | "desc";
     search?: string;
     status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
   }) => {
     try {
-      // Convert status array to comma-separated string for API
+      // Convert array filters to comma-separated strings for API
       const statusParam = Array.isArray(params.status)
         ? params.status.join(',')
         : params.status;
+      const planParam = Array.isArray(params.plan)
+        ? params.plan.join(',')
+        : params.plan;
+      const termParam = Array.isArray(params.term)
+        ? params.term.join(',')
+        : params.term;
 
       await fetchLicenses({
         page: params.page,
@@ -184,6 +192,8 @@ export function LicenseManagementPage() {
         sortOrder: params.sortOrder,
         search: params.search,
         status: statusParam as any,
+        plan: planParam as any,
+        term: termParam as any,
       });
     } catch (error) {
       if (shouldShowError(error)) {
