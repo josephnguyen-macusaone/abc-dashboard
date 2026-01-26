@@ -166,11 +166,17 @@ export function LicensesDataGrid({
   const [searchInput, setSearchInput] = React.useState(""); // What user types
   const [searchQuery, setSearchQuery] = React.useState(""); // What gets sent to API (debounced)
 
-  // Debounce search input to API calls (300ms delay)
+  // Debounce search input to API calls (500ms delay to wait for user to finish typing)
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setSearchQuery(searchInput);
-    }, 300);
+      const trimmedInput = searchInput.trim();
+      setSearchQuery(trimmedInput);
+      // Clear the reset tracking when search query updates (after debounce)
+      // This allows reset to happen again for the new search value
+      if (hasResetPageForSearchRef.current !== trimmedInput) {
+        hasResetPageForSearchRef.current = "";
+      }
+    }, 500); // 500ms debounce to wait for complete editing
 
     return () => clearTimeout(timeoutId);
   }, [searchInput]);
@@ -200,6 +206,9 @@ export function LicensesDataGrid({
   const lastSortRef = React.useRef<string>("");
   const lastSearchRef = React.useRef<string>("");
   const lastFiltersRef = React.useRef<string>("");
+  const lastQueryRef = React.useRef<string>(""); // Track last query to prevent duplicate calls
+  const isResettingRef = React.useRef(false); // Track if we're in a reset operation
+  const hasResetPageForSearchRef = React.useRef<string>(""); // Track which search we've already reset page for
 
   // Extract table state values directly (same as data-table)
   const tablePageIndex = gridState.table.getState().pagination.pageIndex;
@@ -208,7 +217,10 @@ export function LicensesDataGrid({
   const tableColumnFilters = gridState.table.getState().columnFilters;
 
   // Manual query change handler (adapted from data-table)
+  // Only triggers API calls when search/filter/pagination actually changes (after debounce)
   React.useEffect(() => {
+    // Skip if we're in a reset operation to prevent duplicate calls
+    if (isResettingRef.current) return;
     if (!onQueryChange) return;
 
     const activeSort = tableSorting?.[0];
@@ -224,6 +236,13 @@ export function LicensesDataGrid({
       lastSortRef.current = currentSortString;
       lastSearchRef.current = currentSearch;
       lastFiltersRef.current = currentFiltersString;
+      // If there's a search on mount, ensure page is 1
+      if (currentSearch && tablePageIndex !== 0) {
+        isResettingRef.current = true;
+        gridState.table.setPageIndex(0);
+        lastPageIndexRef.current = 0;
+        isResettingRef.current = false;
+      }
       return;
     }
 
@@ -235,18 +254,46 @@ export function LicensesDataGrid({
     const searchChanged = currentSearch !== lastSearchRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current;
 
+    // Reset page to 1 when search or filters change
+    // Only reset once per search value to prevent loops
+    if (searchChanged) {
+      // Only reset if we haven't already reset for this exact search value
+      if (hasResetPageForSearchRef.current !== currentSearch) {
+        if (tablePageIndex !== 0) {
+          isResettingRef.current = true;
+          gridState.table.setPageIndex(0);
+          lastPageIndexRef.current = 0;
+        }
+        hasResetPageForSearchRef.current = currentSearch; // Mark that we've reset for this search
+      }
+    }
+
+    if (filtersChanged) {
+      // Reset page when filters change
+      if (tablePageIndex !== 0) {
+        isResettingRef.current = true;
+        gridState.table.setPageIndex(0);
+        lastPageIndexRef.current = 0;
+      }
+    }
+
+    // Early return: Skip if only pagination changed due to our reset (prevent loop)
+    // But allow through if search/filter changed (we need to call API)
+    if (isResettingRef.current && paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
+      isResettingRef.current = false;
+      // Update refs to reflect the reset
+      lastPageIndexRef.current = 0;
+      return;
+    }
+
+    // Early return if nothing changed
     if (!paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
       return;
     }
 
-    // Update refs
-    lastPageIndexRef.current = tablePageIndex;
-    lastPageSizeRef.current = tablePageSize;
-    lastSortRef.current = currentSortString;
-    lastSearchRef.current = currentSearch;
-    lastFiltersRef.current = currentFiltersString;
-
     // Build query params with proper filter processing
+    // Always use page 1 when search or filters change, otherwise use current page
+    const targetPage = (searchChanged || filtersChanged) ? 1 : (tablePageIndex + 1);
     const apiParams: {
       page: number;
       limit: number;
@@ -255,7 +302,7 @@ export function LicensesDataGrid({
       search?: string;
       status?: string;
     } = {
-      page: tablePageIndex + 1,
+      page: targetPage,
       limit: tablePageSize,
       sortBy: activeSort?.id,
       sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
@@ -294,9 +341,27 @@ export function LicensesDataGrid({
       });
     }
 
-    // Call API
-    onQueryChange(apiParams);
-  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, onQueryChange]);
+    // Create a stable string representation for comparison
+    const queryString = JSON.stringify(apiParams);
+
+    // Only call onQueryChange if the query actually changed (prevent duplicate calls)
+    if (queryString !== lastQueryRef.current) {
+      lastQueryRef.current = queryString;
+      onQueryChange(apiParams);
+    }
+
+    // Update refs after API call
+    // Use 0 for pageIndex if search/filter changed (we just reset it)
+    const finalPageIndex = (searchChanged || filtersChanged) ? 0 : tablePageIndex;
+    lastPageIndexRef.current = finalPageIndex;
+    lastPageSizeRef.current = tablePageSize;
+    lastSortRef.current = currentSortString;
+    lastSearchRef.current = currentSearch;
+    lastFiltersRef.current = currentFiltersString;
+
+    // Clear reset flag after processing
+    isResettingRef.current = false;
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, onQueryChange, gridState.table]);
 
   // Loading state
   if (isLoading) {
@@ -333,8 +398,8 @@ export function LicensesDataGrid({
     <div className={className}>
       <div className="space-y-5">
         {/* Toolbar with Search, Filter, Sort, Row Height, View, and Action buttons */}
-        <div className="flex flex-wrap items-center gap-2 justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-nowrap md:flex-wrap items-center gap-2 md:justify-between overflow-x-auto">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Custom search that uses local state */}
             <div className="relative">
               <SearchBar
@@ -342,7 +407,7 @@ export function LicensesDataGrid({
                 value={searchInput}
                 onValueChange={setSearchInput}
                 allowClear
-                className="w-40 lg:w-56"
+                className="w-32 md:w-40 lg:w-56"
                 inputClassName="h-8"
               />
             </div>
@@ -353,23 +418,29 @@ export function LicensesDataGrid({
           </div>
           {/* Action buttons */}
           {hasChanges && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0 ml-auto md:ml-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleReset}
                 disabled={isSaving}
+                className="gap-2"
+                aria-label="Discard changes"
               >
-                <RotateCcw className="h-4 w-4" />
-                Discard
+                <RotateCcw className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">Discard</span>
               </Button>
               <Button
                 size="sm"
                 onClick={handleSave}
                 disabled={!onSave || isSaving}
+                className="gap-2"
+                aria-label={isSaving ? "Saving changes" : "Save changes"}
               >
-                <Save className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Changes"}
+                <Save className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </span>
               </Button>
             </div>
           )}
