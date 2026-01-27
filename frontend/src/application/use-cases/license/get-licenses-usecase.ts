@@ -25,11 +25,19 @@ export class GetLicensesUseCaseImpl implements GetLicensesUseCase {
       // Silent operation
 
       // Convert DTO to domain specification
+      // Convert array filters to comma-separated strings for specification
+      const planValue = Array.isArray(params.plan)
+        ? params.plan.join(',')
+        : params.plan;
+      const termValue = Array.isArray(params.term)
+        ? params.term.join(',')
+        : params.term ? String(params.term) : undefined;
+
       const specification: LicenseSpecification = {
         dba: params.dba,
-        status: params.status,
-        plan: params.plan,
-        term: params.term,
+        status: typeof params.status === 'string' ? params.status : undefined,
+        plan: planValue,
+        term: termValue,
         pagination: params.page && params.limit ? {
           page: params.page,
           limit: params.limit

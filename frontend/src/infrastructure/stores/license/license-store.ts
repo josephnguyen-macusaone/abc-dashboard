@@ -137,7 +137,7 @@ export const useLicenseStore = create<LicenseState>()(
               });
 
             // Convert array filters to comma-separated strings for API compatibility
-            const apiParams = {
+            const apiParams: any = {
               ...queryParams,
               status: Array.isArray(queryParams.status)
                 ? queryParams.status.join(',')

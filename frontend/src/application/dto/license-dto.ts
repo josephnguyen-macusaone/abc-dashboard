@@ -56,8 +56,8 @@ export interface LicenseListQueryDTO {
   dba?: string;
   zip?: string;
   status?: LicenseStatus | string;
-  plan?: string;
-  term?: LicenseTerm;
+  plan?: string | string[];
+  term?: LicenseTerm | string | string[];
   seatsTotal?: {
     min?: number;
     max?: number;

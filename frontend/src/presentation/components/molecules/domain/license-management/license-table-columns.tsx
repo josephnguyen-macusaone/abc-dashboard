@@ -26,8 +26,10 @@ import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
 import { LICENSE_STATUS_LABELS } from "@/shared/constants/license";
 import { LICENSE_STATUS_OPTIONS_WITH_ICONS } from "./badges";
 
-// Status options for filter - Use centralized options with icons
-export const STATUS_OPTIONS = LICENSE_STATUS_OPTIONS_WITH_ICONS;
+// Status options for filter - Filter to only show Active and Cancelled
+export const STATUS_OPTIONS = LICENSE_STATUS_OPTIONS_WITH_ICONS.filter(
+  (option) => option.value === "active" || option.value === "cancel"
+);
 
 // Plan options for filter - Filter to only show Basic and Premium (Pro)
 export const PLAN_OPTIONS = LICENSE_PLAN_OPTIONS_WITH_ICONS.filter(
