@@ -43,12 +43,17 @@ export class LicenseListResponseDto extends BaseDto {
 
   /**
    * Get pagination meta
-   * @returns {Object} Pagination metadata with stats
+   * @returns {Object} Flattened pagination metadata with total
    */
   getMeta() {
+    const paginationData = this.pagination.toJSON ? this.pagination.toJSON() : this.pagination;
     return {
-      pagination: this.pagination.toJSON ? this.pagination.toJSON() : this.pagination,
-      stats: this.stats,
+      page: paginationData.page,
+      limit: paginationData.limit,
+      total: this.total || 0,
+      totalPages: paginationData.totalPages,
+      hasNext: paginationData.hasNext,
+      hasPrev: paginationData.hasPrev,
     };
   }
 }

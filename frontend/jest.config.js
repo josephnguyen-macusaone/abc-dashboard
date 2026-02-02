@@ -23,7 +23,7 @@ const customJestConfig = {
     '^@assets/(.*)$': '<rootDir>/assets/$1',
     // Handle CSS and asset imports
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/tests/__mocks__/fileMock.js',
+    '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
@@ -47,7 +47,6 @@ const customJestConfig = {
     },
   },
   testMatch: [
-    '<rootDir>/tests/**/*.(test|spec).(js|jsx|ts|tsx)',
     '<rootDir>/src/**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',
   ],
   transformIgnorePatterns: [

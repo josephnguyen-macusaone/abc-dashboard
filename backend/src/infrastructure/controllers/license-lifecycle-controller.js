@@ -45,16 +45,9 @@ export class LicenseLifecycleController {
         reason: renewalOptions.reason || 'Manual renewal via API',
       };
 
-      const renewedLicense = await this.renewLicenseUseCase.execute(
-        id,
-        renewalOptions,
-        context
-      );
+      const renewedLicense = await this.renewLicenseUseCase.execute(id, renewalOptions, context);
 
-      return res.success(
-        { license: renewedLicense },
-        'License renewed successfully'
-      );
+      return res.success({ license: renewedLicense }, 'License renewed successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -69,7 +62,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Get renewal preview
@@ -86,10 +79,7 @@ export class LicenseLifecycleController {
         userId: req.user?.id,
       });
 
-      const preview = await this.renewLicenseUseCase.getRenewalPreview(
-        id,
-        renewalOptions
-      );
+      const preview = await this.renewLicenseUseCase.getRenewalPreview(id, renewalOptions);
 
       return res.success(preview, 'Renewal preview retrieved successfully');
     } catch (error) {
@@ -106,7 +96,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Extend license expiration date
@@ -141,10 +131,7 @@ export class LicenseLifecycleController {
         context
       );
 
-      return res.success(
-        { license: extendedLicense },
-        'License expiration extended successfully'
-      );
+      return res.success({ license: extendedLicense }, 'License expiration extended successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -159,7 +146,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   // ========================================================================
   // EXPIRATION OPERATIONS
@@ -194,10 +181,7 @@ export class LicenseLifecycleController {
         context
       );
 
-      return res.success(
-        { license: expiredLicense },
-        'License expired successfully'
-      );
+      return res.success({ license: expiredLicense }, 'License expired successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -212,7 +196,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Get expiration preview
@@ -229,10 +213,7 @@ export class LicenseLifecycleController {
         userId: req.user?.id,
       });
 
-      const preview = await this.expireLicenseUseCase.previewExpiration(
-        id,
-        expirationOptions
-      );
+      const preview = await this.expireLicenseUseCase.previewExpiration(id, expirationOptions);
 
       return res.success(preview, 'Expiration preview retrieved successfully');
     } catch (error) {
@@ -249,7 +230,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Reactivate an expired/suspended license
@@ -273,15 +254,9 @@ export class LicenseLifecycleController {
         reason: reason || 'Manual reactivation via API',
       };
 
-      const reactivatedLicense = await this.licenseLifecycleService.reactivateLicense(
-        id,
-        context
-      );
+      const reactivatedLicense = await this.licenseLifecycleService.reactivateLicense(id, context);
 
-      return res.success(
-        { license: reactivatedLicense },
-        'License reactivated successfully'
-      );
+      return res.success({ license: reactivatedLicense }, 'License reactivated successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -296,7 +271,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   // ========================================================================
   // BULK OPERATIONS
@@ -368,7 +343,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Bulk expire licenses
@@ -416,7 +391,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   // ========================================================================
   // MONITORING & STATUS
@@ -426,18 +401,30 @@ export class LicenseLifecycleController {
    * Get licenses requiring attention
    */
   getLicensesRequiringAttention = async (req, res) => {
-    console.log('🎯 ATTENTION CONTROLLER: Called - returning hardcoded response');
-    return res.status(200).json({
-      success: true,
-      message: 'Attention endpoint is working!',
-      data: {
-        expiringSoon: [],
-        expired: [],
-        suspended: [],
-        total: 0
-      }
-    });
-  }
+    try {
+      const includeExpiringSoon = req.query.includeExpiringSoon !== 'false';
+      const includeExpired = req.query.includeExpired !== 'false';
+      const includeSuspended = req.query.includeSuspended === 'true';
+      const daysThreshold = parseInt(req.query.daysThreshold, 10) || 30;
+
+      const data = await this.licenseLifecycleService.getLicensesRequiringAttention({
+        includeExpiringSoon,
+        includeExpired,
+        includeSuspended,
+        daysThreshold,
+      });
+
+      return res.success(data, 'Licenses requiring attention retrieved successfully');
+    } catch (error) {
+      logger.error('Get licenses requiring attention failed', {
+        correlationId: req.correlationId,
+        error: error.message,
+        userId: req.user?.id,
+      });
+
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  };
 
   /**
    * Get license lifecycle status
@@ -488,7 +475,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Trigger manual lifecycle processing
@@ -516,7 +503,9 @@ export class LicenseLifecycleController {
           results = await this.licenseLifecycleService.updateGracePeriods();
           break;
         default:
-          return res.badRequest('Invalid operation. Supported: expiring_reminders, expire_licenses, update_grace_periods');
+          return res.badRequest(
+            'Invalid operation. Supported: expiring_reminders, expire_licenses, update_grace_periods'
+          );
       }
 
       return res.success(results, `Lifecycle operation '${operation}' completed successfully`);
@@ -530,7 +519,7 @@ export class LicenseLifecycleController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 }
 
 export default LicenseLifecycleController;

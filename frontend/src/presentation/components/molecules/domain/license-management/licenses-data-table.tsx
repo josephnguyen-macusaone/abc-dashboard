@@ -328,10 +328,8 @@ export function LicensesDataTable({
       sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
     };
 
-    // Add search value if present (from debounced handler)
-    if (searchValue.trim()) {
-      queryParams.search = searchValue.trim();
-    }
+    // Include search so store clears filter when user clears search; send empty string when cleared
+    queryParams.search = searchValue.trim();
 
     // Add manual filter values
     if (manualFilterValues.status && manualFilterValues.status.length > 0) {

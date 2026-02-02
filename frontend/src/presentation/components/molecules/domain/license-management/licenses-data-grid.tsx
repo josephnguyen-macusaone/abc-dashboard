@@ -23,6 +23,7 @@ import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { getLicenseGridColumns } from "./license-grid-columns";
 import type { LicenseRecord } from "@/types";
+import logger from "@/shared/helpers/logger";
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
@@ -120,7 +121,7 @@ export function LicensesDataGrid({
       // Return row index 0 to scroll to the newly added row at the top
       return { rowIndex: 0, columnId: "dba" };
     } catch (error) {
-      console.error('Failed to add new license row:', error);
+      logger.error('Failed to add new license row', { error });
       throw error;
     }
   }, [onAddRow]);

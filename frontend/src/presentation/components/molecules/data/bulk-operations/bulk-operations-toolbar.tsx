@@ -13,7 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/presentation/components/atoms/primitives/dropdown-menu';
-import { cn } from '@/shared/helpers';
+import { cn, logger } from '@/shared/helpers';
+
+const log = logger.createChild({ component: 'BulkOperationsToolbar' });
 
 // ============================================================================
 // Types
@@ -109,7 +111,7 @@ export function BulkOperationsToolbar({
       try {
         await operation.onExecute(selectedIds);
       } catch (error) {
-        console.error(`Bulk operation ${operation.id} failed:`, error);
+        log.error(`Bulk operation ${operation.id} failed`, { operationId: operation.id, error });
         // Error handling should be done in the operation callback
       }
     },
@@ -254,8 +256,7 @@ export const USER_BULK_OPERATIONS = {
     description: 'Activate selected users',
     icon: UserCheck,
     onExecute: async (ids) => {
-      // API call to bulk activate
-      console.log('Activating users:', ids);
+      log.debug('Activating users', { ids });
       onSuccess?.();
     },
   }),
@@ -266,8 +267,7 @@ export const USER_BULK_OPERATIONS = {
     description: 'Deactivate selected users',
     icon: UserX,
     onExecute: async (ids) => {
-      // API call to bulk deactivate
-      console.log('Deactivating users:', ids);
+      log.debug('Deactivating users', { ids });
       onSuccess?.();
     },
   }),
@@ -282,8 +282,7 @@ export const USER_BULK_OPERATIONS = {
     confirmationMessage:
       'Are you sure you want to delete these users? This action cannot be undone.',
     onExecute: async (ids) => {
-      // API call to bulk delete
-      console.log('Deleting users:', ids);
+      log.debug('Deleting users', { ids });
       onSuccess?.();
     },
   }),
@@ -294,8 +293,7 @@ export const USER_BULK_OPERATIONS = {
     description: 'Export selected users to CSV',
     icon: Download,
     onExecute: async (ids) => {
-      // API call to export
-      console.log('Exporting users:', ids);
+      log.debug('Exporting users', { ids });
       onSuccess?.();
     },
   }),
@@ -311,8 +309,7 @@ export const LICENSE_BULK_OPERATIONS = {
     description: 'Activate selected licenses',
     icon: UserCheck,
     onExecute: async (ids) => {
-      // API call to bulk activate
-      console.log('Activating licenses:', ids);
+      log.debug('Activating licenses', { ids });
       onSuccess?.();
     },
   }),
@@ -324,8 +321,7 @@ export const LICENSE_BULK_OPERATIONS = {
     icon: UserX,
     requiresConfirmation: true,
     onExecute: async (ids) => {
-      // API call to bulk cancel
-      console.log('Canceling licenses:', ids);
+      log.debug('Canceling licenses', { ids });
       onSuccess?.();
     },
   }),
@@ -340,8 +336,7 @@ export const LICENSE_BULK_OPERATIONS = {
     confirmationMessage:
       'Are you sure you want to delete these licenses? This action cannot be undone.',
     onExecute: async (ids) => {
-      // API call to bulk delete
-      console.log('Deleting licenses:', ids);
+      log.debug('Deleting licenses', { ids });
       onSuccess?.();
     },
   }),
@@ -352,8 +347,7 @@ export const LICENSE_BULK_OPERATIONS = {
     description: 'Export selected licenses to CSV',
     icon: Download,
     onExecute: async (ids) => {
-      // API call to export
-      console.log('Exporting licenses:', ids);
+      log.debug('Exporting licenses', { ids });
       onSuccess?.();
     },
   }),

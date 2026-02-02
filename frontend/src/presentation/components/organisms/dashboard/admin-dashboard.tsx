@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import type { LicenseRecord } from '@/types';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 import type { LicenseDateRange } from '@/application/use-cases';
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
+import { useDataTableStore } from '@/infrastructure/stores/user';
 import { logger } from '@/shared/helpers';
+
+const LICENSES_TABLE_ID = 'licenses-data-table';
 import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
 
 // Dynamically import heavy dashboard components for better code splitting
@@ -43,16 +46,63 @@ export function AdminDashboard({
   const paginationFromStore = useLicenseStore(selectLicensePagination);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
 
-  const defaultRange = useMemo<LicenseDateRange>(() => {
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const setTableSearch = useDataTableStore(state => state.setTableSearch);
+  const clearTableFilters = useDataTableStore(state => state.clearTableFilters);
+
+  // Default range: follow dates we have in data (min/max startsAt), else current month
+  const defaultRangeFromData = useMemo<LicenseDateRange>(() => {
+    const licensesToUse = licensesProp ?? licensesFromStore;
+    if (!licensesToUse?.length) {
+      const now = new Date();
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      to.setHours(23, 59, 59, 999);
+      return { from, to };
+    }
+    let minDate: Date | null = null;
+    let maxDate: Date | null = null;
+    for (const license of licensesToUse) {
+      const raw = (license as { startsAt?: string }).startsAt;
+      if (!raw) continue;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) continue;
+      if (minDate == null || d < minDate) minDate = d;
+      if (maxDate == null || d > maxDate) maxDate = d;
+    }
+    if (minDate == null || maxDate == null) {
+      const now = new Date();
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      to.setHours(23, 59, 59, 999);
+      return { from, to };
+    }
+    const from = new Date(minDate);
     from.setHours(0, 0, 0, 0);
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const to = new Date(maxDate);
     to.setHours(23, 59, 59, 999);
     return { from, to };
-  }, []);
+  }, [licensesProp, licensesFromStore]);
 
-  const [dateRange, setDateRange] = useState<LicenseDateRange>(defaultRange);
+  const [dateRange, setDateRange] = useState<LicenseDateRange>(() => ({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
+  }));
+
+  // Sync date range to data range when licenses first load (so range "follows" the dates we have)
+  const hasSyncedRangeRef = useRef(false);
+  useEffect(() => {
+    const licensesToUse = licensesProp ?? licensesFromStore;
+    if (licensesToUse.length > 0 && defaultRangeFromData.from && defaultRangeFromData.to) {
+      if (!hasSyncedRangeRef.current) {
+        hasSyncedRangeRef.current = true;
+        setDateRange(defaultRangeFromData);
+      }
+    } else if (licensesToUse.length === 0) {
+      hasSyncedRangeRef.current = false;
+    }
+  }, [licensesProp, licensesFromStore, defaultRangeFromData]);
 
   // Memoize the current dateRange to prevent unnecessary re-renders
   const memoizedDateRange = useMemo(() => dateRange, [
@@ -68,20 +118,24 @@ export function AdminDashboard({
 
   const handleDateRangeChange = useCallback(
     (values: { range: DateRange; rangeCompare?: DateRange }) => {
-      // If the range is cleared (from is undefined), reset to current month
       if (!values.range.from) {
-        const now = new Date();
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        currentMonthStart.setHours(0, 0, 0, 0);
-        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        currentMonthEnd.setHours(23, 59, 59, 999);
-
-        setDateRange({ from: currentMonthStart, to: currentMonthEnd });
+        // Clear button: no date filter, revert list to default (first page, no filters)
+        setDateRange({});
+        setTableSearch(LICENSES_TABLE_ID, '');
+        clearTableFilters(LICENSES_TABLE_ID);
+        fetchLicenses({
+          page: 1,
+          limit: 20,
+          search: '',
+          status: undefined,
+          plan: undefined,
+          term: undefined,
+        });
       } else {
         setDateRange(values.range);
       }
     },
-    [],
+    [fetchLicenses, setTableSearch, clearTableFilters],
   );
 
   // Handle pagination and filtering changes using Zustand store
@@ -133,14 +187,29 @@ export function AdminDashboard({
     });
   }, [licensesProp, fetchLicenses]);
 
+  // Periodic refresh so UI shows updates after background sync (every 2 min)
+  useEffect(() => {
+    if (licensesProp) return;
+
+    const REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+    const intervalId = setInterval(() => {
+      fetchLicenses({
+        page: paginationFromStore.page,
+        limit: paginationFromStore.limit,
+      });
+    }, REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [licensesProp, fetchLicenses, paginationFromStore.page, paginationFromStore.limit]);
+
   return (
     <div className={`space-y-6 ${className || ''}`}>
       <Suspense fallback={<LicenseMetricsSkeleton columns={4} />}>
         <LicenseMetricsSection
           licenses={licenses}
           dateRange={memoizedDateRange}
-          initialDateFrom={defaultRange.from}
-          initialDateTo={defaultRange.to}
+          initialDateFrom={defaultRangeFromData.from}
+          initialDateTo={defaultRangeFromData.to}
           onDateRangeChange={handleDateRangeChange}
           isLoading={isLoadingLicenses}
           totalCount={totalCount}

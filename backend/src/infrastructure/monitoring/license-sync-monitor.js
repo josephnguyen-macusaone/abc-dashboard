@@ -29,24 +29,45 @@ export class LicenseSyncMonitor {
    */
   _initializeMetrics() {
     this.metrics.set('sync_operations_total', { type: 'counter', value: 0, labels: new Map() });
-    this.metrics.set('sync_operations_duration', { type: 'histogram', value: [], buckets: [1, 5, 10, 30, 60, 120, 300] });
-    this.metrics.set('sync_operations_errors_total', { type: 'counter', value: 0, labels: new Map() });
-    this.metrics.set('sync_data_processed_total', { type: 'counter', value: 0 });
+    this.metrics.set('sync_operations_duration', {
+      type: 'histogram',
+      value: [],
+      buckets: [1, 5, 10, 30, 60, 120, 300],
+    });
+    this.metrics.set('sync_operations_errors_total', {
+      type: 'counter',
+      value: 0,
+      labels: new Map(),
+    });
+    this.metrics.set('sync_data_processed_total', { type: 'counter', value: 0, labels: new Map() }); // Added labels
     this.metrics.set('sync_memory_peak_usage', { type: 'gauge', value: 0 });
     this.metrics.set('sync_active_operations', { type: 'gauge', value: 0 });
-    this.metrics.set('external_api_requests_total', { type: 'counter', value: 0, labels: new Map() });
-    this.metrics.set('external_api_request_duration', { type: 'histogram', value: [], buckets: [0.1, 0.5, 1, 2, 5, 10] });
+    this.metrics.set('external_api_requests_total', {
+      type: 'counter',
+      value: 0,
+      labels: new Map(),
+    });
+    this.metrics.set('external_api_request_duration', {
+      type: 'histogram',
+      value: [],
+      buckets: [0.1, 0.5, 1, 2, 5, 10],
+    });
     this.metrics.set('external_api_errors_total', { type: 'counter', value: 0, labels: new Map() });
     this.metrics.set('validation_errors_total', { type: 'counter', value: 0, labels: new Map() });
     this.metrics.set('database_operations_total', { type: 'counter', value: 0, labels: new Map() });
-    this.metrics.set('database_operation_duration', { type: 'histogram', value: [], buckets: [0.01, 0.05, 0.1, 0.5, 1, 5] });
+    this.metrics.set('database_operation_duration', {
+      type: 'histogram',
+      value: [],
+      buckets: [0.01, 0.05, 0.1, 0.5, 1, 5],
+    });
   }
 
   /**
    * Record sync operation start
    */
   recordSyncStart(operationType, options = {}) {
-    const operationId = options.operationId || `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const operationId =
+      options.operationId || `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     this.incrementGauge('sync_active_operations', 1);
 
@@ -71,7 +92,9 @@ export class LicenseSyncMonitor {
     const duration = Date.now() - operationContext.startTime;
 
     this.incrementGauge('sync_active_operations', -1);
-    this.incrementCounter('sync_operations_total', { operation_type: operationContext.operationType });
+    this.incrementCounter('sync_operations_total', {
+      operation_type: operationContext.operationType,
+    });
     this.recordHistogram('sync_operations_duration', duration);
 
     if (result.success) {
@@ -84,7 +107,7 @@ export class LicenseSyncMonitor {
     } else {
       this.incrementCounter('sync_operations_errors_total', {
         operation_type: operationContext.operationType,
-        error_type: result.errorType || 'unknown'
+        error_type: result.errorType || 'unknown',
       });
 
       logger.error('Sync operation failed', {
@@ -163,7 +186,8 @@ export class LicenseSyncMonitor {
     this.setGauge('sync_memory_peak_usage', peakUsage);
 
     // Alert on high memory usage
-    if (peakUsage > 100 * 1024 * 1024) { // 100MB
+    if (peakUsage > 100 * 1024 * 1024) {
+      // 100MB
       this.createAlert('warning', 'HIGH_MEMORY_USAGE', {
         peakUsage,
         threshold: '100MB',
@@ -179,7 +203,7 @@ export class LicenseSyncMonitor {
 
     this.incrementCounter('database_operations_total', {
       operation_type: operationType,
-      success: success.toString()
+      success: success.toString(),
     });
     this.recordHistogram('database_operation_duration', duration);
 
@@ -191,7 +215,8 @@ export class LicenseSyncMonitor {
     }
 
     // Check for slow database operations
-    if (duration > 1000) { // 1 second
+    if (duration > 1000) {
+      // 1 second
       this.createAlert('warning', 'SLOW_DATABASE_OPERATION', {
         operationType,
         duration,
@@ -268,13 +293,28 @@ export class LicenseSyncMonitor {
   getMetrics() {
     const metrics = {};
 
-    for (const [key, metric] of this.metrics.entries()) {
-      metrics[key] = {
-        type: metric.type,
-        value: metric.value,
-        labels: metric.labels ? Object.fromEntries(metric.labels) : undefined,
-        ...(metric.buckets && { buckets: metric.buckets }),
-      };
+    // Safety check for metrics Map
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      logger.warn('Metrics Map not properly initialized in getMetrics()');
+      return metrics;
+    }
+
+    try {
+      for (const [key, metric] of this.metrics.entries()) {
+        if (!metric) continue;
+
+        metrics[key] = {
+          type: metric.type,
+          value: metric.value,
+          labels:
+            metric.labels && metric.labels instanceof Map
+              ? Object.fromEntries(metric.labels)
+              : undefined,
+          ...(metric.buckets && { buckets: metric.buckets }),
+        };
+      }
+    } catch (error) {
+      logger.error('Error in getMetrics()', { error: error.message, stack: error.stack });
     }
 
     return metrics;
@@ -287,11 +327,13 @@ export class LicenseSyncMonitor {
     let filteredAlerts = this.alerts;
 
     if (options.severity) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.severity === options.severity);
+      filteredAlerts = filteredAlerts.filter((alert) => alert.severity === options.severity);
     }
 
     if (options.acknowledged !== undefined) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.acknowledged === options.acknowledged);
+      filteredAlerts = filteredAlerts.filter(
+        (alert) => alert.acknowledged === options.acknowledged
+      );
     }
 
     if (options.limit) {
@@ -305,7 +347,7 @@ export class LicenseSyncMonitor {
    * Acknowledge alert
    */
   acknowledgeAlert(alertId) {
-    const alert = this.alerts.find(a => a.id === alertId);
+    const alert = this.alerts.find((a) => a.id === alertId);
     if (alert) {
       alert.acknowledged = true;
       alert.acknowledgedAt = new Date();
@@ -362,18 +404,37 @@ export class LicenseSyncMonitor {
   // Private helper methods
 
   incrementCounter(name, labels = {}, value = 1) {
+    // Safety check for metrics Map
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      logger.warn('Metrics Map not initialized in incrementCounter', { name });
+      return;
+    }
+
     const metric = this.metrics.get(name);
     if (!metric || metric.type !== 'counter') return;
 
     metric.value += value;
 
-    // Store labels
-    const labelKey = JSON.stringify(labels);
-    const currentValue = metric.labels.get(labelKey) || 0;
-    metric.labels.set(labelKey, currentValue + value);
+    // Store labels (ensure labels map exists)
+    if (!metric.labels || !(metric.labels instanceof Map)) {
+      metric.labels = new Map();
+    }
+
+    try {
+      const labelKey = JSON.stringify(labels);
+      const currentValue = metric.labels.get(labelKey) || 0;
+      metric.labels.set(labelKey, currentValue + value);
+    } catch (error) {
+      logger.error('Error in incrementCounter label handling', {
+        name,
+        error: error.message,
+      });
+    }
   }
 
   recordHistogram(name, value) {
+    if (!this.metrics || !(this.metrics instanceof Map)) return;
+
     const metric = this.metrics.get(name);
     if (!metric || metric.type !== 'histogram') return;
 
@@ -386,6 +447,8 @@ export class LicenseSyncMonitor {
   }
 
   setGauge(name, value) {
+    if (!this.metrics || !(this.metrics instanceof Map)) return;
+
     const metric = this.metrics.get(name);
     if (!metric || metric.type !== 'gauge') return;
 
@@ -393,6 +456,8 @@ export class LicenseSyncMonitor {
   }
 
   incrementGauge(name, delta) {
+    if (!this.metrics || !(this.metrics instanceof Map)) return;
+
     const metric = this.metrics.get(name);
     if (!metric || metric.type !== 'gauge') return;
 
@@ -421,7 +486,8 @@ export class LicenseSyncMonitor {
 
   _checkPerformanceAlerts(operationType, duration, result) {
     // Alert on very slow sync operations
-    if (duration > 300000) { // 5 minutes
+    if (duration > 300000) {
+      // 5 minutes
       this.createAlert('warning', 'VERY_SLOW_SYNC_OPERATION', {
         operationType,
         duration,
@@ -431,7 +497,8 @@ export class LicenseSyncMonitor {
 
     // Alert on high error rates
     const errorRate = this._calculateErrorRate();
-    if (errorRate > 0.1) { // 10% error rate
+    if (errorRate > 0.1) {
+      // 10% error rate
       this.createAlert('error', 'HIGH_ERROR_RATE', {
         errorRate: `${(errorRate * 100).toFixed(1)}%`,
         threshold: '10%',
@@ -440,15 +507,20 @@ export class LicenseSyncMonitor {
   }
 
   _calculateErrorRate() {
-    if (!this.metrics) {
-      logger.warn('LicenseSyncMonitor metrics not initialized');
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      logger.warn('LicenseSyncMonitor metrics not initialized in _calculateErrorRate');
       return 0;
     }
 
-    const totalOps = this.metrics.get('sync_operations_total')?.value || 0;
-    const errors = this.metrics.get('sync_operations_errors_total')?.value || 0;
+    try {
+      const totalOps = this.metrics.get('sync_operations_total')?.value || 0;
+      const errors = this.metrics.get('sync_operations_errors_total')?.value || 0;
 
-    return totalOps > 0 ? errors / totalOps : 0;
+      return totalOps > 0 ? errors / totalOps : 0;
+    } catch (error) {
+      logger.error('Error calculating error rate', { error: error.message });
+      return 0;
+    }
   }
 
   _startHealthChecks() {
@@ -476,18 +548,24 @@ export class LicenseSyncMonitor {
 
       // Check recent activity
       const lastActivity = this._getLastActivityTime();
-      const activityHealth = lastActivity && (now - lastActivity) < 3600000 ? 'healthy' : 'warning'; // 1 hour
+      const activityHealth = lastActivity && now - lastActivity < 3600000 ? 'healthy' : 'warning'; // 1 hour
       componentHealth.set('activity', { status: activityHealth, details: { lastActivity } });
 
       // Determine overall health
-      const unhealthyComponents = Array.from(componentHealth.values()).filter(c => c.status !== 'healthy');
+      const unhealthyComponents = Array.from(componentHealth.values()).filter(
+        (c) => c.status !== 'healthy'
+      );
       if (unhealthyComponents.length > 0) {
-        overallHealth = unhealthyComponents.some(c => c.status === 'unhealthy') ? 'unhealthy' : 'warning';
+        overallHealth = unhealthyComponents.some((c) => c.status === 'unhealthy')
+          ? 'unhealthy'
+          : 'warning';
       }
-
     } catch (error) {
       overallHealth = 'unhealthy';
-      componentHealth.set('health_check', { status: 'unhealthy', details: { error: error.message } });
+      componentHealth.set('health_check', {
+        status: 'unhealthy',
+        details: { error: error.message },
+      });
     }
 
     this.healthStatus.overall = overallHealth;
@@ -505,10 +583,18 @@ export class LicenseSyncMonitor {
 
   _getLastActivityTime() {
     // Find the most recent activity from metrics
-    const operations = this.metrics.get('sync_operations_total');
-    if (operations && operations.value > 0) {
-      // This is approximate - in a real system you'd track actual timestamps
-      return new Date(Date.now() - Math.random() * 3600000); // Mock recent activity
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      return null;
+    }
+
+    try {
+      const operations = this.metrics.get('sync_operations_total');
+      if (operations && operations.value > 0) {
+        // This is approximate - in a real system you'd track actual timestamps
+        return new Date(Date.now() - Math.random() * 3600000); // Mock recent activity
+      }
+    } catch (error) {
+      logger.error('Error getting last activity time', { error: error.message });
     }
     return null;
   }

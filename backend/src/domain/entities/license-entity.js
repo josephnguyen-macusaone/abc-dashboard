@@ -252,14 +252,21 @@ export class License {
       errors.push('Start date is required');
     }
 
-    // Expiry date validation - allow invalid dates for existing data compatibility
+    // Expiry date validation - auto-swap if expiry < start (data quality fix)
     if (this.startsAt && this.expiresAt) {
       const startDate = new Date(this.startsAt);
       const expiryDate = new Date(this.expiresAt);
       if (!isNaN(startDate.getTime()) && !isNaN(expiryDate.getTime()) && expiryDate <= startDate) {
-        // Log warning but don't fail validation - allow existing data with invalid dates
-        console.warn(`License ${this.key || this.id} has expiry date (${this.expiresAt}) before or equal to start date (${this.startsAt})`);
-        // Don't add to errors - allow the data to exist
+        // Auto-swap dates - assume data entry error where dates were reversed
+        const originalStart = this.startsAt;
+        const originalExpiry = this.expiresAt;
+        this.startsAt = originalExpiry;
+        this.expiresAt = originalStart;
+        console.warn(
+          `License ${this.key || this.id}: Auto-swapped dates (expiry was before start). ` +
+            `Original: start=${originalStart}, expiry=${originalExpiry}. ` +
+            `Fixed: start=${this.startsAt}, expiry=${this.expiresAt}`
+        );
       }
     }
 
@@ -479,7 +486,7 @@ export class License {
     const historyEntry = {
       action,
       timestamp: new Date(),
-      ...details
+      ...details,
     };
     this.renewalHistory.push(historyEntry);
   }

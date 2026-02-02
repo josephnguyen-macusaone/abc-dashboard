@@ -561,12 +561,12 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
           <Button
             onClick={() => {
               setIsOpen(false);
-              const currentMonthRange = resetToCurrentMonth();
-              setSelectedPreset('thisMonth');
-              setRange(currentMonthRange);
+              setSelectedPreset('');
+              setRange(resetToCurrentMonth()); // keep picker display valid when reopened
               setRangeCompare(undefined);
+              // Notify parent of cleared range so list/metrics revert to default (typed as DateRange for callback)
               onUpdate?.({
-                range: currentMonthRange,
+                range: { from: undefined!, to: undefined } as unknown as DateRange,
                 rangeCompare: undefined,
               });
             }}

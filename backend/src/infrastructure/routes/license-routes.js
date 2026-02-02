@@ -17,24 +17,6 @@ import {
 export const createLicenseRoutes = (controller, lifecycleController, authMiddleware) => {
   const router = express.Router();
 
-  // Special route for testing - defined before auth middleware
-  router.get(
-    '/attention-test',
-    (req, res) => {
-      console.log('🎯 BYPASS ATTENTION HANDLER: Called');
-      return res.status(200).json({
-        success: true,
-        message: 'Attention test endpoint is working!',
-        data: {
-          expiringSoon: [],
-          expired: [],
-          suspended: [],
-          total: 0
-        }
-      });
-    }
-  );
-
   // All routes require authentication
   router.use(authMiddleware.authenticate);
 
@@ -81,19 +63,8 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    */
   router.get(
     '/attention',
-    (req, res) => {
-      console.log('🎯 INLINE ATTENTION HANDLER: Called');
-      return res.status(200).json({
-        success: true,
-        message: 'Attention endpoint is working!',
-        data: {
-          expiringSoon: [],
-          expired: [],
-          suspended: [],
-          total: 0
-        }
-      });
-    }
+    checkLicenseAccessPermission('list'),
+    lifecycleController.getLicensesRequiringAttention
   );
 
   /**
@@ -233,22 +204,21 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       type: string
    *                       description: Timestamp of last violation
    */
-  router.get(
-    '/data-integrity',
-    checkLicenseAccessPermission('monitor'),
-    (req, res) => {
-      // This would integrate with a metrics service in production
-      // For now, return mock data structure
-      return res.success({
+  router.get('/data-integrity', checkLicenseAccessPermission('monitor'), (req, res) => {
+    // This would integrate with a metrics service in production
+    // For now, return mock data structure
+    return res.success(
+      {
         totalQueries: 0, // Would be populated from metrics store
         integrityViolations: 0,
         violationRate: 0.0,
         lastViolation: null,
         status: 'healthy',
-        message: 'Data integrity monitoring active'
-      }, 'Data integrity metrics retrieved successfully');
-    }
-  );
+        message: 'Data integrity monitoring active',
+      },
+      'Data integrity metrics retrieved successfully'
+    );
+  });
 
   /**
    * @swagger
@@ -306,19 +276,11 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *         description: Sort order
    *     responses:
    *       200:
-   *         description: Licenses retrieved successfully
+   *         description: Licenses retrieved successfully with flat metadata including page, limit, total, totalPages, hasNext, and hasPrev
    *         content:
    *           application/json:
    *             schema:
-   *               allOf:
-   *                 - $ref: '#/components/schemas/BaseResponse'
-   *                 - $ref: '#/components/schemas/MetaPagination'
-   *                 - type: object
-   *                   properties:
-   *                     data:
-   *                       type: array
-   *                       items:
-   *                         $ref: '#/components/schemas/License'
+   *               $ref: '#/components/schemas/LicenseListResponse'
    *       401:
    *         description: Unauthorized
    *         content:
@@ -337,7 +299,6 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
   // LIFECYCLE MANAGEMENT ROUTES (Phase 1) - MOVED UP TO AVOID ROUTE CONFLICTS
   // ========================================================================
 
-
   /**
    * @swagger
    * /licenses/{id}:
@@ -355,19 +316,11 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *         description: License ID
    *     responses:
    *       200:
-   *         description: License retrieved successfully
+   *         description: License retrieved successfully (data.license is the internal license object)
    *         content:
    *           application/json:
    *             schema:
-   *               allOf:
-   *                 - $ref: '#/components/schemas/BaseResponse'
-   *                 - type: object
-   *                   properties:
-   *                     data:
-   *                       type: object
-   *                       properties:
-   *                         license:
-   *                           $ref: '#/components/schemas/License'
+   *               $ref: '#/components/schemas/LicenseResponse'
    *       401:
    *         description: Unauthorized
    *         content:
@@ -1013,7 +966,6 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
     controller.deleteLicense
   );
 
-
   /**
    * @swagger
    * /licenses/{id}/lifecycle/status:
@@ -1429,11 +1381,7 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post(
-    '/sync',
-    checkLicenseAccessPermission('update'),
-    controller.syncLicenses
-  );
+  router.post('/sync', checkLicenseAccessPermission('update'), controller.syncLicenses);
 
   /**
    * @swagger
@@ -1475,25 +1423,21 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get(
-    '/sync/status',
-    checkLicenseAccessPermission('read'),
-    async (req, res) => {
-      try {
-        // Get scheduler status from container
-        const scheduler = await awilixContainer.getLicenseSyncScheduler();
-        if (!scheduler) {
-          return res.notFound('Sync scheduler not available');
-        }
-
-        const status = scheduler.getStatus();
-        return res.success(status, 'Sync scheduler status retrieved successfully');
-      } catch (error) {
-        logger.error('Failed to get sync scheduler status', { error: error.message });
-        return res.serverError('Failed to retrieve sync status');
+  router.get('/sync/status', checkLicenseAccessPermission('read'), async (req, res) => {
+    try {
+      // Get scheduler status from container
+      const scheduler = await awilixContainer.getLicenseSyncScheduler();
+      if (!scheduler) {
+        return res.notFound('Sync scheduler not available');
       }
+
+      const status = scheduler.getStatus();
+      return res.success(status, 'Sync scheduler status retrieved successfully');
+    } catch (error) {
+      logger.error('Failed to get sync scheduler status', { error: error.message });
+      return res.serverError('Failed to retrieve sync status');
     }
-  );
+  });
 
   return router;
 };

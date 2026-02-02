@@ -2,25 +2,41 @@ import { httpClient } from '@/infrastructure/api/client';
 import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
 import type { LicenseRecord } from '@/types';
 import type { LicenseBulkResponse } from '@/application/services/license-services';
+import logger from '@/shared/helpers/logger';
+import type {
+  LicenseSyncStatusResponse,
+  LicenseApiRow,
+  InternalLicenseListResponse,
+} from '@/infrastructure/api/licenses-types';
+
+export type { LicenseSyncStatusResponse } from '@/infrastructure/api/licenses-types';
+
+const log = logger.createChild({ component: 'LicenseApi' });
 
 /**
- * Transform backend license data to frontend LicenseRecord
+ * Transform backend license data to frontend LicenseRecord.
+ * Handles both external (ActivateDate, monthlyFee, license_type, status as number)
+ * and internal (startDay, lastPayment, plan, status as string) API shapes.
  */
-function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
-  // Handle external license API format
-  // Convert status from string/number to proper status values
+function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseRecord {
+  // Status: internal sends string ('active'|'cancel'|'pending'|etc); external may send number (1/0) or string
   let status: LicenseRecord['status'] = 'pending';
   if (apiLicense.status !== undefined && apiLicense.status !== null) {
-    const statusValue = typeof apiLicense.status === 'string' ? parseInt(apiLicense.status) : apiLicense.status;
-    switch (statusValue) {
-      case 1:
-        status = 'active';
-        break;
-      case 0:
-        status = 'cancel'; // Changed from 'inactive' to 'cancel' (valid LicenseStatus)
-        break;
-      default:
-        status = 'pending';
+    const s = apiLicense.status;
+    if (typeof s === 'string' && ['active', 'cancel', 'pending', 'expired', 'draft', 'expiring', 'revoked'].includes(s)) {
+      status = s as LicenseRecord['status'];
+    } else {
+      const statusValue = typeof s === 'string' ? parseInt(s, 10) : s;
+      switch (statusValue) {
+        case 1:
+          status = 'active';
+          break;
+        case 0:
+          status = 'cancel';
+          break;
+        default:
+          status = 'pending';
+      }
     }
   }
 
@@ -48,51 +64,72 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
     return dateTimeStr;
   };
 
+  // startsAt: internal uses startDay; external uses ActivateDate
+  const startsAtRaw = String(apiLicense.startDay ?? apiLicense.ActivateDate ?? apiLicense.startsAt ?? '');
+  const startsAt = startsAtRaw.includes('/') ? convertDate(startsAtRaw) : (startsAtRaw || '');
+
+  // plan: internal has plan; external has license_type
+  const plan = String(apiLicense.plan ?? apiLicense.license_type ?? 'Basic');
+
+  const lastActiveVal = apiLicense.lastActive != null ? String(apiLicense.lastActive) : '';
+  const lastActive = lastActiveVal.includes('/') ? convertDateTime(lastActiveVal) : lastActiveVal;
+
   return {
-    id: apiLicense.appid || apiLicense.id || `temp-${Date.now()}`, // Use appid as primary ID, fallback to id or generate temp
-    key: apiLicense.appid || apiLicense.key || '', // Use appid as license key
-    product: apiLicense.product || 'ABC Business Suite',
-    dba: apiLicense.dba || '',
-    zip: apiLicense.zip || '',
-    startsAt: convertDate(apiLicense.ActivateDate || apiLicense.startsAt || ''),
+    id: (apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`) as LicenseRecord['id'],
+    key: String(apiLicense.appid ?? apiLicense.key ?? ''),
+    product: String(apiLicense.product ?? 'ABC Business Suite'),
+    dba: String(apiLicense.dba ?? ''),
+    zip: String(apiLicense.zip ?? ''),
+    startsAt,
     status,
-    plan: apiLicense.plan || 'Basic',
-    term: apiLicense.term || 'monthly',
-    cancelDate: apiLicense.cancelDate || '',
-    lastPayment: apiLicense.monthlyFee || apiLicense.lastPayment || 0,
-    lastActive: convertDateTime(apiLicense.lastActive || ''),
-    smsPurchased: apiLicense.smsPurchased || 0,
-    smsSent: apiLicense.smsSent || 0,
-    smsBalance: apiLicense.smsBalance || 0,
-    seatsTotal: apiLicense.seatsTotal || 1,
-    seatsUsed: apiLicense.seatsUsed || 0,
-    agents: apiLicense.agents || 0,
-    agentsName: apiLicense.agentsName || [],
-    agentsCost: apiLicense.agentsCost || 0,
-    notes: apiLicense.Note || apiLicense.notes || '',
+    plan,
+    term: (apiLicense.term ?? 'monthly') as LicenseRecord['term'],
+    cancelDate: String(apiLicense.cancelDate ?? ''),
+    lastPayment: Number(apiLicense.monthlyFee ?? apiLicense.lastPayment ?? 0),
+    lastActive,
+    smsPurchased: Number(apiLicense.smsPurchased ?? 0),
+    smsSent: Number(apiLicense.smsSent ?? 0),
+    smsBalance: Number(apiLicense.smsBalance ?? 0),
+    seatsTotal: Number(apiLicense.seatsTotal ?? 1),
+    seatsUsed: Number(apiLicense.seatsUsed ?? 0),
+    agents: Number(apiLicense.agents ?? 0),
+    agentsName: Array.isArray(apiLicense.agentsName) ? apiLicense.agentsName : [],
+    agentsCost: Number(apiLicense.agentsCost ?? 0),
+    notes: String(apiLicense.Note ?? apiLicense.notes ?? ''),
   };
 }
 
-/**
- * Transform frontend LicenseRecord to backend API format
- * Filters out undefined, null, and empty values to ensure clean API payloads
- */
-function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
-  const apiLicense: any = {};
+/** Payload shape for external license API (create/update). */
+export interface ExternalLicensePayload {
+  appid?: string;
+  id?: string;
+  dba?: string;
+  zip?: string;
+  status?: number;
+  monthlyFee?: number;
+  Note?: string;
+  emailLicense?: string;
+  pass?: string;
+  [key: string]: unknown;
+}
 
-  // Helper to check if value should be included
-  const shouldInclude = (value: any): boolean => {
+/**
+ * Transform frontend LicenseRecord to external backend API format.
+ * Filters out undefined, null, and empty values to ensure clean API payloads.
+ */
+function transformRecordToApiLicense(license: Partial<LicenseRecord>): ExternalLicensePayload {
+  const apiLicense: ExternalLicensePayload = {};
+
+  const shouldInclude = (value: unknown): boolean => {
     return value !== undefined && value !== null && value !== '';
   };
 
-  // Map frontend fields to external API fields
-  if (shouldInclude((license as any).key) || shouldInclude(license.id)) {
-    apiLicense.appid = (license as any).key || license.id; // External API uses appid
+  if (shouldInclude(license.key) || shouldInclude(license.id)) {
+    apiLicense.appid = license.key != null ? String(license.key) : (license.id != null ? String(license.id) : undefined);
   }
 
-  // External API required fields
   if (shouldInclude(license.id)) {
-    apiLicense.appid = license.id; // Ensure we always have appid
+    apiLicense.appid = String(license.id);
   }
 
   // Map frontend fields to external API fields
@@ -104,9 +141,8 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
     apiLicense.zip = license.zip;
   }
 
-  // Required fields for external API
   if (shouldInclude(license.id)) {
-    apiLicense.appid = license.id; // External API uses appid as identifier
+    apiLicense.appid = String(license.id);
   }
 
   // For external API, we need Email_license and pass as required fields
@@ -144,11 +180,19 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
  */
 export class LicenseApiService {
   /**
-   * Get dashboard metrics with optional date range filtering
+   * Get dashboard metrics with optional date range and filter (search, status, plan, term).
+   * When filters are provided, metrics reflect the filtered subset; when empty, metrics show totals.
    */
   static async getDashboardMetrics(params?: {
     startsAtFrom?: string;
     startsAtTo?: string;
+    search?: string;
+    searchField?: string;
+    status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
+    dba?: string;
+    zip?: string;
   }): Promise<DashboardMetricsResponse> {
     try {
       const queryParams = new URLSearchParams();
@@ -156,9 +200,32 @@ export class LicenseApiService {
       if (params?.startsAtFrom) {
         queryParams.append('startsAtFrom', params.startsAtFrom);
       }
-
       if (params?.startsAtTo) {
         queryParams.append('startsAtTo', params.startsAtTo);
+      }
+      if (params?.search) {
+        queryParams.append('search', params.search);
+      }
+      if (params?.searchField) {
+        queryParams.append('searchField', params.searchField);
+      }
+      if (params?.status !== undefined && params?.status !== null) {
+        const statusVal = Array.isArray(params.status) ? params.status.join(',') : String(params.status);
+        if (statusVal) queryParams.append('status', statusVal);
+      }
+      if (params?.plan !== undefined && params?.plan !== null) {
+        const planVal = Array.isArray(params.plan) ? params.plan.join(',') : String(params.plan);
+        if (planVal) queryParams.append('plan', planVal);
+      }
+      if (params?.term !== undefined && params?.term !== null) {
+        const termVal = Array.isArray(params.term) ? params.term.join(',') : String(params.term);
+        if (termVal) queryParams.append('term', termVal);
+      }
+      if (params?.dba) {
+        queryParams.append('dba', params.dba);
+      }
+      if (params?.zip) {
+        queryParams.append('zip', params.zip);
       }
 
       const url = `/licenses/dashboard/metrics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
@@ -186,13 +253,6 @@ export class LicenseApiService {
       hasNext: boolean;
       hasPrev: boolean;
     };
-    stats?: {
-      total: number;
-      active: number;
-      expired: number;
-      pending: number;
-      cancel: number;
-    };
   }> {
     try {
       const queryParams = new URLSearchParams();
@@ -208,28 +268,19 @@ export class LicenseApiService {
         }
       });
 
-      const url = `/api/v1/licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const url = `/licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await httpClient.get<{
         success: boolean;
         message: string;
         timestamp: string;
         data: any[];
         meta: {
-          pagination: {
-            page: number;
-            limit: number;
-            totalPages: number;
-            hasNext: boolean;
-            hasPrev: boolean;
-            total?: number;
-          };
-          stats?: {
-            total: number;
-            active: number;
-            expired: number;
-            pending: number;
-            cancel: number;
-          };
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+          hasNext: boolean;
+          hasPrev: boolean;
         };
       }>(url);
 
@@ -240,28 +291,25 @@ export class LicenseApiService {
       // Transform API licenses to LicenseRecords
       const licenses = response.data.map(transformApiLicenseToRecord);
 
-      const apiPagination = response.meta?.pagination || {
+      const apiMeta = response.meta || {
         page: params.page || 1,
         limit: params.limit || 20,
+        total: 0,
         totalPages: 0,
         hasNext: false,
         hasPrev: false
       };
 
-      // Calculate total from totalPages and limit if not provided
-      const total = apiPagination.total || (apiPagination.totalPages * apiPagination.limit);
-
       return {
         licenses,
         pagination: {
-          page: apiPagination.page,
-          limit: apiPagination.limit,
-          total,
-          totalPages: apiPagination.totalPages,
-          hasNext: apiPagination.hasNext,
-          hasPrev: apiPagination.hasPrev
-        },
-        stats: response.meta?.stats || undefined
+          page: apiMeta.page,
+          limit: apiMeta.limit,
+          total: apiMeta.total,
+          totalPages: apiMeta.totalPages,
+          hasNext: apiMeta.hasNext,
+          hasPrev: apiMeta.hasPrev
+        }
       };
     } catch (error) {
       throw error;
@@ -363,7 +411,7 @@ export class LicenseApiService {
           results.push(response.data);
         } catch (error) {
           // Log error but continue with other licenses
-          console.error('Failed to create license:', apiLicense, error);
+          log.error('Failed to create license', { apiLicense, error });
         }
       }
       const response = { data: { licenses: results } };
@@ -407,7 +455,7 @@ export class LicenseApiService {
           results.push(response.data);
         } catch (error) {
           // Log error but continue with other updates
-          console.error('Failed to update license:', update.id, error);
+          log.error('Failed to update license', { id: update.id, error });
         }
       }
       const response = { data: results };
@@ -428,7 +476,7 @@ export class LicenseApiService {
       const response = await httpClient.patch('/licenses/bulk', updates) as any;
 
       // Extract results from the response
-      console.log('Bulk update API response:', {
+      log.debug('Bulk update API response', {
         hasData: !!response.data,
         dataType: typeof response.data,
         dataKeys: response.data ? Object.keys(response.data) : [],
@@ -440,15 +488,15 @@ export class LicenseApiService {
 
       if (response.data && response.data.results) {
         const transformed = response.data.results.map(transformApiLicenseToRecord);
-        console.log('Bulk update API returning transformed results:', transformed.length);
+        log.debug('Bulk update API returning transformed results', { count: transformed.length });
         return transformed;
       } else if (Array.isArray(response.data)) {
         // Fallback for old format
         const transformed = response.data.map(transformApiLicenseToRecord);
-        console.log('Bulk update API returning fallback transformed results:', transformed.length);
+        log.debug('Bulk update API returning fallback transformed results', { count: transformed.length });
         return transformed;
       } else {
-        console.warn('Unexpected bulk update response format:', response.data);
+        log.warn('Unexpected bulk update response format', { data: response.data });
         return [];
       }
     } catch (error) {
@@ -476,7 +524,7 @@ export class LicenseApiService {
           if (error && typeof error === 'object' && 'status' in error && error.status === 404) {
             notFound.push(index); // Push the index of the failed deletion
           } else {
-            console.error('Failed to delete license:', id, error);
+            log.error('Failed to delete license', { id, error });
           }
         }
       }
@@ -510,21 +558,7 @@ export class InternalLicenseApiService {
     endDate?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
-  } = {}): Promise<{
-    success: boolean;
-    message: string;
-    data: any[];
-    meta: {
-      pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-        hasNext: boolean;
-        hasPrev: boolean;
-      };
-    };
-  }> {
+  } = {}): Promise<InternalLicenseListResponse> {
     const queryParams = new URLSearchParams();
 
     Object.entries(params).forEach(([key, value]) => {
@@ -1012,6 +1046,18 @@ export class InternalLicenseApiService {
   /**
    * Process lifecycle operations manually
    */
+  /**
+   * Get license sync scheduler status (last run, success/failure)
+   */
+  static async getLicenseSyncStatus(): Promise<LicenseSyncStatusResponse> {
+    const response = await httpClient.get<{ success: boolean; message?: string; data: LicenseSyncStatusResponse }>('/licenses/sync/status');
+    const body = response as { data?: LicenseSyncStatusResponse };
+    return body?.data ?? (response as unknown as LicenseSyncStatusResponse);
+  }
+
+  /**
+   * Process lifecycle operations manually
+   */
   static async processLifecycle(operation: 'expiring_reminders' | 'expiration_checks'): Promise<{
     success: boolean;
     message: string;
@@ -1177,18 +1223,18 @@ export class UnifiedLicenseApi {
       // Transform internal API response to frontend repository format
       return {
         licenses: response.data || [],
-        pagination: response.meta?.pagination || {
+        pagination: response.meta || {
           page: params.page || 1,
           limit: params.limit || 20,
+          total: 0,
           totalPages: 0,
           hasNext: false,
           hasPrev: false
-        },
-        stats: response.meta?.stats || undefined
+        }
       };
     } catch (error) {
       // Fallback to external API if internal fails
-      console.warn('Internal license API failed, falling back to external API:', error);
+      log.warn('Internal license API failed, falling back to external API', { error });
       return await LicenseApiService.getLicenses(params);
     }
   }
@@ -1201,7 +1247,7 @@ export class UnifiedLicenseApi {
       return await InternalLicenseApiService.getLicense(id);
     } catch (error) {
       // Fallback to external API
-      console.warn('Internal license API failed, falling back to external API:', error);
+      log.warn('Internal license API failed, falling back to external API', { error });
       return await LicenseApiService.getLicense(id);
     }
   }
@@ -1214,7 +1260,7 @@ export class UnifiedLicenseApi {
       return await InternalLicenseApiService.createLicense(licenseData);
     } catch (error) {
       // Fallback to external API
-      console.warn('Internal license API failed, falling back to external API:', error);
+      log.warn('Internal license API failed, falling back to external API', { error });
       return await LicenseApiService.createLicense(licenseData);
     }
   }
@@ -1227,7 +1273,7 @@ export class UnifiedLicenseApi {
       return await InternalLicenseApiService.updateLicense(id, updates);
     } catch (error) {
       // Fallback to external API
-      console.warn('Internal license API failed, falling back to external API:', error);
+      log.warn('Internal license API failed, falling back to external API', { error });
       return await LicenseApiService.updateLicense(id, updates);
     }
   }
@@ -1240,7 +1286,7 @@ export class UnifiedLicenseApi {
       return await InternalLicenseApiService.deleteLicense(id);
     } catch (error) {
       // Fallback to external API
-      console.warn('Internal license API failed, falling back to external API:', error);
+      log.warn('Internal license API failed, falling back to external API', { error });
       return await LicenseApiService.deleteLicense(id);
     }
   }
@@ -1470,7 +1516,7 @@ export class UnifiedLicenseApi {
       return await InternalLicenseApiService.getLicensesRequiringAttention(options);
     } catch (error) {
       // Note: This endpoint may have routing issues - return empty result
-      console.warn('getLicensesRequiringAttention not available:', error);
+      log.warn('getLicensesRequiringAttention not available', { error });
       return {
         success: true,
         message: 'Feature temporarily unavailable',
@@ -1510,6 +1556,13 @@ export class UnifiedLicenseApi {
    */
   static async processLifecycle(operation: 'expiring_reminders' | 'expiration_checks') {
     return await InternalLicenseApiService.processLifecycle(operation);
+  }
+
+  /**
+   * Get license sync scheduler status (last run, success/failure)
+   */
+  static async getLicenseSyncStatus(): Promise<LicenseSyncStatusResponse> {
+    return await InternalLicenseApiService.getLicenseSyncStatus();
   }
 
   // ========================================================================
@@ -1576,6 +1629,7 @@ export const licenseApi = {
   // Dashboard & Analytics
   getDashboardMetrics: UnifiedLicenseApi.getDashboardMetrics,
   getLicenseAnalytics: UnifiedLicenseApi.getLicenseAnalytics,
+  getLicenseSyncStatus: UnifiedLicenseApi.getLicenseSyncStatus,
 
   // Lifecycle Management
   getLifecycleStatus: UnifiedLicenseApi.getLifecycleStatus,

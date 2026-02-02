@@ -26,12 +26,26 @@ export interface LicenseDashboardMetric {
 }
 
 /**
+ * Filters for dashboard metrics (same as list filters). When provided, metrics reflect filtered subset.
+ */
+export interface LicenseMetricsFilters {
+  search?: string;
+  searchField?: string;
+  status?: string | string[];
+  plan?: string | string[];
+  term?: string | string[];
+  dba?: string;
+  zip?: string;
+}
+
+/**
  * Dashboard metrics use case contract
  */
 export interface GetLicenseStatsUseCaseContract {
   execute(params: {
     licenses?: LicenseRecord[];
     dateRange?: LicenseDateRange;
+    filters?: LicenseMetricsFilters;
     useApiMetrics?: boolean;
   }): Promise<LicenseDashboardMetric[]>;
 }
@@ -50,15 +64,16 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
   async execute(params: {
     licenses?: LicenseRecord[];
     dateRange?: LicenseDateRange;
+    filters?: LicenseMetricsFilters;
     useApiMetrics?: boolean;
   }): Promise<LicenseDashboardMetric[]> {
     const correlationId = generateCorrelationId();
-    const { licenses, dateRange, useApiMetrics = true } = params;
+    const { licenses, dateRange, filters, useApiMetrics = true } = params;
 
     try {
       // Try API metrics first if requested
       if (useApiMetrics) {
-        const apiMetrics = await this.fetchDashboardMetrics(dateRange);
+        const apiMetrics = await this.fetchDashboardMetrics(dateRange, filters);
         return this.transformDashboardMetricsToCards(apiMetrics);
       }
     } catch (error) {
@@ -95,17 +110,50 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
   }
 
   /**
-   * Fetch dashboard metrics from the backend API
+   * Fetch dashboard metrics from the backend API. Pass filters so metrics reflect filtered subset.
    */
-  private async fetchDashboardMetrics(dateRange?: LicenseDateRange): Promise<DashboardMetrics> {
-    const params: { startsAtFrom?: string; startsAtTo?: string } = {};
+  private async fetchDashboardMetrics(
+    dateRange?: LicenseDateRange,
+    filters?: LicenseMetricsFilters
+  ): Promise<DashboardMetrics> {
+    const params: {
+      startsAtFrom?: string;
+      startsAtTo?: string;
+      search?: string;
+      searchField?: string;
+      status?: string | string[];
+      plan?: string | string[];
+      term?: string | string[];
+      dba?: string;
+      zip?: string;
+    } = {};
 
     if (dateRange?.from) {
       params.startsAtFrom = dateRange.from.toISOString();
     }
-
     if (dateRange?.to) {
       params.startsAtTo = dateRange.to.toISOString();
+    }
+    if (filters?.search) {
+      params.search = filters.search;
+    }
+    if (filters?.searchField) {
+      params.searchField = filters.searchField;
+    }
+    if (filters?.status !== undefined && filters?.status !== null) {
+      params.status = filters.status;
+    }
+    if (filters?.plan !== undefined && filters?.plan !== null) {
+      params.plan = filters.plan;
+    }
+    if (filters?.term !== undefined && filters?.term !== null) {
+      params.term = filters.term;
+    }
+    if (filters?.dba) {
+      params.dba = filters.dba;
+    }
+    if (filters?.zip) {
+      params.zip = filters.zip;
     }
 
     const response = await licenseApi.getDashboardMetrics(params);

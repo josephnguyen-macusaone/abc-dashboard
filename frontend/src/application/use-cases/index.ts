@@ -81,6 +81,7 @@ export {
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,
+  type LicenseMetricsFilters,
 } from './license/get-license-stats-usecase';
 
 // Sidebar use cases

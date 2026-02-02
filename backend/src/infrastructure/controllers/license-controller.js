@@ -34,15 +34,15 @@ export class LicenseController {
           violations: integrityCheck.violations,
           query: req.query,
           userId: req.user?.id,
-          action: 'alert_security_team'
+          action: 'alert_security_team',
         });
       }
 
       logger.info('License service returned result', {
         correlationId: req.correlationId,
         dataLength: result.getData()?.length || 0,
-        metaStatsTotal: result.getMeta()?.stats?.total,
-        metaPaginationTotalPages: result.getMeta()?.pagination?.totalPages,
+        metaTotal: result.getMeta()?.total,
+        metaTotalPages: result.getMeta()?.totalPages,
       });
 
       // Get the correct total count from external API for display
@@ -54,7 +54,7 @@ export class LicenseController {
         correlationId: req.correlationId,
         hasFilters,
         filters: Object.keys(query.filters || {}),
-        originalTotal: result.getMeta().stats?.total,
+        originalTotal: result.getMeta()?.total,
       });
 
       // Always use internal database results - no external API override
@@ -85,63 +85,66 @@ export class LicenseController {
     const data = result.getData();
     const meta = result.getMeta();
     const hasFilters = query.filters && Object.keys(query.filters).length > 0;
+    const total = meta?.total ?? 0;
 
     // Check for signs of external API data contamination
     const violations = [];
 
     // 1. Check if we have filters but total is suspiciously high
-    if (hasFilters && meta.stats?.total > 1000) {
+    if (hasFilters && total > 1000) {
       violations.push({
         type: 'high_total_with_filters',
-        description: `High total (${meta.stats.total}) with filters applied`,
-        severity: 'high'
+        description: `High total (${total}) with filters applied`,
+        severity: 'high',
       });
     }
 
     // 2. Check if filtered query returns data but total suggests unfiltered results
-    if (hasFilters && data.length === 1 && meta.stats?.total > 100) {
+    if (hasFilters && data.length === 1 && total > 100) {
       violations.push({
         type: 'single_result_high_total',
-        description: `Single result but high total (${meta.stats.total}) suggests unfiltered data`,
-        severity: 'high'
+        description: `Single result but high total (${total}) suggests unfiltered data`,
+        severity: 'high',
       });
     }
 
     // 3. Check for known external API total (2836)
-    if (meta.stats?.total === 2836) {
+    if (total === 2836) {
       violations.push({
         type: 'known_external_total',
         description: 'Total matches known external API value (2836)',
-        severity: 'critical'
+        severity: 'critical',
       });
     }
 
     // 4. Check for data length vs total mismatch
-    if (hasFilters && data.length > 0 && meta.stats?.total !== data.length) {
+    if (hasFilters && data.length > 0 && total !== data.length) {
       violations.push({
         type: 'length_total_mismatch',
-        description: `Data length (${data.length}) doesn't match reported total (${meta.stats.total})`,
-        severity: 'medium'
+        description: `Data length (${data.length}) doesn't match reported total (${total})`,
+        severity: 'medium',
       });
     }
 
     if (violations.length > 0) {
       logger.error('EXTERNAL API DATA CONTAMINATION DETECTED', {
         correlationId,
-        violations: violations.map(v => v.description),
+        violations: violations.map((v) => v.description),
         hasFilters,
         dataLength: data.length,
-        reportedTotal: meta.stats?.total,
+        reportedTotal: total,
         filters: Object.keys(query.filters || {}),
       });
 
-      // Force correction for filtered queries
-      if (hasFilters && violations.some(v => v.severity === 'high' || v.severity === 'critical')) {
+      // Force correction for filtered queries (meta is flat: total, totalPages at top level)
+      if (
+        hasFilters &&
+        violations.some((v) => v.severity === 'high' || v.severity === 'critical')
+      ) {
         logger.warn('Auto-correcting contaminated data for filtered query', { correlationId });
-        // The repository guard should have already corrected this, but let's be extra sure
-        if (data.length === 0 && meta.stats.total > 0) {
-          meta.stats.total = 0;
-          meta.pagination.totalPages = 0;
+        if (data.length === 0 && total > 0 && meta && typeof meta === 'object') {
+          meta.total = 0;
+          meta.totalPages = 0;
         }
       }
     } else {
@@ -149,7 +152,7 @@ export class LicenseController {
         correlationId,
         hasFilters,
         dataLength: data.length,
-        total: meta.stats?.total,
+        total,
       });
     }
 
@@ -177,17 +180,18 @@ export class LicenseController {
       res.success({ message: 'Sync started in background' }, 'Sync initiated successfully');
 
       // Wait for sync to complete and log result
-      syncPromise.then(result => {
-        logger.info('Manual sync completed', {
-          success: result?.success,
-          totalFetched: result?.totalFetched,
-          created: result?.created,
-          updated: result?.updated,
+      syncPromise
+        .then((result) => {
+          logger.info('Manual sync completed', {
+            success: result?.success,
+            totalFetched: result?.totalFetched,
+            created: result?.created,
+            updated: result?.updated,
+          });
+        })
+        .catch((error) => {
+          logger.error('Manual sync failed', { error: error.message });
         });
-      }).catch(error => {
-        logger.error('Manual sync failed', { error: error.message });
-      });
-
     } catch (error) {
       logger.error('Failed to initiate manual sync', { error: error.message });
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
@@ -206,7 +210,6 @@ export class LicenseController {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
-
 
   createLicense = async (req, res) => {
     try {
@@ -264,36 +267,58 @@ export class LicenseController {
         // Direct array format - transform to structured format
         // Only include fields that are actually updatable
         const updatableFields = [
-          'dba', 'zip', 'startsAt', 'status', 'plan', 'term', 'seatsTotal',
-          'seatsUsed', 'cancelDate', 'lastPayment', 'smsPurchased', 'smsSent',
-          'smsBalance', 'agents', 'agentsName', 'agentsCost', 'notes',
-          'lastActive', 'key', 'product'
+          'dba',
+          'zip',
+          'startsAt',
+          'status',
+          'plan',
+          'term',
+          'seatsTotal',
+          'seatsUsed',
+          'cancelDate',
+          'lastPayment',
+          'smsPurchased',
+          'smsSent',
+          'smsBalance',
+          'agents',
+          'agentsName',
+          'agentsCost',
+          'notes',
+          'lastActive',
+          'key',
+          'product',
         ];
 
-        licensesToUpdate = req.body.map(license => {
+        licensesToUpdate = req.body.map((license) => {
           const updates = {};
-          updatableFields.forEach(field => {
+          updatableFields.forEach((field) => {
             if (license[field] !== undefined) {
               updates[field] = license[field];
             }
           });
           return {
             id: license.id,
-            updates
+            updates,
           };
         });
 
         // Validate that each license has an ID and at least one field to update
         licensesToUpdate.forEach((item, index) => {
           if (!item.id) {
-            throw new ValidationException(`License at index ${index} is missing required 'id' field`);
+            throw new ValidationException(
+              `License at index ${index} is missing required 'id' field`
+            );
           }
           if (!item.updates || Object.keys(item.updates).length === 0) {
-            throw new ValidationException(`License at index ${index} has no valid fields to update`);
+            throw new ValidationException(
+              `License at index ${index} has no valid fields to update`
+            );
           }
         });
       } else {
-        throw new ValidationException('Invalid request format. Expected array of licenses or object with updates property');
+        throw new ValidationException(
+          'Invalid request format. Expected array of licenses or object with updates property'
+        );
       }
 
       const updated = await this.licenseService.bulkUpdateLicenses(licensesToUpdate);
@@ -301,19 +326,20 @@ export class LicenseController {
       const response = {
         results: updated,
         updated: updated.length,
-        total: licensesToUpdate.length
+        total: licensesToUpdate.length,
       };
 
-      const message = updated.length === licensesToUpdate.length
-        ? 'All licenses updated successfully'
-        : `${updated.length} of ${licensesToUpdate.length} licenses updated successfully`;
+      const message =
+        updated.length === licensesToUpdate.length
+          ? 'All licenses updated successfully'
+          : `${updated.length} of ${licensesToUpdate.length} licenses updated successfully`;
 
       // For bulk operations, return data as array for frontend compatibility
       return res.status(200).json({
         success: true,
         message,
         timestamp: new Date().toISOString(),
-        data: updated
+        data: updated,
       });
     } catch (error) {
       if (error instanceof ValidationException) {
@@ -322,7 +348,7 @@ export class LicenseController {
       logger.error('Bulk update failed', {
         error: error.message,
         stack: error.stack,
-        count: licensesToUpdate?.length || 0
+        count: licensesToUpdate?.length || 0,
       });
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
@@ -337,7 +363,7 @@ export class LicenseController {
         licensesToCreate = req.body.licenses;
       } else if (Array.isArray(req.body)) {
         // Direct array format - transform to structured format
-        licensesToCreate = req.body.map(license => {
+        licensesToCreate = req.body.map((license) => {
           // Handle field name differences (startsAt vs startDay)
           const processedLicense = { ...license };
           if (processedLicense.startsAt && !processedLicense.startDay) {
@@ -347,7 +373,9 @@ export class LicenseController {
           return processedLicense;
         });
       } else {
-        throw new ValidationException('Invalid request format. Expected array of licenses or object with licenses property');
+        throw new ValidationException(
+          'Invalid request format. Expected array of licenses or object with licenses property'
+        );
       }
 
       // Basic validation
@@ -433,7 +461,7 @@ export class LicenseController {
     try {
       logger.info('Dashboard metrics request:', {
         query: req.query,
-        userId: req.user?.id
+        userId: req.user?.id,
       });
 
       const query = LicenseValidator.validateListQuery(req.query);
@@ -447,7 +475,7 @@ export class LicenseController {
 
       logger.info('Calling license service with:', {
         filters: query.filters,
-        dateRange
+        dateRange,
       });
 
       const metrics = await this.licenseService.getDashboardMetrics({
@@ -460,7 +488,7 @@ export class LicenseController {
       logger.error('Dashboard metrics error:', {
         error: error.message,
         stack: error.stack,
-        query: req.query
+        query: req.query,
       });
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);

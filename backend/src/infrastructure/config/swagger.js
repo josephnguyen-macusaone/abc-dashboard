@@ -50,30 +50,28 @@ const swaggerDefinition = {
           timestamp: { type: 'string', format: 'date-time' },
         },
       },
+      /** Flat pagination meta (license list and user list responses). No nested meta.pagination or meta.stats. */
       MetaPagination: {
         type: 'object',
         properties: {
           meta: {
             type: 'object',
+            description:
+              'Flat pagination metadata (page, limit, total, totalPages, hasNext, hasPrev)',
             properties: {
-              pagination: {
-                type: 'object',
-                properties: {
-                  page: { type: 'integer', example: 1 },
-                  limit: { type: 'integer', example: 10 },
-                  totalPages: { type: 'integer', example: 5 },
-                  hasNext: { type: 'boolean', example: true },
-                  hasPrev: { type: 'boolean', example: false },
-                },
+              page: { type: 'integer', example: 1, description: 'Current page' },
+              limit: { type: 'integer', example: 10, description: 'Items per page' },
+              total: { type: 'integer', example: 50, description: 'Total item count' },
+              totalPages: { type: 'integer', example: 5, description: 'Total pages' },
+              hasNext: {
+                type: 'boolean',
+                example: true,
+                description: 'Whether there is a next page',
               },
-              stats: {
-                type: 'object',
-                properties: {
-                  total: { type: 'integer', example: 42 },
-                  admin: { type: 'integer', example: 5 },
-                  manager: { type: 'integer', example: 10 },
-                  staff: { type: 'integer', example: 27 },
-                },
+              hasPrev: {
+                type: 'boolean',
+                example: false,
+                description: 'Whether there is a previous page',
               },
             },
           },
@@ -149,12 +147,14 @@ const swaggerDefinition = {
           accessToken: {
             type: 'string',
             description: 'JWT access token',
-            example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5MDQ3OTM2LCJleHAiOjE3NjkwNTE1MzYsImF1ZCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiaXNzIjoiYWJjLWRhc2hib2FyZCJ9.example_signature',
+            example:
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiaWF0IjoxNzY5MDQ3OTM2LCJleHAiOjE3NjkwNTE1MzYsImF1ZCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwiaXNzIjoiYWJjLWRhc2hib2FyZCJ9.example_signature',
           },
           refreshToken: {
             type: 'string',
             description: 'JWT refresh token',
-            example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwidHlwZSI6InJlZnJlc2giLCJ0b2tlblZlcnNpb24iOjEsImlzc3VlZEF0IjoxNzY5MDQ3OTM2LCJpYXQiOjE3NjkwNDc5MzYsImV4cCI6MTc2OTY1MjczNiwiaXNzIjoiYWJjLWRhc2hib2FyZCJ9.example_signature',
+            example:
+              'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJlbWFpbCI6ImpvaG4uZG9lQGV4YW1wbGUuY29tIiwidHlwZSI6InJlZnJlc2giLCJ0b2tlblZlcnNpb24iOjEsImlzc3VlZEF0IjoxNzY5MDQ3OTM2LCJpYXQiOjE3NjkwNDc5MzYsImV4cCI6MTc2OTY1MjczNiwiaXNzIjoiYWJjLWRhc2hib2FyZCJ9.example_signature',
           },
         },
       },
@@ -391,8 +391,65 @@ const swaggerDefinition = {
           { $ref: '#/components/schemas/BaseResponse' },
           {
             type: 'object',
+            description: 'Internal API get-by-id/create/update: data.license is the license object',
             properties: {
-              data: { $ref: '#/components/schemas/License' },
+              data: {
+                type: 'object',
+                properties: {
+                  license: { $ref: '#/components/schemas/License' },
+                },
+              },
+            },
+          },
+        ],
+      },
+      /** External license API row (external system field names: ActivateDate, monthlyFee, license_type, etc.) */
+      ExternalLicense: {
+        type: 'object',
+        properties: {
+          countid: { type: 'integer', example: 0, description: 'External count ID' },
+          id: { type: 'string', description: 'Internal or external ID' },
+          appid: { type: 'string', description: 'External app ID' },
+          license_type: {
+            type: 'string',
+            enum: ['product', 'service', 'trial', 'enterprise'],
+            example: 'product',
+          },
+          dba: { type: 'string', maxLength: 255, example: 'ABC Salon Services' },
+          zip: { type: 'string', maxLength: 10, nullable: true, example: '12345' },
+          mid: { type: 'string', nullable: true, description: 'Merchant ID' },
+          status: {
+            type: 'string',
+            description: 'Status string or number (e.g. 0=cancel, 1=active)',
+          },
+          ActivateDate: { type: 'string', description: 'Activation date (external format)' },
+          Coming_expired: {
+            type: 'string',
+            nullable: true,
+            description: 'Expiration warning date',
+          },
+          monthlyFee: { type: 'number', minimum: 0, nullable: true, example: 99.99 },
+          smsBalance: { type: 'integer', minimum: 0, nullable: true, example: 250 },
+          Email_license: { type: 'string', nullable: true, description: 'License email' },
+          pass: { type: 'string', nullable: true },
+          Package: { type: 'object', nullable: true, additionalProperties: true },
+          Note: { type: 'string', nullable: true },
+          Sendbat_workspace: { type: 'string', nullable: true },
+          lastActive: { type: 'string', nullable: true, description: 'Last activity timestamp' },
+        },
+      },
+      /** External license list: flat meta (page, limit, total, totalPages, hasNext, hasPrev) and data array */
+      ExternalLicenseListResponse: {
+        allOf: [
+          { $ref: '#/components/schemas/BaseResponse' },
+          { $ref: '#/components/schemas/MetaPagination' },
+          {
+            type: 'object',
+            properties: {
+              data: {
+                type: 'array',
+                items: { $ref: '#/components/schemas/ExternalLicense' },
+              },
             },
           },
         ],
@@ -475,6 +532,7 @@ const options = {
     path.join(__dirname, '../routes/user-routes.js'),
     path.join(__dirname, '../routes/profile-routes.js'),
     path.join(__dirname, '../routes/license-routes.js'),
+    path.join(__dirname, '../routes/external-license-routes.js'),
   ],
 };
 

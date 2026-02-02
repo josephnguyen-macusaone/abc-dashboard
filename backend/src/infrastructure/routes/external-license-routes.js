@@ -1,5 +1,8 @@
 import express from 'express';
-import { syncOperationRateLimit, generalApiRateLimit } from '../middleware/rate-limiting-middleware.js';
+import {
+  syncOperationRateLimit,
+  generalApiRateLimit,
+} from '../middleware/rate-limiting-middleware.js';
 import {
   requireLicenseSync,
   requireExternalLicenseSync,
@@ -51,24 +54,24 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *           maximum: 500
    *           default: 100
    *         description: Number of licenses to process per batch
-       *       - in: query
-       *         name: dryRun
-       *         schema:
-       *           type: boolean
-       *           default: false
-       *         description: Only validate and count, don't save changes
-       *       - in: query
-       *         name: bidirectional
-       *         schema:
-       *           type: boolean
-       *           default: false
-       *         description: Also sync internal license changes back to external API
-       *       - in: query
-       *         name: comprehensive
-       *         schema:
-       *           type: boolean
-       *           default: true
-       *         description: Use comprehensive reconciliation (external-first, internal-second, compare gaps)
+   *       - in: query
+   *         name: dryRun
+   *         schema:
+   *           type: boolean
+   *           default: false
+   *         description: Only validate and count, don't save changes
+   *       - in: query
+   *         name: bidirectional
+   *         schema:
+   *           type: boolean
+   *           default: false
+   *         description: Also sync internal license changes back to external API
+   *       - in: query
+   *         name: comprehensive
+   *         schema:
+   *           type: boolean
+   *           default: true
+   *         description: Use comprehensive reconciliation (external-first, internal-second, compare gaps)
    *     responses:
    *       200:
    *         description: Sync completed successfully
@@ -331,13 +334,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *         description: Sort order
    *     responses:
    *       200:
-   *         description: Licenses retrieved successfully
+   *         description: Licenses retrieved successfully with flat metadata including page, limit, total, totalPages, hasNext, and hasPrev
    *         content:
    *           application/json:
    *             schema:
-   *               allOf:
-   *                 - $ref: '#/components/schemas/BaseResponse'
-   *                 - $ref: '#/components/schemas/PaginatedResponse'
+   *               $ref: '#/components/schemas/ExternalLicenseListResponse'
    */
   router.get('/', controller.getLicenses);
 

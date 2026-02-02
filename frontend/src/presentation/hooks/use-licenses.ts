@@ -6,11 +6,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { licenseApi } from '@/infrastructure/api/licenses';
 import { useToast } from '@/presentation/contexts/toast-context';
-// import { useErrorHandler } from '@/presentation/hooks/use-error-handler';
+import logger from '@/shared/helpers/logger';
 
 // Mock error handler
 const useErrorHandler = () => ({
-  handleError: (error: any) => console.error('Error:', error)
+  handleError: (error: unknown) => logger.error('Error', { error }),
 });
 import type { LicenseRecord } from '@/types';
 import type { DashboardMetrics } from '@/infrastructure/api/types';
@@ -502,9 +502,9 @@ export const useLicenseLifecycle = () => {
     try {
       const response = await licenseApi.getLicensesRequiringAttention(options);
       return response.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // This endpoint may not be fully available
-      console.warn('Licenses requiring attention feature may not be available:', err);
+      logger.warn('Licenses requiring attention feature may not be available', { error: err });
       setError('Feature temporarily unavailable');
       return {
         expiringSoon: [],

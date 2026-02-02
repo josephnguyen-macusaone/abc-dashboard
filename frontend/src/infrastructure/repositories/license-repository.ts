@@ -315,7 +315,7 @@ export class LicenseRepository implements ILicenseRepository {
 
       const result = {
         licenses,
-        total: response.stats?.total || response.pagination?.total || licenses.length,
+        total: response.pagination.total || licenses.length,
         pagination: response.pagination
       };
 
@@ -406,68 +406,35 @@ export class LicenseRepository implements ILicenseRepository {
     const response = await licenseApi.getLicenses({ limit: 1000 });
     const licenses = response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
 
-    // Use API-provided stats if available, otherwise calculate
-    let stats: LicenseStatistics;
-
-    if (response.stats) {
-      // Use backend stats and enhance with additional calculations
-      stats = {
-        total: response.stats.total,
-        byStatus: {
-          active: response.stats.active,
-          expired: response.stats.expired,
-          pending: response.stats.pending,
-          cancel: response.stats.cancel
-        },
-        byTerm: {}, // API doesn't provide term breakdown
-        byPlan: {}, // API doesn't provide plan breakdown
-        expiringSoon: 0, // Need to calculate
-        expired: response.stats.expired,
-        totalSeats: 0,
-        usedSeats: 0,
-        totalSmsPurchased: 0,
-        totalSmsBalance: 0,
-        totalRevenue: 0,
-        recentActivity: {
-          created: 0,
-          activated: response.stats.active,
-          expired: response.stats.expired,
-          cancelled: response.stats.cancel
-        }
-      };
-    } else {
-      // Calculate statistics manually
-      stats = {
-        total: licenses.length,
-        byStatus: {},
-        byTerm: {},
-        byPlan: {},
-        expiringSoon: 0,
+    // Calculate statistics from fetched licenses (API no longer provides stats breakdown)
+    const stats: LicenseStatistics = {
+      total: response.pagination.total, // Use total from pagination meta
+      byStatus: {},
+      byTerm: {},
+      byPlan: {},
+      expiringSoon: 0,
+      expired: 0,
+      totalSeats: 0,
+      usedSeats: 0,
+      totalSmsPurchased: 0,
+      totalSmsBalance: 0,
+      totalRevenue: 0,
+      recentActivity: {
+        created: 0,
+        activated: 0,
         expired: 0,
-        totalSeats: 0,
-        usedSeats: 0,
-        totalSmsPurchased: 0,
-        totalSmsBalance: 0,
-        totalRevenue: 0,
-        recentActivity: {
-          created: 0,
-          activated: 0,
-          expired: 0,
-          cancelled: 0
-        }
-      };
-    }
+        cancelled: 0
+      }
+    };
 
-    // Always calculate additional stats that API doesn't provide
+    // Calculate detailed stats from licenses
     const now = new Date();
     const thirtyDaysFromNow = new Date(now);
     thirtyDaysFromNow.setDate(now.getDate() + 30);
 
     for (const license of licenses) {
-      // Enhanced status distribution if not from API
-      if (!response.stats) {
-        stats.byStatus[license.status] = (stats.byStatus[license.status] || 0) + 1;
-      }
+      // Status distribution
+      stats.byStatus[license.status] = (stats.byStatus[license.status] || 0) + 1;
 
       // Term distribution (always calculate)
       stats.byTerm[license.term] = (stats.byTerm[license.term] || 0) + 1;
@@ -475,10 +442,10 @@ export class LicenseRepository implements ILicenseRepository {
       // Plan distribution (always calculate)
       stats.byPlan[license.plan] = (stats.byPlan[license.plan] || 0) + 1;
 
-      // Expiration checks (always calculate expiring soon)
+      // Expiration checks
       const expirationDate = license.calculateExpirationDate();
       if (expirationDate < now) {
-        if (!response.stats) stats.expired++;
+        stats.expired++;
       } else if (expirationDate <= thirtyDaysFromNow) {
         stats.expiringSoon++;
       }

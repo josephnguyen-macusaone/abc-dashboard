@@ -12,6 +12,7 @@ export interface LicenseFilters {
   plan?: string | string[];
   term?: LicenseTerm | LicenseTerm[];
   dba?: string;
+  zip?: string;
 }
 
 export interface PaginationState {
@@ -24,13 +25,6 @@ export interface PaginationState {
 export interface LicenseListResponse {
   licenses: LicenseRecord[];
   pagination: PaginationState;
-  stats?: {
-    total: number;
-    active: number;
-    expired: number;
-    pending: number;
-    cancel: number;
-  };
 }
 
 export interface CreateLicenseRequest {
@@ -78,6 +72,8 @@ interface LicenseState {
   filters: LicenseFilters;
   pagination: PaginationState;
   selectedLicenses: (number | string)[];
+  /** Timestamp (ms) when licenses were last successfully fetched; null before first fetch */
+  lastFetchedAt: number | null;
 
   // Actions
   fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[] }>) => Promise<void>;
@@ -113,11 +109,10 @@ export const useLicenseStore = create<LicenseState>()(
         filters: {},
         pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
         selectedLicenses: [],
+        lastFetchedAt: null,
 
         fetchLicenses: async (params = {}) => {
           try {
-            set({ loading: true, error: null });
-
             const currentFilters = get().filters;
             const currentPagination = get().pagination;
 
@@ -135,6 +130,22 @@ export const useLicenseStore = create<LicenseState>()(
                 if (queryParams[key] === undefined)
                   delete queryParams[key];
               });
+
+            // Persist filter state so metrics cards and other consumers use same filters
+            const filterKeys: (keyof LicenseFilters)[] = ['search', 'status', 'plan', 'term', 'dba', 'zip'];
+            const nextFilters = { ...currentFilters } as Record<string, unknown>;
+            const paramsWithFilters = queryParams as Record<string, unknown>;
+            filterKeys.forEach((key) => {
+              const val = paramsWithFilters[key];
+              if (val !== undefined && val !== null && val !== '') {
+                nextFilters[key] = val;
+              } else {
+                delete nextFilters[key];
+              }
+            });
+            const appliedFilters: LicenseFilters = nextFilters as LicenseFilters;
+
+            set({ loading: true, error: null, filters: appliedFilters });
 
             // Convert array filters to comma-separated strings for API compatibility
             const apiParams: any = {
@@ -179,16 +190,17 @@ export const useLicenseStore = create<LicenseState>()(
                 dataType: typeof response.data
               });
               // Provide fallback empty array instead of crashing
-              set({
-                licenses: [],
-                pagination: {
-                  page: apiParams.page || 1,
-                  limit: apiParams.limit || 20,
-                  total: 0,
-                  totalPages: 0
-                },
-                loading: false
-              });
+            set({
+              licenses: [],
+              pagination: {
+                page: apiParams.page || 1,
+                limit: apiParams.limit || 20,
+                total: 0,
+                totalPages: 0
+              },
+              loading: false,
+              lastFetchedAt: Date.now(),
+            });
               return;
             }
 
@@ -205,7 +217,8 @@ export const useLicenseStore = create<LicenseState>()(
                   total: response.data.length,
                   totalPages: Math.ceil(response.data.length / (apiParams.limit || 20))
                 },
-                loading: false
+                loading: false,
+                lastFetchedAt: Date.now(),
               });
               return;
             }
@@ -217,7 +230,8 @@ export const useLicenseStore = create<LicenseState>()(
                 // Use pagination.total from service response (which comes from use case)
                 total: response.pagination?.total || response.data.length
               },
-              loading: false
+              loading: false,
+              lastFetchedAt: Date.now(),
             });
           } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -233,7 +247,7 @@ export const useLicenseStore = create<LicenseState>()(
 
             const licenseData = await container.licenseManagementService.getLicense(id.toString());
 
-            set({ currentLicense: licenseData, loading: false });
+            set({ currentLicense: licenseData, loading: false, lastFetchedAt: Date.now() });
 
             return licenseData;
           } catch (error) {
@@ -757,6 +771,7 @@ export const useLicenseStore = create<LicenseState>()(
             filters: {},
             pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
             selectedLicenses: [],
+            lastFetchedAt: null,
           });
         },
       };
@@ -769,5 +784,7 @@ export const useLicenseStore = create<LicenseState>()(
 export const selectLicenses = (state: LicenseState) => state.licenses;
 export const selectLicenseLoading = (state: LicenseState) => state.loading;
 export const selectLicensePagination = (state: LicenseState) => state.pagination;
+export const selectLicenseFilters = (state: LicenseState) => state.filters;
 export const selectLicenseError = (state: LicenseState) => state.error;
 export const selectSelectedLicenses = (state: LicenseState) => state.selectedLicenses;
+export const selectLicenseLastFetchedAt = (state: LicenseState) => state.lastFetchedAt;

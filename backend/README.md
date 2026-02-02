@@ -183,8 +183,8 @@ For local development and testing, use the consolidated Docker configuration:
 docker-compose --profile dev up -d --build
 
 # Run database setup (if needed)
-docker-compose --profile dev exec backend-dev npm run migrate
-docker-compose --profile dev exec backend-dev npm run seed
+docker compose exec abc-dashboard-backend npm run migrate
+docker compose exec abc-dashboard-backend npm run seed
 ```
 
 This starts:
@@ -249,8 +249,8 @@ docker-compose up -d --build
 docker-compose --profile dev up -d --build
 
 # Run database setup
-docker-compose --profile dev exec backend-dev npm run migrate
-docker-compose --profile dev exec backend-dev npm run seed
+docker compose exec abc-dashboard-backend npm run migrate
+docker compose exec abc-dashboard-backend npm run seed
 ```
 
 ### Single Container

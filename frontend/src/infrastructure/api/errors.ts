@@ -1,4 +1,5 @@
 import { ApiExceptionDto, ApiErrorDto } from '@/application/dto/api-dto';
+import logger from '@/shared/helpers/logger';
 
 /**
  * Handles API errors and converts them to ApiException
@@ -123,7 +124,7 @@ export function logApiError(error: any, context?: string): void {
   const errorInfo = createErrorResponse(error);
   const logMessage = context ? `[${context}] API Error:` : 'API Error:';
 
-  console.error(logMessage, {
+  logger.error(logMessage, {
     message: errorInfo.message,
     code: errorInfo.code,
     status: errorInfo.status,

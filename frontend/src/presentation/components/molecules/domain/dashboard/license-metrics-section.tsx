@@ -5,14 +5,16 @@ import { StatsCards } from '@/presentation/components/molecules/domain/user-mana
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard';
 import { LicenseMetricsSkeleton } from '@/presentation/components/organisms';
 import { useToast } from '@/presentation/contexts/toast-context';
+import { useLicenseStore, selectLicenseFilters } from '@/infrastructure/stores/license';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 import type { LicenseRecord } from '@/types';
 import type { StatsCardConfig } from '@/presentation/components/molecules/domain/user-management';
 import {
   createGetLicenseStatsUseCase,
   type LicenseDateRange,
-  type LicenseDashboardMetric
+  type LicenseDashboardMetric,
 } from '@/application/use-cases';
+import type { LicenseMetricsFilters } from '@/application/use-cases/license/get-license-stats-usecase';
 import { logger } from '@/shared/helpers';
 import {
   AlertTriangle,
@@ -59,6 +61,12 @@ interface LicenseMetricsSectionProps {
   useApiMetrics?: boolean; // New prop to toggle between API and client-side calculation
 }
 
+// Stable serialization of filters for effect deps (avoid reference churn)
+function filtersKey(filters: LicenseMetricsFilters | undefined): string {
+  if (!filters || Object.keys(filters).length === 0) return '';
+  return JSON.stringify(filters);
+}
+
 export function LicenseMetricsSection({
   licenses,
   dateRange,
@@ -72,8 +80,14 @@ export function LicenseMetricsSection({
   const { errorWithDescription } = useToast();
   const [metrics, setMetrics] = useState<LicenseDashboardMetric[]>([]);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  const filters = useLicenseStore(selectLicenseFilters);
 
-  // Use the dashboard metrics use case
+  const filtersForApi: LicenseMetricsFilters | undefined = useMemo(() => {
+    const hasFilter = filters && Object.keys(filters).length > 0;
+    return hasFilter ? { ...filters } : undefined;
+  }, [filtersKey(filters)]);
+
+  // Use the dashboard metrics use case; refetch when date range or filters change
   useEffect(() => {
     const loadMetrics = async () => {
       try {
@@ -82,6 +96,7 @@ export function LicenseMetricsSection({
         const result = await useCase.execute({
           licenses: useApiMetrics ? undefined : licenses,
           dateRange,
+          filters: filtersForApi,
           useApiMetrics,
         });
         setMetrics(result);
@@ -99,6 +114,7 @@ export function LicenseMetricsSection({
             const result = await useCase.execute({
               licenses,
               dateRange,
+              filters: filtersForApi,
               useApiMetrics: false,
             });
             setMetrics(result);
@@ -116,11 +132,11 @@ export function LicenseMetricsSection({
 
     loadMetrics();
   }, [
-    // Only depend on dateRange values, not the object reference
     dateRange?.from?.toISOString(),
     dateRange?.to?.toISOString(),
+    filtersKey(filtersForApi),
     useApiMetrics,
-    licenses
+    licenses,
   ]);
 
   // Transform business metrics to UI components

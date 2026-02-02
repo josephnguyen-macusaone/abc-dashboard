@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/presentation/components/atoms/prim
 import { Checkbox } from '@/presentation/components/atoms/forms/checkbox';
 import { Typography } from '@/presentation/components/atoms/display/typography';
 import { Separator } from '@/presentation/components/atoms/primitives/separator';
-import { cn } from '@/shared/helpers';
+import { cn, logger } from '@/shared/helpers';
 
 // ============================================================================
 // Types
@@ -172,7 +172,7 @@ export function ExportDialog({
       await onExport(options);
       setIsOpen(false);
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed', { error });
       // Error handling should be done in the parent callback
     }
   };

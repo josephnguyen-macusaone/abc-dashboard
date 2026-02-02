@@ -246,9 +246,19 @@ export class SyncExternalLicensesUseCase {
           if (comprehensive) {
             logger.info('Starting paginated sync to internal licenses table (batch processing approach)...');
             logger.info('Using comprehensive mode with batch processing for robust data handling', { batchSize });
-            internalSyncResults = await this.syncToInternalLicensesPaginated({
-              batchSize: batchSize || 100,
-            });
+            
+            try {
+              internalSyncResults = await this.syncToInternalLicensesPaginated({
+                batchSize: batchSize || 100,
+              });
+            } catch (paginatedError) {
+              logger.error('Paginated internal sync failed with detailed stack trace', {
+                error: paginatedError.message,
+                stack: paginatedError.stack,
+                errorName: paginatedError.name,
+              });
+              throw paginatedError; // Re-throw to outer catch
+            }
           } else {
             logger.info('Starting legacy sync to internal licenses table (external-driven approach)...');
             internalSyncResults = await this.externalLicenseRepository.syncToInternalLicenses(this.internalLicenseRepository);
@@ -271,8 +281,13 @@ export class SyncExternalLicensesUseCase {
             created: internalSyncResults.createdCount,
           });
         } catch (error) {
-          logger.error('Failed to sync to internal licenses', { error: error.message });
+          logger.error('Failed to sync to internal licenses (DETAILED ERROR)', { 
+            error: error.message,
+            errorStack: error.stack,
+            errorType: error.constructor.name,
+          });
           syncResults.internalSyncError = error.message;
+          // Don't throw - external sync succeeded, just log internal error
         }
       }
 

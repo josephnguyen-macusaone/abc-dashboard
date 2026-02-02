@@ -64,6 +64,7 @@ export function DataTable<TData>({
                     <TableCell
                       key={cell.id}
                       style={{ width: `${cell.column.getSize()}px` }}
+                      className="min-w-0 truncate"
                     >
                       {flexRender(
                         cell.column.columnDef.cell,

@@ -14,7 +14,7 @@
 set -e  # Exit on error
 
 echo "======================================"
-echo "ABC Dashboard - Low-Memory Build Mode"
+echo "ABC License - Low-Memory Build Mode"
 echo "======================================"
 echo ""
 echo "⚠️  OPTIMIZED FOR 1GB RAM SERVERS"

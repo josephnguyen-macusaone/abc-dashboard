@@ -36,4 +36,5 @@ export {
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,
+  type LicenseMetricsFilters,
 } from './get-license-stats-usecase';

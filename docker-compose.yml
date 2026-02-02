@@ -1,5 +1,11 @@
+# ABC Dashboard - Docker Compose
+# Services: postgres (DB), backend API, frontend (Next.js)
+#
+# If port 5000 is in use: set BACKEND_PORT=5001 in .env and
+# NEXT_PUBLIC_API_URL=http://localhost:5001 so the frontend can reach the API.
+# If port 5432 is in use: set POSTGRES_PORT_HOST=5433 in .env (backend still uses postgres:5432 inside Docker).
+
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: abc-dashboard-postgres
@@ -11,7 +17,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"  # External port 5432 for PostgreSQL
+      - "${POSTGRES_PORT_HOST:-5432}:5432"
     networks:
       - abc-dashboard-network
     healthcheck:
@@ -20,23 +26,17 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API
   backend:
+    image: abc-dashboard-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
       args:
         - BUILDKIT_INLINE_CACHE=1
-      # Multi-layer caching strategy for backend
-      cache_from:
-        - abc-dashboard-backend:latest
-        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/backend:latest
-      # BuildKit cache mounts (handled by build.sh in CI/CD)
-      # cache_to handled by GitHub Actions registry
     container_name: abc-dashboard-backend
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "${BACKEND_PORT:-5000}:5000"
     deploy:
       resources:
         limits:
@@ -79,8 +79,8 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend Next.js
   frontend:
+    image: abc-dashboard-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -88,12 +88,6 @@ services:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
         - BUILDKIT_INLINE_CACHE=1
-      # Multi-layer caching strategy
-      cache_from:
-        - abc-dashboard-frontend:latest
-        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/frontend:latest
-      # BuildKit cache mounts handled by build.sh in CI/CD
-      # Target the final runner stage
       target: production
     container_name: abc-dashboard-frontend
     restart: unless-stopped
