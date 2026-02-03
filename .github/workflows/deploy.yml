@@ -59,7 +59,8 @@ jobs:
         CLIENT_URL=${{ secrets['CLIENT_URL'] }}
 
         # Frontend Configuration (CRITICAL: baked into build)
-        NEXT_PUBLIC_API_URL=${{ secrets['NEXT_PUBLIC_API_URL'] }}
+        # Production uses relative API paths (/api/v1), proxied by Nginx
+        # DO NOT set NEXT_PUBLIC_API_URL - it would override relative mode
         NEXT_PUBLIC_USE_RELATIVE_API=true
         NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets['NEXT_SERVER_ACTIONS_ENCRYPTION_KEY'] }}
 
@@ -176,7 +177,7 @@ jobs:
         echo "🔍 Verifying deployment..."
         ssh -i ~/.ssh/deploy_key ${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }} << 'ENDSSH'
           cd /root/abc-dashboard
-          
+
           # Wait for backend health check
           timeout=60
           echo "Checking backend health..."
