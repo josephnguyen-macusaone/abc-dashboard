@@ -36,9 +36,11 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy all source files
 COPY . .
 
-# Build arguments for Next.js
+# Build arguments for Next.js (these are inlined at build time by webpack)
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_USE_RELATIVE_API
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
 
 # Build Next.js with REDUCED memory limit for 1GB RAM servers
 # Disable webpack build workers to save memory
