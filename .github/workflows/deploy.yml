@@ -59,8 +59,9 @@ jobs:
         CLIENT_URL=${{ secrets['CLIENT_URL'] }}
 
         # Frontend Configuration (CRITICAL: baked into build)
-        # Production uses relative API paths (/api/v1), proxied by Nginx
-        # DO NOT set NEXT_PUBLIC_API_URL - it would override relative mode
+        # Production uses relative API paths (/api/v1)
+        # OpenLiteSpeed proxies https://portal.abcsalon.us/api/v1/* to backend:5000
+        # DO NOT set NEXT_PUBLIC_API_URL - it overrides relative mode
         NEXT_PUBLIC_USE_RELATIVE_API=true
         NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets['NEXT_SERVER_ACTIONS_ENCRYPTION_KEY'] }}
 
