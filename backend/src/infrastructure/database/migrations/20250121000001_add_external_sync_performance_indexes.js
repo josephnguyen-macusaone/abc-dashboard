@@ -1,19 +1,21 @@
+import logger from '../../config/logger.js';
+
 /**
  * Migration: Add External Sync Performance Indexes
  * Adds database indexes specifically for external license synchronization operations
  * to improve performance of bulk operations and lookups
  */
-
 export async function up(knex) {
-  console.log('Adding external sync performance indexes...');
+  logger.info('Adding external sync performance indexes...');
 
-  // Check if required columns exist before creating indexes
   const hasExternalAppIdColumn = await knex.schema.hasColumn('licenses', 'external_appid');
   const hasExternalCountIdColumn = await knex.schema.hasColumn('licenses', 'external_countid');
 
   if (!hasExternalAppIdColumn || !hasExternalCountIdColumn) {
-    console.log('Required external columns not found. Skipping performance indexes migration.');
-    console.log(`external_appid column exists: ${hasExternalAppIdColumn}, external_countid column exists: ${hasExternalCountIdColumn}`);
+    logger.info('Required external columns not found. Skipping performance indexes migration.', {
+      hasExternalAppIdColumn,
+      hasExternalCountIdColumn,
+    });
     return;
   }
 
@@ -49,7 +51,10 @@ export async function up(knex) {
   }
 
   // External sync status index for monitoring sync progress
-  const hasExternalSyncStatusColumn = await knex.schema.hasColumn('licenses', 'external_sync_status');
+  const hasExternalSyncStatusColumn = await knex.schema.hasColumn(
+    'licenses',
+    'external_sync_status'
+  );
   if (hasExternalSyncStatusColumn) {
     await knex.schema.table('licenses', (table) => {
       table.index('external_sync_status', 'idx_licenses_external_sync_status_sync');
@@ -65,7 +70,10 @@ export async function up(knex) {
   }
 
   // Sendbat workspace index for integration lookups
-  const hasSendbatWorkspaceColumn = await knex.schema.hasColumn('licenses', 'external_sendbat_workspace');
+  const hasSendbatWorkspaceColumn = await knex.schema.hasColumn(
+    'licenses',
+    'external_sendbat_workspace'
+  );
   if (hasSendbatWorkspaceColumn) {
     await knex.schema.table('licenses', (table) => {
       table.index('external_sendbat_workspace', 'idx_licenses_external_sendbat_workspace_sync');
@@ -83,10 +91,16 @@ export async function up(knex) {
   // Composite indexes for common sync queries
   await knex.schema.table('licenses', (table) => {
     // External appid + sync status for sync progress tracking
-    table.index(['external_appid', 'external_sync_status'], 'idx_licenses_external_appid_sync_status');
+    table.index(
+      ['external_appid', 'external_sync_status'],
+      'idx_licenses_external_appid_sync_status'
+    );
 
     // External countid + sync status for alternative sync tracking
-    table.index(['external_countid', 'external_sync_status'], 'idx_licenses_external_countid_sync_status');
+    table.index(
+      ['external_countid', 'external_sync_status'],
+      'idx_licenses_external_countid_sync_status'
+    );
 
     // Sync status + last sync time for monitoring
     table.index(['external_sync_status', 'last_external_sync'], 'idx_licenses_sync_status_time');
@@ -173,25 +187,11 @@ export async function up(knex) {
     WHERE sync_status = 'pending'
   `);
 
-  console.log('✅ External sync performance indexes added successfully!');
-  console.log(`
-  📊 External Sync Indexes Summary:
-  - Licenses Table: 13 indexes (including 3 composite)
-  - External Licenses Table: 15 indexes (including 3 composite + 3 partial)
-
-  Key Performance Improvements:
-  - Fast external appid/countid lookups during sync
-  - Efficient sync status monitoring and filtering
-  - Optimized bulk sync operations
-  - Improved expiration date queries
-  - Enhanced financial reporting capabilities
-
-  Total: 28 new indexes for optimal external sync performance!
-  `);
+  logger.info('External sync performance indexes added successfully');
 }
 
 export async function down(knex) {
-  console.log('Removing external sync performance indexes...');
+  logger.info('Removing external sync performance indexes...');
 
   // ==========================================================================
   // Licenses Table - External Sync Indexes (Rollback)
@@ -210,7 +210,10 @@ export async function down(knex) {
     // Composite indexes
     table.dropIndex(['appid', 'external_sync_status'], 'idx_licenses_appid_sync_status');
     table.dropIndex(['countid', 'external_sync_status'], 'idx_licenses_countid_sync_status');
-    table.dropIndex(['external_sync_status', 'last_external_sync'], 'idx_licenses_sync_status_time');
+    table.dropIndex(
+      ['external_sync_status', 'last_external_sync'],
+      'idx_licenses_sync_status_time'
+    );
   });
 
   // Drop the partial index for external_email
@@ -242,5 +245,5 @@ export async function down(knex) {
   await knex.raw('DROP INDEX IF EXISTS idx_external_licenses_failed_sync');
   await knex.raw('DROP INDEX IF EXISTS idx_external_licenses_pending_sync');
 
-  console.log('✅ External sync performance indexes removed!');
+  logger.info('External sync performance indexes removed');
 }

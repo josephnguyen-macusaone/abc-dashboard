@@ -149,15 +149,14 @@ export class ExternalLicenseController {
    */
   getLicenses = async (req, res) => {
     try {
-      console.log('DEBUG: External licenses getLicenses called');
+      logger.debug('External licenses getLicenses called');
 
       // Direct approach - import and use repository directly
-      console.log('DEBUG: Importing modules...');
-      const { ExternalLicenseRepository } = await import('../repositories/external-license-repository.js');
+      const { ExternalLicenseRepository } =
+        await import('../repositories/external-license-repository.js');
       const knex = (await import('knex')).default;
       const { getKnexConfig } = await import('../config/database.js');
 
-      console.log('DEBUG: Creating database connection...');
       const db = knex(getKnexConfig());
       const repo = new ExternalLicenseRepository(db);
 
@@ -166,12 +165,11 @@ export class ExternalLicenseController {
         limit: parseInt(req.query.limit) || 10,
         filters: {},
         sortBy: 'updated_at',
-        sortOrder: 'desc'
+        sortOrder: 'desc',
       };
 
-      console.log('DEBUG: Calling repo.findLicenses...');
       const result = await repo.findLicenses(options);
-      console.log('DEBUG: Repository call completed, result:', !!result);
+      logger.debug('External licenses repository call completed', { hasResult: !!result });
 
       // Close the database connection
       await db.destroy();
@@ -185,13 +183,15 @@ export class ExternalLicenseController {
             page: options.page,
             limit: options.limit,
             total: result.total || 0,
-            totalPages: Math.ceil((result.total || 0) / options.limit)
-          }
-        }
+            totalPages: Math.ceil((result.total || 0) / options.limit),
+          },
+        },
       });
     } catch (error) {
       // Make sure to close DB connection on error too
-      try { await db.destroy(); } catch (e) {}
+      try {
+        await db.destroy();
+      } catch (e) {}
 
       logger.error('Failed to get external licenses via API', {
         correlationId: req.correlationId,
@@ -205,8 +205,8 @@ export class ExternalLicenseController {
         error: {
           code: 500,
           message: 'An unexpected error occurred. Please try again.',
-          category: 'server'
-        }
+          category: 'server',
+        },
       });
     }
   };
@@ -664,7 +664,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Delete license by email (DELETE /api/v1/licenses/email/{email})
@@ -692,7 +692,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Update license by countid (PUT /api/v1/licenses/countid/{countid})
@@ -708,7 +708,10 @@ export class ExternalLicenseController {
         userId: req.user?.id,
       });
 
-      const result = await this.manageExternalLicensesUseCase.updateLicenseByCountId(parseInt(countid), updates);
+      const result = await this.manageExternalLicensesUseCase.updateLicenseByCountId(
+        parseInt(countid),
+        updates
+      );
 
       return res.success(result, 'License updated successfully');
     } catch (error) {
@@ -721,7 +724,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Delete license by countid (DELETE /api/v1/licenses/countid/{countid})
@@ -736,7 +739,9 @@ export class ExternalLicenseController {
         userId: req.user?.id,
       });
 
-      const result = await this.manageExternalLicensesUseCase.deleteLicenseByCountId(parseInt(countid));
+      const result = await this.manageExternalLicensesUseCase.deleteLicenseByCountId(
+        parseInt(countid)
+      );
 
       return res.success(result, 'License deleted successfully');
     } catch (error) {
@@ -749,7 +754,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Reset license ID (POST /api/v1/licenses/reset)
@@ -779,7 +784,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Bulk create licenses (POST /api/v1/licenses/bulk)
@@ -806,7 +811,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Add row license (POST /api/v1/licenses/row)
@@ -832,7 +837,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Get SMS payments (GET /api/v1/sms-payments)
@@ -869,7 +874,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Add SMS payment (POST /api/v1/add-sms-payment)
@@ -895,7 +900,7 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 
   /**
    * Get license analytics (GET /api/v1/license-analytic)
@@ -929,5 +934,5 @@ export class ExternalLicenseController {
 
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
-  }
+  };
 }

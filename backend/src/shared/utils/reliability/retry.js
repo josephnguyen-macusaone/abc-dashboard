@@ -2,11 +2,8 @@
  * Retry Utility
  * Provides retry mechanisms with exponential backoff and jitter for transient failures
  */
-// Use console for logging to avoid circular dependencies during module loading
-// TODO: Replace with proper logger after initialization
-const logger = console;
-
 import { NetworkTimeoutException } from '../../../domain/exceptions/domain.exception.js';
+import logger from '../../../infrastructure/config/logger.js';
 
 /**
  * Default retry configuration

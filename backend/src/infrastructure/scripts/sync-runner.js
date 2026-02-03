@@ -10,7 +10,7 @@ import logger from '../config/logger.js';
 
 async function runSync() {
   try {
-    console.log('🔄 Starting license synchronization...');
+    logger.info('Starting license synchronization...');
 
     // Get the sync use case from container
     const syncUseCase = await awilixContainer.getSyncExternalLicensesUseCase();
@@ -20,41 +20,42 @@ async function runSync() {
     }
 
     // Run comprehensive sync with duplicate detection
-    console.log('📊 Running comprehensive sync with duplicate detection...');
+    logger.info('Running comprehensive sync with duplicate detection...');
 
     const result = await syncUseCase.execute({
-      comprehensive: true,   // Use new robust paginated approach
-      bidirectional: false,  // Disable bidirectional to avoid errors
+      comprehensive: true, // Use new robust paginated approach
+      bidirectional: false, // Disable bidirectional to avoid errors
       detectDuplicates: true,
       forceFullSync: false,
-      batchSize: 25  // Smaller batch size for better error handling
+      batchSize: 15, // Reduced from 25 to avoid pool exhaustion
     });
 
-    console.log('✅ Sync completed successfully!');
-    console.log('📈 Results:', {
+    logger.info('Sync completed successfully', {
       success: result.success,
       totalFetched: result.totalFetched,
       created: result.created,
       updated: result.updated,
       failed: result.failed,
-      duration: `${result.duration}ms`,
+      duration: result.duration,
       duplicatesDetected: result.duplicatesDetected || 0,
-      duplicatesConsolidated: result.duplicatesConsolidated || 0
+      duplicatesConsolidated: result.duplicatesConsolidated || 0,
     });
 
     if (result.errors && result.errors.length > 0) {
-      console.log('⚠️  Errors encountered:', result.errors.length);
+      logger.warn('Errors encountered during sync', {
+        count: result.errors.length,
+        sample: result.errors.slice(0, 5).map((e) => e.error || e.message),
+      });
       result.errors.slice(0, 5).forEach((error, i) => {
-        console.log(`   ${i + 1}. ${error.error || error.message}`);
+        logger.warn(`Sync error ${i + 1}`, { error: error.error || error.message });
       });
       if (result.errors.length > 5) {
-        console.log(`   ... and ${result.errors.length - 5} more errors`);
+        logger.warn(`... and ${result.errors.length - 5} more errors`);
       }
     }
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Sync failed:', error.message);
     logger.error('Sync runner failed', { error: error.message, stack: error.stack });
     process.exit(1);
   }

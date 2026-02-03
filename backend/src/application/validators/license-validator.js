@@ -1,4 +1,5 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
+import logger from '../../infrastructure/config/logger.js';
 
 const STATUS_VALUES = ['draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'];
 const PLAN_VALUES = ['Basic', 'Premium', 'Enterprise'];
@@ -300,15 +301,16 @@ export class LicenseValidator {
     if (input.expiresAt) {
       const expiresAt = new Date(input.expiresAt);
       if (isNaN(expiresAt.getTime())) {
-        // Allow invalid dates for compatibility
-        console.warn(
-          `License ${input.key || 'unknown'} has invalid expiresAt date: ${input.expiresAt}`
-        );
+        logger.warn('License has invalid expiresAt date', {
+          key: input.key || 'unknown',
+          expiresAt: input.expiresAt,
+        });
       } else if (expiresAt <= startsAt) {
-        // Allow expiry dates before start dates for existing data
-        console.warn(
-          `License ${input.key || 'unknown'} has expiresAt (${input.expiresAt}) before startsAt (${input.startsAt})`
-        );
+        logger.warn('License has expiresAt before startsAt', {
+          key: input.key || 'unknown',
+          expiresAt: input.expiresAt,
+          startsAt: input.startsAt,
+        });
       }
     }
 

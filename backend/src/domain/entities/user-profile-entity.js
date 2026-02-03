@@ -3,15 +3,7 @@
  * Represents the optional extended profile information for a User
  */
 export class UserProfile {
-  constructor({
-    id,
-    userId,
-    bio,
-    lastLoginAt,
-    lastActivityAt,
-    createdAt,
-    updatedAt,
-  }) {
+  constructor({ id, userId, bio, lastLoginAt, lastActivityAt, createdAt, updatedAt }) {
     this.id = id;
     this.userId = userId;
     this.bio = bio;

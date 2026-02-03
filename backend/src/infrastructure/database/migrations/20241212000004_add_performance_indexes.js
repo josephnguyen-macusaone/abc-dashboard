@@ -1,10 +1,11 @@
+import logger from '../../config/logger.js';
+
 /**
  * Migration: Add Performance Indexes
  * Adds indexes for search performance, filtering, and common queries
  */
-
 export async function up(knex) {
-  console.log('Adding performance indexes...');
+  logger.info('Adding performance indexes...');
 
   // ==========================================================================
   // Users Table Indexes
@@ -218,21 +219,11 @@ export async function up(knex) {
     table.index('last_activity_at', 'idx_profiles_last_activity_at');
   });
 
-  console.log('✅ Performance indexes added successfully!');
-  console.log(`
-  📊 Indexes Summary:
-  - Users: 10 indexes (including full-text search)
-  - Licenses: 14 indexes (including full-text search)
-  - License Assignments: 8 indexes
-  - License Audit Events: 7 indexes
-  - User Profiles: 3 indexes
-
-  Total: 42 indexes for optimal query performance!
-  `);
+  logger.info('Performance indexes added successfully');
 }
 
 export async function down(knex) {
-  console.log('Removing performance indexes...');
+  logger.info('Removing performance indexes...');
 
   // ==========================================================================
   // Users Table Indexes
@@ -309,5 +300,5 @@ export async function down(knex) {
     table.dropIndex('last_activity_at', 'idx_profiles_last_activity_at');
   });
 
-  console.log('✅ Performance indexes removed!');
+  logger.info('Performance indexes removed');
 }

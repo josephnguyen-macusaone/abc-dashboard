@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../../../config/logger.js';
 
 // Middleware to add correlation ID to each request
 export const correlationIdMiddleware = async (req, res, next) => {
@@ -17,7 +18,7 @@ export const correlationIdMiddleware = async (req, res, next) => {
     awilixContainer.setCorrelationId(req.correlationId);
   } catch (error) {
     // Silently continue if container is not available yet
-    console.warn('Could not set correlation ID on Awilix container:', error.message);
+    logger.warn('Could not set correlation ID on Awilix container', { error: error.message });
   }
 
   next();

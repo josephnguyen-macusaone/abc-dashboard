@@ -3,6 +3,7 @@
  * Express middleware for request validation using Joi
  */
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import logger from '../config/logger.js';
 
 /**
  * Validate request body
@@ -23,9 +24,8 @@ export const validateRequest = (schema) => (req, res, next) => {
       message: detail.message,
     }));
 
-    console.error('[VALIDATION] Validation failed:', {
+    logger.warn('Validation failed', {
       errors,
-      body: req.body,
       url: req.url,
       method: req.method,
     });

@@ -10,67 +10,65 @@ import logger from '../config/logger.js';
 
 async function checkSyncStatus() {
   try {
-    console.log('🔍 Checking license sync status...');
+    logger.info('Checking license sync status...');
 
     // Get the sync use case from container
     const syncUseCase = await awilixContainer.getSyncExternalLicensesUseCase();
 
     if (!syncUseCase) {
-      console.log('⚠️  Sync use case not available');
+      logger.warn('Sync use case not available');
       return;
     }
 
     // Get sync status
     const status = await syncUseCase.getSyncStatus();
 
-    console.log('📊 Sync Status:');
-    console.log('===============');
+    logger.info('Sync Status');
 
     if (status.success) {
-      console.log('✅ Sync system is operational');
+      logger.info('Sync system is operational');
 
       // Internal sync stats
       if (status.internal) {
-        console.log('\n🏠 Internal Database:');
-        console.log(`   Total Licenses: ${status.internal.totalLicenses || 'N/A'}`);
-        console.log(`   Last Sync: ${status.internal.lastSync || 'Never'}`);
-        console.log(`   Sync Status: ${status.internal.syncStatus || 'Unknown'}`);
+        logger.info('Internal database', {
+          totalLicenses: status.internal.totalLicenses ?? 'N/A',
+          lastSync: status.internal.lastSync ?? 'Never',
+          syncStatus: status.internal.syncStatus ?? 'Unknown',
+        });
       }
 
       // External API health
       if (status.external) {
-        console.log('\n🌐 External API:');
-        console.log(`   Healthy: ${status.external.healthy ? '✅' : '❌'}`);
-        console.log(`   Last Check: ${status.external.lastHealthCheck || 'Never'}`);
-        if (status.external.error) {
-          console.log(`   Error: ${status.external.error}`);
-        }
+        logger.info('External API', {
+          healthy: status.external.healthy,
+          lastHealthCheck: status.external.lastHealthCheck ?? 'Never',
+          error: status.external.error,
+        });
       }
 
       // Overall sync info
       if (status.lastSync) {
-        console.log('\n⏰ Last Sync:');
-        console.log(`   Completed: ${status.lastSync.timestamp || 'N/A'}`);
-        console.log(`   Duration: ${status.lastSync.duration || 'N/A'}ms`);
-        console.log(`   Records Processed: ${status.lastSync.totalProcessed || 'N/A'}`);
-        console.log(`   Success Rate: ${status.lastSync.successRate || 'N/A'}%`);
+        logger.info('Last sync', {
+          timestamp: status.lastSync.timestamp ?? 'N/A',
+          durationMs: status.lastSync.duration ?? 'N/A',
+          totalProcessed: status.lastSync.totalProcessed ?? 'N/A',
+          successRate: status.lastSync.successRate ?? 'N/A',
+        });
       }
-
     } else {
-      console.log('❌ Sync system error:', status.error);
+      logger.error('Sync system error', { error: status.error });
     }
 
-    console.log('\n💡 Recommendations:');
     if (!status.external?.healthy) {
-      console.log('   - Check external API connectivity');
-      console.log('   - Verify EXTERNAL_LICENSE_API_KEY environment variable');
+      logger.info('Recommendations: Check external API connectivity and EXTERNAL_LICENSE_API_KEY');
     }
-    if (!status.lastSync || Date.now() - new Date(status.lastSync.timestamp) > 24 * 60 * 60 * 1000) {
-      console.log('   - Consider running a sync (npm run sync:start)');
+    if (
+      !status.lastSync ||
+      Date.now() - new Date(status.lastSync.timestamp) > 24 * 60 * 60 * 1000
+    ) {
+      logger.info('Recommendations: Consider running a sync (npm run sync:start)');
     }
-
   } catch (error) {
-    console.error('❌ Failed to check sync status:', error.message);
     logger.error('Sync status check failed', { error: error.message, stack: error.stack });
     process.exit(1);
   }

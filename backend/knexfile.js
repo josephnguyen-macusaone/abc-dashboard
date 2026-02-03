@@ -56,8 +56,15 @@ const config = {
     connection: process.env.DATABASE_URL,
     pool: {
       min: 2,
-      max: 20,
+      max: 30, // Increased from 20 for sync operations
+      acquireTimeoutMillis: 60000, // 60s timeout (up from 30s default)
+      createTimeoutMillis: 30000,
+      idleTimeoutMillis: 30000,
+      reapIntervalMillis: 1000,
+      createRetryIntervalMillis: 200,
+      propagateCreateError: false, // Don't kill pool on transient errors
     },
+    acquireConnectionTimeout: 60000,
     migrations: {
       directory: './src/infrastructure/database/migrations',
       tableName: 'knex_migrations',

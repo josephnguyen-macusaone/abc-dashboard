@@ -1,8 +1,9 @@
+import logger from '../../config/logger.js';
+
 /**
  * Seed sample licenses for development and testing
  */
 export async function seed(knex) {
-  // Clear existing data (in reverse order due to foreign keys)
   await knex('license_audit_events').del();
   await knex('license_assignments').del();
   await knex('licenses').del();
@@ -11,7 +12,7 @@ export async function seed(knex) {
   const adminUser = await knex('users').where({ email: 'admin@abcsalon.us' }).first();
 
   if (!adminUser) {
-    console.warn('Warning: Admin user not found. Skipping license seeds.');
+    logger.warn('Admin user not found. Skipping license seeds.');
     return;
   }
 
@@ -180,21 +181,17 @@ export async function seed(knex) {
   // Insert licenses
   const insertedLicenses = await knex('licenses').insert(licenses).returning('*');
 
-  console.log(`✅ Created ${insertedLicenses.length} sample licenses across ${totalMonths} months`);
+  logger.info('Created sample licenses', {
+    count: insertedLicenses.length,
+    totalMonths,
+  });
 
-  // Show detailed breakdown by month
   const byMonth = insertedLicenses.reduce((acc, license) => {
-    const month = license.starts_at.toISOString().slice(0, 7); // YYYY-MM
+    const month = license.starts_at.toISOString().slice(0, 7);
     acc[month] = (acc[month] || 0) + 1;
     return acc;
   }, {});
-
-  console.log('📅 Monthly distribution:');
-  Object.entries(byMonth)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([month, count]) => {
-      console.log(`   - ${month}: ${count} licenses`);
-    });
+  logger.info('Monthly distribution', { byMonth });
 
   // Create some sample assignments
   const staffUsers = await knex('users').where({ role: 'staff' }).limit(10);
@@ -225,7 +222,7 @@ export async function seed(knex) {
 
     if (assignments.length > 0) {
       await knex('license_assignments').insert(assignments);
-      console.log(`✅ Created ${assignments.length} sample license assignments`);
+      logger.info('Created sample license assignments', { count: assignments.length });
     }
   }
 
@@ -267,8 +264,8 @@ export async function seed(knex) {
 
   if (auditEvents.length > 0) {
     await knex('license_audit_events').insert(auditEvents);
-    console.log(`✅ Created ${auditEvents.length} sample audit events`);
+    logger.info('Created sample audit events', { count: auditEvents.length });
   }
 
-  console.log('✅ License seed data created successfully!');
+  logger.info('License seed data created successfully');
 }

@@ -166,11 +166,16 @@ export class ExternalLicense {
 
     if (typeof this.status === 'number') {
       switch (this.status) {
-        case 0: return 'Inactive';
-        case 1: return 'Active';
-        case 2: return 'Suspended';
-        case 3: return 'Pending';
-        default: return `Status ${this.status}`;
+        case 0:
+          return 'Inactive';
+        case 1:
+          return 'Active';
+        case 2:
+          return 'Suspended';
+        case 3:
+          return 'Pending';
+        default:
+          return `Status ${this.status}`;
       }
     }
 

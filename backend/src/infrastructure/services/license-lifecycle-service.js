@@ -22,7 +22,7 @@ export class LicenseLifecycleService {
       const reminderTypes = [
         { type: '30days', description: '30-day renewal reminder' },
         { type: '7days', description: '7-day renewal reminder' },
-        { type: '1day', description: '1-day renewal reminder' }
+        { type: '1day', description: '1-day renewal reminder' },
       ];
 
       let totalProcessed = 0;
@@ -45,7 +45,6 @@ export class LicenseLifecycleService {
 
       logger.info('License expiration check completed', { totalProcessed });
       return { success: true, processed: totalProcessed };
-
     } catch (error) {
       logger.error('Failed to process expiring licenses', {
         error: error.message,
@@ -91,7 +90,6 @@ export class LicenseLifecycleService {
         licenseId: license.id,
         licenseKey: license.key,
       });
-
     } catch (error) {
       logger.error(`Failed to send ${description}`, {
         licenseId: license.id,
@@ -118,7 +116,7 @@ export class LicenseLifecycleService {
         return { success: true, suspended: 0 };
       }
 
-      const licenseIds = expiredLicenses.map(license => license.id);
+      const licenseIds = expiredLicenses.map((license) => license.id);
 
       logger.info('Suspending expired licenses', {
         count: licenseIds.length,
@@ -151,7 +149,6 @@ export class LicenseLifecycleService {
       });
 
       return { success: true, suspended: suspendedCount };
-
     } catch (error) {
       logger.error('Failed to process expired licenses', {
         error: error.message,
@@ -198,7 +195,6 @@ export class LicenseLifecycleService {
       });
 
       return updatedLicense;
-
     } catch (error) {
       logger.error('Failed to extend license expiration', {
         licenseId,
@@ -276,7 +272,6 @@ export class LicenseLifecycleService {
       });
 
       return updatedLicense;
-
     } catch (error) {
       logger.error('Failed to renew license', {
         licenseId,
@@ -320,7 +315,6 @@ export class LicenseLifecycleService {
       });
 
       return reactivatedLicense;
-
     } catch (error) {
       logger.error('Failed to reactivate license', {
         licenseId,
@@ -390,7 +384,6 @@ export class LicenseLifecycleService {
       });
 
       return results;
-
     } catch (error) {
       logger.error('Failed to get licenses requiring attention', {
         error: error.message,
@@ -432,7 +425,6 @@ export class LicenseLifecycleService {
 
       logger.info('Grace period updates completed', { updated });
       return { success: true, updated };
-
     } catch (error) {
       logger.error('Failed to update grace periods', {
         error: error.message,

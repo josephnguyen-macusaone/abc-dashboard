@@ -58,7 +58,6 @@ export class LicenseNotificationService {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Failed to send renewal reminder', {
         licenseId: license.id,
@@ -111,7 +110,6 @@ export class LicenseNotificationService {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Failed to send license expired notification', {
         licenseId: license.id,
@@ -161,7 +159,6 @@ export class LicenseNotificationService {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Failed to send license suspended notification', {
         licenseId: license.id,
@@ -186,7 +183,7 @@ export class LicenseNotificationService {
 
       // Get the latest renewal from history
       const latestRenewal = license.renewalHistory
-        ?.filter(entry => entry.action === 'license_renewed')
+        ?.filter((entry) => entry.action === 'license_renewed')
         ?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
 
       const notification = {
@@ -217,7 +214,6 @@ export class LicenseNotificationService {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Failed to send license renewed notification', {
         licenseId: license.id,
@@ -268,7 +264,6 @@ export class LicenseNotificationService {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Failed to send license extended notification', {
         licenseId: license.id,
@@ -319,7 +314,6 @@ export class LicenseNotificationService {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Failed to send license reactivated notification', {
         licenseId: license.id,
@@ -390,7 +384,6 @@ export class LicenseNotificationService {
 
       // Use the actual notification provider
       return await this.notificationProvider.send(notification);
-
     } catch (error) {
       logger.error('Failed to send notification', {
         type: notification.type,
@@ -425,7 +418,11 @@ export class LicenseNotificationService {
 
           switch (notificationType) {
             case 'renewal_reminder':
-              result = await this.sendRenewalReminder(license, options.reminderType, options.description);
+              result = await this.sendRenewalReminder(
+                license,
+                options.reminderType,
+                options.description
+              );
               break;
             case 'expired':
               result = await this.sendLicenseExpired(license, options.context);
@@ -472,7 +469,6 @@ export class LicenseNotificationService {
       });
 
       return results;
-
     } catch (error) {
       logger.error('Bulk notification sending failed', {
         notificationType,

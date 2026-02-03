@@ -650,8 +650,10 @@ export class License {
 
     // Log warnings if any
     if (validation.warnings.length > 0) {
-      // In a real system, this might log warnings or send notifications
-      console.warn(`Status transition warnings for license ${this.key}:`, validation.warnings);
+      logger.warn('Status transition warnings for license', {
+        licenseKey: this.key,
+        warnings: validation.warnings,
+      });
     }
 
     const oldStatus = this.status;

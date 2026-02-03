@@ -1103,7 +1103,7 @@ export class LicenseRepository extends ILicenseRepository {
       external_sync_error: licenseRow.external_sync_error,
     });
 
-    console.log('DEBUG: Final entityData.startsAt:', entityData.startsAt);
+    logger.debug('Final entityData.startsAt', { startsAt: entityData.startsAt });
 
     return new License(entityData);
   }

@@ -1,32 +1,28 @@
-# ABC License - Docker Compose
-# Services: postgres, redis, backend API, frontend (Next.js)
-#
-# If port 5000 is in use: set BACKEND_PORT=5001 in .env and
-# NEXT_PUBLIC_API_URL=http://localhost:5001 so the frontend can reach the API.
-# If port 5432 is in use: set POSTGRES_PORT_HOST=5433 in .env (backend still uses postgres:5432 inside Docker).
-
 services:
+
+  # Redis
   redis:
     image: redis:7-alpine
-    container_name: redis-dev
+    container_name: abc-license-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --loglevel warning
-    volumes:
-      - redis_data:/data
+    ports:
+      - "6379:6379"
     networks:
       - abc-license-network
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
 
+  # PostgreSQL
   postgres:
     image: postgres:16-alpine
-    container_name: postgres-dev
+    container_name: abc-license-postgres
     restart: unless-stopped
-    command: ["postgres", "-c", "log_min_messages=warning"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -34,7 +30,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT_HOST:-5432}:5432"
+      - "5433:5432"
     networks:
       - abc-license-network
     healthcheck:
@@ -43,6 +39,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # Backend API
   backend:
     image: abc-license-backend:latest
     build:
@@ -50,28 +47,34 @@ services:
       dockerfile: Dockerfile
       args:
         - BUILDKIT_INLINE_CACHE=1
-    container_name: backend-dev
+      cache_from:
+        - abc-license-backend:latest
+        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/backend:latest
+    container_name: abc-license-backend
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-5000}:5000"
+      - "5000:5000"
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '0.5'
+          memory: 512M  # Increased from 256M for sync operations
+          cpus: '0.5'   # Increased from 0.3
         reservations:
-          memory: 512M
+          memory: 256M  # Increased from 128M
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=5000
       - DATABASE_URL=${DATABASE_URL}
-      - POSTGRES_HOST=postgres  # Use postgres service name for Docker networking
+      - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - CLIENT_URL=${CLIENT_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_ENABLED=${REDIS_ENABLED:-true}
+      - CACHE_TYPE=${CACHE_TYPE:-redis}
       - EMAIL_SERVICE=${EMAIL_SERVICE}
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
@@ -81,11 +84,8 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
       - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - CACHE_TYPE=${CACHE_TYPE:-redis}
     volumes:
       - ./backend/logs:/app/logs
-      - ./.env:/app/.env:ro
     networks:
       - abc-license-network
     depends_on:
@@ -100,6 +100,7 @@ services:
       retries: 3
       start_period: 40s
 
+  # Frontend Next.js
   frontend:
     image: abc-license-frontend:latest
     build:
@@ -107,23 +108,28 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
         - BUILDKIT_INLINE_CACHE=1
+      cache_from:
+        - abc-license-frontend:latest
+        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/frontend:latest
       target: production
-    container_name: frontend-dev
+    container_name: abc-license-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     deploy:
       resources:
         limits:
-          memory: 512M  # Reduced for 1GB RAM server
+          memory: 512M
           cpus: '0.5'
         reservations:
           memory: 256M
     environment:
       - NODE_ENV=${NODE_ENV}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
       - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
     networks:
       - abc-license-network
