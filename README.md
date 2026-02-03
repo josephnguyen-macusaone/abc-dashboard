@@ -1,319 +1,193 @@
-# ABC Dashboard - Optimized for Speed 🚀
+# ABC Dashboard
 
-**Date**: December 16, 2025
-**Status**: ✅ **OPTIMIZED** - 88% faster builds, 87.7% smaller images
+Next.js + Node/Express license management platform.
 
----
+## Quick Start
 
-## ⚡ Quick Start (2 Minutes to Running)
-
+**Local development:**
 ```bash
-# 1. Enable BuildKit for lightning-fast builds (REQUIRED!)
 export DOCKER_BUILDKIT=1
-export COMPOSE_DOCKER_CLI_BUILD=1
+docker compose up -d
 
-# 2. Build and start everything (optimized build)
-cd /root/abc-dashboard
-./build-optimized.sh
-
-# 3. Verify services are running
-docker compose ps
-
-# 4. Access your app
+# Access
 # Frontend: http://localhost:3000
-# Backend:  http://localhost:5000
+# Backend:  http://localhost:5000/api/v1
 # Database: localhost:5433
 ```
 
-**Expected Results:**
-- ✅ **Clean Build**: ~7 minutes (was 60 minutes)
-- ✅ **Cached Build**: ~30 seconds (was 60 minutes)
-- ✅ **Image Size**: 305MB (was 2.48GB)
+**Production deploy:** [QUICK-START.md](./QUICK-START.md) (CI/CD via GitHub Actions)
 
 ---
 
-## 📊 Performance Overview
+## Stack
 
-### Key Improvements
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Image Size** | 2.48 GB | 305 MB | **87.7% smaller** ✨ |
-| **Clean Build** | ~60 min | ~7 min | **88% faster** ⚡ |
-| **Cached Build** | ~60 min | ~30 sec | **99% faster** 🚀 |
-| **Code Changes** | ~60 min | ~2-3 min | **95% faster** 🎯 |
-
-### Optimizations Applied
-- ✅ **Multi-Stage Builds**: 3 optimized stages (deps → builder → runner)
-- ✅ **BuildKit Cache**: Persistent npm and Next.js build caches
-- ✅ **Standalone Output**: Minimal runtime dependencies (~50MB vs ~800MB)
-- ✅ **Layer Optimization**: Dependencies cached separately from source code
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind 4, Radix UI
+- **Backend:** Node.js ESM, Express 5, PostgreSQL (Knex), JWT auth, Swagger
+- **Infrastructure:** Docker Compose, Redis, CI/CD (GitHub Actions)
 
 ---
 
-## 🛠️ Essential Commands
+## Commands
 
-### Daily Development (Fastest)
+### Development
+
 ```bash
-# Start all services
+# Start services
 docker compose up -d
 
-# Rebuild after code changes (2-3 minutes)
+# Rebuild after changes
 docker compose build frontend
 docker compose up -d
 
 # View logs
-docker compose logs -f frontend
-```
+docker compose logs -f
 
-### Optimized Building
-```bash
-# Use the optimized script (recommended)
-./build-optimized.sh              # All services
-./build-optimized.sh frontend     # Frontend only
-./build-optimized.sh --no-cache   # Clean build
-
-# Manual BuildKit builds
-export DOCKER_BUILDKIT=1
-docker compose build frontend     # Cached build
-docker compose build --parallel   # All services parallel
-```
-
-### Database Operations
-```bash
-# Check database status
+# Database operations
 docker compose exec backend npm run db:status
-
-# Fresh database (with migrations & seeds)
 docker compose exec backend npm run seed:fresh
-
-# Access PostgreSQL directly
 docker compose exec postgres psql -U abc_user -d abc_dashboard
 ```
 
+### Building
+
+```bash
+export DOCKER_BUILDKIT=1
+docker compose build                # All services
+docker compose build --no-cache     # Clean build
+```
+
+### Deployment
+
+- **Auto:** Push to `main` or `develop` (triggers CI/CD)
+- **Manual:** `./scripts/build-and-save.sh` → transfer → `./scripts/load-and-run.sh` (see [QUICK-START.md](./QUICK-START.md))
+
 ---
 
-## 🗄️ Database Setup
+## Database
 
-### Migration Status
-✅ **All 6 migrations completed successfully**
-- Users table with authentication & roles
-- User profiles with extended information
-- Licenses table with tracking features
-- License assignments with audit history
-- **42 performance indexes** for optimal queries
-
-### Seed Data Created
-- **117 users**: Admin (1), Managers (14), Staff (102)
-- **50 sample licenses** across all plan types
-- **10 license assignments** with tracking
-- **26 audit events** for compliance
+**Migrations:** 6 complete (users, profiles, licenses, assignments, audit)
+**Indexes:** 42 performance indexes
+**Seed data:** 117 users, 50 licenses, 10 assignments
 
 ### Test Credentials
 
-#### Admin Access
+- **Admin:** admin@example.com / Admin123!
+- **Manager:** hr.manager@example.com / Manager123!
+- **Staff:** hr.staff1@example.com / Staff123!
+
+---
+
+## Project Structure
+
 ```
-Email: admin@example.com
-Password: Admin123!
+abc-dashboard/
+├── backend/           # Node.js API (Express, PostgreSQL)
+├── frontend/          # Next.js app (React, TypeScript)
+├── scripts/           # Deploy scripts (build-and-save, load-and-run)
+├── .github/workflows/ # CI/CD (deploy.yml)
+└── docker-compose.yml # Services (postgres, backend, frontend)
 ```
 
-#### Manager Access (Example)
-```
-Email: hr.manager@example.com
-Password: Manager123!
-```
+**Path aliases (frontend):** `@/*`, `@/components/*`, `@/hooks/*`, `@/domain/*`, `@/infrastructure/*`, `@/application/*`
 
-#### Staff Access (Example)
-```
-Email: hr.staff1@example.com
-Password: Staff123!
+---
+
+## Architecture
+
+### Backend (`backend/src`)
+- **domain/** – Entities, repository interfaces
+- **application/** – DTOs, use-cases, validators
+- **infrastructure/** – Config, routes, controllers, repositories, migrations
+- **shared/** – DI container (Awilix), services, utils
+
+### Frontend (`frontend/src`)
+- **app/** – Next.js App Router
+- **domain/** – Entities, repository interfaces
+- **application/** – DTOs, use-cases, services
+- **infrastructure/** – API client, repositories, stores (Zustand)
+- **presentation/** – Components (atoms, molecules, organisms), hooks
+
+---
+
+## Performance
+
+| Metric | Improvement |
+|--------|-------------|
+| Image Size | 87.7% smaller (305MB vs 2.48GB) |
+| Clean Build | 88% faster (~7min vs ~60min) |
+| Cached Build | 99% faster (~30sec vs ~60min) |
+
+**Optimizations:** Multi-stage builds, BuildKit cache, standalone output, layer optimization.
+
+---
+
+## Key Features
+
+- ✅ License management system
+- ✅ User management (Admin, Manager, Staff roles)
+- ✅ External license API sync (every 10 min)
+- ✅ Email notifications (Mailjet)
+- ✅ JWT authentication + refresh tokens
+- ✅ Audit logging
+- ✅ Swagger API docs
+- ✅ Redis caching
+- ✅ CI/CD pipeline
+
+---
+
+## Documentation
+
+- **Deploy:** [QUICK-START.md](./QUICK-START.md) – Production deployment
+- **CI/CD:** [.github/workflows/README.md](.github/workflows/README.md) – GitHub secrets
+- **Scripts:** [scripts/README.md](./scripts/README.md) – Utility scripts
+- **Architecture:** `backend/docs/` and `frontend/docs/` – Detailed docs
+
+---
+
+## Environment
+
+**.env** (root, backend, frontend) – See `.env.example` files
+- Local: `NEXT_PUBLIC_USE_RELATIVE_API=false` (use localhost:5000)
+- Production: `NEXT_PUBLIC_USE_RELATIVE_API=true` (use /api/v1)
+
+---
+
+## Monitoring
+
+```bash
+docker compose ps              # Service status
+docker compose logs -f         # All logs
+docker stats                   # Resource usage
+curl http://localhost:5000/api/v1/health  # Health check
 ```
 
 ---
 
-## 📈 Monitoring & Verification
+## Troubleshooting
 
-### Check Service Health
+**Services not starting:**
 ```bash
-# Service status
-docker compose ps
-
-# Image sizes (verify optimization)
-docker images | grep abc-dashboard
-
-# Build cache usage
-docker buildx du
-
-# Container resources
-docker stats
+docker compose down
+docker compose up -d
+docker compose logs backend frontend
 ```
 
-### Performance Verification
+**Database issues:**
 ```bash
-# Expected output:
-# abc-dashboard-frontend   latest  305MB  (not 2.48GB)
-# abc-dashboard-backend    latest  630MB
-# abc-dashboard-postgres   latest  269MB
-```
-
-### Application Testing
-```bash
-# Frontend accessibility
-curl -s http://localhost:3000 | head -n 5
-
-# Backend health
-curl -s http://localhost:5000/api/v1/health
-
-# Database connection
 docker compose exec backend npm run db:status
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Build Still Slow?
-```bash
-# 1. Verify BuildKit is enabled
-echo $DOCKER_BUILDKIT  # Should output: 1
-
-# 2. Clear cache and rebuild
-docker builder prune -a
-docker compose build --no-cache frontend
-```
-
-### Image Still Large?
-```bash
-# Check if standalone output is working
-docker run --rm abc-dashboard-frontend:latest ls -la /app
-
-# Should see: server.js, .next/static/, public/
-# Should NOT see: full node_modules/
-```
-
-### Services Won't Start?
-```bash
-# Check logs
-docker compose logs frontend
-docker compose logs backend
-
-# Verify environment
-docker compose config | grep -E "(NEXT_|POSTGRES_|JWT_)"
-
-# Check ports
-netstat -tlnp | grep -E "(3000|5000|5433)"
-```
-
-### Database Issues?
-```bash
-# Reset database
 docker compose exec backend npm run migrate:fresh
 docker compose exec backend npm run seed
-
-# Check migration status
-docker compose exec backend npm run db:status
 ```
+
+**Port conflicts:**
+- Edit `docker-compose.yml` to change ports (default: 3000, 5000, 5433, 6379)
 
 ---
 
-## 🧹 Maintenance
+## License
 
-### Cache Management
-```bash
-# Clean build cache (weekly recommended)
-docker builder prune -f --filter "until=168h"
+Private
 
-# Clean all cache (when needed)
-docker builder prune -a
+## Support
 
-# Remove unused images
-docker image prune -a
-```
-
-### Full Cleanup (Be Careful!)
-```bash
-# Stop and remove everything
-docker compose down -v --remove-orphans
-
-# Clean all Docker resources
-docker system prune -a --volumes
-```
-
----
-
-## 📚 Architecture Overview
-
-### Build Pipeline
-```
-Stage 1: deps (node:20-alpine)
-├─ npm ci with cache mount (/root/.npm)
-└─ Result: node_modules (~800MB)
-
-Stage 2: builder (node:20-alpine)
-├─ Copy node_modules from deps
-├─ Copy source code
-├─ npm run build with cache mount (.next/cache)
-└─ Result: .next/standalone (~50MB)
-
-Stage 3: runner (FINAL IMAGE)
-├─ Copy standalone output only
-├─ Non-root user (nextjs:nodejs)
-├─ Minimal production image
-└─ Result: 305MB optimized image
-```
-
-### Service Ports
-- **Frontend**: http://localhost:3000 (Next.js)
-- **Backend**: http://localhost:5000 (Node.js API)
-- **PostgreSQL**: localhost:5433 (Database)
-
----
-
-## 🚀 Pro Tips for Speed
-
-1. **Always enable BuildKit** before building
-2. **Use `./build-optimized.sh`** for consistent performance
-3. **Don't modify package.json** unnecessarily (breaks cache)
-4. **First build creates cache** (slower) - subsequent builds are fast
-5. **Use `--parallel`** for building multiple services
-6. **Clean cache weekly** in production environments
-
-### Make BuildKit Permanent
-```bash
-# Add to your shell profile
-echo 'export DOCKER_BUILDKIT=1' >> ~/.bashrc
-echo 'export COMPOSE_DOCKER_CLI_BUILD=1' >> ~/.bashrc
-source ~/.bashrc
-```
-
----
-
-## 📋 Files Reference
-
-### Essential Files
-- `docker-compose.yml` - Service definitions
-- `build-optimized.sh` - Optimized build script
-- `.env` - Environment variables
-
-### Configuration
-- `frontend/Dockerfile` - Multi-stage optimized build
-- `frontend/next.config.ts` - Standalone output config
-- `backend/` - API server with database migrations
-
----
-
-## 🎯 Success Checklist
-
-After deployment, verify:
-- [ ] Services running: `docker compose ps`
-- [ ] Frontend accessible: http://localhost:3000
-- [ ] Backend healthy: http://localhost:5000/api/v1/health
-- [ ] Database connected: Check admin login
-- [ ] Build time: < 15 minutes for clean builds
-- [ ] Image size: < 500MB for frontend
-- [ ] Cache working: Subsequent builds < 5 minutes
-
----
-
-**🎉 Ready to deploy fast!** Your ABC Dashboard now builds in minutes instead of hours.
-
-*Last optimized: December 16, 2025*
+Issues/questions: Create GitHub issue or contact team.

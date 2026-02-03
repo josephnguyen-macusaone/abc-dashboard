@@ -49,7 +49,6 @@ services:
         - BUILDKIT_INLINE_CACHE=1
       cache_from:
         - abc-license-backend:latest
-        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/backend:latest
     container_name: abc-license-backend
     restart: unless-stopped
     ports:
@@ -113,7 +112,6 @@ services:
         - BUILDKIT_INLINE_CACHE=1
       cache_from:
         - abc-license-frontend:latest
-        - ${GITHUB_REGISTRY:-ghcr.io/your-org/your-repo}/frontend:latest
       target: production
     container_name: abc-license-frontend
     restart: unless-stopped
