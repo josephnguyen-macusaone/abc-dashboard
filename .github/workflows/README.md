@@ -2,6 +2,8 @@
 
 Deploy runs on push to `main` or `develop`.
 
+**Note:** The IDE may show "Context access might be invalid" for custom secrets in `deploy.yml` — these are false positives; the workflow is valid.
+
 ## Required secrets (19)
 
 | Group | Secrets |

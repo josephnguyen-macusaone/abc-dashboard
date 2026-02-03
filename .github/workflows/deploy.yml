@@ -175,6 +175,8 @@ jobs:
       run: |
         echo "🔍 Verifying deployment..."
         ssh -i ~/.ssh/deploy_key ${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }} << 'ENDSSH'
+          cd /root/abc-dashboard
+          
           # Wait for backend health check
           timeout=60
           echo "Checking backend health..."

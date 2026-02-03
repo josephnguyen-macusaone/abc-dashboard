@@ -140,7 +140,7 @@ abc-dashboard/
 - **Deploy:** [QUICK-START.md](./QUICK-START.md) – Production deployment
 - **CI/CD:** [.github/workflows/README.md](.github/workflows/README.md) – GitHub secrets
 - **Scripts:** [scripts/README.md](./scripts/README.md) – Utility scripts
-- **Architecture:** `backend/docs/` and `frontend/docs/` – Detailed docs
+- **Architecture:** `backend/docs/`, `frontend/docs/` – Backend/frontend detailed docs
 
 ---
 
