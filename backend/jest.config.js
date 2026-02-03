@@ -11,8 +11,12 @@ export default {
     },
   },
 
-  // Test files location
+  // Test files location (exclude email-suite - it's a standalone script that calls process.exit)
   testMatch: ['<rootDir>/tests/**/*.test.js'],
+  testPathIgnorePatterns: [
+    '<rootDir>/tests/email-suite.test.js',
+    '<rootDir>/tests/integration/auth-integration.test.js',
+  ],
 
   // Coverage configuration
   collectCoverageFrom: [

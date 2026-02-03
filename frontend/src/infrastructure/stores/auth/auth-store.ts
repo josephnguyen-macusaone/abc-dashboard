@@ -5,7 +5,7 @@ import { authApi } from '@/infrastructure/api/auth';
 import { httpClient } from '@/infrastructure/api/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
-import { getErrorMessage } from '@/infrastructure/api/errors';
+import { getLoginErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/helpers/logger';
 import { container } from '@/shared/di/container';
 import { createTokenManager, TokenManager } from '@/shared/helpers/token-manager';
@@ -201,8 +201,8 @@ export const useAuthStore = create<AuthState>()(
                   error: profileError instanceof Error ? profileError.message : String(profileError)
                 });
               }
-            } catch (error: any) {
-              const errorMessage = getErrorMessage(error);
+            } catch (error: unknown) {
+              const errorMessage = getLoginErrorMessage(error);
               throw new Error(errorMessage);
             } finally {
               set({ isLoading: false });

@@ -49,6 +49,7 @@ const performStartupChecks = async () => {
 
   const checks = {
     database: false,
+    redis: false,
   };
 
   // Check PostgreSQL connection
@@ -63,9 +64,17 @@ const performStartupChecks = async () => {
     });
   }
 
-  // Log startup summary
+  // Initialize Redis (optional; falls back to in-memory if unavailable)
+  try {
+    const { initRedis } = await import('./src/infrastructure/config/redis.js');
+    checks.redis = await initRedis();
+  } catch (error) {
+    logger.warn('Redis init skipped, using in-memory cache', { error: error.message });
+  }
+
+  const cacheStatus = checks.redis ? 'Redis' : 'In-Memory';
   const dbStatus = checks.database ? 'Connected' : 'Failed';
-  logger.startup(`Startup Health Check Summary - PostgreSQL: ${dbStatus}, Cache: In-Memory`);
+  logger.startup(`Startup Health Check Summary - PostgreSQL: ${dbStatus}, Cache: ${cacheStatus}`);
 
   return checks;
 };
@@ -80,9 +89,9 @@ app.use(securityHeaders);
 // CORS configuration - simplified for development
 const corsOptions = {
   origin: true, // Allow all origins
-        credentials: true,
+  credentials: true,
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
-      };
+};
 
 app.use(cors(corsOptions));
 
@@ -319,6 +328,15 @@ const gracefulShutdown = async (signal) => {
         server.close(resolve);
       });
       logger.startup('HTTP server closed');
+    }
+
+    // Close Redis connection
+    try {
+      const { closeRedis } = await import('./src/infrastructure/config/redis.js');
+      await closeRedis();
+      logger.startup('Redis connection closed');
+    } catch (error) {
+      logger.error('Error closing Redis', { error: error.message });
     }
 
     // Close database connections

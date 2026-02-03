@@ -1,55 +1,99 @@
 /**
  * API Configuration
- * Contains the validated and normalized API base URL
+ *
+ * Validated and normalized API base URL. Values are resolved once at module load.
+ *
+ * Build-time env: NEXT_PUBLIC_* are inlined at build time. Change .env and
+ * rebuild (e.g. restart dev server or rebuild Docker image) for changes to take effect.
  */
 
-import logger from '@/shared/helpers/logger';
+/** Env key for the API base URL (e.g. http://localhost:5000/api/v1) */
+export const API_URL_ENV_KEY = 'NEXT_PUBLIC_API_URL';
+
+/** Env key to use relative API path (set to 'true' when behind a proxy that forwards /api/*) */
+export const USE_RELATIVE_API_ENV_KEY = 'NEXT_PUBLIC_USE_RELATIVE_API';
+
+/** Default base URL when NEXT_PUBLIC_API_URL is unset or invalid */
+export const DEFAULT_API_BASE_URL = 'http://localhost:5000/api/v1';
+
+/** Relative API path when NEXT_PUBLIC_USE_RELATIVE_API is 'true' */
+export const RELATIVE_API_PATH = '/api/v1';
 
 /**
- * Validates and normalizes the API base URL
- * Ensures the URL has a valid http:// or https:// scheme for CORS requests
+ * Environment-like object used to resolve the API base URL (for testing and resolution).
  */
-const validateAndNormalizeBaseURL = (url: string | undefined): string => {
-  // In production, use relative URLs since OpenLiteSpeed proxies /api/* to the backend
-  if (process.env.NODE_ENV === 'production') {
-    return '/api/v1';
+export interface ApiEnv {
+  [key: string]: string | undefined;
+}
+
+/**
+ * Resolved API configuration. BASE_URL has no trailing slash.
+ */
+export interface ApiConfig {
+  readonly BASE_URL: string;
+}
+
+/**
+ * Strips trailing slash from a URL path or full URL (except for root '/').
+ */
+function stripTrailingSlash(url: string): string {
+  return url.endsWith('/') && url.length > 1 ? url.slice(0, -1) : url;
+}
+
+/**
+ * Resolves the API base URL from an env-like object.
+ * Pure function: safe to unit test with fake env.
+ *
+ * Rules:
+ * - If USE_RELATIVE_API_ENV_KEY === 'true', returns RELATIVE_API_PATH (no trailing slash).
+ * - If API_URL_ENV_KEY is empty/missing, returns DEFAULT_API_BASE_URL.
+ * - Validates absolute URLs with new URL(); invalid URLs fall back to default.
+ * - Adds http:// for localhost/127.0.0.1, https:// for other protocol-less hostnames.
+ * - Result always has no trailing slash so baseURL + '/auth/login' is safe.
+ */
+export function resolveApiBaseUrl(env: ApiEnv): string {
+  const useRelative = env[USE_RELATIVE_API_ENV_KEY] === 'true';
+  if (useRelative) {
+    return stripTrailingSlash(RELATIVE_API_PATH);
   }
 
-  const DEFAULT_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1';
-
-  // If URL is empty, undefined, or null, use default
-  if (!url || url.trim() === '') {
-    return DEFAULT_URL;
+  const raw = env[API_URL_ENV_KEY];
+  if (raw === undefined || raw === null || raw.trim() === '') {
+    return stripTrailingSlash(DEFAULT_API_BASE_URL);
   }
 
-  const trimmedUrl = url.trim();
+  const trimmed = raw.trim();
 
-  // Check if URL already has http:// or https:// protocol
-  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     try {
-      // Validate it's a proper URL
-      new URL(trimmedUrl);
-      return trimmedUrl;
+      const parsed = new URL(trimmed);
+      return stripTrailingSlash(parsed.toString());
     } catch {
-      // Invalid URL format, use default
-      logger.warn(`Invalid API URL format: "${trimmedUrl}". Using default: ${DEFAULT_URL}`);
-      return DEFAULT_URL;
+      if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+        console.warn(
+          `[api] Invalid API URL format: "${trimmed}". Using default: ${DEFAULT_API_BASE_URL}`
+        );
+      }
+      return stripTrailingSlash(DEFAULT_API_BASE_URL);
     }
   }
 
-  // If no protocol, assume http:// for localhost, https:// for others
-  if (trimmedUrl.startsWith('localhost') || trimmedUrl.startsWith('127.0.0.1')) {
-    return `http://${trimmedUrl}`;
+  if (trimmed.startsWith('localhost') || trimmed.startsWith('127.0.0.1')) {
+    return stripTrailingSlash(`http://${trimmed}`);
   }
 
-  // For other URLs without protocol, default to https://
-  logger.warn(`API URL missing protocol: "${trimmedUrl}". Assuming https://`);
-  return `https://${trimmedUrl}`;
-};
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+    console.warn(`[api] API URL missing protocol: "${trimmed}". Assuming https://`);
+  }
+  return stripTrailingSlash(`https://${trimmed}`);
+}
 
 /**
- * API Configuration - Only contains actively used properties
+ * API configuration resolved from process.env at module load.
+ * BASE_URL has no trailing slash; safe to use as axios baseURL with paths like '/auth/login'.
  */
-export const API_CONFIG = {
-  BASE_URL: validateAndNormalizeBaseURL(process.env.NEXT_PUBLIC_API_URL),
+export const API_CONFIG: Readonly<ApiConfig> = {
+  BASE_URL: resolveApiBaseUrl(
+    typeof process !== 'undefined' && process.env ? process.env : {}
+  ),
 } as const;

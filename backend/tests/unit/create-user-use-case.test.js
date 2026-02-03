@@ -2,7 +2,20 @@
  * Create User Use Case Unit Tests
  */
 import { jest } from '@jest/globals';
-import { CreateUserUseCase } from '../../src/application/use-cases/users/create-user-use-case.js';
+
+// Mock logger so email-failure path doesn't throw (logger.error is a no-op)
+jest.unstable_mockModule('../../src/infrastructure/config/logger.js', () => ({
+  default: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+    security: jest.fn(),
+  },
+}));
+
+const { CreateUserUseCase } =
+  await import('../../src/application/use-cases/users/create-user-use-case.js');
 
 describe('CreateUserUseCase', () => {
   let createUserUseCase;
@@ -83,9 +96,9 @@ describe('CreateUserUseCase', () => {
     it('should throw error when email already exists', async () => {
       mockUserRepository.findByEmail.mockResolvedValue({ id: 'existing-user' });
 
-      await expect(createUserUseCase.execute(validInput, 'admin')).rejects.toThrow(
-        'Email already registered'
-      );
+      await expect(
+        createUserUseCase.execute(validInput, { id: 'admin', role: 'admin' })
+      ).rejects.toThrow('An account with this email already exists');
     });
 
     it('should throw error when username already exists', async () => {
@@ -137,7 +150,8 @@ describe('CreateUserUseCase', () => {
       mockUserRepository.save.mockResolvedValue(mockCreatedUser);
       mockEmailService.sendWelcomeWithPassword.mockRejectedValue(new Error('Email failed'));
 
-      const result = await createUserUseCase.execute(validInput, 'admin');
+      const creatorUser = { id: 'admin-id', role: 'admin' };
+      const result = await createUserUseCase.execute(validInput, creatorUser);
 
       expect(result.user.id).toBe(mockCreatedUser.id);
       expect(result.message).toContain('User created successfully');

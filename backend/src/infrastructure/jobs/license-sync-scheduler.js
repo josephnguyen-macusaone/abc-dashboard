@@ -56,18 +56,15 @@ export class LicenseSyncScheduler {
 
     try {
       // Schedule license sync
-      this.jobs.set('licenseSync', cron.schedule(
-        this.config.syncSchedule,
-        () => this.runLicenseSync(),
-        {
+      this.jobs.set(
+        'licenseSync',
+        cron.schedule(this.config.syncSchedule, () => this.runLicenseSync(), {
           timezone: this.config.timezone,
           name: 'license-external-sync',
-        }
-      ));
+        })
+      );
 
       this.isRunning = true;
-      logger.info('License sync scheduler started successfully');
-
     } catch (error) {
       logger.error('Failed to start license sync scheduler', {
         error: error.message,
@@ -98,7 +95,6 @@ export class LicenseSyncScheduler {
       this.isRunning = false;
 
       logger.info('License sync scheduler stopped successfully');
-
     } catch (error) {
       logger.error('Error stopping license sync scheduler', {
         error: error.message,
@@ -134,7 +130,8 @@ export class LicenseSyncScheduler {
       // Update success/failure stats
       if (syncResult.success) {
         this.syncStats.successfulRuns += 1;
-        this.syncStats.totalRecordsProcessed += (syncResult.created || 0) + (syncResult.updated || 0);
+        this.syncStats.totalRecordsProcessed +=
+          (syncResult.created || 0) + (syncResult.updated || 0);
       } else {
         this.syncStats.failedRuns += 1;
       }
@@ -165,7 +162,6 @@ export class LicenseSyncScheduler {
         failed: syncResult.failed,
         errors: syncResult.errors?.length || 0,
       });
-
     } catch (error) {
       this.syncStats.failedRuns += 1;
       logger.error('Scheduled license sync failed', {
@@ -221,7 +217,6 @@ export class LicenseSyncScheduler {
         duration,
         timestamp: new Date().toISOString(),
       };
-
     } catch (error) {
       logger.error('Manual license sync failed', {
         error: error.message,
@@ -244,13 +239,15 @@ export class LicenseSyncScheduler {
       };
     }
 
-    const avgDuration = this.syncStats.totalRuns > 0
-      ? Math.round(this.syncStats.totalDuration / this.syncStats.totalRuns)
-      : 0;
+    const avgDuration =
+      this.syncStats.totalRuns > 0
+        ? Math.round(this.syncStats.totalDuration / this.syncStats.totalRuns)
+        : 0;
 
-    const successRate = this.syncStats.totalRuns > 0
-      ? Math.round((this.syncStats.successfulRuns / this.syncStats.totalRuns) * 100)
-      : 0;
+    const successRate =
+      this.syncStats.totalRuns > 0
+        ? Math.round((this.syncStats.successfulRuns / this.syncStats.totalRuns) * 100)
+        : 0;
 
     return {
       enabled: this.config.enabled,
@@ -277,7 +274,7 @@ export class LicenseSyncScheduler {
    * Log job execution metrics
    */
   logJobMetrics(jobName, metrics) {
-    logger.info(`Sync job metrics: ${jobName}`, {
+    logger.debug(`Sync job metrics: ${jobName}`, {
       job: jobName,
       ...metrics,
       timestamp: new Date().toISOString(),

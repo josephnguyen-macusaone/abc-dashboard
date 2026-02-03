@@ -97,33 +97,39 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     const root = document.documentElement;
 
-    // Remove existing theme attributes/classes
-    root.removeAttribute(attribute);
-    root.classList.remove('light', 'dark');
+    // Clear any existing transition timeout
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
+      transitionTimeoutRef.current = null;
+    }
 
-    // Apply new theme
-    root.setAttribute(attribute, resolvedTheme);
-
-    // Handle transition disabling during theme changes
     if (disableTransitionOnChange) {
-      // Clear any existing transition timeout
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-        transitionTimeoutRef.current = null;
-      }
-
+      // Disable all transitions during theme change, then re-enable after
       const css = document.createElement('style');
       css.textContent = '*, *::before, *::after { transition: none !important; }';
       css.setAttribute('data-theme-transition', '');
       document.head.appendChild(css);
+    } else {
+      // Enable theme transition: add class so CSS transitions run when we swap theme
+      root.classList.add('theme-transition');
+    }
 
-      // Re-enable transitions after theme change
-      transitionTimeoutRef.current = setTimeout(() => {
+    // Remove existing theme attributes/classes and apply new theme
+    root.removeAttribute(attribute);
+    root.classList.remove('light', 'dark');
+    root.setAttribute(attribute, resolvedTheme);
+    root.classList.add(resolvedTheme);
+
+    // Re-enable normal behavior after transition (or immediately if transitions disabled)
+    transitionTimeoutRef.current = setTimeout(() => {
+      if (disableTransitionOnChange) {
         const existing = document.querySelector('[data-theme-transition]');
         if (existing) existing.remove();
-        transitionTimeoutRef.current = null;
-      }, THEME_CONFIG.TRANSITION_DURATION);
-    }
+      } else {
+        root.classList.remove('theme-transition');
+      }
+      transitionTimeoutRef.current = null;
+    }, THEME_CONFIG.TRANSITION_DURATION);
   }, [attribute, disableTransitionOnChange]);
 
   // Set theme function

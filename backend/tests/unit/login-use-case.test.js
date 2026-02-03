@@ -4,6 +4,7 @@
 import { jest } from '@jest/globals';
 import { LoginUseCase } from '../../src/application/use-cases/auth/login-use-case.js';
 import {
+  AccountDeactivatedException,
   InvalidCredentialsException,
   ValidationException,
 } from '../../src/domain/exceptions/domain.exception.js';
@@ -104,16 +105,16 @@ describe('LoginUseCase', () => {
       ).rejects.toThrow(InvalidCredentialsException);
     });
 
-    it('should throw ValidationException when account is not active', async () => {
+    it('should throw AccountDeactivatedException when account is not active', async () => {
       const inactiveUser = { ...mockUser, isActive: false };
       mockUserRepository.findByEmail.mockResolvedValue(inactiveUser);
 
       await expect(
         loginUseCase.execute({ email: 'test@example.com', password: 'password123' })
-      ).rejects.toThrow(ValidationException);
+      ).rejects.toThrow(AccountDeactivatedException);
       await expect(
         loginUseCase.execute({ email: 'test@example.com', password: 'password123' })
-      ).rejects.toThrow('Your account has been deactivated. Please contact your administrator.');
+      ).rejects.toThrow(/deactivated/);
     });
 
     it('should throw InvalidCredentialsException when password is invalid', async () => {

@@ -2,6 +2,7 @@
 
 import { Button } from '@/presentation/components/atoms';
 import { Breadcrumb, ThemeSwitcher } from '@/presentation/components/molecules';
+import { SyncStatusIcon } from '@/presentation/components/molecules/domain/dashboard';
 import { CollapseButton } from '@/presentation/components/molecules/layout/sidebar';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
@@ -59,7 +60,8 @@ export function AppHeader({
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-1">
+        <SyncStatusIcon refreshIntervalMs={120_000} />
         <ThemeSwitcher />
       </div>
     </header>

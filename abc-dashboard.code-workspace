@@ -1,0 +1,33 @@
+{
+  "folders": [
+    {
+      "name": "frontend",
+      "path": "frontend"
+    },
+    {
+      "name": "backend",
+      "path": "backend"
+    },
+    {
+      "name": "root",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.next": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss"
+    ]
+  }
+}

@@ -3,22 +3,40 @@ import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
 import type { LicenseRecord } from '@/types';
 import type { LicenseBulkResponse } from '@/application/services/license-services';
 import logger from '@/shared/helpers/logger';
-import type {
-  LicenseSyncStatusResponse,
-  LicenseApiRow,
-  InternalLicenseListResponse,
-} from '@/infrastructure/api/licenses-types';
-
-export type { LicenseSyncStatusResponse } from '@/infrastructure/api/licenses-types';
 
 const log = logger.createChild({ component: 'LicenseApi' });
+
+/** Response from GET /licenses/sync/status (scheduler status and last run) */
+export interface LicenseSyncStatusResponse {
+  enabled?: boolean;
+  running?: boolean;
+  timezone?: string;
+  schedule?: string;
+  lastSyncResult?: {
+    timestamp?: string;
+    duration?: number;
+    success?: boolean;
+    totalFetched?: number;
+    created?: number;
+    updated?: number;
+    failed?: number;
+    error?: string;
+  };
+  statistics?: {
+    totalRuns?: number;
+    successfulRuns?: number;
+    failedRuns?: number;
+    avgDuration?: number;
+    successRate?: string;
+  };
+}
 
 /**
  * Transform backend license data to frontend LicenseRecord.
  * Handles both external (ActivateDate, monthlyFee, license_type, status as number)
  * and internal (startDay, lastPayment, plan, status as string) API shapes.
  */
-function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseRecord {
+function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
   // Status: internal sends string ('active'|'cancel'|'pending'|etc); external may send number (1/0) or string
   let status: LicenseRecord['status'] = 'pending';
   if (apiLicense.status !== undefined && apiLicense.status !== null) {
@@ -65,28 +83,25 @@ function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseRecord {
   };
 
   // startsAt: internal uses startDay; external uses ActivateDate
-  const startsAtRaw = String(apiLicense.startDay ?? apiLicense.ActivateDate ?? apiLicense.startsAt ?? '');
+  const startsAtRaw = apiLicense.startDay ?? apiLicense.ActivateDate ?? apiLicense.startsAt ?? '';
   const startsAt = startsAtRaw.includes('/') ? convertDate(startsAtRaw) : (startsAtRaw || '');
 
   // plan: internal has plan; external has license_type
-  const plan = String(apiLicense.plan ?? apiLicense.license_type ?? 'Basic');
-
-  const lastActiveVal = apiLicense.lastActive != null ? String(apiLicense.lastActive) : '';
-  const lastActive = lastActiveVal.includes('/') ? convertDateTime(lastActiveVal) : lastActiveVal;
+  const plan = apiLicense.plan ?? apiLicense.license_type ?? 'Basic';
 
   return {
-    id: (apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`) as LicenseRecord['id'],
-    key: String(apiLicense.appid ?? apiLicense.key ?? ''),
-    product: String(apiLicense.product ?? 'ABC Business Suite'),
-    dba: String(apiLicense.dba ?? ''),
-    zip: String(apiLicense.zip ?? ''),
+    id: apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`,
+    key: (apiLicense.appid ?? apiLicense.key ?? '') as string,
+    product: (apiLicense.product ?? 'ABC Business Suite') as string,
+    dba: apiLicense.dba ?? '',
+    zip: apiLicense.zip ?? '',
     startsAt,
     status,
     plan,
     term: (apiLicense.term ?? 'monthly') as LicenseRecord['term'],
-    cancelDate: String(apiLicense.cancelDate ?? ''),
+    cancelDate: apiLicense.cancelDate ?? '',
     lastPayment: Number(apiLicense.monthlyFee ?? apiLicense.lastPayment ?? 0),
-    lastActive,
+    lastActive: apiLicense.lastActive?.includes?.('/') ? convertDateTime(apiLicense.lastActive) : (apiLicense.lastActive ?? ''),
     smsPurchased: Number(apiLicense.smsPurchased ?? 0),
     smsSent: Number(apiLicense.smsSent ?? 0),
     smsBalance: Number(apiLicense.smsBalance ?? 0),
@@ -95,41 +110,30 @@ function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseRecord {
     agents: Number(apiLicense.agents ?? 0),
     agentsName: Array.isArray(apiLicense.agentsName) ? apiLicense.agentsName : [],
     agentsCost: Number(apiLicense.agentsCost ?? 0),
-    notes: String(apiLicense.Note ?? apiLicense.notes ?? ''),
+    notes: apiLicense.Note ?? apiLicense.notes ?? '',
   };
-}
-
-/** Payload shape for external license API (create/update). */
-export interface ExternalLicensePayload {
-  appid?: string;
-  id?: string;
-  dba?: string;
-  zip?: string;
-  status?: number;
-  monthlyFee?: number;
-  Note?: string;
-  emailLicense?: string;
-  pass?: string;
-  [key: string]: unknown;
 }
 
 /**
- * Transform frontend LicenseRecord to external backend API format.
- * Filters out undefined, null, and empty values to ensure clean API payloads.
+ * Transform frontend LicenseRecord to backend API format
+ * Filters out undefined, null, and empty values to ensure clean API payloads
  */
-function transformRecordToApiLicense(license: Partial<LicenseRecord>): ExternalLicensePayload {
-  const apiLicense: ExternalLicensePayload = {};
+function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
+  const apiLicense: any = {};
 
-  const shouldInclude = (value: unknown): boolean => {
+  // Helper to check if value should be included
+  const shouldInclude = (value: any): boolean => {
     return value !== undefined && value !== null && value !== '';
   };
 
-  if (shouldInclude(license.key) || shouldInclude(license.id)) {
-    apiLicense.appid = license.key != null ? String(license.key) : (license.id != null ? String(license.id) : undefined);
+  // Map frontend fields to external API fields
+  if (shouldInclude((license as any).key) || shouldInclude(license.id)) {
+    apiLicense.appid = (license as any).key || license.id; // External API uses appid
   }
 
+  // External API required fields
   if (shouldInclude(license.id)) {
-    apiLicense.appid = String(license.id);
+    apiLicense.appid = license.id; // Ensure we always have appid
   }
 
   // Map frontend fields to external API fields
@@ -141,8 +145,9 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): ExternalL
     apiLicense.zip = license.zip;
   }
 
+  // Required fields for external API
   if (shouldInclude(license.id)) {
-    apiLicense.appid = String(license.id);
+    apiLicense.appid = license.id; // External API uses appid as identifier
   }
 
   // For external API, we need Email_license and pass as required fields
@@ -558,7 +563,19 @@ export class InternalLicenseApiService {
     endDate?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
-  } = {}): Promise<InternalLicenseListResponse> {
+  } = {}): Promise<{
+    success: boolean;
+    message: string;
+    data: any[];
+    meta: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
     const queryParams = new URLSearchParams();
 
     Object.entries(params).forEach(([key, value]) => {

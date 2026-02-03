@@ -98,7 +98,7 @@ export class LicenseSyncMonitor {
     this.recordHistogram('sync_operations_duration', duration);
 
     if (result.success) {
-      logger.info('Sync operation completed successfully', {
+      logger.debug('Sync operation completed successfully', {
         operationId: operationContext.operationId,
         operationType: operationContext.operationType,
         duration: `${duration}ms`,
@@ -270,20 +270,10 @@ export class LicenseSyncMonitor {
       this.alerts = this.alerts.slice(-100);
     }
 
-    logger.warn('Alert created', {
-      alertId: alert.id,
-      severity,
-      type,
-      details,
-    });
+    logger.warn(`Alert: ${type} [${severity}]`, { alertId: alert.id });
 
-    // Log critical alerts immediately
     if (severity === 'critical') {
-      logger.error('CRITICAL ALERT', {
-        alertId: alert.id,
-        type,
-        details,
-      });
+      logger.error(`CRITICAL ALERT: ${type}`, { alertId: alert.id, details });
     }
   }
 
@@ -572,12 +562,8 @@ export class LicenseSyncMonitor {
     this.healthStatus.lastCheck = now;
     this.healthStatus.components = componentHealth;
 
-    // Log health status changes
     if (overallHealth !== 'healthy') {
-      logger.warn('Health status changed', {
-        overallHealth,
-        components: Object.fromEntries(componentHealth),
-      });
+      logger.warn(`Health status: ${overallHealth}`);
     }
   }
 

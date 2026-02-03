@@ -27,7 +27,7 @@ export class GetLicenseDashboardMetricsUseCase {
         ...(dateRange.startsAtTo && { startsAtTo: dateRange.startsAtTo }),
       };
 
-      logger.info('GetLicenseDashboardMetricsUseCase - Options:', {
+      logger.debug('GetLicenseDashboardMetricsUseCase - Options', {
         filters: mergedFilters,
         dateRange,
       });

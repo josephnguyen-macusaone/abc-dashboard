@@ -184,10 +184,10 @@ describe('TokenService', () => {
   });
 
   describe('constructor', () => {
-    it('should accept optional correlationId', () => {
-      const serviceWithCorrelation = new TokenService('test-correlation-id');
+    it('should have null correlationId by default', () => {
+      const service = new TokenService();
 
-      expect(serviceWithCorrelation.correlationId).toBe('test-correlation-id');
+      expect(service.correlationId).toBeNull();
     });
   });
 });

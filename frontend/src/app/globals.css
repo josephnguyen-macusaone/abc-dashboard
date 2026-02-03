@@ -834,6 +834,18 @@
     --neutral-800: var(--clr-text-200);
     --neutral-900: var(--clr-text-100);
   }
+
+  /* Smooth theme switch: when .theme-transition is on root, theme-dependent properties animate */
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease !important;
+  }
 }
 
 @theme inline {

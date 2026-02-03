@@ -12,10 +12,10 @@ describe('UserProfile Entity', () => {
       id: '507f1f77bcf86cd799439012',
       userId: '507f1f77bcf86cd799439011',
       bio: 'Software developer with 5 years experience',
-      emailVerified: true,
       lastLoginAt: new Date('2024-01-15T10:30:00Z'),
       lastActivityAt: new Date('2024-01-15T11:45:00Z'),
-      emailVerifiedAt: new Date('2024-01-10T09:00:00Z'),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
   });
 
@@ -25,10 +25,10 @@ describe('UserProfile Entity', () => {
       expect(profile.id).toBe(validProfileData.id);
       expect(profile.userId).toBe(validProfileData.userId);
       expect(profile.bio).toBe(validProfileData.bio);
-      expect(profile.emailVerified).toBe(validProfileData.emailVerified);
       expect(profile.lastLoginAt).toBe(validProfileData.lastLoginAt);
       expect(profile.lastActivityAt).toBe(validProfileData.lastActivityAt);
-      expect(profile.emailVerifiedAt).toBe(validProfileData.emailVerifiedAt);
+      expect(profile.createdAt).toBe(validProfileData.createdAt);
+      expect(profile.updatedAt).toBe(validProfileData.updatedAt);
     });
 
     it('should throw error for missing userId', () => {
@@ -45,28 +45,6 @@ describe('UserProfile Entity', () => {
       expect(() => new UserProfile(invalidData)).toThrow('Bio cannot exceed 500 characters');
     });
 
-    it('should throw error if emailVerified is true but emailVerifiedAt is missing', () => {
-      const invalidData = {
-        ...validProfileData,
-        emailVerified: true,
-        emailVerifiedAt: null,
-      };
-      expect(() => new UserProfile(invalidData)).toThrow(
-        'Email verification timestamp required when email is verified'
-      );
-    });
-
-    it('should throw error if emailVerifiedAt is set but emailVerified is false', () => {
-      const invalidData = {
-        ...validProfileData,
-        emailVerified: false,
-        emailVerifiedAt: new Date(),
-      };
-      expect(() => new UserProfile(invalidData)).toThrow(
-        'Email cannot be marked verified without verification timestamp'
-      );
-    });
-
     it('should allow null bio', () => {
       const dataWithNullBio = { ...validProfileData, bio: null };
       const profile = new UserProfile(dataWithNullBio);
@@ -77,16 +55,6 @@ describe('UserProfile Entity', () => {
       const dataWithEmptyBio = { ...validProfileData, bio: '' };
       const profile = new UserProfile(dataWithEmptyBio);
       expect(profile.bio).toBe('');
-    });
-
-    it('should default emailVerified to false', () => {
-      const dataWithoutEmailVerified = {
-        ...validProfileData,
-        emailVerified: undefined,
-        emailVerifiedAt: undefined,
-      };
-      const profile = new UserProfile(dataWithoutEmailVerified);
-      expect(profile.emailVerified).toBe(false);
     });
   });
 
@@ -99,12 +67,10 @@ describe('UserProfile Entity', () => {
         id: validProfileData.id,
         userId: validProfileData.userId,
         bio: validProfileData.bio,
-        emailVerified: validProfileData.emailVerified,
         lastLoginAt: validProfileData.lastLoginAt,
         lastActivityAt: validProfileData.lastActivityAt,
-        emailVerifiedAt: validProfileData.emailVerifiedAt,
-        createdAt: undefined,
-        updatedAt: undefined,
+        createdAt: validProfileData.createdAt,
+        updatedAt: validProfileData.updatedAt,
       });
     });
 
@@ -181,33 +147,6 @@ describe('UserProfile Entity', () => {
       expect(event.profileId).toBe(validProfileData.id);
       expect(event.activityAt).toBe(profile.lastActivityAt);
       expect(event.occurredAt).toBeInstanceOf(Date);
-    });
-  });
-
-  describe('verifyEmail Method', () => {
-    it('should verify email successfully', () => {
-      const unverifiedProfile = {
-        ...validProfileData,
-        emailVerified: false,
-        emailVerifiedAt: null,
-      };
-      const profile = new UserProfile(unverifiedProfile);
-
-      const event = profile.verifyEmail();
-
-      expect(profile.emailVerified).toBe(true);
-      expect(profile.emailVerifiedAt).toBeInstanceOf(Date);
-
-      expect(event.type).toBe('UserEmailVerified');
-      expect(event.userId).toBe(validProfileData.userId);
-      expect(event.profileId).toBe(validProfileData.id);
-      expect(event.verifiedAt).toBe(profile.emailVerifiedAt);
-      expect(event.occurredAt).toBeInstanceOf(Date);
-    });
-
-    it('should throw error if email already verified', () => {
-      const profile = new UserProfile(validProfileData);
-      expect(() => profile.verifyEmail()).toThrow('Email already verified');
     });
   });
 });

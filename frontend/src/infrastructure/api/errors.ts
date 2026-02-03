@@ -85,6 +85,25 @@ export function isRetryableError(error: any): boolean {
 }
 
 /**
+ * Message shown when login fails due to wrong host (404) or network (can't reach API).
+ * Helps users fix NEXT_PUBLIC_API_URL and rebuild.
+ */
+export const LOGIN_SERVER_UNREACHABLE_MESSAGE =
+  "Can't reach the server. Check that the API is running and NEXT_PUBLIC_API_URL is set correctly.";
+
+/**
+ * Gets a user-friendly message for login errors.
+ * Maps 404 and network errors to a clear config message; other errors use getErrorMessage.
+ */
+export function getLoginErrorMessage(error: unknown): string {
+  const apiException = handleApiError(error);
+  if (apiException.status === 404 || apiException.code === 'NETWORK_ERROR' || apiException.status === 0) {
+    return LOGIN_SERVER_UNREACHABLE_MESSAGE;
+  }
+  return apiException.message;
+}
+
+/**
  * Gets user-friendly error message
  */
 export function getErrorMessage(error: any): string {

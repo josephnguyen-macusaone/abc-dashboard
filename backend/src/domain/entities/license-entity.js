@@ -1,3 +1,5 @@
+import logger from '../../infrastructure/config/logger.js';
+
 /**
  * License Domain Entity
  * Represents the core business concept of a Software License
@@ -262,11 +264,13 @@ export class License {
         const originalExpiry = this.expiresAt;
         this.startsAt = originalExpiry;
         this.expiresAt = originalStart;
-        console.warn(
-          `License ${this.key || this.id}: Auto-swapped dates (expiry was before start). ` +
-            `Original: start=${originalStart}, expiry=${originalExpiry}. ` +
-            `Fixed: start=${this.startsAt}, expiry=${this.expiresAt}`
-        );
+        logger.debug('License auto-swapped dates (expiry was before start)', {
+          licenseKey: this.key || this.id,
+          originalStart,
+          originalExpiry,
+          fixedStart: this.startsAt,
+          fixedExpiry: this.expiresAt,
+        });
       }
     }
 

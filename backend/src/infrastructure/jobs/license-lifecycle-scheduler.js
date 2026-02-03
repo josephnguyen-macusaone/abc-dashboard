@@ -47,38 +47,33 @@ export class LicenseLifecycleScheduler {
 
     try {
       // Schedule expiring license reminders (30, 7, 1 day reminders)
-      this.jobs.set('expiringReminders', cron.schedule(
-        this.config.expiringReminderSchedule,
-        () => this.runExpiringReminders(),
-        {
+      this.jobs.set(
+        'expiringReminders',
+        cron.schedule(this.config.expiringReminderSchedule, () => this.runExpiringReminders(), {
           timezone: this.config.timezone,
           name: 'license-expiring-reminders',
-        }
-      ));
+        })
+      );
 
       // Schedule expired license processing (auto-suspension)
-      this.jobs.set('expirationChecks', cron.schedule(
-        this.config.expirationCheckSchedule,
-        () => this.runExpirationChecks(),
-        {
+      this.jobs.set(
+        'expirationChecks',
+        cron.schedule(this.config.expirationCheckSchedule, () => this.runExpirationChecks(), {
           timezone: this.config.timezone,
           name: 'license-expiration-checks',
-        }
-      ));
+        })
+      );
 
       // Schedule grace period updates
-      this.jobs.set('gracePeriodUpdates', cron.schedule(
-        this.config.gracePeriodUpdateSchedule,
-        () => this.runGracePeriodUpdates(),
-        {
+      this.jobs.set(
+        'gracePeriodUpdates',
+        cron.schedule(this.config.gracePeriodUpdateSchedule, () => this.runGracePeriodUpdates(), {
           timezone: this.config.timezone,
           name: 'license-grace-period-updates',
-        }
-      ));
+        })
+      );
 
       this.isRunning = true;
-      logger.info('License lifecycle scheduler started successfully');
-
     } catch (error) {
       logger.error('Failed to start license lifecycle scheduler', {
         error: error.message,
@@ -109,7 +104,6 @@ export class LicenseLifecycleScheduler {
       this.isRunning = false;
 
       logger.info('License lifecycle scheduler stopped successfully');
-
     } catch (error) {
       logger.error('Error stopping license lifecycle scheduler', {
         error: error.message,
@@ -144,7 +138,6 @@ export class LicenseLifecycleScheduler {
         processed: results.processed,
         success: results.success,
       });
-
     } catch (error) {
       logger.error('Scheduled expiring license reminders failed', {
         error: error.message,
@@ -180,7 +173,6 @@ export class LicenseLifecycleScheduler {
         suspended: results.suspended,
         success: results.success,
       });
-
     } catch (error) {
       logger.error('Scheduled license expiration checks failed', {
         error: error.message,
@@ -216,7 +208,6 @@ export class LicenseLifecycleScheduler {
         updated: results.updated,
         success: results.success,
       });
-
     } catch (error) {
       logger.error('Scheduled grace period updates failed', {
         error: error.message,

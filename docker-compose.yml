@@ -1,15 +1,32 @@
-# ABC Dashboard - Docker Compose
-# Services: postgres (DB), backend API, frontend (Next.js)
+# ABC License - Docker Compose
+# Services: postgres, redis, backend API, frontend (Next.js)
 #
 # If port 5000 is in use: set BACKEND_PORT=5001 in .env and
 # NEXT_PUBLIC_API_URL=http://localhost:5001 so the frontend can reach the API.
 # If port 5432 is in use: set POSTGRES_PORT_HOST=5433 in .env (backend still uses postgres:5432 inside Docker).
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - abc-license-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   postgres:
     image: postgres:16-alpine
-    container_name: abc-dashboard-postgres
+    container_name: postgres-dev
     restart: unless-stopped
+    command: ["postgres", "-c", "log_min_messages=warning"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -19,7 +36,7 @@ services:
     ports:
       - "${POSTGRES_PORT_HOST:-5432}:5432"
     networks:
-      - abc-dashboard-network
+      - abc-license-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -27,13 +44,13 @@ services:
       retries: 5
 
   backend:
-    image: abc-dashboard-backend:latest
+    image: abc-license-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
       args:
         - BUILDKIT_INLINE_CACHE=1
-    container_name: abc-dashboard-backend
+    container_name: backend-dev
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-5000}:5000"
@@ -64,13 +81,17 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
       - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - CACHE_TYPE=${CACHE_TYPE:-redis}
     volumes:
       - ./backend/logs:/app/logs
       - ./.env:/app/.env:ro
     networks:
-      - abc-dashboard-network
+      - abc-license-network
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
@@ -80,7 +101,7 @@ services:
       start_period: 40s
 
   frontend:
-    image: abc-dashboard-frontend:latest
+    image: abc-license-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -89,7 +110,7 @@ services:
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
         - BUILDKIT_INLINE_CACHE=1
       target: production
-    container_name: abc-dashboard-frontend
+    container_name: frontend-dev
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -105,7 +126,7 @@ services:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
     networks:
-      - abc-dashboard-network
+      - abc-license-network
     depends_on:
       backend:
         condition: service_healthy
@@ -119,7 +140,9 @@ services:
 volumes:
   postgres_data:
     driver: local
+  redis_data:
+    driver: local
 
 networks:
-  abc-dashboard-network:
+  abc-license-network:
     driver: bridge

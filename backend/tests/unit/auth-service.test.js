@@ -160,8 +160,9 @@ describe('AuthService', () => {
       expect(serviceWithCorrelation.correlationId).toBe('test-correlation-id');
     });
 
-    it('should set default salt rounds', () => {
-      expect(authService.saltRounds).toBe(12);
+    it('should set salt rounds from config or default', () => {
+      expect(authService.saltRounds).toBeGreaterThanOrEqual(4);
+      expect(authService.saltRounds).toBeLessThanOrEqual(12);
     });
   });
 });

@@ -88,7 +88,6 @@ export class LicenseRepository extends ILicenseRepository {
     }
   }
 
-
   /**
    * Find license by external count ID
    */
@@ -177,8 +176,8 @@ export class LicenseRepository extends ILicenseRepository {
     if (filters.product && !filters.search) {
       query = query.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
-    // Plan filter - support single value or array
-    if (filters.plan && !filters.search) {
+    // Plan filter - support single value or array (always apply when set, including with search)
+    if (filters.plan) {
       if (Array.isArray(filters.plan)) {
         query = query.whereIn('plan', filters.plan);
       } else {
@@ -312,12 +311,15 @@ export class LicenseRepository extends ILicenseRepository {
     // If we have filters but no results, total should be 0 (not external API total)
     const hasFilters = filters && Object.keys(filters).length > 0;
     if (hasFilters && result.licenses.length === 0 && result.total > 0) {
-      logger.error('DATA INTEGRITY VIOLATION: Filtered query returned no licenses but non-zero total', {
-        filters,
-        licensesCount: result.licenses.length,
-        reportedTotal: result.total,
-        statsTotal: result.stats?.total,
-      });
+      logger.error(
+        'DATA INTEGRITY VIOLATION: Filtered query returned no licenses but non-zero total',
+        {
+          filters,
+          licensesCount: result.licenses.length,
+          reportedTotal: result.total,
+          statsTotal: result.stats?.total,
+        }
+      );
 
       // Force correct totals for filtered queries
       result.total = 0;
@@ -349,11 +351,14 @@ export class LicenseRepository extends ILicenseRepository {
     // Ensure cancelled licenses have a cancel date
     if (licenseData.status === 'cancel' && !licenseData.cancelDate) {
       licenseData.cancelDate = new Date();
-      logger.warn(`License ${licenseData.key} has status 'cancel' but no cancel_date. Setting to current date.`, {
-        correlationId: this.correlationId,
-        licenseKey: licenseData.key,
-        cancelDate: licenseData.cancelDate,
-      });
+      logger.warn(
+        `License ${licenseData.key} has status 'cancel' but no cancel_date. Setting to current date.`,
+        {
+          correlationId: this.correlationId,
+          licenseKey: licenseData.key,
+          cancelDate: licenseData.cancelDate,
+        }
+      );
     }
 
     const dbData = this._toLicenseDbFormat(licenseData);
@@ -373,11 +378,14 @@ export class LicenseRepository extends ILicenseRepository {
         // Ensure cancelled licenses have a cancel date
         if (updates.status === 'cancel' && !updates.cancelDate) {
           updates.cancelDate = new Date();
-          logger.warn(`License update sets status to 'cancel' but no cancel_date provided. Setting to current date.`, {
-            correlationId: this.correlationId,
-            licenseId: id,
-            cancelDate: updates.cancelDate,
-          });
+          logger.warn(
+            `License update sets status to 'cancel' but no cancel_date provided. Setting to current date.`,
+            {
+              correlationId: this.correlationId,
+              licenseId: id,
+              cancelDate: updates.cancelDate,
+            }
+          );
         }
 
         const dbUpdates = this._toLicenseDbFormat(updates);
@@ -465,8 +473,8 @@ export class LicenseRepository extends ILicenseRepository {
     if (filters.product && !filters.search) {
       filteredQuery = filteredQuery.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
-    // Plan filter - support single value or array
-    if (filters.plan && !filters.search) {
+    // Plan filter - support single value or array (always apply when set, including with search)
+    if (filters.plan) {
       if (Array.isArray(filters.plan)) {
         filteredQuery = filteredQuery.whereIn('plan', filters.plan);
       } else {
@@ -837,12 +845,12 @@ export class LicenseRepository extends ILicenseRepository {
             index,
             key: licenseData.key,
             error: createError.message,
-            correlationId: this.correlationId
+            correlationId: this.correlationId,
           });
           errors.push({
             index,
             key: licenseData.key,
-            error: createError.message
+            error: createError.message,
           });
           // Continue with other licenses instead of failing the whole batch
           // Note: Transaction will still commit successful inserts
@@ -858,15 +866,16 @@ export class LicenseRepository extends ILicenseRepository {
       successful: createdLicenses.length,
       failed: errors.length,
       duration: `${duration}ms`,
-      avgTimePerLicense: licensesData.length > 0 ? `${(duration / licensesData.length).toFixed(2)}ms` : 'N/A',
-      correlationId: this.correlationId
+      avgTimePerLicense:
+        licensesData.length > 0 ? `${(duration / licensesData.length).toFixed(2)}ms` : 'N/A',
+      correlationId: this.correlationId,
     });
 
     if (errors.length > 0) {
       logger.warn('Some licenses failed to create in bulk operation', {
         failedCount: errors.length,
-        errorSample: errors.slice(0, 3).map(e => ({ key: e.key, error: e.error })),
-        correlationId: this.correlationId
+        errorSample: errors.slice(0, 3).map((e) => ({ key: e.key, error: e.error })),
+        correlationId: this.correlationId,
       });
     }
 
@@ -885,15 +894,13 @@ export class LicenseRepository extends ILicenseRepository {
           dbUpdates.updated_at = new Date();
 
           // Find license by key (id parameter is the license key, not UUID)
-          const licenseToUpdate = await trx(this.licensesTable)
-            .where('key', id)
-            .first();
+          const licenseToUpdate = await trx(this.licensesTable).where('key', id).first();
 
           if (!licenseToUpdate) {
             errors.push({
               index,
               id,
-              error: 'License not found'
+              error: 'License not found',
             });
             continue;
           }
@@ -909,7 +916,7 @@ export class LicenseRepository extends ILicenseRepository {
             errors.push({
               index,
               id,
-              error: 'License update failed'
+              error: 'License update failed',
             });
           }
         } catch (updateError) {
@@ -917,12 +924,12 @@ export class LicenseRepository extends ILicenseRepository {
             index,
             id,
             error: updateError.message,
-            correlationId: this.correlationId
+            correlationId: this.correlationId,
           });
           errors.push({
             index,
             id,
-            error: updateError.message
+            error: updateError.message,
           });
           // Continue with other updates instead of failing the whole batch
         }
@@ -934,13 +941,13 @@ export class LicenseRepository extends ILicenseRepository {
       total: updates.length,
       successful: updatedLicenses.length,
       failed: errors.length,
-      correlationId: this.correlationId
+      correlationId: this.correlationId,
     });
 
     if (errors.length > 0) {
       logger.warn('Some licenses failed to update in bulk operation', {
         errors,
-        correlationId: this.correlationId
+        correlationId: this.correlationId,
       });
     }
 
@@ -1005,18 +1012,21 @@ export class LicenseRepository extends ILicenseRepository {
 
     // Ensure DBA always has a meaningful value to prevent frontend validation errors
     const dba = licenseRow.dba;
-    const safeDba = (dba && dba.trim()) ? dba.trim() : 'Unknown Business';
+    const safeDba = dba && dba.trim() ? dba.trim() : 'Unknown Business';
 
     // Handle cancel date requirement for cancelled licenses
     let cancelDate = licenseRow.cancel_date;
     if (licenseRow.status === 'cancel' && !cancelDate) {
       // For cancelled licenses without a cancel date, use updated_at or created_at as fallback
       cancelDate = licenseRow.updated_at || licenseRow.created_at || new Date();
-      logger.warn(`License ${licenseRow.key || licenseRow.id} has status 'cancel' but no cancel_date. Using ${cancelDate} as fallback.`, {
-        correlationId: this.correlationId,
-        licenseId: licenseRow.id,
-        licenseKey: licenseRow.key,
-      });
+      logger.warn(
+        `License ${licenseRow.key || licenseRow.id} has status 'cancel' but no cancel_date. Using ${cancelDate} as fallback.`,
+        {
+          correlationId: this.correlationId,
+          licenseId: licenseRow.id,
+          licenseKey: licenseRow.key,
+        }
+      );
     }
 
     return new License({
@@ -1330,7 +1340,7 @@ export class LicenseRepository extends ILicenseRepository {
           .whereNotIn('status', ['expired', 'revoked', 'cancel'])
           .orderBy('expires_at', 'asc');
 
-        return licenseRows.map(row => this._toLicenseEntity(row));
+        return licenseRows.map((row) => this._toLicenseEntity(row));
       },
       TimeoutPresets.DATABASE,
       'findExpiringLicenses',
@@ -1362,7 +1372,7 @@ export class LicenseRepository extends ILicenseRepository {
           .whereNotIn('status', ['expired', 'revoked', 'cancel'])
           .orderBy('expires_at', 'asc');
 
-        return licenseRows.map(row => this._toLicenseEntity(row));
+        return licenseRows.map((row) => this._toLicenseEntity(row));
       },
       TimeoutPresets.DATABASE,
       'findExpiredLicensesForSuspension',
@@ -1393,14 +1403,30 @@ export class LicenseRepository extends ILicenseRepository {
             thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
             const sevenDaysFromNow = new Date();
             sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-            expiryCondition = ['expires_at', '<=', thirtyDaysFromNow, 'and', 'expires_at', '>', sevenDaysFromNow];
+            expiryCondition = [
+              'expires_at',
+              '<=',
+              thirtyDaysFromNow,
+              'and',
+              'expires_at',
+              '>',
+              sevenDaysFromNow,
+            ];
             break;
           case '7days':
             const sevenDaysFromNow2 = new Date();
             sevenDaysFromNow2.setDate(sevenDaysFromNow2.getDate() + 7);
             const oneDayFromNow = new Date();
             oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
-            expiryCondition = ['expires_at', '<=', sevenDaysFromNow2, 'and', 'expires_at', '>', oneDayFromNow];
+            expiryCondition = [
+              'expires_at',
+              '<=',
+              sevenDaysFromNow2,
+              'and',
+              'expires_at',
+              '>',
+              oneDayFromNow,
+            ];
             break;
           case '1day':
             const oneDayFromNow2 = new Date();
@@ -1414,10 +1440,10 @@ export class LicenseRepository extends ILicenseRepository {
         const licenseRows = await this.db(this.licensesTable)
           .where(...expiryCondition)
           .whereNotIn('status', ['expired', 'revoked', 'cancel'])
-          .whereRaw("NOT (renewal_reminders_sent::jsonb ? ?)", [reminderType])
+          .whereRaw('NOT (renewal_reminders_sent::jsonb ? ?)', [reminderType])
           .orderBy('expires_at', 'asc');
 
-        return licenseRows.map(row => this._toLicenseEntity(row));
+        return licenseRows.map((row) => this._toLicenseEntity(row));
       },
       TimeoutPresets.DATABASE,
       'findLicensesNeedingReminders',
@@ -1473,14 +1499,12 @@ export class LicenseRepository extends ILicenseRepository {
       async () => {
         const suspendedAt = new Date();
 
-        const updated = await this.db(this.licensesTable)
-          .whereIn('id', licenseIds)
-          .update({
-            status: 'expired',
-            suspension_reason: suspensionReason,
-            suspended_at: suspendedAt,
-            updated_at: suspendedAt,
-          });
+        const updated = await this.db(this.licensesTable).whereIn('id', licenseIds).update({
+          status: 'expired',
+          suspension_reason: suspensionReason,
+          suspended_at: suspendedAt,
+          updated_at: suspendedAt,
+        });
 
         return updated;
       },
@@ -1520,9 +1544,7 @@ export class LicenseRepository extends ILicenseRepository {
           updateData.grace_period_end = graceEnd;
         }
 
-        await this.db(this.licensesTable)
-          .where('id', licenseId)
-          .update(updateData);
+        await this.db(this.licensesTable).where('id', licenseId).update(updateData);
 
         return await this.findById(licenseId);
       },
@@ -1549,16 +1571,14 @@ export class LicenseRepository extends ILicenseRepository {
       async () => {
         const reactivatedAt = new Date();
 
-        await this.db(this.licensesTable)
-          .where('id', licenseId)
-          .update({
-            status: 'active',
-            suspension_reason: null,
-            suspended_at: null,
-            reactivated_at: reactivatedAt,
-            updated_by: context.userId,
-            updated_at: reactivatedAt,
-          });
+        await this.db(this.licensesTable).where('id', licenseId).update({
+          status: 'active',
+          suspension_reason: null,
+          suspended_at: null,
+          reactivated_at: reactivatedAt,
+          updated_by: context.userId,
+          updated_at: reactivatedAt,
+        });
 
         return await this.findById(licenseId);
       },
@@ -1591,7 +1611,7 @@ export class LicenseRepository extends ILicenseRepository {
         const historyEntry = {
           action,
           timestamp: new Date(),
-          ...details
+          ...details,
         };
 
         license.renewalHistory.push(historyEntry);

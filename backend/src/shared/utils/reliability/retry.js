@@ -116,11 +116,13 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
   const {
     maxRetries,
     retryableErrors,
+    retryOn,
     onRetry,
     correlationId = `retry_${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
   } = config;
 
   let lastError;
+  let exhaustedRetries = false;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -131,18 +133,16 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
 
       // If this is the last attempt, don't retry
       if (attempt === maxRetries) {
+        exhaustedRetries = true;
         break;
       }
 
-      // Check if error is retryable
-      if (!isRetryableError(error, retryableErrors)) {
-        logger.warn(`${operation} failed with non-retryable error`, {
-          correlationId,
-          attempt,
-          error: error.message,
-          errorCode: error.code,
-          errorName: error.name,
-        });
+      // Check if error is retryable (custom retryOn takes precedence)
+      const isRetryable = retryOn ? retryOn(error) : isRetryableError(error, retryableErrors);
+      if (!isRetryable) {
+        logger.warn(
+          `${operation} failed (non-retryable): ${error.message}${correlationId ? ` [${correlationId}]` : ''}`
+        );
         break;
       }
 
@@ -174,12 +174,14 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
     }
   }
 
-  // All retries exhausted, throw the last error
-  logger.error(`${operation} failed after ${maxRetries + 1} attempts`, {
-    correlationId,
-    maxRetries,
-    finalError: lastError.message,
-  });
+  // Only log "failed after N attempts" when we actually exhausted retries, not when we bailed due to non-retryable
+  if (exhaustedRetries && lastError) {
+    logger.error(`${operation} failed after ${maxRetries + 1} attempts`, {
+      correlationId,
+      maxRetries,
+      finalError: lastError.message,
+    });
+  }
 
   throw lastError;
 };

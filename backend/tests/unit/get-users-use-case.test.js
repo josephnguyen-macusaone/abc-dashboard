@@ -61,18 +61,17 @@ describe('GetUsersUseCase', () => {
         users: mockUsers,
         page: 1,
         limit: 10,
-        total: 2,
         totalPages: 1,
+        stats: { total: 2 },
       });
 
       const result = await getUsersUseCase.execute({ page: 1, limit: 10 });
 
       expect(result.users).toHaveLength(2);
-      // Check pagination DTO properties
       expect(result.pagination.page).toBe(1);
       expect(result.pagination.limit).toBe(10);
-      expect(result.pagination.total).toBe(2);
       expect(result.pagination.totalPages).toBe(1);
+      expect(result.stats?.total).toBe(2);
       expect(mockUserRepository.findUsers).toHaveBeenCalledWith({ page: 1, limit: 10 });
     });
 
@@ -148,14 +147,15 @@ describe('GetUsersUseCase', () => {
         users: [],
         page: 1,
         limit: 10,
-        total: 0,
         totalPages: 0,
+        stats: { total: 0 },
       });
 
       const result = await getUsersUseCase.execute();
 
       expect(result.users).toHaveLength(0);
-      expect(result.pagination.total).toBe(0);
+      expect(result.pagination.totalPages).toBe(0);
+      expect(result.stats?.total).toBe(0);
     });
   });
 });

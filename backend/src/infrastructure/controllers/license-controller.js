@@ -13,11 +13,8 @@ export class LicenseController {
     try {
       const query = LicenseValidator.validateListQuery(req.query);
 
-      logger.info('License API request initiated', {
+      logger.debug('License API request initiated', {
         correlationId: req.correlationId,
-        hasSearch: !!req.query.search,
-        searchTerm: req.query.search,
-        searchField: req.query.searchField,
         page: query.page,
         limit: query.limit,
       });
@@ -38,23 +35,16 @@ export class LicenseController {
         });
       }
 
-      logger.info('License service returned result', {
-        correlationId: req.correlationId,
-        dataLength: result.getData()?.length || 0,
-        metaTotal: result.getMeta()?.total,
-        metaTotalPages: result.getMeta()?.totalPages,
-      });
-
       // Get the correct total count from external API for display
       // BUT ONLY when no filters are applied - when filters are active, use the filtered total
       let correctedMeta = { ...result.getMeta() }; // Deep copy to avoid mutation
-      const hasFilters = query.filters && Object.keys(query.filters).length > 0;
 
-      logger.info('License controller processing', {
+      logger.info('License list', {
         correlationId: req.correlationId,
-        hasFilters,
-        filters: Object.keys(query.filters || {}),
-        originalTotal: result.getMeta()?.total,
+        page: query.page,
+        limit: query.limit,
+        total: result.getMeta()?.total,
+        dataLength: result.getData()?.length || 0,
       });
 
       // Always use internal database results - no external API override
@@ -117,14 +107,8 @@ export class LicenseController {
       });
     }
 
-    // 4. Check for data length vs total mismatch
-    if (hasFilters && data.length > 0 && total !== data.length) {
-      violations.push({
-        type: 'length_total_mismatch',
-        description: `Data length (${data.length}) doesn't match reported total (${total})`,
-        severity: 'medium',
-      });
-    }
+    // Note: Do not compare data.length to total for filtered queries — with pagination,
+    // data.length is the page size and total is the full matching count; they differ by design.
 
     if (violations.length > 0) {
       logger.error('EXTERNAL API DATA CONTAMINATION DETECTED', {
@@ -459,7 +443,8 @@ export class LicenseController {
 
   getDashboardMetrics = async (req, res) => {
     try {
-      logger.info('Dashboard metrics request:', {
+      logger.debug('Dashboard metrics request', {
+        correlationId: req.correlationId,
         query: req.query,
         userId: req.user?.id,
       });
@@ -473,14 +458,14 @@ export class LicenseController {
         dateRange.startsAtTo = decodeURIComponent(req.query.startsAtTo);
       }
 
-      logger.info('Calling license service with:', {
-        filters: query.filters,
-        dateRange,
-      });
-
       const metrics = await this.licenseService.getDashboardMetrics({
         filters: query.filters,
         ...(Object.keys(dateRange).length > 0 && { dateRange }),
+      });
+
+      logger.info('Dashboard metrics', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
       });
 
       return res.success(metrics, 'Dashboard metrics retrieved successfully');

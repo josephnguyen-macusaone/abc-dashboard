@@ -115,9 +115,11 @@ The application supports multiple environment configurations:
 #### Required Variables
 
 ```bash
-# Backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
+# Backend API URL (must match your backend port, e.g. 5000 or 5001)
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 ```
+
+**Important:** `NEXT_PUBLIC_*` variables are inlined at **build time**. After changing `.env` or `.env.local`, restart the dev server (`npm run dev`) or rebuild the app (e.g. `npm run build` / Docker rebuild) for changes to take effect.
 
 #### Optional Variables
 

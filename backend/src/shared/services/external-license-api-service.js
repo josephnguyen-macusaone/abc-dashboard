@@ -174,35 +174,49 @@ export class ExternalLicenseApiService {
                   errorText = 'Unable to read error response';
                 }
 
-                logger.error('External API returned error response', {
-                  correlationId: this.correlationId,
-                  status: response.status,
-                  statusText: response.statusText,
-                  contentType: response.headers.get('content-type'),
-                  contentLength: response.headers.get('content-length'),
-                  errorPreview: errorText.substring(0, 1000),
-                  url,
-                  // Try to detect if it's HTML
-                  looksLikeHtml:
-                    errorText.toLowerCase().includes('<html') ||
-                    errorText.toLowerCase().includes('<!doctype'),
-                  // Check for common error patterns
-                  isJsonError:
-                    errorText.trim().startsWith('{') && errorText.includes('"success":false'),
-                  isMalformedJsonError:
-                    errorText.includes('Expecting value') ||
+                const isServerParseError =
+                  response.status === 500 &&
+                  (errorText.includes('Expecting value') ||
                     errorText.includes('Unexpected token') ||
-                    errorText.includes('Invalid JSON'),
-                });
+                    errorText.includes('Invalid JSON'));
+                if (isServerParseError) {
+                  logger.warn(
+                    'External API returned 500 (server-side parse error); sync will skip this page',
+                    {
+                      correlationId: this.correlationId,
+                      url,
+                      errorPreview: errorText.substring(0, 150),
+                    }
+                  );
+                } else {
+                  logger.error('External API returned error response', {
+                    correlationId: this.correlationId,
+                    status: response.status,
+                    statusText: response.statusText,
+                    contentType: response.headers.get('content-type'),
+                    contentLength: response.headers.get('content-length'),
+                    errorPreview: errorText.substring(0, 1000),
+                    url,
+                    looksLikeHtml:
+                      errorText.toLowerCase().includes('<html') ||
+                      errorText.toLowerCase().includes('<!doctype'),
+                    isJsonError:
+                      errorText.trim().startsWith('{') && errorText.includes('"success":false'),
+                    isMalformedJsonError:
+                      errorText.includes('Expecting value') ||
+                      errorText.includes('Unexpected token') ||
+                      errorText.includes('Invalid JSON'),
+                  });
+                }
 
                 // Record API error
-                licenseSyncMonitor.recordApiError(
-                  endpoint,
-                  requestOptions.method,
-                  new Error(`HTTP ${response.status}: ${errorText}`)
+                const err = new Error(
+                  isServerParseError
+                    ? `HTTP 500: External API server error (parse error); skipping page`
+                    : `HTTP ${response.status}: ${errorText}`
                 );
-
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
+                licenseSyncMonitor.recordApiError(endpoint, requestOptions.method, err);
+                throw err;
               }
 
               // Parse response based on content type
@@ -275,6 +289,30 @@ export class ExternalLicenseApiService {
                 throw new Error(`Failed to parse API response: ${parseError.message}`);
               }
 
+              // External API can return 200 with success:false and a server/parse error message (e.g. page 52)
+              const msg = responseData?.message;
+              const isSuccessFalseParseError =
+                response.ok &&
+                responseData &&
+                responseData.success === false &&
+                typeof msg === 'string' &&
+                (msg.includes('Expecting value') ||
+                  msg.includes('Unexpected token') ||
+                  msg.includes('Invalid JSON') ||
+                  msg.includes('Internal server error'));
+              if (isSuccessFalseParseError) {
+                logger.warn(
+                  'External API returned success:false with server/parse error; sync will skip this page',
+                  {
+                    correlationId: this.correlationId,
+                    url,
+                    messagePreview: msg.substring(0, 120),
+                  }
+                );
+                licenseSyncMonitor.recordApiError(endpoint, requestOptions.method, new Error(msg));
+                return null;
+              }
+
               return responseData;
             } catch (error) {
               logger.error('External API request failed', {
@@ -308,13 +346,18 @@ export class ExternalLicenseApiService {
         maxRetries: licenseSyncConfig.sync.retryAttempts,
         retryDelay: licenseSyncConfig.sync.retryDelay,
         retryOn: (error) => {
-          // Retry on network errors, 5xx errors, and timeouts
+          const msg = error?.message || '';
+          // Do not retry server-side parse errors (malformed data on their side; retrying won't help)
+          if (msg.includes('parse error') && msg.includes('skipping page')) {
+            return false;
+          }
+          // Retry on network errors, other 5xx, and timeouts
           return (
-            error.message.includes('fetch') ||
-            error.message.includes('network') ||
-            error.message.includes('ECONNREFUSED') ||
-            error.message.includes('HTTP 5') ||
-            error.message.includes('timeout')
+            msg.includes('fetch') ||
+            msg.includes('network') ||
+            msg.includes('ECONNREFUSED') ||
+            msg.includes('HTTP 5') ||
+            msg.includes('timeout')
           );
         },
         correlationId: this.correlationId,
@@ -462,22 +505,29 @@ export class ExternalLicenseApiService {
         totalFetched: allLicenses.length,
       });
 
+      let lastLoggedProgressPct = -1;
+      const progressLogIntervalPct = 10;
+
       // Fetch remaining pages in parallel batches
       for (
         let pageBatchStart = 2;
         pageBatchStart <= totalPages;
         pageBatchStart += concurrencyLimit
       ) {
-        // Log progress every batch
-        logger.info(
-          `📥 Fetching pages ${pageBatchStart}-${Math.min(pageBatchStart + concurrencyLimit - 1, totalPages)} of ${totalPages} (${Math.round((pageBatchStart / totalPages) * 100)}% complete)`,
-          {
-            correlationId: this.correlationId,
-            totalLicensesFetched: allLicenses.length,
-            pagesCompleted: pagesFetched,
-            failedSoFar: failedPages.length,
-          }
-        );
+        const pct = Math.round((pageBatchStart / totalPages) * 100);
+        const step = Math.floor(pct / progressLogIntervalPct) * progressLogIntervalPct;
+        if (step > lastLoggedProgressPct) {
+          lastLoggedProgressPct = step;
+          logger.info(
+            `📥 Fetching pages ${pageBatchStart}-${Math.min(pageBatchStart + concurrencyLimit - 1, totalPages)} of ${totalPages} (${pct}% complete)`,
+            {
+              correlationId: this.correlationId,
+              totalLicensesFetched: allLicenses.length,
+              pagesCompleted: pagesFetched,
+              failedSoFar: failedPages.length,
+            }
+          );
+        }
 
         const pagePromises = [];
 

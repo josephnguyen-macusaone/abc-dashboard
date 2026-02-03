@@ -301,10 +301,14 @@ export class LicenseValidator {
       const expiresAt = new Date(input.expiresAt);
       if (isNaN(expiresAt.getTime())) {
         // Allow invalid dates for compatibility
-        console.warn(`License ${input.key || 'unknown'} has invalid expiresAt date: ${input.expiresAt}`);
+        console.warn(
+          `License ${input.key || 'unknown'} has invalid expiresAt date: ${input.expiresAt}`
+        );
       } else if (expiresAt <= startsAt) {
         // Allow expiry dates before start dates for existing data
-        console.warn(`License ${input.key || 'unknown'} has expiresAt (${input.expiresAt}) before startsAt (${input.startsAt})`);
+        console.warn(
+          `License ${input.key || 'unknown'} has expiresAt (${input.expiresAt}) before startsAt (${input.startsAt})`
+        );
       }
     }
 
@@ -419,14 +423,16 @@ export class LicenseValidator {
       licensesToUpdate = body.updates;
     } else if (Array.isArray(body) && body.length > 0) {
       // Direct array format: [{ id, ...fields }]
-      licensesToUpdate = body.map(license => ({
+      licensesToUpdate = body.map((license) => ({
         id: license.id,
-        updates: { ...license }
+        updates: { ...license },
       }));
       // Remove id from updates since it's used as the key
-      licensesToUpdate.forEach(item => delete item.updates.id);
+      licensesToUpdate.forEach((item) => delete item.updates.id);
     } else {
-      throw new ValidationException('Invalid bulk update format. Expected either {updates: [...]} or direct array of licenses');
+      throw new ValidationException(
+        'Invalid bulk update format. Expected either {updates: [...]} or direct array of licenses'
+      );
     }
 
     if (licensesToUpdate.length === 0) {

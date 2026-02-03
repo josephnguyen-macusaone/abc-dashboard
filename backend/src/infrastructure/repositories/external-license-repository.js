@@ -46,15 +46,19 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
   }
 
   async findByAppId(appid) {
-    // Allow operations without appid for sync purposes
-    if (!appid || typeof appid !== 'string') {
+    // Coerce number to string (external API may send numeric appid)
+    if (typeof appid === 'number' && !Number.isNaN(appid)) {
+      appid = String(appid);
+    }
+    if (!appid || typeof appid !== 'string' || appid.trim() === '') {
       logger.warn('Invalid appid provided to findByAppId', {
         correlationId: this.correlationId,
         appid,
-        appidType: typeof appid
+        appidType: typeof appid,
       });
       return null;
     }
+    appid = appid.trim();
 
     try {
       const licenseRow = await this.db(this.licensesTable)
@@ -76,7 +80,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       logger.warn('Invalid email provided to findByEmail', {
         correlationId: this.correlationId,
         email,
-        emailType: typeof email
+        emailType: typeof email,
       });
       return null;
     }
@@ -350,7 +354,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     // Process in smaller batches to avoid database timeouts
     const batchSize = licenseSyncConfig.database.maxBulkUpsertBatchSize;
 
-    logger.info('Starting bulk upsert operation', {
+    logger.debug('Starting bulk upsert operation', {
       totalLicenses: licensesData.length,
       batchSize,
       totalBatches: Math.ceil(licensesData.length / batchSize),
@@ -394,7 +398,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
 
           // Deduplicate by appid to prevent ON CONFLICT errors
           const seenAppIds = new Set();
-          const deduplicatedData = validBatchData.filter(item => {
+          const deduplicatedData = validBatchData.filter((item) => {
             if (!item.appid || seenAppIds.has(item.appid)) {
               return false;
             }
@@ -403,11 +407,11 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
           });
 
           if (deduplicatedData.length !== validBatchData.length) {
-            logger.warn('Removed duplicate appids from batch', {
+            logger.debug('Removed duplicate appids from batch', {
               batchNumber,
               originalCount: validBatchData.length,
               deduplicatedCount: deduplicatedData.length,
-              duplicatesRemoved: validBatchData.length - deduplicatedData.length
+              duplicatesRemoved: validBatchData.length - deduplicatedData.length,
             });
           }
 
@@ -467,12 +471,15 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       updated: updated.length,
       errors: errors, // Return the full errors array, not just the count
       totalProcessed: created.length + updated.length + errors.length,
-      successRate: licensesData.length > 0 ? Math.round(((created.length + updated.length) / licensesData.length) * 100) : 0,
+      successRate:
+        licensesData.length > 0
+          ? Math.round(((created.length + updated.length) / licensesData.length) * 100)
+          : 0,
     };
 
-    logger.info('Bulk upsert operation completed', {
+    logger.debug('Bulk upsert operation completed', {
       ...summary,
-      errorCount: errors.length, // Include error count in logs
+      errorCount: errors.length,
     });
 
     return summary;
@@ -540,7 +547,8 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     logger.debug('Bulk update completed', {
       totalRequested: updates.length,
       totalUpdated: updatedLicenses.length,
-      successRate: updates.length > 0 ? Math.round((updatedLicenses.length / updates.length) * 100) : 0,
+      successRate:
+        updates.length > 0 ? Math.round((updatedLicenses.length / updates.length) * 100) : 0,
     });
 
     return updatedLicenses;
@@ -686,7 +694,6 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       throw new Error('License row is null or undefined');
     }
 
-
     return new ExternalLicense({
       countid: licenseRow.countid,
       id: licenseRow.id,
@@ -768,7 +775,9 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     }
     if (data.Email_license !== undefined) {
       // Truncate email_license to 255 characters max (database constraint)
-      dbData.email_license = data.Email_license ? String(data.Email_license).substring(0, 255) : data.Email_license;
+      dbData.email_license = data.Email_license
+        ? String(data.Email_license).substring(0, 255)
+        : data.Email_license;
     }
     if (data.pass !== undefined) {
       // Truncate pass to 255 characters max (database constraint)
@@ -782,7 +791,9 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     }
     if (data.Sendbat_workspace !== undefined) {
       // Truncate sendbat_workspace to 255 characters max (database constraint)
-      dbData.sendbat_workspace = data.Sendbat_workspace ? String(data.Sendbat_workspace).substring(0, 255) : data.Sendbat_workspace;
+      dbData.sendbat_workspace = data.Sendbat_workspace
+        ? String(data.Sendbat_workspace).substring(0, 255)
+        : data.Sendbat_workspace;
     }
     if (data.lastActive !== undefined) {
       dbData.last_active = data.lastActive;
@@ -897,7 +908,10 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       const externalPageSize = 500; // Check external licenses in smaller batches
       let hasMoreExternal = true;
 
-      while (hasMoreExternal && syncOperations.length < licenseSyncConfig.sync.maxLicensesForComprehensive) {
+      while (
+        hasMoreExternal &&
+        syncOperations.length < licenseSyncConfig.sync.maxLicensesForComprehensive
+      ) {
         const externalChunk = await this.findLicenses({
           page: externalPage,
           limit: externalPageSize,
@@ -925,24 +939,38 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
                 hasInternalMatch = true;
               }
             } catch (error) {
-              logger.debug('Error checking appid match', { appid: externalLicense.appid, error: error.message });
+              logger.debug('Error checking appid match', {
+                appid: externalLicense.appid,
+                error: error.message,
+              });
             }
           }
 
           // Try countid match if no appid match
-          if (!hasInternalMatch && externalLicense.countid !== undefined && externalLicense.countid !== null) {
+          if (
+            !hasInternalMatch &&
+            externalLicense.countid !== undefined &&
+            externalLicense.countid !== null
+          ) {
             try {
-              const internalMatch = await internalLicenseRepo.findByCountId(externalLicense.countid);
+              const internalMatch = await internalLicenseRepo.findByCountId(
+                externalLicense.countid
+              );
               if (internalMatch) {
                 hasInternalMatch = true;
               }
             } catch (error) {
-              logger.debug('Error checking countid match', { countid: externalLicense.countid, error: error.message });
+              logger.debug('Error checking countid match', {
+                countid: externalLicense.countid,
+                error: error.message,
+              });
             }
           }
 
           if (!hasInternalMatch) {
-            logger.debug(`Creating new internal license for external ${externalLicense.appid || externalLicense.countid}`);
+            logger.debug(
+              `Creating new internal license for external ${externalLicense.appid || externalLicense.countid}`
+            );
             syncOperations.push({
               type: 'create',
               externalLicense,
@@ -1244,15 +1272,15 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
    */
   async syncToInternalLicenses(internalLicenseRepo) {
     try {
-      logger.info('Starting sync from external licenses to internal licenses');
+      logger.debug('Starting sync from external licenses to internal licenses');
       const externalLicenses = await this.findLicenses({});
       let syncedCount = 0;
       let updatedCount = 0;
       let createdCount = 0;
 
-      logger.info(
-        `Processing ${externalLicenses.licenses.length} external licenses for internal sync`
-      );
+      logger.debug('Processing external licenses for internal sync', {
+        count: externalLicenses.licenses.length,
+      });
 
       for (const externalLicense of externalLicenses.licenses) {
         try {
@@ -1587,12 +1615,18 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     const defaultDba = dba && dba.trim() ? dba.trim() : 'External License';
 
     // Handle both numeric (1/0) and string ('active'/'inactive') status formats
-    const status = typeof externalLicense.status === 'number'
-      ? (externalLicense.status === 1 ? 'active' : 'cancel')
-      : (externalLicense.status === 'active' ? 'active' : 'cancel');
+    const status =
+      typeof externalLicense.status === 'number'
+        ? externalLicense.status === 1
+          ? 'active'
+          : 'cancel'
+        : externalLicense.status === 'active'
+          ? 'active'
+          : 'cancel';
 
     // Set cancel date for cancelled licenses
-    const cancelDate = status === 'cancel' ? (externalLicense.lastActive || new Date().toISOString()) : undefined;
+    const cancelDate =
+      status === 'cancel' ? externalLicense.lastActive || new Date().toISOString() : undefined;
 
     return {
       product: 'ABC Business Suite', // Default product for external licenses
