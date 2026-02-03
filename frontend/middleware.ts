@@ -12,8 +12,8 @@ const CSP_HEADERS = {
     // Default restrictions - only allow same-origin
     "default-src 'self'",
 
-    // Scripts - allow Next.js and our inline theme script
-    "script-src 'self' 'unsafe-inline'", // unsafe-inline needed for theme script
+    // Scripts - allow Next.js, inline theme script, and eval (required by Next.js / some deps)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
 
     // Styles - allow Next.js styles and inline styles
     "style-src 'self' 'unsafe-inline'",
