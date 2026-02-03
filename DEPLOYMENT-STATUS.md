@@ -1,13 +1,18 @@
 # Deployment Status
 
-## Critical API Fix Deployed ✅
+## Critical API Fix - OpenLiteSpeed Configuration ✅
 
-### Latest: Fix for Production API URL Issue
-**Run:** 21625193936
-**Commit:** d40b70b
-**Status:** ✅ **DEPLOYED SUCCESSFULLY**
-**Started:** 2026-02-03T09:45:31Z
-**Completed:** ~09:48 UTC
+### Latest: Correct Fix for OpenLiteSpeed Setup
+**Run:** 21625551412  
+**Commit:** bd9eebf  
+**Status:** ✅ **DEPLOYED SUCCESSFULLY**  
+**Started:** 2026-02-03T09:56:39Z  
+**Completed:** ~10:00 UTC
+
+### What Changed
+- ✅ Deleted `NEXT_PUBLIC_API_URL` secret (was causing localhost issue)
+- ✅ Using relative `/api/v1` paths (OpenLiteSpeed proxies to backend)
+- ✅ 18 secrets total (correct count)
 
 ### Problem Fixed
 
