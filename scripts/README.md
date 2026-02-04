@@ -19,6 +19,7 @@ ssh root@155.138.245.11 'cd /root/abc-dashboard && ./scripts/load-and-run.sh'
 ```bash
 ssh root@155.138.245.11
 cd /root/abc-dashboard
-./scripts/docker-db-reset-sync.sh        # Reset + sync
-./scripts/docker-db-reset-sync.sh --drop # Drop DB + reset + sync
+./scripts/docker-db-reset-sync.sh              # Reset (migrate:fresh + seed)
+./scripts/docker-db-reset-sync.sh --drop       # Drop DB + migrate + seed
+./scripts/docker-db-reset-sync.sh --drop --sync # Same + license sync
 ```

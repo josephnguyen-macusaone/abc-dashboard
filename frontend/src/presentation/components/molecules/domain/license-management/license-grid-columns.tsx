@@ -15,11 +15,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "dba",
       header: "DBA",
       size: 150,
-      enableColumnFilter: true,
-      filterFn: (row, id, value) => {
-        const dba = row.getValue(id) as string;
-        return dba.toLowerCase().includes(value.toLowerCase());
-      },
+      enableColumnFilter: false,
       meta: {
         label: "DBA",
         cell: { variant: "short-text" as const },
@@ -68,6 +64,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "plan",
       header: "Plan",
       size: 120,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const plan = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(plan) : value === plan;
+      },
       meta: {
         label: "Plan",
         cell: {
@@ -81,6 +82,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "term",
       header: "Term",
       size: 110,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        const term = row.getValue(id) as string;
+        return Array.isArray(value) ? value.includes(term) : value === term;
+      },
       meta: {
         label: "Term",
         cell: {
@@ -154,6 +160,12 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "agentsName",
       header: "Agents Name",
       size: 200,
+      // Custom accessor to convert array to comma-separated string for editing
+      accessorFn: (row) => {
+        const names = row.agentsName;
+        return Array.isArray(names) ? names.join(", ") : "";
+      },
+      enableColumnFilter: false,
       meta: {
         label: "Agents Name",
         cell: { variant: "short-text" as const },

@@ -129,9 +129,23 @@ export class LicenseRepository extends ILicenseRepository {
       plan: 'plan',
       status: 'status',
       dba: 'dba',
+      zip: 'zip',
+      term: 'term',
+      lastPayment: 'last_payment',
+      lastActive: 'last_active',
+      cancelDate: 'cancel_date',
+      smsPurchased: 'sms_purchased',
+      smsSent: 'sms_sent',
+      smsBalance: 'sms_balance',
+      agents: 'agents',
+      agentsCost: 'agents_cost',
+      notes: 'notes',
       seatsTotal: 'seats_total',
       seatsUsed: 'seats_used',
       utilizationPercent: 'utilization_percent',
+      mid: 'mid',
+      appid: 'appid',
+      countid: 'countid',
     };
 
     const sortColumn = sortColumnMap[sortBy] || sortBy;
@@ -144,24 +158,27 @@ export class LicenseRepository extends ILicenseRepository {
 
       if (filters.searchField) {
         // Single field search
-        const fieldMap = {
-          key: 'key',
-          dba: 'dba',
-          product: 'product',
-          plan: 'plan',
-        };
-        const dbField = fieldMap[filters.searchField];
-
-        if (dbField) {
-          query = query.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+        if (filters.searchField === 'agentsName') {
+          query = query.whereRaw("COALESCE(agents_name::text, '') ILIKE ?", [searchTerm]);
+        } else {
+          const fieldMap = {
+            key: 'key',
+            dba: 'dba',
+            product: 'product',
+            plan: 'plan',
+          };
+          const dbField = fieldMap[filters.searchField];
+          if (dbField) {
+            query = query.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+          }
         }
       } else {
-        // Multi-field search (default): search across all fields
+        // Multi-field search (default): search across DBA and Agents Name
         query = query.where((qb) => {
-          qb.whereRaw('key ILIKE ?', [searchTerm])
-            .orWhereRaw('dba ILIKE ?', [searchTerm])
-            .orWhereRaw('product ILIKE ?', [searchTerm])
-            .orWhereRaw('plan ILIKE ?', [searchTerm]);
+          qb.whereRaw('dba ILIKE ?', [searchTerm]).orWhereRaw(
+            "COALESCE(agents_name::text, '') ILIKE ?",
+            [searchTerm]
+          );
         });
       }
     }
@@ -441,24 +458,29 @@ export class LicenseRepository extends ILicenseRepository {
 
       if (filters.searchField) {
         // Single field search
-        const fieldMap = {
-          key: 'key',
-          dba: 'dba',
-          product: 'product',
-          plan: 'plan',
-        };
-        const dbField = fieldMap[filters.searchField];
-
-        if (dbField) {
-          filteredQuery = filteredQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+        if (filters.searchField === 'agentsName') {
+          filteredQuery = filteredQuery.whereRaw("COALESCE(agents_name::text, '') ILIKE ?", [
+            searchTerm,
+          ]);
+        } else {
+          const fieldMap = {
+            key: 'key',
+            dba: 'dba',
+            product: 'product',
+            plan: 'plan',
+          };
+          const dbField = fieldMap[filters.searchField];
+          if (dbField) {
+            filteredQuery = filteredQuery.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);
+          }
         }
       } else {
-        // Multi-field search (default): search across all fields
+        // Multi-field search (default): search across DBA and Agents Name
         filteredQuery = filteredQuery.where((qb) => {
-          qb.whereRaw('key ILIKE ?', [searchTerm])
-            .orWhereRaw('dba ILIKE ?', [searchTerm])
-            .orWhereRaw('product ILIKE ?', [searchTerm])
-            .orWhereRaw('plan ILIKE ?', [searchTerm]);
+          qb.whereRaw('dba ILIKE ?', [searchTerm]).orWhereRaw(
+            "COALESCE(agents_name::text, '') ILIKE ?",
+            [searchTerm]
+          );
         });
       }
     }
@@ -1639,5 +1661,48 @@ export class LicenseRepository extends ILicenseRepository {
         },
       }
     );
+  }
+
+  /**
+   * Get all unique agent names from licenses
+   * @returns {Promise<string[]>} Array of unique agent names
+   */
+  async getAllAgentNames() {
+    try {
+      // Get all licenses with agents_name field (stored as JSON array in database)
+      const licenses = await this.db(this.licensesTable)
+        .select('agents_name')
+        .whereNotNull('agents_name');
+
+      // Extract unique agent names from all licenses
+      const agentNamesSet = new Set();
+
+      licenses.forEach((license) => {
+        if (license.agents_name) {
+          // agents_name is stored as JSON array in database
+          const names =
+            typeof license.agents_name === 'string'
+              ? JSON.parse(license.agents_name)
+              : license.agents_name;
+
+          if (Array.isArray(names)) {
+            names.forEach((name) => {
+              if (name && name.trim()) {
+                agentNamesSet.add(name.trim());
+              }
+            });
+          }
+        }
+      });
+
+      // Convert set to sorted array
+      return Array.from(agentNamesSet).sort();
+    } catch (error) {
+      logger.error('Failed to get all agent names', {
+        correlationId: this.correlationId,
+        error: error.message,
+      });
+      throw error;
+    }
   }
 }

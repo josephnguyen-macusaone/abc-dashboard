@@ -1,13 +1,5 @@
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
-import {
-  FileText,
-  Clock,
-  CheckCircle2,
-  AlertOctagon,
-  AlertCircle,
-  XCircle,
-  Ban
-} from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 import { LICENSE_STATUS_LABELS, LICENSE_STATUS_COLORS } from '@/shared/constants/license';
@@ -21,13 +13,8 @@ export interface LicenseStatusBadgeProps {
 }
 
 const statusIcons: Record<LicenseStatus, LucideIcon> = {
-  draft: FileText,
-  pending: Clock,
   active: CheckCircle2,
-  expiring: AlertOctagon,
-  expired: AlertCircle,
   cancel: XCircle,
-  revoked: Ban,
 };
 
 export function LicenseStatusBadge({

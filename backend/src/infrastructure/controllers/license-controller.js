@@ -481,4 +481,31 @@ export class LicenseController {
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
+
+  /**
+   * Get all unique agent names
+   */
+  getAllAgentNames = async (req, res) => {
+    try {
+      logger.debug('Getting all agent names', {
+        correlationId: req.correlationId,
+      });
+
+      const agentNames = await this.licenseService.getAllAgentNames();
+
+      logger.info('Agent names retrieved successfully', {
+        correlationId: req.correlationId,
+        count: agentNames.length,
+      });
+
+      return res.success({ agents: agentNames }, 'Agent names retrieved successfully');
+    } catch (error) {
+      logger.error('License controller getAllAgentNames error', {
+        correlationId: req.correlationId,
+        error: error.message,
+        stack: error.stack,
+      });
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  };
 }

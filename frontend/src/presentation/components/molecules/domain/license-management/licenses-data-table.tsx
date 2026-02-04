@@ -328,8 +328,8 @@ export function LicensesDataTable({
       sortOrder: activeSort ? (activeSort.desc ? "desc" : "asc") : "desc",
     };
 
-    // Include search so store clears filter when user clears search; send empty string when cleared
-    queryParams.search = searchValue.trim();
+    // Search: single search bar (backend matches DBA and agent names)
+    queryParams.search = searchValue.trim() || undefined;
 
     // Add manual filter values
     if (manualFilterValues.status && manualFilterValues.status.length > 0) {
@@ -440,7 +440,7 @@ export function LicensesDataTable({
         table={table}
         searchBar={
           <SearchBar
-            placeholder="Search by DBA..."
+            placeholder="Search..."
             value={searchValue}
             onValueChange={handleSearchChange}
             allowClear={false}

@@ -98,7 +98,7 @@ export class LicenseRepository implements ILicenseRepository {
         dba: apiLicense.dba || '',
         zip: apiLicense.zip || '',
         startsAt: apiLicense.startsAt || apiLicense.startDay || new Date().toISOString(),
-        status: apiLicense.status || 'pending',
+        status: apiLicense.status || 'active',
         cancelDate: apiLicense.cancelDate,
         plan: apiLicense.plan || '',
         term: apiLicense.term || 'monthly',
@@ -285,29 +285,27 @@ export class LicenseRepository implements ILicenseRepository {
       // Convert specification to API query parameters
       const queryParams: any = {};
 
-      if (specification.dba) {
+      // General search (matches DBA and agent names); only add searchField when explicitly set
+      if (specification.search) {
+        queryParams.search = specification.search;
+        if (specification.searchField) {
+          queryParams.searchField = specification.searchField;
+        }
+      } else if (specification.dba) {
         queryParams.search = specification.dba;
-        queryParams.searchField = 'dba'; // Specify that we're searching in DBA field for precise filtering
+        queryParams.searchField = 'dba';
       }
       if (specification.status) queryParams.status = specification.status;
       if (specification.plan) queryParams.plan = specification.plan;
       if (specification.term) queryParams.term = specification.term;
+      if (specification.startsAtFrom) queryParams.startsAtFrom = specification.startsAtFrom;
+      if (specification.startsAtTo) queryParams.startsAtTo = specification.startsAtTo;
 
-      // Handle pagination - use backend pagination
+      // Handle pagination - backend expects page and limit only
       if (specification.pagination) {
-        // Try multiple parameter names that backends commonly use
         const { page, limit } = specification.pagination;
-
-        // 1-based page numbering
         queryParams.page = page;
-
-        // 0-based offset
-        queryParams.offset = (page - 1) * limit;
-
-        // Alternative parameter names
         queryParams.limit = limit;
-        queryParams.per_page = limit; // Alternative for limit
-        queryParams.size = limit;     // Alternative for limit
       }
 
       const response = await licenseApi.getLicenses(queryParams);

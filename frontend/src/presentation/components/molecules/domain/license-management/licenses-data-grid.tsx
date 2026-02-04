@@ -5,16 +5,15 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Save, RotateCcw } from "lucide-react";
+import { FileText, Save, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   DataGrid,
-  DataGridFilterMenu,
-  DataGridSortMenu,
   DataGridRowHeightMenu,
   DataGridViewMenu,
 } from "@/presentation/components/molecules/data/data-grid";
+import { DataTableFacetedFilter } from "@/presentation/components/molecules/data/data-table";
 import { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
@@ -22,8 +21,15 @@ import { SearchBar } from "@/presentation/components/molecules";
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { getLicenseGridColumns } from "./license-grid-columns";
+import {
+  STATUS_OPTIONS,
+  PLAN_OPTIONS,
+  TERM_OPTIONS,
+} from "./license-table-columns";
 import type { LicenseRecord } from "@/types";
 import logger from "@/shared/helpers/logger";
+
+const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
@@ -66,37 +72,34 @@ export function LicensesDataGrid({
   const [isSaving, setIsSaving] = React.useState(false);
   const dataVersionRef = React.useRef(0);
 
-  // Track the last initial data to detect changes
+  // Track the last initial data to detect changes (reference + identity for server-driven updates e.g. date filter)
   const lastInitialDataRef = React.useRef<LicenseRecord[]>(initialData);
+  const dataIdentity = React.useMemo(
+    () =>
+      initialData.length > 0
+        ? `${initialData.length}-${String((initialData[0] as { id?: unknown }).id)}-${String((initialData[initialData.length - 1] as { id?: unknown }).id)}`
+        : `empty-${initialData.length}`,
+    [initialData]
+  );
 
-  // Sync with initialData when it changes, but only if we don't have unsaved changes
-  // Use layout effect to run synchronously after DOM updates but before paint
+  // Sync with initialData when it changes (e.g. after date filter or pagination), but only if we don't have unsaved changes
   React.useLayoutEffect(() => {
-    // Only sync if data actually changed
     if (lastInitialDataRef.current === initialData) {
       return;
     }
-
-    // Store reference for next comparison
     lastInitialDataRef.current = initialData;
 
     if (!useComplexSync) {
-      // For simple mode, set data directly on changes
       setData(initialData);
       dataVersionRef.current += 1;
       return;
     }
-
-    // Complex sync logic for pagination scenarios
-    // Don't override local changes
     if (hasChanges) {
       return;
     }
-
-    // Update data state
     setData(initialData);
     dataVersionRef.current += 1;
-  }, [initialData, hasChanges, useComplexSync]);
+  }, [initialData, dataIdentity, hasChanges, useComplexSync]);
 
   const columns = React.useMemo(() => getLicenseGridColumns(), []);
 
@@ -301,7 +304,9 @@ export function LicensesDataGrid({
       sortBy?: string;
       sortOrder: "asc" | "desc";
       search?: string;
-      status?: string;
+      status?: string | string[];
+      plan?: string | string[];
+      term?: string | string[];
     } = {
       page: targetPage,
       limit: tablePageSize,
@@ -316,7 +321,7 @@ export function LicensesDataGrid({
         const filterValue = filter.value as any;
 
         if (filterValue?.value !== undefined) {
-          // Handle complex filters with operators
+          // Handle complex filters with operators (from DataGridFilterMenu)
           const operator = filterValue.operator || 'equals';
           const value = filterValue.value;
 
@@ -325,9 +330,14 @@ export function LicensesDataGrid({
             // "Contains" on DBA field maps to general search
             apiParams.search = value;
           } else if (filter.id === 'status') {
-            // Status filtering - backend supports exact match
-            // For now, use the first value if multiple are selected
-            apiParams.status = Array.isArray(value) ? value[0] : value;
+            // Status filtering - backend supports array
+            apiParams.status = Array.isArray(value) ? value : [value];
+          } else if (filter.id === 'plan') {
+            // Plan filtering - backend supports array
+            apiParams.plan = Array.isArray(value) ? value : [value];
+          } else if (filter.id === 'term') {
+            // Term filtering - backend supports array
+            apiParams.term = Array.isArray(value) ? value : [value];
           }
         } else if (filter.value !== undefined) {
           // Handle simple filters without operators
@@ -335,8 +345,16 @@ export function LicensesDataGrid({
             apiParams.search = String(filter.value);
           } else if (filter.id === 'status') {
             apiParams.status = Array.isArray(filter.value)
-              ? String(filter.value[0])
-              : String(filter.value);
+              ? filter.value
+              : [String(filter.value)];
+          } else if (filter.id === 'plan') {
+            apiParams.plan = Array.isArray(filter.value)
+              ? filter.value
+              : [String(filter.value)];
+          } else if (filter.id === 'term') {
+            apiParams.term = Array.isArray(filter.value)
+              ? filter.value
+              : [String(filter.value)];
           }
         }
       });
@@ -363,6 +381,34 @@ export function LicensesDataGrid({
     // Clear reset flag after processing
     isResettingRef.current = false;
   }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, onQueryChange, gridState.table]);
+
+  // Filter toolbar state (hooks must run before any early return)
+  const table = gridState.table;
+  const columnFilters = table.getState().columnFilters;
+  const hasActiveFilters = React.useMemo(
+    () =>
+      columnFilters.some((f) => {
+        if (!FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number]))
+          return false;
+        const v = f.value;
+        if (typeof v === "object" && v !== null && "value" in v) {
+          const val = (v as { value?: unknown }).value;
+          return Array.isArray(val) ? val.length > 0 : val != null && val !== "";
+        }
+        return Array.isArray(v) ? v.length > 0 : v != null && v !== "";
+      }),
+    [columnFilters],
+  );
+
+  const onClearFilters = React.useCallback(() => {
+    table.setColumnFilters((prev) =>
+      prev.filter((f) => !FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number])),
+    );
+  }, [table]);
+
+  const statusColumn = table.getColumn("status");
+  const planColumn = table.getColumn("plan");
+  const termColumn = table.getColumn("term");
 
   // Loading state
   if (isLoading) {
@@ -398,13 +444,12 @@ export function LicensesDataGrid({
   return (
     <div className={className}>
       <div className="space-y-5">
-        {/* Toolbar with Search, Filter, Sort, Row Height, View, and Action buttons */}
+        {/* Toolbar: Search, Status / Plan / Term filters (like data table), Row height, View, Actions */}
         <div className="flex flex-nowrap md:flex-wrap items-center gap-2 md:justify-between overflow-x-auto">
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Custom search that uses local state */}
             <div className="relative">
               <SearchBar
-                placeholder="Search DBA..."
+                placeholder="Search DBA or agent name..."
                 value={searchInput}
                 onValueChange={setSearchInput}
                 allowClear
@@ -412,10 +457,44 @@ export function LicensesDataGrid({
                 inputClassName="h-8"
               />
             </div>
-            <DataGridFilterMenu table={gridState.table} />
-            {/* <DataGridSortMenu table={gridState.table} /> */} {/* Hidden - sorting not working */}
-            <DataGridRowHeightMenu table={gridState.table} />
-            <DataGridViewMenu table={gridState.table} />
+            {statusColumn && (
+              <DataTableFacetedFilter
+                column={statusColumn}
+                title="Status"
+                options={STATUS_OPTIONS}
+                multiple
+              />
+            )}
+            {planColumn && (
+              <DataTableFacetedFilter
+                column={planColumn}
+                title="Plan"
+                options={PLAN_OPTIONS}
+                multiple
+              />
+            )}
+            {termColumn && (
+              <DataTableFacetedFilter
+                column={termColumn}
+                title="Term"
+                options={TERM_OPTIONS}
+                multiple
+              />
+            )}
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+                onClick={onClearFilters}
+                aria-label="Reset filters"
+              >
+                <X className="size-4" />
+                <span className="hidden sm:inline">Reset</span>
+              </Button>
+            )}
+            <DataGridRowHeightMenu table={table} />
+            <DataGridViewMenu table={table} />
           </div>
           {/* Action buttons */}
           {hasChanges && (

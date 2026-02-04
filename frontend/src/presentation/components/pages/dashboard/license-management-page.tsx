@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/infrastructure/stores/auth";
@@ -29,12 +29,20 @@ export function LicenseManagementPage() {
   const licenses = useLicenseStore(selectLicenses);
   const isLoading = useLicenseStore(selectLicenseLoading);
   const licensePagination = useLicenseStore(selectLicensePagination);
+  const filters = useLicenseStore(state => state.filters);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
+  const setFilters = useLicenseStore(state => state.setFilters);
   const bulkCreateLicenses = useLicenseStore(state => state.bulkCreateLicenses);
-  const bulkUpsertLicenses = useLicenseStore(state => (state as any).bulkUpsertLicenses);
+  const bulkUpsertLicenses = useLicenseStore(state => state.bulkUpsertLicenses);
   const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
 
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>();
+  // Derive date range from store filters (server-side filter by license start date)
+  const dateRange = useMemo((): { from?: Date; to?: Date } | undefined => {
+    const from = filters.startsAtFrom ? new Date(filters.startsAtFrom) : undefined;
+    const to = filters.startsAtTo ? new Date(filters.startsAtTo) : undefined;
+    if (!from && !to) return undefined;
+    return { from: isNaN(from?.getTime() ?? NaN) ? undefined : from, to: isNaN(to?.getTime() ?? NaN) ? undefined : to };
+  }, [filters.startsAtFrom, filters.startsAtTo]);
 
   const loadLicenses = useCallback(async (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
     try {
@@ -65,9 +73,38 @@ export function LicenseManagementPage() {
   const onSave = useCallback(
     async (data: LicenseRecord[]) => {
       try {
+        // Transform agentsName from comma-separated string back to array
+        const transformedData = data.map(license => {
+          const agentsNameValue = (license as any).agentsName;
+
+          // If it's already an array, keep it
+          if (Array.isArray(agentsNameValue)) {
+            return license;
+          }
+
+          // If it's a string, split by comma and trim whitespace
+          if (typeof agentsNameValue === 'string') {
+            const agentsArray = agentsNameValue
+              .split(',')
+              .map(name => name.trim())
+              .filter(name => name.length > 0);
+
+            return {
+              ...license,
+              agentsName: agentsArray,
+            };
+          }
+
+          // Default to empty array if undefined/null
+          return {
+            ...license,
+            agentsName: [],
+          };
+        });
+
         // Separate new licenses (temp IDs) from existing ones
-        const newLicenses = data.filter(license => typeof license.id === 'string' && license.id.startsWith('temp-'));
-        const existingLicenses = data.filter(license => !newLicenses.includes(license));
+        const newLicenses = transformedData.filter(license => typeof license.id === 'string' && license.id.startsWith('temp-'));
+        const existingLicenses = transformedData.filter(license => !newLicenses.includes(license));
 
         let hasOperations = false;
 
@@ -117,7 +154,7 @@ export function LicenseManagementPage() {
       dba: "",
       zip: "",
       startsAt: new Date().toISOString().split("T")[0],
-      status: "pending",
+      status: "active",
       plan: "Basic",
       term: "monthly",
       lastPayment: 0,
@@ -150,8 +187,23 @@ export function LicenseManagementPage() {
   const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
     const nextRange = values.range;
     const hasRange = nextRange?.from || nextRange?.to;
-    setDateRange(hasRange ? nextRange : undefined);
-  }, []);
+    const startsAtFrom = nextRange?.from?.toISOString?.().split('T')[0];
+    const startsAtTo = nextRange?.to?.toISOString?.().split('T')[0];
+    const newFilters = {
+      ...filters,
+      startsAtFrom: hasRange ? startsAtFrom : undefined,
+      startsAtTo: hasRange ? startsAtTo : undefined,
+    };
+    setFilters(newFilters);
+    // Pass date params explicitly so the request uses them even before store state has updated
+    fetchLicenses({
+      page: 1,
+      startsAtFrom: newFilters.startsAtFrom,
+      startsAtTo: newFilters.startsAtTo,
+    }).catch((error) => {
+      if (shouldShowError(error)) toast.error("Failed to apply date filter");
+    });
+  }, [filters, setFilters, fetchLicenses]);
 
   if (!currentUser) {
     return (
@@ -194,13 +246,18 @@ export function LicenseManagementPage() {
         status: statusParam as any,
         plan: planParam as any,
         term: termParam as any,
+        startsAtFrom: filters.startsAtFrom,
+        startsAtTo: filters.startsAtTo,
       });
     } catch (error) {
       if (shouldShowError(error)) {
         toast.error("Failed to fetch licenses");
       }
     }
-  }, [fetchLicenses]);
+  }, [fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
+
+  // Key so TanStack grid remounts when date filter changes and shows server-filtered data
+  const dataSourceKey = [filters.startsAtFrom ?? '', filters.startsAtTo ?? ''].join(',');
 
   return (
     <LicenseManagement
@@ -214,6 +271,7 @@ export function LicenseManagementPage() {
       dateRange={dateRange}
       onDateRangeChange={onDateRangeChange}
       onQueryChange={handleQueryChange}
+      dataSourceKey={dataSourceKey}
       pageCount={licensePagination.totalPages}
       totalCount={licensePagination.total}
     />

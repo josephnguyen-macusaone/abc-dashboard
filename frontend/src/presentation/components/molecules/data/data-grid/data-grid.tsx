@@ -6,6 +6,10 @@ import { DataGridColumnHeader } from "./data-grid-column-header";
 import { DataGridRow } from "./data-grid-row";
 import type { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { TablePagination } from "../common/table-pagination";
+import {
+  tableFooterClass,
+  tableHeadCellClass,
+} from "@/presentation/components/atoms/primitives/table";
 import { flexRender } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
 import type { Direction } from "@/types/data-grid";
@@ -81,7 +85,7 @@ export function DataGrid<TData>({
         data-slot="grid"
         tabIndex={0}
         ref={dataGridRef}
-        className="relative grid select-none overflow-auto rounded-md border focus:outline-none"
+        className="relative grid select-none overflow-auto rounded-md border text-sm focus:outline-none"
         style={{
           ...columnSizeVars,
           maxHeight: `${height}px`,
@@ -92,7 +96,7 @@ export function DataGrid<TData>({
           role="rowgroup"
           data-slot="grid-header"
           ref={headerRef}
-          className="sticky top-0 z-10 grid border-b bg-background"
+          className="sticky top-0 z-10 grid border-b bg-muted [&_[role=row]]:border-b"
         >
           {table.getHeaderGroups().map((headerGroup, rowIndex) => (
             <div
@@ -101,7 +105,7 @@ export function DataGrid<TData>({
               aria-rowindex={rowIndex + 1}
               data-slot="grid-header-row"
               tabIndex={-1}
-              className="flex w-full"
+              className="flex w-full transition-colors"
             >
               {headerGroup.headers.map((header, colIndex) => {
                 const sorting = table.getState().sorting;
@@ -128,7 +132,6 @@ export function DataGrid<TData>({
                     tabIndex={-1}
                     className={cn("relative", {
                       grow: stretchColumns && header.column.id !== "select",
-                      "border-e": header.column.id !== "select",
                     })}
                     style={{
                       width: `calc(var(--header-${header.id}-size) * 1px)`,
@@ -136,7 +139,7 @@ export function DataGrid<TData>({
                   >
                     {header.isPlaceholder ? null : typeof header.column
                       .columnDef.header === "function" ? (
-                      <div className="size-full px-3 py-1.5">
+                      <div className={cn("size-full", tableHeadCellClass)}>
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext(),
@@ -195,7 +198,7 @@ export function DataGrid<TData>({
             role="rowgroup"
             data-slot="grid-footer"
             ref={footerRef}
-            className="sticky bottom-0 z-10 grid border-t bg-background"
+            className={cn("sticky bottom-0 z-10 grid bg-muted", tableFooterClass)}
           >
             <div
               role="row"
@@ -224,7 +227,7 @@ export function DataGrid<TData>({
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-4 mt-6">
+      <div className="mt-4 flex flex-col gap-2.5">
         <TablePagination table={table} />
       </div>
     </div>

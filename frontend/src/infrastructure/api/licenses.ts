@@ -37,11 +37,11 @@ export interface LicenseSyncStatusResponse {
  * and internal (startDay, lastPayment, plan, status as string) API shapes.
  */
 function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
-  // Status: internal sends string ('active'|'cancel'|'pending'|etc); external may send number (1/0) or string
-  let status: LicenseRecord['status'] = 'pending';
+  // Status: active | cancel only
+  let status: LicenseRecord['status'] = 'active';
   if (apiLicense.status !== undefined && apiLicense.status !== null) {
     const s = apiLicense.status;
-    if (typeof s === 'string' && ['active', 'cancel', 'pending', 'expired', 'draft', 'expiring', 'revoked'].includes(s)) {
+    if (typeof s === 'string' && ['active', 'cancel'].includes(s)) {
       status = s as LicenseRecord['status'];
     } else {
       const statusValue = typeof s === 'string' ? parseInt(s, 10) : s;
@@ -53,7 +53,7 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
           status = 'cancel';
           break;
         default:
-          status = 'pending';
+          status = 'active';
       }
     }
   }

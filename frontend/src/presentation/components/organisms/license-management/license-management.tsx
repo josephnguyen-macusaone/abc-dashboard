@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Typography } from '@/presentation/components/atoms';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
@@ -61,6 +61,8 @@ interface LicenseManagementProps {
     plan?: string | string[];
     term?: string | string[];
   }) => void;
+  /** Optional key to force grid remount when filters change (e.g. date range) so TanStack table shows fresh data */
+  dataSourceKey?: string;
   /** Additional CSS classes */
   className?: string;
 }
@@ -77,6 +79,7 @@ export function LicenseManagement({
   pageCount,
   totalCount,
   onQueryChange,
+  dataSourceKey,
   className
 }: LicenseManagementProps) {
   // Reload licenses handler (called after operations)
@@ -96,7 +99,7 @@ export function LicenseManagement({
       dba: '',
       zip: '',
       startsAt: new Date().toISOString().split('T')[0],
-      status: 'pending',
+      status: 'active',
       plan: 'Basic',
       term: 'monthly',
       lastPayment: 0,
@@ -133,27 +136,7 @@ export function LicenseManagement({
     [onDeleteLicenses],
   );
 
-  // Filter licenses by date range
-  const filteredLicenses = useMemo(() => {
-    if (!dateRange?.from && !dateRange?.to) {
-      return licenses;
-    }
-
-    return licenses.filter((license) => {
-      const startDate = new Date(license.startsAt);
-
-      if (dateRange.from && startDate < dateRange.from) {
-        return false;
-      }
-
-      if (dateRange.to && startDate > dateRange.to) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [licenses, dateRange]);
-
+  // Licenses are already filtered by start date on the server when dateRange is set (GET /licenses?startDate=...&endDate=...)
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6', className)}>
       {/* Header */}
@@ -177,9 +160,10 @@ export function LicenseManagement({
         )}
       </div>
 
-      {/* Licenses Data Grid with full CRUD functionality */}
+      {/* Licenses Data Grid with full CRUD functionality. key forces remount when date filter changes so table shows server-filtered data. */}
       <LicensesDataGrid
-        data={filteredLicenses}
+        key={dataSourceKey}
+        data={licenses}
         isLoading={isLoading}
         onSave={handleSave}
         onAddRow={handleAddRow}

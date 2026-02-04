@@ -1,8 +1,8 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../infrastructure/config/logger.js';
 
-const STATUS_VALUES = ['draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'];
-const PLAN_VALUES = ['Basic', 'Premium', 'Enterprise'];
+const STATUS_VALUES = ['active', 'cancel'];
+const PLAN_VALUES = ['Basic', 'Premium'];
 const TERM_VALUES = ['monthly', 'yearly'];
 
 function ensureString(value, field, maxLength) {
@@ -41,8 +41,11 @@ export class LicenseValidator {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.search = query.search.toString();
 
-      // Search field selector (optional)
-      if (query.searchField && ['key', 'dba', 'product', 'plan'].includes(query.searchField)) {
+      // Search field selector (optional); agentsName searches the agents_name jsonb column
+      if (
+        query.searchField &&
+        ['key', 'dba', 'product', 'plan', 'agentsName'].includes(query.searchField)
+      ) {
         sanitized.filters.searchField = query.searchField;
       }
     }
@@ -54,10 +57,6 @@ export class LicenseValidator {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.key = query.key.toString();
     }
-    if (query.dba) {
-      sanitized.filters = sanitized.filters || {};
-      sanitized.filters.dba = query.dba.toString();
-    }
     if (query.product) {
       sanitized.filters = sanitized.filters || {};
       sanitized.filters.product = query.product.toString();
@@ -66,7 +65,8 @@ export class LicenseValidator {
     // Status, Plan, and Term Filters (support arrays)
     // ========================================================================
     if (query.status) {
-      // Handle comma-separated status values (e.g., "pending,draft")
+      // List endpoint allows only active and expired
+      const LIST_STATUS_VALUES = ['active', 'cancel'];
       const statusValues = Array.isArray(query.status)
         ? query.status
         : query.status
@@ -74,11 +74,10 @@ export class LicenseValidator {
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
 
-      // Validate each status value
       for (const status of statusValues) {
-        if (!STATUS_VALUES.includes(status)) {
+        if (!LIST_STATUS_VALUES.includes(status)) {
           throw new ValidationException(
-            `Invalid status value "${status}". Must be one of: ${STATUS_VALUES.join(', ')}`
+            `Invalid status value "${status}". Must be one of: ${LIST_STATUS_VALUES.join(', ')}`
           );
         }
       }
@@ -132,17 +131,20 @@ export class LicenseValidator {
     }
 
     // ========================================================================
-    // Date Range Filters (Phase 2.2)
+    // Date Range Filters (start date = license starts_at)
+    // startDate/endDate and startsAtFrom/startsAtTo both supported
     // ========================================================================
-    if (query.startsAtFrom) {
-      const date = new Date(query.startsAtFrom);
+    const startFromRaw = query.startDate ?? query.startsAtFrom;
+    const startToRaw = query.endDate ?? query.startsAtTo;
+    if (startFromRaw) {
+      const date = new Date(startFromRaw);
       if (!isNaN(date.getTime())) {
         sanitized.filters = sanitized.filters || {};
         sanitized.filters.startsAtFrom = date.toISOString();
       }
     }
-    if (query.startsAtTo) {
-      const date = new Date(query.startsAtTo);
+    if (startToRaw) {
+      const date = new Date(startToRaw);
       if (!isNaN(date.getTime())) {
         sanitized.filters = sanitized.filters || {};
         sanitized.filters.startsAtTo = date.toISOString();

@@ -32,34 +32,63 @@ export const licenseSchemas = {
         'string.min': 'Search term must contain at least 1 character',
         'string.max': 'Search term cannot exceed 255 characters',
       })
-      .description('General search term to search DBA field'),
+      .description(
+        'Search term; matches DBA and Agents Name by default, or a single field when searchField is set'
+      ),
 
-    status: Joi.alternatives().try(
-      Joi.string().valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'),
-      Joi.array().items(Joi.string().valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending'))
-    ).messages({
-      'any.only':
-        'Status must be one of: draft, active, expiring, expired, revoked, cancel, pending',
-    }),
+    searchField: Joi.string()
+      .valid('key', 'dba', 'product', 'plan', 'agentsName')
+      .messages({
+        'any.only': 'searchField must be one of: key, dba, product, plan, agentsName',
+      })
+      .description(
+        'When set with search, limit search to this field only (e.g. agentsName to search by agent names only)'
+      ),
 
-    plan: Joi.alternatives().try(
-      Joi.string().valid('Basic', 'Premium', 'Enterprise'),
-      Joi.array().items(Joi.string().valid('Basic', 'Premium', 'Enterprise'))
-    ).messages({
-      'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
-    }),
+    status: Joi.alternatives()
+      .try(
+        Joi.string().valid('active', 'cancel'),
+        Joi.array().items(Joi.string().valid('active', 'cancel'))
+      )
+      .messages({
+        'any.only': 'Status must be one of: active, cancel',
+      }),
 
-    term: Joi.alternatives().try(
-      Joi.string().valid('monthly', 'yearly'),
-      Joi.array().items(Joi.string().valid('monthly', 'yearly'))
-    ).messages({
-      'any.only': 'Term must be one of: monthly, yearly',
-    }),
+    plan: Joi.alternatives()
+      .try(
+        Joi.string().valid('Basic', 'Premium'),
+        Joi.array().items(Joi.string().valid('Basic', 'Premium'))
+      )
+      .messages({
+        'any.only': 'Plan must be one of: Basic, Premium',
+      }),
 
-    dba: Joi.string().min(1).max(255).messages({
-      'string.min': 'DBA search must contain at least 1 character',
-      'string.max': 'DBA search cannot exceed 255 characters',
-    }),
+    term: Joi.alternatives()
+      .try(
+        Joi.string().valid('monthly', 'yearly'),
+        Joi.array().items(Joi.string().valid('monthly', 'yearly'))
+      )
+      .messages({
+        'any.only': 'Term must be one of: monthly, yearly',
+      }),
+
+    // Date range filter: license start date (starts_at)
+    startDate: Joi.string()
+      .trim()
+      .messages({})
+      .description('Filter licenses with start date on or after this date (YYYY-MM-DD or ISO)'),
+    endDate: Joi.string()
+      .trim()
+      .messages({})
+      .description('Filter licenses with start date on or before this date (YYYY-MM-DD or ISO)'),
+    startsAtFrom: Joi.string()
+      .trim()
+      .messages({})
+      .description('Filter licenses with starts_at >= this date'),
+    startsAtTo: Joi.string()
+      .trim()
+      .messages({})
+      .description('Filter licenses with starts_at <= this date'),
 
     sortBy: Joi.string()
       .valid(
@@ -121,21 +150,17 @@ export const licenseSchemas = {
       'string.empty': 'startDay cannot be empty',
     }),
 
-    status: Joi.string()
-      .valid('active', 'cancel', 'pending', 'expired')
-      .default('pending')
-      .messages({
-        'any.only': 'Status must be one of: active, cancel, pending, expired',
-      }),
+    status: Joi.string().valid('active', 'cancel').default('active').messages({
+      'any.only': 'Status must be one of: active, cancel',
+    }),
 
-    plan: Joi.string().valid('Basic', 'Premium', 'Enterprise').messages({
-      'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
+    plan: Joi.string().valid('Basic', 'Premium').messages({
+      'any.only': 'Plan must be one of: Basic, Premium',
     }),
 
     term: Joi.string().valid('monthly', 'yearly').messages({
       'any.only': 'Term must be one of: monthly, yearly',
     }),
-
 
     cancelDate: Joi.when('status', {
       is: 'cancel',
@@ -194,15 +219,12 @@ export const licenseSchemas = {
       'string.empty': 'Start date cannot be empty',
     }),
 
-    status: Joi.string()
-      .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
-      .messages({
-        'any.only':
-          'Status must be one of: draft, active, expiring, expired, revoked, cancel, pending',
-      }),
+    status: Joi.string().valid('active', 'cancel').messages({
+      'any.only': 'Status must be one of: active, cancel',
+    }),
 
-    plan: Joi.string().valid('Basic', 'Premium', 'Enterprise').messages({
-      'any.only': 'Plan must be one of: Basic, Premium, Enterprise',
+    plan: Joi.string().valid('Basic', 'Premium').messages({
+      'any.only': 'Plan must be one of: Basic, Premium',
     }),
 
     term: Joi.string().valid('monthly', 'yearly').messages({
@@ -257,139 +279,143 @@ export const licenseSchemas = {
   /**
    * Bulk update licenses schema
    */
-  bulkUpdateLicenses: Joi.alternatives().try(
-    // Format 1: Direct array format [{ id, ...fields }] - frontend's format
-    Joi.array()
-      .items(
-        Joi.object({
-          id: Joi.string().required().messages({
-            'any.required': 'License ID is required',
-            'string.empty': 'License ID cannot be empty',
-          }),
-          // Allow any additional fields for flexibility
-        }).unknown(true) // Allow unknown fields
-      )
-      .min(1)
-      .messages({
-        'array.min': 'At least one license must be provided',
-        'array.base': 'Licenses must be an array',
-      }),
-    // Format 2: Structured format { updates: [{ id, updates: {...} }] }
-    Joi.object({
-      updates: Joi.array()
+  bulkUpdateLicenses: Joi.alternatives()
+    .try(
+      // Format 1: Direct array format [{ id, ...fields }] - frontend's format
+      Joi.array()
         .items(
           Joi.object({
             id: Joi.string().required().messages({
               'any.required': 'License ID is required',
               'string.empty': 'License ID cannot be empty',
             }),
-            updates: Joi.object().min(1).messages({
-              'object.min': 'At least one field must be provided for update',
-            }),
-          })
+            // Allow any additional fields for flexibility
+          }).unknown(true) // Allow unknown fields
         )
         .min(1)
-        .required()
         .messages({
-          'array.min': 'At least one license update must be provided',
-          'any.required': 'Updates array is required',
-          'array.base': 'Updates must be an array',
+          'array.min': 'At least one license must be provided',
+          'array.base': 'Licenses must be an array',
         }),
-    })
-  ).messages({
-    'alternatives.match': 'Request must be either an array of licenses or an object with updates property',
-  }),
+      // Format 2: Structured format { updates: [{ id, updates: {...} }] }
+      Joi.object({
+        updates: Joi.array()
+          .items(
+            Joi.object({
+              id: Joi.string().required().messages({
+                'any.required': 'License ID is required',
+                'string.empty': 'License ID cannot be empty',
+              }),
+              updates: Joi.object().min(1).messages({
+                'object.min': 'At least one field must be provided for update',
+              }),
+            })
+          )
+          .min(1)
+          .required()
+          .messages({
+            'array.min': 'At least one license update must be provided',
+            'any.required': 'Updates array is required',
+            'array.base': 'Updates must be an array',
+          }),
+      })
+    )
+    .messages({
+      'alternatives.match':
+        'Request must be either an array of licenses or an object with updates property',
+    }),
 
   /**
    * Bulk create licenses schema
    */
-  bulkCreateLicenses: Joi.alternatives().try(
-    // Format 1: Structured format { licenses: [...] }
-    Joi.object({
-      licenses: Joi.array()
+  bulkCreateLicenses: Joi.alternatives()
+    .try(
+      // Format 1: Structured format { licenses: [...] }
+      Joi.object({
+        licenses: Joi.array()
+          .items(
+            Joi.object({
+              key: Joi.string().trim().min(1).max(255).required(),
+              product: Joi.string().trim().min(1).max(100).default('ABC Business Suite'),
+              dba: Joi.string().trim().allow('').max(255).required().messages({
+                'string.max': 'DBA cannot exceed 255 characters',
+                'any.required': 'DBA is required',
+              }),
+              zip: Joi.string().trim().max(10),
+              startsAt: Joi.string().optional(), // Frontend uses startsAt
+              startDay: Joi.string().optional(), // Alternative field name
+              status: Joi.string().valid('active', 'cancel').default('active'),
+              plan: Joi.string().valid('Basic', 'Premium'),
+              term: Joi.string().valid('monthly', 'yearly'),
+              seatsTotal: Joi.number().min(1).integer().default(1),
+              cancelDate: Joi.when('status', {
+                is: 'cancel',
+                then: Joi.string().required(),
+                otherwise: Joi.string(),
+              }),
+              lastPayment: Joi.number().min(0),
+              smsPurchased: Joi.number().min(0).integer(),
+              smsSent: Joi.number().min(0).integer(),
+              agents: Joi.number().min(0).integer(),
+              agentsCost: Joi.number().min(0),
+              agentsName: Joi.array().items(Joi.string()),
+            })
+              .or('startsAt', 'startDay')
+              .messages({
+                'object.missing': 'Either startsAt or startDay is required',
+              })
+          )
+          .min(1)
+          .required()
+          .messages({
+            'array.min': 'At least one license must be provided',
+            'any.required': 'Licenses array is required',
+            'array.base': 'Licenses must be an array',
+          }),
+      }),
+      // Format 2: Direct array format [{ ... }] - frontend's format
+      Joi.array()
         .items(
           Joi.object({
             key: Joi.string().trim().min(1).max(255).required(),
-            product: Joi.string().trim().min(1).max(100).default('ABC Business Suite'),
+            product: Joi.string().trim().min(1).max(100).optional(),
             dba: Joi.string().trim().allow('').max(255).required().messages({
               'string.max': 'DBA cannot exceed 255 characters',
               'any.required': 'DBA is required',
             }),
-            zip: Joi.string().trim().max(10),
-            startsAt: Joi.string().optional(), // Frontend uses startsAt
+            zip: Joi.string().trim().max(10).optional(),
+            startsAt: Joi.string().optional(), // Frontend uses startsAt, backend uses startDay
             startDay: Joi.string().optional(), // Alternative field name
-            status: Joi.string()
-              .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
-              .default('pending'),
-            plan: Joi.string().valid('Basic', 'Premium', 'Enterprise'),
-            term: Joi.string().valid('monthly', 'yearly'),
-            seatsTotal: Joi.number().min(1).integer().default(1),
+            status: Joi.string().valid('active', 'cancel').optional(),
+            plan: Joi.string().valid('Basic', 'Premium').optional(),
+            term: Joi.string().valid('monthly', 'yearly').optional(),
+            seatsTotal: Joi.number().min(1).integer().optional(),
             cancelDate: Joi.when('status', {
               is: 'cancel',
               then: Joi.string().required(),
-              otherwise: Joi.string(),
+              otherwise: Joi.string().optional(),
             }),
-            lastPayment: Joi.number().min(0),
-            smsPurchased: Joi.number().min(0).integer(),
-            smsSent: Joi.number().min(0).integer(),
-            agents: Joi.number().min(0).integer(),
-            agentsCost: Joi.number().min(0),
-            agentsName: Joi.array().items(Joi.string()),
-          }).or('startsAt', 'startDay').messages({
-            'object.missing': 'Either startsAt or startDay is required'
-          })
+            lastPayment: Joi.number().min(0).optional(),
+            smsPurchased: Joi.number().min(0).integer().optional(),
+            smsSent: Joi.number().min(0).integer().optional(),
+            lastActive: Joi.string().optional(),
+            agents: Joi.number().min(0).integer().optional(),
+            agentsCost: Joi.number().min(0).optional(),
+            agentsName: Joi.array().items(Joi.string()).optional(),
+            notes: Joi.string().allow('').optional(),
+            // Allow unknown fields for flexibility
+          }).unknown(true)
         )
         .min(1)
-        .required()
         .messages({
           'array.min': 'At least one license must be provided',
-          'any.required': 'Licenses array is required',
           'array.base': 'Licenses must be an array',
-        }),
+        })
+    )
+    .messages({
+      'alternatives.match':
+        'Request must be either an object with licenses property or a direct array of licenses',
     }),
-    // Format 2: Direct array format [{ ... }] - frontend's format
-    Joi.array()
-      .items(
-        Joi.object({
-          key: Joi.string().trim().min(1).max(255).required(),
-          product: Joi.string().trim().min(1).max(100).optional(),
-          dba: Joi.string().trim().allow('').max(255).required().messages({
-            'string.max': 'DBA cannot exceed 255 characters',
-            'any.required': 'DBA is required',
-          }),
-          zip: Joi.string().trim().max(10).optional(),
-          startsAt: Joi.string().optional(), // Frontend uses startsAt, backend uses startDay
-          startDay: Joi.string().optional(), // Alternative field name
-          status: Joi.string()
-            .valid('draft', 'active', 'expiring', 'expired', 'revoked', 'cancel', 'pending')
-            .optional(),
-          plan: Joi.string().valid('Basic', 'Premium', 'Enterprise').optional(),
-          term: Joi.string().valid('monthly', 'yearly').optional(),
-          seatsTotal: Joi.number().min(1).integer().optional(),
-          cancelDate: Joi.when('status', {
-            is: 'cancel',
-            then: Joi.string().required(),
-            otherwise: Joi.string().optional(),
-          }),
-          lastPayment: Joi.number().min(0).optional(),
-          smsPurchased: Joi.number().min(0).integer().optional(),
-          smsSent: Joi.number().min(0).integer().optional(),
-          lastActive: Joi.string().optional(),
-          agents: Joi.number().min(0).integer().optional(),
-          agentsCost: Joi.number().min(0).optional(),
-          agentsName: Joi.array().items(Joi.string()).optional(),
-          notes: Joi.string().allow('').optional(),
-          // Allow unknown fields for flexibility
-        }).unknown(true)
-      )
-      .min(1)
-      .messages({
-        'array.min': 'At least one license must be provided',
-        'array.base': 'Licenses must be an array',
-      })
-  ).messages({
-    'alternatives.match': 'Request must be either an object with licenses property or a direct array of licenses',
-  }),
 
   /**
    * Add license row schema (for grid operations)

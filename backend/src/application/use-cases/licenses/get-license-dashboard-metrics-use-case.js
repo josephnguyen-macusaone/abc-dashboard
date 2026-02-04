@@ -203,8 +203,9 @@ export class GetLicenseDashboardMetricsUseCase {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Total Active Licenses (from filtered set)
-    const totalActiveLicenses = filteredLicenses.filter(
+    // Total Active Licenses: use target period (not filtered) so trend compares like-to-like.
+    // Otherwise with no date range we'd compare "all active" to "active that started last month" (huge %).
+    const totalActiveLicenses = targetPeriodLicenses.filter(
       (license) => license.status === 'active'
     ).length;
 
@@ -241,14 +242,13 @@ export class GetLicenseDashboardMetricsUseCase {
     const smsRevenuePerMessage = 0.05; // 5 cents per SMS
     const smsIncomeThisPeriod = smsSentThisPeriod * smsRevenuePerMessage;
 
-    // Agent Classification
-    const agentHeavyLicenses = filteredLicenses.filter(
+    // Agent / In-house: use target period for value so trend is like-to-like (target vs comparison period).
+    const agentHeavyLicenses = targetPeriodLicenses.filter(
       (license) => (license.agents || 0) > 3
     ).length;
 
-    const inHouseLicenses = filteredLicenses.length - agentHeavyLicenses;
+    const inHouseLicenses = targetPeriodLicenses.length - agentHeavyLicenses;
 
-    // Calculate comparison period agent classifications for trends
     const comparisonAgentHeavyLicenses = comparisonPeriodLicenses.filter(
       (license) => (license.agents || 0) > 3
     ).length;
@@ -271,19 +271,24 @@ export class GetLicenseDashboardMetricsUseCase {
     const estimatedNextPeriodIncome =
       licenseIncomeThisPeriod + averagePayment * newLicensesThisPeriod * 0.1; // 10% growth estimate
 
-    // Calculate percentage changes
+    // Calculate percentage changes. Cap at 999% so small comparison bases (e.g. 5 → 148)
+    // don't produce misleading values like 2860%.
+    const MAX_TREND_PERCENT = 999;
     const calculatePercentageChange = (current, previous) => {
       if (previous === 0) {
-        return current === 0 ? 0 : 100;
+        return current === 0 ? 0 : Math.min(MAX_TREND_PERCENT, 100);
       }
-      return ((current - previous) / previous) * 100;
+      const raw = ((current - previous) / previous) * 100;
+      return Math.min(MAX_TREND_PERCENT, Math.max(-MAX_TREND_PERCENT, raw));
     };
+    const trendValue = (current, previous) =>
+      Math.abs(calculatePercentageChange(current, previous));
 
     return {
       totalActiveLicenses: {
         value: totalActiveLicenses,
         trend: {
-          value: Math.abs(calculatePercentageChange(totalActiveLicenses, comparisonActiveLicenses)),
+          value: trendValue(totalActiveLicenses, comparisonActiveLicenses),
           direction:
             totalActiveLicenses === comparisonActiveLicenses
               ? 'neutral'
@@ -296,9 +301,7 @@ export class GetLicenseDashboardMetricsUseCase {
       newLicensesThisMonth: {
         value: newLicensesThisPeriod,
         trend: {
-          value: Math.abs(
-            calculatePercentageChange(newLicensesThisPeriod, newLicensesComparisonPeriod)
-          ),
+          value: trendValue(newLicensesThisPeriod, newLicensesComparisonPeriod),
           direction:
             newLicensesThisPeriod === newLicensesComparisonPeriod
               ? 'neutral'
@@ -311,9 +314,7 @@ export class GetLicenseDashboardMetricsUseCase {
       licenseIncomeThisMonth: {
         value: licenseIncomeThisPeriod,
         trend: {
-          value: Math.abs(
-            calculatePercentageChange(licenseIncomeThisPeriod, licenseIncomeComparisonPeriod)
-          ),
+          value: trendValue(licenseIncomeThisPeriod, licenseIncomeComparisonPeriod),
           direction:
             licenseIncomeThisPeriod === licenseIncomeComparisonPeriod
               ? 'neutral'
@@ -327,7 +328,7 @@ export class GetLicenseDashboardMetricsUseCase {
         value: smsIncomeThisPeriod,
         smsSent: smsSentThisPeriod,
         trend: {
-          value: Math.abs(calculatePercentageChange(smsSentThisPeriod, smsSentComparisonPeriod)),
+          value: trendValue(smsSentThisPeriod, smsSentComparisonPeriod),
           direction:
             smsSentThisPeriod === smsSentComparisonPeriod
               ? 'neutral'
@@ -340,7 +341,7 @@ export class GetLicenseDashboardMetricsUseCase {
       inHouseLicenses: {
         value: inHouseLicenses,
         trend: {
-          value: Math.abs(calculatePercentageChange(inHouseLicenses, comparisonInHouseLicenses)),
+          value: trendValue(inHouseLicenses, comparisonInHouseLicenses),
           direction:
             inHouseLicenses === comparisonInHouseLicenses
               ? 'neutral'
@@ -353,9 +354,7 @@ export class GetLicenseDashboardMetricsUseCase {
       agentHeavyLicenses: {
         value: agentHeavyLicenses,
         trend: {
-          value: Math.abs(
-            calculatePercentageChange(agentHeavyLicenses, comparisonAgentHeavyLicenses)
-          ),
+          value: trendValue(agentHeavyLicenses, comparisonAgentHeavyLicenses),
           direction:
             agentHeavyLicenses === comparisonAgentHeavyLicenses
               ? 'neutral'

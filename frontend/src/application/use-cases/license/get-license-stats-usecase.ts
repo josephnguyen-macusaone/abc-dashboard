@@ -36,6 +36,9 @@ export interface LicenseMetricsFilters {
   term?: string | string[];
   dba?: string;
   zip?: string;
+  /** Filter by license start date (same as list API). When set, metrics reflect this range. */
+  startsAtFrom?: string;
+  startsAtTo?: string;
 }
 
 /**
@@ -128,11 +131,16 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       zip?: string;
     } = {};
 
-    if (dateRange?.from) {
-      params.startsAtFrom = dateRange.from.toISOString();
+    // Date range: prefer filters from store (single source of truth), fallback to dateRange prop
+    if (filters?.startsAtFrom) {
+      params.startsAtFrom = filters.startsAtFrom;
+    } else if (dateRange?.from) {
+      params.startsAtFrom = dateRange.from.toISOString().split('T')[0];
     }
-    if (dateRange?.to) {
-      params.startsAtTo = dateRange.to.toISOString();
+    if (filters?.startsAtTo) {
+      params.startsAtTo = filters.startsAtTo;
+    } else if (dateRange?.to) {
+      params.startsAtTo = dateRange.to.toISOString().split('T')[0];
     }
     if (filters?.search) {
       params.search = filters.search;
@@ -308,7 +316,8 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       to: comparisonPeriodEnd,
     });
 
-    const totalActiveLicenses = filteredLicenses.filter((license) => license.status === 'active').length;
+    // Use target period (not filtered) so trend compares like-to-like (avoids comparing "all active" to "last month").
+    const totalActiveLicenses = targetPeriodLicenses.filter((license) => license.status === 'active').length;
     const comparisonActiveLicenses = comparisonPeriodLicenses.filter(
       (license) => license.status === 'active',
     ).length;
@@ -335,13 +344,15 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
     );
     const smsIncomeThisMonth = smsSentThisPeriod * this.smsRevenuePerMessage;
 
-    const agentHeavyLicenses = filteredLicenses.filter((license) => license.agents > 3).length;
-    const inHouseLicenses = filteredLicenses.length - agentHeavyLicenses;
+    // Use target period for value so trend is like-to-like.
+    const agentHeavyLicenses = targetPeriodLicenses.filter((license) => license.agents > 3).length;
+    const inHouseLicenses = targetPeriodLicenses.length - agentHeavyLicenses;
 
-    // Calculate previous month in-house and agent licenses for trend comparison
+    // Comparison period for trend
     const comparisonAgentHeavyLicenses = comparisonPeriodLicenses.filter((license) => license.agents > 3).length;
     const comparisonInHouseLicenses = comparisonPeriodLicenses.length - comparisonAgentHeavyLicenses;
 
+    // High risk: of the filtered (in-view) set
     const highRiskLicenses = filteredLicenses.filter((license) => {
       const lastActiveDate = this.parseDate(license.lastActive);
       if (!lastActiveDate) return false;
@@ -499,12 +510,18 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
   }
 
-  private percentageChange(current: number, previous: number) {
-    if (previous === 0) {
-      return current === 0 ? 0 : 100;
-    }
+  /** Cap trend at ±999% so small comparison bases don't show e.g. 2860%. */
+  private static readonly MAX_TREND_PERCENT = 999;
 
-    return ((current - previous) / previous) * 100;
+  private percentageChange(current: number, previous: number): number {
+    if (previous === 0) {
+      return current === 0 ? 0 : Math.min(GetLicenseStatsUseCase.MAX_TREND_PERCENT, 100);
+    }
+    const raw = ((current - previous) / previous) * 100;
+    return Math.min(
+      GetLicenseStatsUseCase.MAX_TREND_PERCENT,
+      Math.max(-GetLicenseStatsUseCase.MAX_TREND_PERCENT, raw),
+    );
   }
 
   private formatCurrency(value: number) {

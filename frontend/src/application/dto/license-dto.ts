@@ -52,7 +52,7 @@ export interface LicenseListQueryDTO {
   page?: number;
   limit?: number;
   search?: string;
-  searchField?: 'dba' | 'plan' | 'key' | 'notes';
+  searchField?: 'key' | 'dba' | 'product' | 'plan' | 'agentsName';
   dba?: string;
   zip?: string;
   status?: LicenseStatus | string;

@@ -9,6 +9,7 @@ import type {
 import type { VirtualItem, Virtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
 import { DataGridCell } from "./data-grid-cell";
+import { tableRowClass } from "@/presentation/components/atoms/primitives/table";
 import { useComposedRefs } from "@/shared/lib/compose-refs";
 import {
   flexRender,
@@ -161,7 +162,9 @@ function DataGridRowImpl<TData>({
       {...props}
       ref={rowRef}
       className={cn(
-        "absolute flex w-full border-b will-change-transform hover:bg-muted/50 even:bg-muted/20",
+        "absolute flex w-full will-change-transform",
+        tableRowClass,
+        "even:bg-muted/20",
         className,
       )}
       style={{
@@ -190,9 +193,8 @@ function DataGridRowImpl<TData>({
             data-highlighted={isCellFocused ? "" : undefined}
             data-slot="grid-cell"
             tabIndex={-1}
-            className={cn({
+            className={cn("min-w-0", {
               grow: stretchColumns && columnId !== "select",
-              "border-e": columnId !== "select",
             })}
             style={{
               width: `calc(var(--col-${columnId}-size) * 1px)`,
@@ -200,7 +202,7 @@ function DataGridRowImpl<TData>({
           >
             {typeof cell.column.columnDef.header === "function" ? (
               <div
-                className={cn("size-full px-3 py-1.5", {
+                className={cn("flex size-full items-center px-4", {
                   "bg-primary/10": isRowSelected,
                 })}
               >

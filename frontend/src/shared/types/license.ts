@@ -2,15 +2,8 @@
  * License Management Types
  */
 
-// Status Enum - Updated to include all 7 status values from backend
-export type LicenseStatus =
-  | 'draft'
-  | 'active'
-  | 'expiring'
-  | 'expired'
-  | 'revoked'
-  | 'cancel'
-  | 'pending';
+// Status: active or cancel only
+export type LicenseStatus = 'active' | 'cancel';
 
 // Term Enum
 export type LicenseTerm = 'monthly' | 'yearly';

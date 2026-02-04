@@ -7,15 +7,8 @@ import {
   LicenseDomainEvent
 } from '@/domain/entities/license-entity';
 
-// Define domain types locally for now
-type LicenseStatus =
-  | 'draft'
-  | 'active'
-  | 'expiring'
-  | 'expired'
-  | 'revoked'
-  | 'cancel'
-  | 'pending';
+// Define domain types locally (active, cancel only)
+type LicenseStatus = 'active' | 'cancel';
 
 const LicenseTermValues = ['monthly', 'yearly'] as const;
 type LicenseTerm = typeof LicenseTermValues[number];
@@ -120,13 +113,8 @@ export class LicenseDomainService {
    */
   static validateStatusTransition(currentStatus: LicenseStatus, newStatus: LicenseStatus): ValidationResult {
     const allowedTransitions: Record<LicenseStatus, LicenseStatus[]> = {
-      draft: ['active', 'cancel'],
-      active: ['expiring', 'expired', 'cancel', 'revoked'],
-      expiring: ['expired', 'active', 'cancel', 'revoked'],
-      expired: ['active'], // Can renew expired licenses
-      revoked: [], // Terminal state
+      active: ['cancel'],
       cancel: [], // Terminal state
-      pending: ['active', 'draft', 'cancel']
     };
 
     const allowed = allowedTransitions[currentStatus] || [];
@@ -207,7 +195,7 @@ export class LicenseDomainService {
 
       case 'cancel':
         licenses.forEach((license, index) => {
-          if (license.status === 'cancel' || license.status === 'expired' || license.status === 'revoked') {
+          if (license.status === 'cancel') {
             errors.push(`License ${license.id.toString()} is already in terminal state: ${license.status}`);
           }
         });

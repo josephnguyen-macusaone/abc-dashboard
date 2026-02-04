@@ -159,7 +159,8 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Button
           variant="outline"
           size="sm"
-          className="border-dashed font-normal"
+          className="h-8 w-8 shrink-0 border-dashed p-0 font-normal sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+          aria-label={title}
         >
           {selectedValues?.size > 0 ? (
             <div
@@ -169,21 +170,22 @@ export function DataTableFacetedFilter<TData, TValue>({
               className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={onReset}
             >
-              <XCircle />
+              <XCircle className="size-4" />
             </div>
           ) : (
-            <PlusCircle />
+            <PlusCircle className="size-4" />
           )}
-          {title}
+          <span className="hidden sm:inline">{title}</span>
           {selectedValues?.size > 0 && (
             <>
               <Separator
                 orientation="vertical"
-                className="mx-0.5 data-[orientation=vertical]:h-4"
+                className="mx-0.5 hidden data-[orientation=vertical]:h-4 sm:block"
               />
               <Badge
                 variant="secondary"
-                className="rounded-sm px-1 font-normal lg:hidden"
+                size="sm"
+                className="hidden rounded-sm font-normal sm:inline-flex lg:hidden"
               >
                 {selectedValues.size}
               </Badge>
@@ -191,7 +193,8 @@ export function DataTableFacetedFilter<TData, TValue>({
                 {selectedValues.size > 2 ? (
                   <Badge
                     variant="secondary"
-                    className="rounded-sm px-1 font-normal"
+                    size="sm"
+                    className="rounded-sm font-normal"
                   >
                     {selectedValues.size} selected
                   </Badge>
@@ -201,8 +204,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                     .map((option) => (
                       <Badge
                         variant="secondary"
+                        size="sm"
                         key={option.value}
-                        className="rounded-sm px-1 font-normal"
+                        className="rounded-sm font-normal"
                       >
                         {option.label}
                       </Badge>

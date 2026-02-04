@@ -2,6 +2,7 @@
 
 import type { Cell, TableMeta } from "@tanstack/react-table";
 import * as React from "react";
+import { tableCellClass } from "@/presentation/components/atoms/primitives/table";
 import { useComposedRefs } from "@/shared/lib/compose-refs";
 import { getCellKey } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
@@ -173,7 +174,10 @@ export function DataGridCellWrapper<TData>({
       data-selected={isSelected ? "" : undefined}
       tabIndex={isFocused && !isEditing ? 0 : -1}
       className={cn(
-        "size-full px-2 py-1.5 text-start text-sm outline-none has-data-[slot=checkbox]:pt-2.5",
+        "flex size-full min-w-0 items-center text-start text-sm outline-none",
+        tableCellClass,
+        "!px-4 !py-3 whitespace-normal has-data-[slot=checkbox]:pt-2.5",
+        "[&_[data-slot=grid-cell-content]]:min-w-0 [&_[data-slot=grid-cell-content]]:break-words",
         {
           "ring-1 ring-ring ring-inset": isFocused,
           "bg-yellow-100 dark:bg-yellow-900/30":
@@ -181,13 +185,13 @@ export function DataGridCellWrapper<TData>({
           "bg-orange-200 dark:bg-orange-900/50": isActiveSearchMatch,
           "bg-primary/10": isSelected && !isEditing,
           "cursor-default": !isEditing,
-          "**:data-[slot=grid-cell-content]:line-clamp-1":
+          "**:data-[slot=grid-cell-content]:truncate":
             !isEditing && rowHeight === "short",
-          "**:data-[slot=grid-cell-content]:line-clamp-2":
-            !isEditing && rowHeight === "medium",
           "**:data-[slot=grid-cell-content]:line-clamp-3":
-            !isEditing && rowHeight === "tall",
+            !isEditing && rowHeight === "medium",
           "**:data-[slot=grid-cell-content]:line-clamp-4":
+            !isEditing && rowHeight === "tall",
+          "**:data-[slot=grid-cell-content]:line-clamp-6":
             !isEditing && rowHeight === "extra-tall",
         },
         className,

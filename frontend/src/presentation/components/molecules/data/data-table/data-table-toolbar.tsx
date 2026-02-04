@@ -56,47 +56,47 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-wrap items-center gap-2 py-1",
+        "flex w-full flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 py-1",
         className,
       )}
       {...props}
     >
-      {/* Search bar on the left */}
+      {/* Search bar: full width on mobile, auto on desktop */}
       {searchBar && (
-        <div className="flex items-center">
+        <div className="flex w-full sm:w-auto items-center">
           {searchBar}
         </div>
       )}
 
-      {/* Filter components */}
-      {columns.map((column) => (
-        <DataTableToolbarFilter
-          key={column.id}
-          column={column}
-          table={table}
-          onManualFilterChange={onManualFilterChange}
-          initialFilterValues={initialFilterValues}
-        />
-      ))}
-
-      {/* Reset button - only visible when filters are actually active */}
-      {hasActiveFilters && (
-        <Button
-          aria-label="Reset filters"
-          variant="outline"
-          size="sm"
-          className="border-dashed"
-          onClick={onReset}
-        >
-          <X />
-          Reset
-        </Button>
-      )}
-
-      {/* Additional actions on the right */}
-      <div className="flex items-center gap-2 ml-auto">
-        {children}
-        <DataTableViewOptions table={table} align="end" />
+      {/* Mobile: one row with filter badges left, view options right. Desktop: inline. */}
+      <div className="flex w-full sm:contents items-center gap-2 min-w-0">
+        <div className="flex flex-1 flex-nowrap sm:flex-wrap items-center gap-2 min-w-0 overflow-x-auto">
+          {columns.map((column) => (
+            <DataTableToolbarFilter
+              key={column.id}
+              column={column}
+              table={table}
+              onManualFilterChange={onManualFilterChange}
+              initialFilterValues={initialFilterValues}
+            />
+          ))}
+          {hasActiveFilters && (
+            <Button
+              aria-label="Reset filters"
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+              onClick={onReset}
+            >
+              <X className="size-4" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {children}
+          <DataTableViewOptions table={table} align="end" />
+        </div>
       </div>
     </div>
   );
@@ -130,18 +130,14 @@ function DataTableToolbarFilter<TData>({
     300
   );
 
-  // For manual filtering, skip client-side filtering entirely
-  // The parent component should handle the filtering via onQueryChange
+  // For manual filtering with text variant, still set column filter so parent can read it
+  // and send as search param (e.g. Agents Name filter → backend search).
   const handleSearchChange = React.useCallback(
     (value: string) => {
       setSearchValue(value);
-      if (!isManualFiltering) {
-        // Only debounce for client-side filtering
-        debouncedSetFilter(value);
-      }
-      // For manual filtering, don't set column filter value - let parent handle via onQueryChange
+      debouncedSetFilter(value);
     },
-    [isManualFiltering, debouncedSetFilter]
+    [debouncedSetFilter]
   );
 
   // Sync local state with column filter value when it changes externally (e.g., reset button)

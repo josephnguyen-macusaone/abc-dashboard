@@ -1,9 +1,5 @@
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
-import {
-  Star,
-  Crown,
-  Zap
-} from 'lucide-react';
+import { Star, Crown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 import { LICENSE_PLAN_COLORS, LICENSE_PLAN_OPTIONS } from '@/shared/constants/license';
@@ -12,7 +8,6 @@ import type { LicensePlan } from '@/shared/constants/license';
 const planIcons: Record<LicensePlan, LucideIcon> = {
   Basic: Star,
   Premium: Crown,
-  Enterprise: Zap,
 };
 
 export interface LicensePlanBadgeProps {

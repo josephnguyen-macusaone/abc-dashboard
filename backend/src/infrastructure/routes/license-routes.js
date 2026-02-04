@@ -88,6 +88,17 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *           type: string
    *           format: date-time
    *         description: Filter licenses starting up to this date
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Filter metrics to licenses matching this term (DBA and Agents Name by default). Use searchField to limit to one field (e.g. agentsName).
+   *       - in: query
+   *         name: searchField
+   *         schema:
+   *           type: string
+   *           enum: [key, dba, product, plan, agentsName]
+   *         description: When set with search, limit search to this field only (e.g. agentsName to filter by agent names).
    *     responses:
    *       200:
    *         description: Dashboard metrics retrieved successfully
@@ -222,6 +233,35 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
 
   /**
    * @swagger
+   * /licenses/agents:
+   *   get:
+   *     summary: Get all unique agent names from licenses
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Agent names retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               allOf:
+   *                 - $ref: '#/components/schemas/BaseResponse'
+   *                 - type: object
+   *                   properties:
+   *                     data:
+   *                       type: object
+   *                       properties:
+   *                         agents:
+   *                           type: array
+   *                           items:
+   *                             type: string
+   *                           description: Array of unique agent names sorted alphabetically
+   */
+  router.get('/agents', checkLicenseAccessPermission('list'), controller.getAllAgentNames);
+
+  /**
+   * @swagger
    * /licenses:
    *   get:
    *     summary: Get licenses with pagination and filtering
@@ -248,18 +288,31 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *         name: search
    *         schema:
    *           type: string
-   *         description: General search term to search DBA field
+   *         description: Search term; matches DBA and Agents Name by default. Use searchField to limit to one field (e.g. agentsName).
+   *       - in: query
+   *         name: searchField
+   *         schema:
+   *           type: string
+   *           enum: [key, dba, product, plan, agentsName]
+   *         description: When set with search, limit search to this field only (e.g. agentsName to search by agent names only).
    *       - in: query
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [active, cancel, pending, expired]
-   *         description: Filter licenses by status
+   *           enum: [active, cancel]
+   *         description: Filter licenses by status (active or cancel only).
    *       - in: query
-   *         name: dba
+   *         name: startDate
    *         schema:
    *           type: string
-   *         description: Filter licenses by DBA name (legacy, use search instead)
+   *           format: date
+   *         description: Filter licenses with start date (starts_at) on or after this date (YYYY-MM-DD or ISO).
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *           format: date
+   *         description: Filter licenses with start date (starts_at) on or before this date (YYYY-MM-DD or ISO).
    *       - in: query
    *         name: sortBy
    *         schema:
@@ -372,12 +425,12 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                 description: Start date (ISO string)
    *               status:
    *                 type: string
-   *                 enum: [active, cancel, pending, expired]
+   *                 enum: [active, cancel]
    *                 default: pending
    *                 description: License status
    *               plan:
    *                 type: string
-   *                 enum: [Basic, Premium, Enterprise]
+   *                 enum: [Basic, Premium]
    *                 description: Subscription plan
    *               term:
    *                 type: string
@@ -482,11 +535,11 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                 description: Start date (ISO string)
    *               status:
    *                 type: string
-   *                 enum: [active, cancel, pending, expired]
+   *                 enum: [active, cancel]
    *                 description: License status
    *               plan:
    *                 type: string
-   *                 enum: [Basic, Premium, Enterprise]
+   *                 enum: [Basic, Premium]
    *                 description: Subscription plan
    *               term:
    *                 type: string
@@ -603,11 +656,11 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       description: Start date (ISO string)
    *                     status:
    *                       type: string
-   *                       enum: [active, cancel, pending, expired]
+   *                       enum: [active, cancel]
    *                       description: License status
    *                     plan:
    *                       type: string
-   *                       enum: [Basic, Premium, Enterprise]
+   *                       enum: [Basic, Premium]
    *                       description: Subscription plan
    *                     term:
    *                       type: string
@@ -720,12 +773,12 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       description: Start date (ISO string)
    *                     status:
    *                       type: string
-   *                       enum: [active, cancel, pending, expired]
+   *                       enum: [active, cancel]
    *                       default: pending
    *                       description: License status
    *                     plan:
    *                       type: string
-   *                       enum: [Basic, Premium, Enterprise]
+   *                       enum: [Basic, Premium]
    *                       description: Subscription plan
    *                     term:
    *                       type: string

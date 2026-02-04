@@ -194,7 +194,7 @@ export function DataGridFilterMenu<TData>({
           <Button
             variant="outline"
             size="sm"
-            className="font-normal"
+            className="h-8 font-normal py-0"
             onKeyDown={onTriggerKeyDown}
           >
             <ListFilter className="text-muted-foreground size-3" />

@@ -238,7 +238,6 @@ export async function down(knex) {
     table.dropIndex(['role', 'is_active'], 'idx_users_role_active');
     table.dropIndex('created_at', 'idx_users_created_at');
     table.dropIndex('updated_at', 'idx_users_updated_at');
-    table.dropIndex('last_login_at', 'idx_users_last_login_at');
   });
 
   await knex.raw('DROP INDEX IF EXISTS idx_users_fulltext_search');
@@ -271,7 +270,7 @@ export async function down(knex) {
   await knex.schema.table('license_assignments', (table) => {
     table.dropIndex('license_id', 'idx_assignments_license_id');
     table.dropIndex('user_id', 'idx_assignments_user_id');
-    table.dropIndex('assignment_status', 'idx_assignments_status');
+    table.dropIndex('status', 'idx_assignments_status');
     table.dropIndex('assigned_by', 'idx_assignments_assigned_by');
     table.dropIndex('assigned_at', 'idx_assignments_assigned_at');
     table.dropIndex('revoked_at', 'idx_assignments_revoked_at');

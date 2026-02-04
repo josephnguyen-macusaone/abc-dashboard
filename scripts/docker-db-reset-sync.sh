@@ -1,20 +1,32 @@
 #!/usr/bin/env bash
-# Run database reset (optional drop), migrate, seed, and license sync using Docker.
+# Run database reset (optional drop), migrate, seed; optionally run license sync.
 # Usage:
-#   ./scripts/docker-db-reset-sync.sh           # migrate:fresh + seed + sync
-#   ./scripts/docker-db-reset-sync.sh --drop    # drop DB, create, migrate + seed + sync
+#   ./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
+#   ./scripts/docker-db-reset-sync.sh --drop        # drop DB, create, migrate + seed
+#   ./scripts/docker-db-reset-sync.sh --drop --sync # same as --drop + license sync
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
+DO_DROP=0
+DO_SYNC=0
+for arg in "$@"; do
+  case "$arg" in
+    --drop) DO_DROP=1 ;;
+    --sync) DO_SYNC=1 ;;
+  esac
+done
+
 if ! docker compose ps backend 2>/dev/null | grep -q Up; then
   echo "Backend container is not running. Start stack first: docker compose up -d"
   exit 1
 fi
 
-if [ "$1" = "--drop" ]; then
+if [ "$DO_DROP" = "1" ]; then
+  echo "Terminating connections to database..."
+  docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '\''"$POSTGRES_DB"'\'' AND pid <> pg_backend_pid();"'
   echo "Dropping and recreating database..."
   docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\";" -c "CREATE DATABASE \"$POSTGRES_DB\";"'
   echo "Running migrations..."
@@ -27,7 +39,9 @@ fi
 echo "Running seeds..."
 docker compose exec backend npm run seed
 
-echo "Starting license sync (may take several minutes)..."
-docker compose exec backend npm run sync:start
+if [ "$DO_SYNC" = "1" ]; then
+  echo "Starting license sync (may take several minutes)..."
+  docker compose exec backend npm run sync:start
+fi
 
 echo "Done."

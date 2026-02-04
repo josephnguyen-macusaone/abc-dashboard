@@ -5,7 +5,7 @@
 ## Scope
 
 - Manage software licenses and assignments to customers (or internal org units).
-- Track lifecycle: issued → active → expiring → expired → revoked.
+- Track lifecycle: active and cancel only.
 - Provide dashboards for counts, status breakdowns, upcoming expirations, and assignment coverage.
 
 ## Domain Model (proposed)
@@ -15,7 +15,7 @@
   - `key` (string, unique)
   - `product` (string)
   - `plan` (string)
-  - `status` (enum: draft | active | expiring | expired | revoked)
+  - `status` (enum: active | cancel)
   - `seatsTotal` (int)
   - `seatsUsed` (int, derived from assignments)
   - `startsAt` (timestamptz)

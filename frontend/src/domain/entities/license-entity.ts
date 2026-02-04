@@ -10,15 +10,8 @@
  * - SMS balance cannot go negative
  */
 
-// Domain Enums
-export type LicenseStatus =
-  | 'draft'
-  | 'active'
-  | 'expiring'
-  | 'expired'
-  | 'revoked'
-  | 'cancel'
-  | 'pending';
+// Domain Enums (active, cancel only)
+export type LicenseStatus = 'active' | 'cancel';
 
 export type LicenseTerm = 'monthly' | 'yearly';
 
@@ -190,10 +183,10 @@ export class License {
   // Business Methods
 
   /**
-   * Check if license can be activated
+   * Check if license can be activated (only cancelled licenses can be reactivated)
    */
   public canBeActivated(): boolean {
-    return this._status === 'draft' || this._status === 'pending';
+    return this._status === 'cancel';
   }
 
   /**
@@ -326,7 +319,7 @@ export class License {
    * Cancel license
    */
   public cancel(reason?: string): LicenseCancelledEvent {
-    if (this._status === 'cancel' || this._status === 'expired' || this._status === 'revoked') {
+    if (this._status === 'cancel') {
       throw new Error(`Cannot cancel license in status: ${this._status}`);
     }
 
@@ -429,7 +422,7 @@ export class License {
       props.dba,
       props.zip,
       new Date(props.startsAt),
-      'draft', // New licenses start as draft
+      'active', // New licenses start as active
       props.plan,
       props.term,
       props.seatsTotal || 1,

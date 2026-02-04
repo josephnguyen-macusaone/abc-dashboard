@@ -40,75 +40,37 @@ export function AdminDashboard({
   licenses: licensesProp,
   isLoadingLicenses: isLoadingLicensesProp,
 }: AdminDashboardProps) {
-  // Use Zustand store for license data
+  // Use Zustand store for license data (single source of truth for list + metrics date filter)
   const licensesFromStore = useLicenseStore(selectLicenses);
   const isLoadingFromStore = useLicenseStore(selectLicenseLoading);
   const paginationFromStore = useLicenseStore(selectLicensePagination);
+  const filters = useLicenseStore(state => state.filters);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
+  const setFilters = useLicenseStore(state => state.setFilters);
 
   const setTableSearch = useDataTableStore(state => state.setTableSearch);
   const clearTableFilters = useDataTableStore(state => state.clearTableFilters);
 
-  // Default range: follow dates we have in data (min/max startsAt), else current month
+  // Derive date range from store filters so metrics and data table use the same filter
+  const dateRange = useMemo<LicenseDateRange>(() => {
+    const from = filters.startsAtFrom ? new Date(filters.startsAtFrom) : undefined;
+    const to = filters.startsAtTo ? new Date(filters.startsAtTo) : undefined;
+    if (!from && !to) return {};
+    return {
+      from: from && !Number.isNaN(from.getTime()) ? from : undefined,
+      to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+    };
+  }, [filters.startsAtFrom, filters.startsAtTo]);
+
+  // Default range for the date picker when no filter is set (first day of month to last day)
   const defaultRangeFromData = useMemo<LicenseDateRange>(() => {
-    const licensesToUse = licensesProp ?? licensesFromStore;
-    if (!licensesToUse?.length) {
-      const now = new Date();
-      const from = new Date(now.getFullYear(), now.getMonth(), 1);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      to.setHours(23, 59, 59, 999);
-      return { from, to };
-    }
-    let minDate: Date | null = null;
-    let maxDate: Date | null = null;
-    for (const license of licensesToUse) {
-      const raw = (license as { startsAt?: string }).startsAt;
-      if (!raw) continue;
-      const d = new Date(raw);
-      if (Number.isNaN(d.getTime())) continue;
-      if (minDate == null || d < minDate) minDate = d;
-      if (maxDate == null || d > maxDate) maxDate = d;
-    }
-    if (minDate == null || maxDate == null) {
-      const now = new Date();
-      const from = new Date(now.getFullYear(), now.getMonth(), 1);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      to.setHours(23, 59, 59, 999);
-      return { from, to };
-    }
-    const from = new Date(minDate);
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
     from.setHours(0, 0, 0, 0);
-    const to = new Date(maxDate);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     to.setHours(23, 59, 59, 999);
     return { from, to };
-  }, [licensesProp, licensesFromStore]);
-
-  const [dateRange, setDateRange] = useState<LicenseDateRange>(() => ({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
-  }));
-
-  // Sync date range to data range when licenses first load (so range "follows" the dates we have)
-  const hasSyncedRangeRef = useRef(false);
-  useEffect(() => {
-    const licensesToUse = licensesProp ?? licensesFromStore;
-    if (licensesToUse.length > 0 && defaultRangeFromData.from && defaultRangeFromData.to) {
-      if (!hasSyncedRangeRef.current) {
-        hasSyncedRangeRef.current = true;
-        setDateRange(defaultRangeFromData);
-      }
-    } else if (licensesToUse.length === 0) {
-      hasSyncedRangeRef.current = false;
-    }
-  }, [licensesProp, licensesFromStore, defaultRangeFromData]);
-
-  // Memoize the current dateRange to prevent unnecessary re-renders
-  const memoizedDateRange = useMemo(() => dateRange, [
-    dateRange?.from?.toISOString(),
-    dateRange?.to?.toISOString(),
-  ]);
+  }, []);
 
   // Use store data or prop data
   const licenses = licensesProp ?? licensesFromStore;
@@ -118,24 +80,31 @@ export function AdminDashboard({
 
   const handleDateRangeChange = useCallback(
     (values: { range: DateRange; rangeCompare?: DateRange }) => {
-      if (!values.range.from) {
-        // Clear button: no date filter, revert list to default (first page, no filters)
-        setDateRange({});
+      const nextRange = values.range;
+      const hasRange = nextRange?.from || nextRange?.to;
+      const startsAtFrom = nextRange?.from?.toISOString?.().split('T')[0];
+      const startsAtTo = nextRange?.to?.toISOString?.().split('T')[0];
+
+      setFilters({
+        ...filters,
+        startsAtFrom: hasRange ? startsAtFrom : undefined,
+        startsAtTo: hasRange ? startsAtTo : undefined,
+      });
+
+      if (!hasRange) {
         setTableSearch(LICENSES_TABLE_ID, '');
         clearTableFilters(LICENSES_TABLE_ID);
-        fetchLicenses({
-          page: 1,
-          limit: 20,
-          search: '',
-          status: undefined,
-          plan: undefined,
-          term: undefined,
-        });
-      } else {
-        setDateRange(values.range);
       }
+
+      // Refetch list so data table shows same date-filtered licenses as metrics
+      fetchLicenses({
+        page: 1,
+        limit: 20,
+        startsAtFrom: hasRange ? startsAtFrom : undefined,
+        startsAtTo: hasRange ? startsAtTo : undefined,
+      });
     },
-    [fetchLicenses, setTableSearch, clearTableFilters],
+    [filters, setFilters, fetchLicenses, setTableSearch, clearTableFilters],
   );
 
   // Handle pagination and filtering changes using Zustand store
@@ -170,24 +139,44 @@ export function AdminDashboard({
         plan: planParam as any,
         term: termParam as any,
         search: params.search,
+        startsAtFrom: filters.startsAtFrom,
+        startsAtTo: filters.startsAtTo,
       });
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
     }
-  }, [fetchLicenses]);
+  }, [fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
 
-  // Initial load using Zustand store
+  // Initial load: use current month as default date range when none is set so picker and data match
+  const hasInitializedDateRef = useRef(false);
   useEffect(() => {
-    // If consumer passed licenses explicitly, skip fetching
     if (licensesProp) return;
 
-    fetchLicenses({
-      page: 1,
-      limit: 20, // Standard page size
-    });
-  }, [licensesProp, fetchLicenses]);
+    const from = filters.startsAtFrom;
+    const to = filters.startsAtTo;
 
-  // Periodic refresh so UI shows updates after background sync (every 2 min)
+    if (from && to) {
+      hasInitializedDateRef.current = true;
+      fetchLicenses({ page: 1, limit: 20, startsAtFrom: from, startsAtTo: to });
+      return;
+    }
+
+    if (hasInitializedDateRef.current) {
+      // User cleared the range; fetch with no date
+      fetchLicenses({ page: 1, limit: 20 });
+      return;
+    }
+
+    // First load with no date filter: set store and fetch to current month (same as picker default)
+    hasInitializedDateRef.current = true;
+    const now = new Date();
+    const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    setFilters({ ...filters, startsAtFrom, startsAtTo });
+    fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
+  }, [licensesProp, fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
+
+  // Periodic refresh; pass current filters so date range filter is preserved
   useEffect(() => {
     if (licensesProp) return;
 
@@ -196,18 +185,20 @@ export function AdminDashboard({
       fetchLicenses({
         page: paginationFromStore.page,
         limit: paginationFromStore.limit,
+        startsAtFrom: filters.startsAtFrom,
+        startsAtTo: filters.startsAtTo,
       });
     }, REFRESH_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [licensesProp, fetchLicenses, paginationFromStore.page, paginationFromStore.limit]);
+  }, [licensesProp, fetchLicenses, paginationFromStore.page, paginationFromStore.limit, filters.startsAtFrom, filters.startsAtTo]);
 
   return (
     <div className={`space-y-6 ${className || ''}`}>
       <Suspense fallback={<LicenseMetricsSkeleton columns={4} />}>
         <LicenseMetricsSection
           licenses={licenses}
-          dateRange={memoizedDateRange}
+          dateRange={dateRange}
           initialDateFrom={defaultRangeFromData.from}
           initialDateTo={defaultRangeFromData.to}
           onDateRangeChange={handleDateRangeChange}

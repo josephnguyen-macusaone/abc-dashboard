@@ -7,12 +7,19 @@ import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
 
 export interface LicenseFilters {
+  /** Search term; backend matches DBA and agent names by default when searchField is not set */
   search?: string;
+  /** When set with search, limit search to one field (e.g. agentsName for agent names only) */
+  searchField?: 'key' | 'dba' | 'product' | 'plan' | 'agentsName';
   status?: LicenseStatus | LicenseStatus[];
   plan?: string | string[];
   term?: LicenseTerm | LicenseTerm[];
   dba?: string;
   zip?: string;
+  /** Filter by license start date (starts_at) on or after this date (ISO or YYYY-MM-DD). */
+  startsAtFrom?: string;
+  /** Filter by license start date (starts_at) on or before this date (ISO or YYYY-MM-DD). */
+  startsAtTo?: string;
 }
 
 export interface PaginationState {
@@ -76,13 +83,15 @@ interface LicenseState {
   lastFetchedAt: number | null;
 
   // Actions
-  fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[] }>) => Promise<void>;
+  fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[]; startsAtFrom?: string; startsAtTo?: string }>) => Promise<void>;
   fetchLicense: (id: number | string) => Promise<LicenseRecord | null>;
   createLicense: (licenseData: CreateLicenseRequest) => Promise<LicenseRecord>;
   updateLicense: (id: number | string, licenseData: UpdateLicenseRequest) => Promise<LicenseRecord>;
   deleteLicense: (id: number | string) => Promise<void>;
   bulkCreateLicenses: (licenses: Array<Partial<LicenseRecord>>) => Promise<LicenseRecord[]>;
   bulkUpdateLicenses: (updates: Array<Partial<LicenseRecord> & { id: number | string }>) => Promise<LicenseRecord[]>;
+  /** Create new and update existing licenses in one call (routes by id: temp/none → create, else → update). */
+  bulkUpsertLicenses: (licenses: Array<Partial<LicenseRecord> & { id?: number | string }>) => Promise<LicenseRecord[]>;
   bulkDeleteLicenses: (ids: (number | string)[]) => Promise<void>;
   setFilters: (filters: LicenseFilters) => void;
   setPagination: (pagination: Partial<PaginationState>) => void;
@@ -131,8 +140,9 @@ export const useLicenseStore = create<LicenseState>()(
                   delete queryParams[key];
               });
 
-            // Persist filter state so metrics cards and other consumers use same filters
-            const filterKeys: (keyof LicenseFilters)[] = ['search', 'status', 'plan', 'term', 'dba', 'zip'];
+            // Persist filter state so metrics cards and other consumers use same filters.
+            // search matches DBA and agent names; searchField can restrict to one field (e.g. agentsName).
+            const filterKeys: (keyof LicenseFilters)[] = ['search', 'searchField', 'status', 'plan', 'term', 'dba', 'zip', 'startsAtFrom', 'startsAtTo'];
             const nextFilters = { ...currentFilters } as Record<string, unknown>;
             const paramsWithFilters = queryParams as Record<string, unknown>;
             filterKeys.forEach((key) => {
@@ -754,7 +764,7 @@ export const useLicenseStore = create<LicenseState>()(
           await get().fetchLicenses({ limit, page: 1 }); // Reset to page 1 when changing page size
         },
 
-        setSelectedLicenses: (licenseIds: number[]) => {
+        setSelectedLicenses: (licenseIds: (number | string)[]) => {
           set({ selectedLicenses: licenseIds });
         },
 

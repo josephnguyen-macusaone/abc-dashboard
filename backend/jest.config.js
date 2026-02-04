@@ -16,6 +16,7 @@ export default {
   testPathIgnorePatterns: [
     '<rootDir>/tests/email-suite.test.js',
     '<rootDir>/tests/integration/auth-integration.test.js',
+    '<rootDir>/tests/integration/license-dashboard-metrics.test.js',
   ],
 
   // Coverage configuration

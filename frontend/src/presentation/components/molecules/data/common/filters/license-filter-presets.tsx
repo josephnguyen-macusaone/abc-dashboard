@@ -1,11 +1,11 @@
 'use client';
 
-import { CheckCircle, AlertCircle, XCircle, TrendingUp, Package } from 'lucide-react';
-import { addDays } from 'date-fns';
+import { CheckCircle, XCircle, TrendingUp, Package, Crown, Star } from 'lucide-react';
 import type { FilterPreset } from '@/types/data-display';
 
 /**
- * Predefined filter presets for license management
+ * Predefined filter presets for license management.
+ * Plan: Basic, Premium only. Status: active, cancel only. Term: monthly, yearly only.
  */
 export const LICENSE_FILTER_PRESETS: FilterPreset[] = [
   {
@@ -19,22 +19,11 @@ export const LICENSE_FILTER_PRESETS: FilterPreset[] = [
     icon: CheckCircle,
   },
   {
-    id: 'expiring-soon',
-    name: 'Expiring Soon',
-    description: 'Licenses expiring within 30 days',
+    id: 'cancelled',
+    name: 'Cancelled Licenses',
+    description: 'Licenses that have been cancelled',
     filters: {
-      status: 'expiring',
-      expiresAtTo: addDays(new Date(), 30).toISOString(),
-    },
-    system: true,
-    icon: AlertCircle,
-  },
-  {
-    id: 'expired',
-    name: 'Expired Licenses',
-    description: 'Licenses that have expired',
-    filters: {
-      status: 'expired',
+      status: 'cancel',
     },
     system: true,
     icon: XCircle,
@@ -60,14 +49,24 @@ export const LICENSE_FILTER_PRESETS: FilterPreset[] = [
     icon: Package,
   },
   {
-    id: 'enterprise-plan',
-    name: 'Enterprise Plan',
-    description: 'All Enterprise plan licenses',
+    id: 'basic-plan',
+    name: 'Basic Plan',
+    description: 'All Basic plan licenses',
     filters: {
-      plan: 'Enterprise',
+      plan: 'Basic',
     },
     system: true,
-    icon: Package,
+    icon: Star,
+  },
+  {
+    id: 'premium-plan',
+    name: 'Premium Plan',
+    description: 'All Premium plan licenses',
+    filters: {
+      plan: 'Premium',
+    },
+    system: true,
+    icon: Crown,
   },
   {
     id: 'monthly-subscriptions',
@@ -75,6 +74,17 @@ export const LICENSE_FILTER_PRESETS: FilterPreset[] = [
     description: 'Licenses on monthly billing',
     filters: {
       term: 'monthly',
+      status: 'active',
+    },
+    system: true,
+    icon: Package,
+  },
+  {
+    id: 'yearly-subscriptions',
+    name: 'Yearly Subscriptions',
+    description: 'Licenses on yearly billing',
+    filters: {
+      term: 'yearly',
       status: 'active',
     },
     system: true,

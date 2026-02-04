@@ -9,11 +9,14 @@ export async function seed(knex) {
   await knex('licenses').del();
 
   const now = new Date();
+  // Depends on 001_create_admin_users.js having run first (admin@abcsalon.us must exist)
   const adminUser = await knex('users').where({ email: 'admin@abcsalon.us' }).first();
+  const managerUser = await knex('users').where({ email: 'manager@abcsalon.us' }).first();
 
   if (!adminUser) {
-    logger.warn('Admin user not found. Skipping license seeds.');
-    return;
+    const msg = 'Admin user not found. Skipping license seeds.';
+    logger.error(msg);
+    throw new Error(msg);
   }
 
   // Helper function to generate dates
@@ -29,46 +32,121 @@ export async function seed(knex) {
     return date;
   };
 
-  // Sample company names
-  const companies = [
-    'Acme Corp',
-    'Global Tech Inc',
-    'Premier Solutions LLC',
-    'Elite Services Ltd',
-    'Advanced Systems Group',
-    'Pro Business Solutions',
-    'Mega Industries Inc',
-    'Super Enterprises LLC',
-    'Ultra Technologies Corp',
-    'Prime Solutions Ltd',
-    'Alpha Systems Inc',
-    'Beta Corporation',
-    'Gamma Group LLC',
-    'Delta Enterprises',
-    'Omega Solutions Corp',
-    'Sigma Technologies Inc',
-    'Nova Industries LLC',
-    'Apex Business Group',
-    'Vertex Solutions Corp',
-    'Summit Enterprises Inc',
-    'Pacific Tech LLC',
-    'Atlantic Solutions Ltd',
-    'Continental Systems Corp',
-    'National Services Inc',
-    'International Group LLC',
-    'Worldwide Solutions Ltd',
-    'Universal Technologies Corp',
-    'Regional Services Inc',
-    'Local Solutions LLC',
-    'Business Pro Ltd',
-    'Corporate Systems Inc',
-    'Commercial Solutions LLC',
+  // DBA names: salon/spa/beauty business style (detailed, searchable)
+  const dbaNames = [
+    '24/7 Nails Spa',
+    'Bella Beauty Salon & Spa',
+    'Downtown Hair Studio',
+    'Elite Nail Bar LLC',
+    'Fresh Cuts Barbershop',
+    'Glow Skin & Body Studio',
+    'Hair Haven Salon',
+    'Luxe Nails & Spa',
+    'Modern Touch Salon',
+    'Nail Art Studio by Maria',
+    'Paradise Spa & Wellness',
+    'Queen Bee Beauty Bar',
+    'Radiant Skin Studio',
+    'Serenity Day Spa',
+    'The Cutting Edge Salon',
+    'Uptown Nails & Waxing',
+    'Velvet Touch Hair Studio',
+    'Zen Nail Lounge',
+    'Allure Beauty Co',
+    'Chic Cuts & Color',
+    'Diva Nails & Lashes',
+    'Eclipse Hair Studio',
+    'Fusion Nail Bar',
+    'Golden Scissors Salon',
+    'Haven Spa & Nails',
+    'Indulge Beauty Lounge',
+    'Jade Nail Studio',
+    'Karma Salon & Spa',
+    'Lavish Locks Studio',
+    'Mosaic Beauty Bar',
+    'Nirvana Nails',
+    'Oasis Day Spa',
+    'Posh Hair & Nails',
+    'Quinn & Co Salon',
+    'Revive Skin Studio',
+    'Sage Beauty Lounge',
+    'Tranquility Nail Spa',
+    'Urban Style Barbershop',
+    'Vivid Hair Studio',
+    'Willow Tree Spa',
   ];
 
-  const products = ['ABC Salon Pro', 'ABC Business Suite', 'ABC Enterprise'];
-  const plans = ['Basic', 'Premium', 'Enterprise'];
+  // Agent names: realistic first + last only (no "Agent 1/2/3")
+  const agentFirstNames = [
+    'Sarah',
+    'Mike',
+    'Jessica',
+    'David',
+    'Emily',
+    'James',
+    'Maria',
+    'Robert',
+    'Lisa',
+    'Chris',
+    'Amy',
+    'Daniel',
+    'Jennifer',
+    'Kevin',
+    'Nicole',
+    'Tom',
+    'Rachel',
+    'Steve',
+    'Anna',
+    'Paul',
+    'Kate',
+    'Mark',
+    'Laura',
+    'John',
+    'Elena',
+    'Marcus',
+    'Sophie',
+    'Ryan',
+    'Olivia',
+    'Nathan',
+    'Grace',
+    'Alex',
+  ];
+  const agentLastNames = [
+    'Chen',
+    'Johnson',
+    'Williams',
+    'Brown',
+    'Davis',
+    'Miller',
+    'Wilson',
+    'Martinez',
+    'Anderson',
+    'Taylor',
+    'Thomas',
+    'Moore',
+    'Jackson',
+    'Martin',
+    'Garcia',
+    'Lee',
+    'White',
+    'Harris',
+    'Clark',
+    'Lewis',
+    'Young',
+    'King',
+  ];
+  const pickAgentName = (usedCount) => {
+    const first = agentFirstNames[Math.floor(Math.random() * agentFirstNames.length)];
+    const last = agentLastNames[Math.floor(Math.random() * agentLastNames.length)];
+    const base = `${first} ${last}`;
+    const count = (usedCount.get(base) || 0) + 1;
+    usedCount.set(base, count);
+    return count === 1 ? base : `${base} (${count})`;
+  };
+
+  const products = ['ABC Salon Pro', 'ABC Business Suite'];
+  const plans = ['Basic', 'Premium'];
   const terms = ['monthly', 'yearly'];
-  const statuses = ['active', 'pending', 'expiring', 'expired', 'cancel'];
   const zipCodes = Array.from({ length: 30 }, (_, i) => `9${String(1000 + i).padStart(4, '0')}`);
 
   // Generate licenses across 12 months with growth patterns
@@ -86,26 +164,15 @@ export async function seed(knex) {
       const daysIntoMonth = Math.floor(Math.random() * 28) + 1;
       const startsAt = new Date(monthStart.getFullYear(), monthStart.getMonth(), daysIntoMonth);
 
-      // Weighted status distribution: mostly active, some expired, few cancelled
-      const statusWeights = [
-        'active',
-        'active',
-        'active',
-        'active',
-        'active',
-        'active',
-        'active',
-        'expired',
-        'expired',
-        'cancel',
-      ];
+      // Status: active or cancel only
+      const statusWeights = ['active', 'active', 'active', 'active', 'active', 'cancel', 'cancel'];
       const status = statusWeights[Math.floor(Math.random() * statusWeights.length)];
 
       const plan = plans[Math.floor(Math.random() * plans.length)];
       const term = terms[Math.floor(Math.random() * terms.length)];
       const product = products[Math.floor(Math.random() * products.length)];
 
-      // Calculate expiration based on term and status
+      // Calculate expiration based on term
       let expiresAt;
       if (term === 'yearly') {
         expiresAt = new Date(startsAt.getTime() + 365 * 24 * 60 * 60 * 1000);
@@ -113,17 +180,11 @@ export async function seed(knex) {
         expiresAt = new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
       }
 
-      if (status === 'expired') {
-        // For expired licenses, set expiry to be 1-30 days after start, but in the past
-        const daysAfterStart = Math.floor(Math.random() * 30) + 1;
-        expiresAt = new Date(startsAt.getTime() + daysAfterStart * 24 * 60 * 60 * 1000);
-        // Make sure it's in the past
-        if (expiresAt > now) {
-          expiresAt = new Date(
-            now.getTime() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
-          );
-        }
-      }
+      // For cancelled licenses, set cancel_date in the past
+      const cancelDate =
+        status === 'cancel'
+          ? new Date(now.getTime() - Math.floor(Math.random() * 60 + 1) * 24 * 60 * 60 * 1000)
+          : null;
 
       const seatsTotal = [5, 10, 25, 50, 100][Math.floor(Math.random() * 5)];
       const seatsUsed =
@@ -136,7 +197,8 @@ export async function seed(knex) {
       const agents = isAgentHeavy
         ? 3 + Math.floor(Math.random() * 5)
         : 1 + Math.floor(Math.random() * 2);
-      const agentsName = Array.from({ length: agents }, (_, idx) => `Agent ${idx + 1}`);
+      const usedAgentNames = new Map();
+      const agentsName = Array.from({ length: agents }, () => pickAgentName(usedAgentNames));
 
       const smsPurchased = 500 + Math.floor(Math.random() * 1500);
       const smsSent =
@@ -144,32 +206,39 @@ export async function seed(knex) {
           ? Math.floor(smsPurchased * (0.1 + Math.random() * 0.7))
           : Math.floor(smsPurchased * Math.random() * 0.3);
 
-      const companyIndex = Math.floor(Math.random() * companies.length);
-      const company = companies[companyIndex];
+      const dbaIndex = Math.floor(Math.random() * dbaNames.length);
+      const dbaBase = dbaNames[dbaIndex];
+      const dbaSuffix = month > 6 ? ` - Location ${Math.floor(month / 3) + 1}` : '';
+      const dba = `${dbaBase}${dbaSuffix}`.trim();
 
       licenses.push({
         id: knex.raw('gen_random_uuid()'),
         key: `LIC-${String(month + 1).padStart(2, '0')}${String(i + 1).padStart(3, '0')}-${product.replace(/\s+/g, '').substring(0, 4).toUpperCase()}`,
         product,
         plan,
-        status: status === 'expiring' && expiresAt > daysFromNow(30) ? 'active' : status,
+        status,
         term,
         seats_total: seatsTotal,
         seats_used: seatsUsed,
         starts_at: startsAt,
         expires_at: expiresAt,
-        cancel_date: status === 'cancel' ? daysAgo(Math.floor(Math.random() * 20) + 5) : null,
+        cancel_date: cancelDate,
         last_active: status === 'active' ? daysAgo(Math.floor(Math.random() * 14)) : null, // Active within last 2 weeks
-        dba: `${company} ${month > 6 ? `#${Math.floor(month / 3)}` : ''}`.trim(),
+        dba,
         zip: zipCodes[Math.floor(Math.random() * zipCodes.length)],
         last_payment: 99.99 + Math.random() * 400, // More varied pricing
         sms_purchased: smsPurchased,
         sms_sent: smsSent,
         sms_balance: smsPurchased - smsSent,
         agents,
-        agents_name: JSON.stringify(agentsName),
+        agents_name: JSON.stringify(agentsName), // jsonb: string for batch insert compatibility
         agents_cost: 50 * agents,
-        notes: Math.random() > 0.7 ? `Test license for month ${month + 1}` : '',
+        notes: (() => {
+          const r = Math.random();
+          if (r > 0.6) return `Seeded license for ${dba}. Contact: support@abcsalon.us`;
+          if (r > 0.85) return `Agents: ${agentsName.join(', ')}`;
+          return null;
+        })(),
         created_by: adminUser.id,
         updated_by: adminUser.id,
         created_at: startsAt,
@@ -179,6 +248,7 @@ export async function seed(knex) {
   }
 
   // Insert licenses
+  logger.info('Inserting sample licenses', { count: licenses.length });
   const insertedLicenses = await knex('licenses').insert(licenses).returning('*');
 
   logger.info('Created sample licenses', {
@@ -214,7 +284,7 @@ export async function seed(knex) {
         user_id: user.id,
         status: 'assigned',
         assigned_at: daysAgo(Math.floor(Math.random() * 30)),
-        assigned_by: managerUser?.id || adminUser.id,
+        assigned_by: (managerUser && managerUser.id) || adminUser.id,
         created_at: now,
         updated_at: now,
       });

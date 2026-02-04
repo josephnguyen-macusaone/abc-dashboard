@@ -175,11 +175,18 @@ export class InternalLicenseApiService {
   // ========================================================================
 
   /**
-   * Get dashboard metrics
+   * Get dashboard metrics. Pass search/filters so metrics reflect the same subset as the list (e.g. search by agent name).
    */
   static async getDashboardMetrics(params?: {
     startsAtFrom?: string;
     startsAtTo?: string;
+    search?: string;
+    searchField?: string;
+    status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
+    dba?: string;
+    zip?: string;
   }): Promise<{
     success: boolean;
     message: string;
@@ -211,6 +218,36 @@ export class InternalLicenseApiService {
     }
     if (params?.startsAtTo) {
       queryParams.append('startsAtTo', params.startsAtTo);
+    }
+    if (params?.search) {
+      queryParams.append('search', params.search);
+    }
+    if (params?.searchField) {
+      queryParams.append('searchField', params.searchField);
+    }
+    if (params?.status !== undefined && params?.status !== null) {
+      queryParams.append(
+        'status',
+        Array.isArray(params.status) ? params.status.join(',') : String(params.status)
+      );
+    }
+    if (params?.plan !== undefined && params?.plan !== null) {
+      queryParams.append(
+        'plan',
+        Array.isArray(params.plan) ? params.plan.join(',') : String(params.plan)
+      );
+    }
+    if (params?.term !== undefined && params?.term !== null) {
+      queryParams.append(
+        'term',
+        Array.isArray(params.term) ? params.term.join(',') : String(params.term)
+      );
+    }
+    if (params?.dba) {
+      queryParams.append('dba', params.dba);
+    }
+    if (params?.zip) {
+      queryParams.append('zip', params.zip);
     }
 
     const url = `/licenses/dashboard/metrics${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;

@@ -76,7 +76,7 @@ export function StatsCards({
             `}
             onClick={stat.onClick}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
               <Typography variant="label-s" color="muted" className="text-muted-foreground font-medium">
                 {stat.label}
               </Typography>
@@ -93,7 +93,7 @@ export function StatsCards({
               {isLoading ? '...' : stat.value}
             </Typography>
             {stat.trend && (
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1 mt-2.5">
                 <span className={`text-body-xs ${stat.trend.direction === 'up' ? 'text-green-600' :
                   stat.trend.direction === 'down' ? 'text-red-600' :
                     'text-foreground'

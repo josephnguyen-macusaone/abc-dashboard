@@ -333,6 +333,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       size: 350,
+      enableColumnFilter: false,
       meta: {
         label: "Agents Name",
       },

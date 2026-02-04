@@ -149,7 +149,9 @@ export class LicenseService extends ILicenseService {
     // Validate batch size (prevent excessive memory usage)
     const MAX_BATCH_SIZE = 1000;
     if (licensesData.length > MAX_BATCH_SIZE) {
-      throw new ValidationException(`Batch size exceeds maximum limit of ${MAX_BATCH_SIZE} licenses`);
+      throw new ValidationException(
+        `Batch size exceeds maximum limit of ${MAX_BATCH_SIZE} licenses`
+      );
     }
 
     // Process each license using the proper create use case for validation and audit
@@ -167,13 +169,13 @@ export class LicenseService extends ILicenseService {
         logger.warn('Individual license creation failed in bulk operation', {
           index,
           key: licenseData.key,
-          error: error.message
+          error: error.message,
         });
 
         errors.push({
           index,
           key: licenseData.key,
-          error: error.message
+          error: error.message,
         });
 
         // Continue with other licenses instead of failing the whole batch
@@ -188,13 +190,14 @@ export class LicenseService extends ILicenseService {
       successful: createdLicenses.length,
       failed: errors.length,
       duration: `${duration}ms`,
-      avgTimePerLicense: licensesData.length > 0 ? `${(duration / licensesData.length).toFixed(2)}ms` : 'N/A'
+      avgTimePerLicense:
+        licensesData.length > 0 ? `${(duration / licensesData.length).toFixed(2)}ms` : 'N/A',
     });
 
     if (errors.length > 0) {
       logger.warn('Some licenses failed to create in bulk operation', {
         failedCount: errors.length,
-        errorSample: errors.slice(0, 3).map(e => ({ key: e.key, error: e.error }))
+        errorSample: errors.slice(0, 3).map((e) => ({ key: e.key, error: e.error })),
       });
     }
 
@@ -220,7 +223,7 @@ export class LicenseService extends ILicenseService {
           errors.push({
             index,
             key: id,
-            error: 'License not found'
+            error: 'License not found',
           });
           continue;
         }
@@ -239,13 +242,13 @@ export class LicenseService extends ILicenseService {
         logger.warn('Individual license update failed in bulk operation', {
           index,
           key: id,
-          error: error.message
+          error: error.message,
         });
 
         errors.push({
           index,
           key: id,
-          error: error.message
+          error: error.message,
         });
 
         // Continue with other updates instead of failing the whole batch
@@ -260,13 +263,13 @@ export class LicenseService extends ILicenseService {
       successful: updatedLicenses.length,
       failed: errors.length,
       duration: `${duration}ms`,
-      avgTimePerLicense: updates.length > 0 ? `${(duration / updates.length).toFixed(2)}ms` : 'N/A'
+      avgTimePerLicense: updates.length > 0 ? `${(duration / updates.length).toFixed(2)}ms` : 'N/A',
     });
 
     if (errors.length > 0) {
       logger.warn('Some licenses failed to update in bulk operation', {
         failedCount: errors.length,
-        errorSample: errors.slice(0, 3).map(e => ({ key: e.key, error: e.error }))
+        errorSample: errors.slice(0, 3).map((e) => ({ key: e.key, error: e.error })),
       });
     }
 
@@ -281,6 +284,14 @@ export class LicenseService extends ILicenseService {
    */
   async getAuditEvents(licenseId, options) {
     return await this.licenseRepository.findAuditEvents(licenseId, options);
+  }
+
+  /**
+   * Get all unique agent names from licenses
+   * @returns {Promise<string[]>} Array of unique agent names
+   */
+  async getAllAgentNames() {
+    return await this.licenseRepository.getAllAgentNames();
   }
 }
 

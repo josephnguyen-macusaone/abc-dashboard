@@ -328,8 +328,6 @@ export const LicenseDashboard: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="cancel">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
@@ -350,7 +348,6 @@ export const LicenseDashboard: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Set Active</SelectItem>
-                    <SelectItem value="suspended">Suspend</SelectItem>
                     <SelectItem value="cancel">Cancel</SelectItem>
                   </SelectContent>
                 </Select>
@@ -412,8 +409,7 @@ export const LicenseDashboard: React.FC = () => {
                             <Badge
                               variant={
                                 license.status === 'active' ? 'default' :
-                                license.status === 'expired' ? 'destructive' :
-                                license.status === 'cancel' ? 'secondary' : 'outline'
+                                  license.status === 'cancel' ? 'secondary' : 'outline'
                               }
                             >
                               {license.status}
@@ -510,7 +506,7 @@ export const LicenseDashboard: React.FC = () => {
                   SMS payment management integration ready
                 </p>
                 <Button
-                  onClick={() => {/* Load SMS payments */}}
+                  onClick={() => {/* Load SMS payments */ }}
                   className="mt-4"
                 >
                   Load Payment History

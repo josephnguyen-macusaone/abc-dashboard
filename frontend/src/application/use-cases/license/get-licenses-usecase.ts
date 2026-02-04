@@ -34,7 +34,8 @@ export class GetLicensesUseCaseImpl implements GetLicensesUseCase {
         : params.term ? String(params.term) : undefined;
 
       const specification: LicenseSpecification = {
-        dba: params.dba,
+        // Only set dba when not doing a general search (so we never send searchField=dba for search-bar searches)
+        dba: params.dba && !params.search ? params.dba : undefined,
         status: typeof params.status === 'string' ? params.status : undefined,
         plan: planValue,
         term: termValue,
@@ -48,18 +49,17 @@ export class GetLicensesUseCaseImpl implements GetLicensesUseCase {
         } : undefined
       };
 
-      // Add search if specified
+      // General search: backend matches DBA and agent names when searchField is not set
       if (params.search) {
-        specification.dba = params.search; // For now, search in DBA field
+        specification.search = params.search;
+        if (params.searchField) {
+          specification.searchField = params.searchField;
+        }
       }
 
-      // Add date filters if specified
-      if (params.startsAtFrom || params.startsAtTo) {
-        specification.expiresBetween = {
-          from: params.startsAtFrom ? new Date(params.startsAtFrom) : new Date('2000-01-01'),
-          to: params.startsAtTo ? new Date(params.startsAtTo) : new Date('2100-12-31')
-        };
-      }
+      // Filter by license start date (starts_at)
+      if (params.startsAtFrom) specification.startsAtFrom = params.startsAtFrom;
+      if (params.startsAtTo) specification.startsAtTo = params.startsAtTo;
 
       // Add expiring filter
       if (params.expiringWithin) {

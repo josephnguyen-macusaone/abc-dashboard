@@ -108,6 +108,10 @@ export interface ILicenseRepository {
  * Defines search criteria for flexible querying
  */
 export interface LicenseSpecification {
+  /** General search term; backend matches DBA and agent names when searchField is not set */
+  search?: string;
+  /** When set with search, limit search to one field (e.g. agentsName, dba) */
+  searchField?: string;
   /** Filter by DBA (partial match) */
   dba?: string;
 
@@ -131,6 +135,10 @@ export interface LicenseSpecification {
     from: Date;
     to: Date;
   };
+
+  /** Filter by license start date (starts_at) - sent as startsAtFrom/startsAtTo to API */
+  startsAtFrom?: string;
+  startsAtTo?: string;
 
   /** Filter licenses expiring within days */
   expiringWithin?: number;
