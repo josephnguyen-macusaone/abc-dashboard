@@ -1,6 +1,6 @@
 import type { LicenseRecord } from '@/types';
-import type { DashboardMetrics, DashboardMetricsResponse } from '@/infrastructure/api/types';
-import { licenseApi } from '@/infrastructure/api/licenses';
+import type { DashboardMetrics } from '@/infrastructure/api/types';
+import type { ILicenseRepository } from '@/domain/repositories/i-license-repository';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
@@ -62,7 +62,7 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
     component: 'GetLicenseStatsUseCase',
   });
 
-  constructor() {}
+  constructor(private readonly licenseRepository: ILicenseRepository) {}
 
   async execute(params: {
     licenses?: LicenseRecord[];
@@ -164,8 +164,8 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       params.zip = filters.zip;
     }
 
-    const response = await licenseApi.getDashboardMetrics(params);
-    return response.data;
+    const metricsPayload = await this.licenseRepository.getDashboardMetrics(params);
+    return metricsPayload as DashboardMetrics;
   }
 
   /**
@@ -555,6 +555,6 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
 /**
  * Factory function to create GetLicenseStatsUseCase
  */
-export function createGetLicenseStatsUseCase(): GetLicenseStatsUseCase {
-  return new GetLicenseStatsUseCase();
+export function createGetLicenseStatsUseCase(licenseRepository: ILicenseRepository): GetLicenseStatsUseCase {
+  return new GetLicenseStatsUseCase(licenseRepository);
 }

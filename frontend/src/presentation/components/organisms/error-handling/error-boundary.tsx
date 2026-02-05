@@ -29,6 +29,16 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       return;
     }
 
+    // Suppress hydration mismatches caused by browser extensions (e.g. Dark Reader)
+    // that inject attributes (e.g. data-darkreader-inline-stroke) after server render
+    const argsStr = args.map((a) => (typeof a === 'string' ? a : String(a))).join(' ');
+    if (
+      (message.includes('hydrat') || argsStr.includes('hydrat')) &&
+      (message.includes('darkreader') || argsStr.includes('darkreader'))
+    ) {
+      return;
+    }
+
     // Check if this is React's error boundary logging
     const isReactErrorBoundaryLog =
       message.includes('The above error occurred in the') ||

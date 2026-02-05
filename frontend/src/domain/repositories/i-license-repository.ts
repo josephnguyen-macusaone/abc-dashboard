@@ -101,6 +101,115 @@ export interface ILicenseRepository {
    * Bulk update licenses
    */
   bulkUpdate(updates: Array<{ id: LicenseId; updates: Partial<PersistenceLicenseProps> }>): Promise<License[]>;
+
+  /**
+   * Get license sync status (e.g. last sync result for dashboard display)
+   */
+  getSyncStatus(): Promise<LicenseSyncStatus>;
+
+  /**
+   * Get dashboard metrics (overview, utilization, alerts - shape depends on backend)
+   */
+  getDashboardMetrics(params?: DashboardMetricsParams): Promise<unknown>;
+
+  /**
+   * Get licenses requiring attention (expiring soon, expired, suspended)
+   */
+  getLicensesRequiringAttention(options?: Record<string, unknown>): Promise<LicensesRequiringAttentionResult>;
+
+  /**
+   * Bulk update licenses by external identifiers (appids, emails, countids)
+   */
+  bulkUpdateByIdentifiers(identifiers: BulkIdentifiers, updates: Record<string, unknown>): Promise<{ updated: number }>;
+
+  /**
+   * Get SMS payments with optional filters
+   */
+  getSmsPayments(params?: SmsPaymentsParams): Promise<SmsPaymentsResult>;
+
+  /**
+   * Add SMS payment
+   */
+  addSmsPayment(paymentData: AddSmsPaymentData): Promise<unknown>;
+
+  /**
+   * Bulk create licenses (raw API shape) for application service use
+   */
+  bulkCreateLicensesRaw(licenses: unknown[]): Promise<{ success?: boolean; data?: { results?: unknown[] }; message?: string }>;
+
+  /**
+   * Bulk update internal licenses by ID (raw API shape) for application service use
+   */
+  bulkUpdateInternalLicensesRaw(updates: unknown[]): Promise<unknown>;
+}
+
+/** Params for dashboard metrics (read-model) */
+export interface DashboardMetricsParams {
+  startsAtFrom?: string;
+  startsAtTo?: string;
+  search?: string;
+  searchField?: string;
+  status?: string | string[];
+  plan?: string | string[];
+  term?: string | string[];
+  dba?: string;
+  zip?: string;
+}
+
+/** Result for licenses requiring attention */
+export interface LicensesRequiringAttentionResult {
+  expiringSoon: unknown[];
+  expired: unknown[];
+  suspended: unknown[];
+  total: number;
+}
+
+/** Identifiers for bulk update by external IDs */
+export interface BulkIdentifiers {
+  appids?: string[];
+  emails?: string[];
+  countids?: number[];
+}
+
+/** Params for SMS payments list */
+export interface SmsPaymentsParams {
+  appid?: string;
+  emailLicense?: string;
+  countid?: number;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/** Result for SMS payments list */
+export interface SmsPaymentsResult {
+  payments: unknown[];
+  totals: unknown;
+  pagination: unknown;
+}
+
+/** Payload for adding SMS payment */
+export interface AddSmsPaymentData {
+  appid?: string;
+  emailLicense?: string;
+  countid?: number;
+  amount: number;
+  paymentDate?: string;
+  description?: string;
+}
+
+/**
+ * License sync status (read-only, for dashboard/UI)
+ */
+export interface LicenseSyncStatus {
+  lastSyncResult?: {
+    timestamp?: string;
+    success?: boolean;
+    error?: string;
+  };
 }
 
 /**

@@ -24,7 +24,6 @@
       "@/types/*": ["./src/shared/types/*"],
       "@/components/*": ["./src/presentation/components/*"],
       "@/hooks/*": ["./src/presentation/hooks/*"],
-      "@/contexts/*": ["./src/contexts/*"],
       "@/shared/*": ["./src/shared/*"],
       "@/domain/*": ["./src/domain/*"],
       "@/infrastructure/*": ["./src/infrastructure/*"],

@@ -1,26 +1,38 @@
 /**
  * License Management Hooks
- * Comprehensive hooks for license CRUD operations, analytics, and lifecycle management
+ *
+ * Thin wrappers over the license store. All data and actions go through
+ * useLicenseStore → application layer → repository. No direct API access.
+ *
+ * Prefer useLicenseStore directly when you need store selectors or actions.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { licenseApi } from '@/infrastructure/api/licenses';
-import { useToast } from '@/presentation/contexts/toast-context';
-import logger from '@/shared/helpers/logger';
-
-// Mock error handler
-const useErrorHandler = () => ({
-  handleError: (error: unknown) => logger.error('Error', { error }),
-});
+import { useEffect, useCallback } from 'react';
 import type { LicenseRecord } from '@/types';
-import type { DashboardMetrics } from '@/infrastructure/api/types';
+import {
+  useLicenseStore,
+  selectLicenses,
+  selectLicenseLoading,
+  selectLicensePagination,
+  selectLicenseFilters,
+  selectLicenseError,
+  selectDashboardMetrics,
+  selectDashboardMetricsLoading,
+  selectDashboardMetricsError,
+  selectSmsPayments,
+  selectSmsTotals,
+  selectSmsPaymentsLoading,
+  selectSmsPaymentsError,
+} from '@/infrastructure/stores/license';
+import type { CreateLicenseRequest, UpdateLicenseRequest } from '@/infrastructure/stores/license';
 
 // ========================================================================
 // CORE LICENSE HOOKS
 // ========================================================================
 
 /**
- * Hook for fetching licenses with pagination and filtering
+ * Hook for fetching licenses with pagination and filtering.
+ * Thin wrapper over useLicenseStore.
  */
 export const useLicenses = (params: {
   page?: number;
@@ -34,242 +46,142 @@ export const useLicenses = (params: {
   sortOrder?: 'asc' | 'desc';
   autoFetch?: boolean;
 } = {}) => {
-  const [licenses, setLicenses] = useState<LicenseRecord[]>([]);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-    hasNext: false,
-    hasPrev: false,
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const licenses = useLicenseStore(selectLicenses);
+  const loading = useLicenseStore(selectLicenseLoading);
+  const error = useLicenseStore(selectLicenseError);
+  const filters = useLicenseStore(selectLicenseFilters);
+  const pagination = useLicenseStore(selectLicensePagination);
+  const setFilters = useLicenseStore((s) => s.setFilters);
+  const fetchLicenses = useLicenseStore((s) => s.fetchLicenses);
+  const goToPage = useLicenseStore((s) => s.goToPage);
+  const changePageSize = useLicenseStore((s) => s.changePageSize);
 
-  const { handleError } = useErrorHandler();
-  const { showToast } = useToast();
+  const refetch = useCallback(() => {
+    fetchLicenses({
+      page: params.page ?? pagination.page,
+      limit: params.limit ?? pagination.limit,
+      status: params.status ?? filters.status,
+      dba: params.dba ?? filters.dba,
+      startsAtFrom: params.startDate ?? filters.startsAtFrom,
+      startsAtTo: params.endDate ?? filters.startsAtTo,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    });
+  }, [fetchLicenses, params, pagination, filters]);
 
-  const fetchLicenses = useCallback(async (overrideParams?: Partial<typeof params>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const queryParams = {
-        page: overrideParams?.page || params.page || 1,
-        limit: overrideParams?.limit || params.limit || 20,
-        status: overrideParams?.status || params.status,
-        dba: overrideParams?.dba || params.dba,
-        license_type: overrideParams?.license_type || params.license_type,
-        startDate: overrideParams?.startDate || params.startDate,
-        endDate: overrideParams?.endDate || params.endDate,
-        sortBy: overrideParams?.sortBy || params.sortBy || 'created_at',
-        sortOrder: overrideParams?.sortOrder || params.sortOrder || 'desc',
-      };
-
-      const response = await licenseApi.getLicenses(queryParams);
-
-      setLicenses(response.licenses);
-      setPagination(response.pagination);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch licenses';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [params, handleError]);
-
-  const refetch = useCallback(() => fetchLicenses(), [fetchLicenses]);
-
-  const goToPage = useCallback((page: number) => {
-    fetchLicenses({ page });
-  }, [fetchLicenses]);
-
-  const changeLimit = useCallback((limit: number) => {
-    fetchLicenses({ limit, page: 1 });
-  }, [fetchLicenses]);
-
-  const sort = useCallback((sortBy: string, sortOrder: 'asc' | 'desc') => {
-    fetchLicenses({ sortBy, sortOrder, page: 1 });
-  }, [fetchLicenses]);
-
-  const filter = useCallback((filters: Record<string, any>) => {
-    fetchLicenses({ ...filters, page: 1 });
-  }, [fetchLicenses]);
+  const applyParams = useCallback(() => {
+    const nextFilters = {
+      ...filters,
+      ...(params.status !== undefined && { status: params.status as typeof filters.status }),
+      ...(params.dba !== undefined && { dba: params.dba }),
+      ...(params.startDate !== undefined && { startsAtFrom: params.startDate }),
+      ...(params.endDate !== undefined && { startsAtTo: params.endDate }),
+    };
+    setFilters(nextFilters);
+    fetchLicenses({
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+      sortBy: params.sortBy ?? 'created_at',
+      sortOrder: params.sortOrder ?? 'desc',
+      ...nextFilters,
+    });
+  }, [filters, params, setFilters, fetchLicenses]);
 
   useEffect(() => {
     if (params.autoFetch !== false) {
-      fetchLicenses();
+      applyParams();
     }
-  }, [params.autoFetch, fetchLicenses]);
+  }, [params.autoFetch]); // eslint-disable-line react-hooks/exhaustive-deps -- apply on mount / autoFetch toggle only
+
+  const paginationWithFlags = {
+    ...pagination,
+    hasNext: pagination.page < pagination.totalPages,
+    hasPrev: pagination.page > 1,
+  };
 
   return {
     licenses,
-    pagination,
+    pagination: paginationWithFlags,
     loading,
     error,
     refetch,
-    goToPage,
-    changeLimit,
-    sort,
-    filter,
+    goToPage: (page: number) => goToPage(page),
+    changeLimit: (limit: number) => changePageSize(limit),
+    sort: (sortBy: string, sortOrder: 'asc' | 'desc') => {
+      setFilters({ ...filters });
+      fetchLicenses({ sortBy, sortOrder, page: 1 });
+    },
+    filter: (filterUpdates: Record<string, unknown>) => {
+      setFilters({ ...filters, ...filterUpdates });
+      fetchLicenses({ ...filterUpdates, page: 1 });
+    },
   };
 };
 
 /**
- * Hook for individual license operations
+ * Hook for individual license operations.
+ * Thin wrapper over useLicenseStore.
  */
 export const useLicense = (licenseId?: string) => {
-  const [license, setLicense] = useState<LicenseRecord | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const { handleError } = useErrorHandler();
-  const { showToast } = useToast();
-
-  const fetchLicense = useCallback(async (id?: string) => {
-    const targetId = id || licenseId;
-    if (!targetId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.getLicense(targetId);
-
-      // Handle both internal API (LicenseRecord) and external API (wrapped response) formats
-      if (typeof response === 'object' && 'success' in response) {
-        // External API format
-        if (response.success) {
-          setLicense(response.data.license);
-        } else {
-          throw new Error(response.message || 'Failed to fetch license');
-        }
-      } else {
-        // Internal API format - direct LicenseRecord
-        setLicense(response as any);
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch license';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [licenseId, handleError]);
-
-  const updateLicense = useCallback(async (updates: Partial<LicenseRecord>) => {
-    if (!licenseId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.updateLicense(licenseId, updates);
-
-      // Handle both internal API (LicenseRecord) and external API (wrapped response) formats
-      if (typeof response === 'object' && 'success' in response) {
-        // External API format
-        if (response.success) {
-          setLicense(response.data.license);
-          showToast('License updated successfully', 'success');
-        } else {
-          throw new Error(response.message || 'Failed to update license');
-        }
-      } else {
-        // Internal API format - direct LicenseRecord
-        setLicense(response as any);
-        showToast('License updated successfully', 'success');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to update license';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [licenseId, handleError, showToast]);
-
-  const deleteLicense = useCallback(async () => {
-    if (!licenseId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await licenseApi.deleteLicense(licenseId);
-
-      // If we get here, deletion was successful
-      setLicense(null);
-      showToast('License deleted successfully', 'success');
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete license';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [licenseId, handleError, showToast]);
+  const currentLicense = useLicenseStore((s) => s.currentLicense);
+  const loading = useLicenseStore(selectLicenseLoading);
+  const error = useLicenseStore(selectLicenseError);
+  const fetchLicense = useLicenseStore((s) => s.fetchLicense);
+  const updateLicense = useLicenseStore((s) => s.updateLicense);
+  const deleteLicense = useLicenseStore((s) => s.deleteLicense);
 
   useEffect(() => {
     if (licenseId) {
-      fetchLicense();
+      fetchLicense(String(licenseId));
     }
   }, [licenseId, fetchLicense]);
+
+  const license =
+    licenseId && currentLicense && String(currentLicense.id) === String(licenseId)
+      ? currentLicense
+      : null;
+
+  const update = useCallback(
+    async (updates: Partial<LicenseRecord>) => {
+      if (!licenseId) return;
+      const { startsAt, ...rest } = updates as Partial<LicenseRecord> & { startDay?: string };
+      const payload: UpdateLicenseRequest = {
+        ...rest,
+        ...(startsAt !== undefined && { startDay: startsAt }),
+      };
+      return updateLicense(licenseId, payload);
+    },
+    [licenseId, updateLicense]
+  );
 
   return {
     license,
     loading,
     error,
-    refetch: () => fetchLicense(),
-    update: updateLicense,
-    delete: deleteLicense,
+    refetch: () => (licenseId ? fetchLicense(licenseId) : undefined),
+    update,
+    delete: () => (licenseId ? deleteLicense(licenseId) : undefined),
   };
 };
 
 /**
- * Hook for license creation
+ * Hook for license creation.
+ * Thin wrapper over useLicenseStore.
  */
 export const useLicenseCreation = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const loading = useLicenseStore(selectLicenseLoading);
+  const error = useLicenseStore(selectLicenseError);
+  const createLicense = useLicenseStore((s) => s.createLicense);
 
-  const { handleError } = useErrorHandler();
-  const { showToast } = useToast();
-
-  const createLicense = useCallback(async (licenseData: Partial<LicenseRecord>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.createLicense(licenseData);
-
-      // Handle both internal API (LicenseRecord) and external API (wrapped response) formats
-      if (typeof response === 'object' && 'success' in response) {
-        // External API format
-        if (response.success) {
-          showToast('License created successfully', 'success');
-          return response.data.license;
-        } else {
-          throw new Error(response.message || 'Failed to create license');
-        }
-      } else {
-        // Internal API format - direct LicenseRecord
-        showToast('License created successfully', 'success');
-        return response as any;
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to create license';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
+  const create = useCallback(
+    async (licenseData: Partial<LicenseRecord>) => {
+      return createLicense(licenseData as CreateLicenseRequest);
+    },
+    [createLicense]
+  );
 
   return {
-    createLicense,
+    createLicense: create,
     loading,
     error,
   };
@@ -280,52 +192,31 @@ export const useLicenseCreation = () => {
 // ========================================================================
 
 /**
- * Hook for dashboard metrics
+ * Hook for dashboard metrics.
+ * Thin wrapper over useLicenseStore.
  */
 export const useDashboardMetrics = (params?: {
   startsAtFrom?: string;
   startsAtTo?: string;
   autoFetch?: boolean;
 }) => {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const metrics = useLicenseStore(selectDashboardMetrics);
+  const loading = useLicenseStore(selectDashboardMetricsLoading);
+  const error = useLicenseStore(selectDashboardMetricsError);
+  const fetchDashboardMetrics = useLicenseStore((s) => s.fetchDashboardMetrics);
 
-  const { handleError } = useErrorHandler();
-
-  const fetchMetrics = useCallback(async (overrideParams?: typeof params) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const queryParams = {
-        startsAtFrom: overrideParams?.startsAtFrom || params?.startsAtFrom,
-        startsAtTo: overrideParams?.startsAtTo || params?.startsAtTo,
-      };
-
-      const response = await licenseApi.getDashboardMetrics(queryParams);
-
-      if (response.success) {
-        setMetrics(response.data);
-      } else {
-        throw new Error(response.message || 'Failed to fetch dashboard metrics');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch dashboard metrics';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [params, handleError]);
-
-  const refetch = useCallback(() => fetchMetrics(), [fetchMetrics]);
+  const refetch = useCallback(() => {
+    fetchDashboardMetrics({
+      startsAtFrom: params?.startsAtFrom,
+      startsAtTo: params?.startsAtTo,
+    });
+  }, [fetchDashboardMetrics, params?.startsAtFrom, params?.startsAtTo]);
 
   useEffect(() => {
     if (params?.autoFetch !== false) {
-      fetchMetrics();
+      refetch();
     }
-  }, [params?.autoFetch, fetchMetrics]);
+  }, [params?.autoFetch]); // eslint-disable-line react-hooks/exhaustive-deps -- run on mount / autoFetch toggle
 
   return {
     metrics,
@@ -336,7 +227,8 @@ export const useDashboardMetrics = (params?: {
 };
 
 /**
- * Hook for license analytics
+ * Hook for license analytics.
+ * @deprecated Analytics not yet on license store. Use useLicenseStore for other license data.
  */
 export const useLicenseAnalytics = (params?: {
   month?: number;
@@ -347,55 +239,11 @@ export const useLicenseAnalytics = (params?: {
   license_type?: string;
   autoFetch?: boolean;
 }) => {
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const { handleError } = useErrorHandler();
-
-  const fetchAnalytics = useCallback(async (overrideParams?: typeof params) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const queryParams = {
-        month: overrideParams?.month || params?.month,
-        year: overrideParams?.year || params?.year,
-        startDate: overrideParams?.startDate || params?.startDate,
-        endDate: overrideParams?.endDate || params?.endDate,
-        status: overrideParams?.status || params?.status,
-        license_type: overrideParams?.license_type || params?.license_type,
-      };
-
-      const response = await licenseApi.getLicenseAnalytics(queryParams);
-
-      if (response.success) {
-        setAnalytics(response.data);
-      } else {
-        throw new Error(response.message || 'Failed to fetch license analytics');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch license analytics';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [params, handleError]);
-
-  const refetch = useCallback(() => fetchAnalytics(), [fetchAnalytics]);
-
-  useEffect(() => {
-    if (params?.autoFetch !== false) {
-      fetchAnalytics();
-    }
-  }, [params?.autoFetch, fetchAnalytics]);
-
   return {
-    analytics,
-    loading,
-    error,
-    refetch,
+    analytics: null as unknown,
+    loading: false,
+    error: null as string | null,
+    refetch: () => {},
   };
 };
 
@@ -404,174 +252,45 @@ export const useLicenseAnalytics = (params?: {
 // ========================================================================
 
 /**
- * Hook for license lifecycle operations
+ * Hook for license lifecycle operations.
+ * getLicensesRequiringAttention is wired to the store; renew/expire/reactivate
+ * are not yet on the store and throw if called.
  */
 export const useLicenseLifecycle = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const loading = useLicenseStore((s) => s.licensesRequiringAttentionLoading);
+  const error = useLicenseStore((s) => s.licensesRequiringAttentionError);
+  const fetchLicensesRequiringAttention = useLicenseStore((s) => s.fetchLicensesRequiringAttention);
 
-  const { handleError } = useErrorHandler();
-  const { showToast } = useToast();
-
-  const renewLicense = useCallback(async (
-    licenseId: string,
-    options: {
-      newExpirationDate?: string;
-      extensionDays?: number;
-      reason?: string;
-    }
-  ) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.renewLicense(licenseId, options);
-
-      if (response.success) {
-        showToast('License renewed successfully', 'success');
-        return response.data.license;
-      } else {
-        throw new Error(response.message || 'Failed to renew license');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to renew license';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
-
-  const expireLicense = useCallback(async (
-    licenseId: string,
-    reason?: string
-  ) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.expireLicense(licenseId, { reason });
-
-      if (response.success) {
-        showToast('License expired successfully', 'success');
-        return response.data.license;
-      } else {
-        throw new Error(response.message || 'Failed to expire license');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to expire license';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
-
-  const reactivateLicense = useCallback(async (
-    licenseId: string,
-    reason?: string
-  ) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.reactivateLicense(licenseId, { reason });
-
-      if (response.success) {
-        showToast('License reactivated successfully', 'success');
-        return response.data.license;
-      } else {
-        throw new Error(response.message || 'Failed to reactivate license');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to reactivate license';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
-
-  const getLicensesRequiringAttention = useCallback(async (options = {}) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.getLicensesRequiringAttention(options);
-      return response.data;
-    } catch (err: unknown) {
-      // This endpoint may not be fully available
-      logger.warn('Licenses requiring attention feature may not be available', { error: err });
-      setError('Feature temporarily unavailable');
-      return {
-        expiringSoon: [],
-        expired: [],
-        suspended: [],
-        total: 0
-      };
-    } finally {
-      setLoading(false);
-    }
+  const renewLicense = useCallback(async () => {
+    throw new Error('renewLicense: not implemented via store; use useLicenseStore when lifecycle actions are added.');
+  }, []);
+  const expireLicense = useCallback(async () => {
+    throw new Error('expireLicense: not implemented via store; use useLicenseStore when lifecycle actions are added.');
+  }, []);
+  const reactivateLicense = useCallback(async () => {
+    throw new Error('reactivateLicense: not implemented via store; use useLicenseStore when lifecycle actions are added.');
   }, []);
 
   return {
     renewLicense,
     expireLicense,
     reactivateLicense,
-    getLicensesRequiringAttention,
+    getLicensesRequiringAttention: fetchLicensesRequiringAttention,
     loading,
     error,
   };
 };
 
 /**
- * Hook for license lifecycle status
+ * Hook for license lifecycle status (single license).
+ * @deprecated Lifecycle status not yet on license store. Use useLicenseStore for license data.
  */
 export const useLicenseLifecycleStatus = (licenseId?: string) => {
-  const [lifecycleStatus, setLifecycleStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const { handleError } = useErrorHandler();
-
-  const fetchLifecycleStatus = useCallback(async (id?: string) => {
-    const targetId = id || licenseId;
-    if (!targetId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.getLifecycleStatus(targetId);
-
-      if (response.success) {
-        setLifecycleStatus(response.data);
-      } else {
-        throw new Error(response.message || 'Failed to fetch lifecycle status');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch lifecycle status';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [licenseId, handleError]);
-
-  useEffect(() => {
-    if (licenseId) {
-      fetchLifecycleStatus();
-    }
-  }, [licenseId, fetchLifecycleStatus]);
-
   return {
-    lifecycleStatus,
-    loading,
-    error,
-    refetch: () => fetchLifecycleStatus(),
+    lifecycleStatus: null as unknown,
+    loading: false,
+    error: null as string | null,
+    refetch: () => {},
   };
 };
 
@@ -580,94 +299,48 @@ export const useLicenseLifecycleStatus = (licenseId?: string) => {
 // ========================================================================
 
 /**
- * Hook for bulk license operations
+ * Hook for bulk license operations.
+ * Thin wrapper over useLicenseStore (bulkUpdateByIdentifiers, bulkCreateLicenses).
+ * bulkDeleteLicenses may throw if not implemented in the store.
  */
 export const useBulkLicenseOperations = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const loading = useLicenseStore((s) => s.bulkUpdateByIdentifiersLoading);
+  const error = useLicenseStore(selectLicenseError);
+  const bulkUpdateByIdentifiers = useLicenseStore((s) => s.bulkUpdateByIdentifiers);
+  const bulkCreateLicenses = useLicenseStore((s) => s.bulkCreateLicenses);
+  const bulkDeleteLicenses = useLicenseStore((s) => s.bulkDeleteLicenses);
 
-  const { handleError } = useErrorHandler();
-  const { showToast } = useToast();
+  const bulkUpdate = useCallback(
+    async (updates: {
+      identifiers: { appids?: string[]; emails?: string[]; countids?: number[] };
+      updates: Record<string, unknown>;
+    }) => {
+      const result = await bulkUpdateByIdentifiers(updates.identifiers, updates.updates);
+      return { success: true as const, data: result };
+    },
+    [bulkUpdateByIdentifiers]
+  );
 
-  const bulkUpdate = useCallback(async (updates: {
-    identifiers: {
-      appids?: string[];
-      emails?: string[];
-      countids?: number[];
-    };
-    updates: Record<string, any>;
-  }) => {
-    setLoading(true);
-    setError(null);
+  const bulkDelete = useCallback(
+    async (identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }) => {
+      const ids: (number | string)[] = [
+        ...(identifiers.countids ?? []),
+        ...(identifiers.appids ?? []),
+        ...(identifiers.emails ?? []),
+      ];
+      await bulkDeleteLicenses(ids);
+      return { success: true as const, data: { deleted: ids.length } };
+    },
+    [bulkDeleteLicenses]
+  );
 
-    try {
-      const response = await licenseApi.bulkUpdateLicenses(updates);
-
-      if (response.success) {
-        showToast(`Successfully updated ${response.data.updated} licenses`, 'success');
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Bulk update failed');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Bulk update failed';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
-
-  const bulkDelete = useCallback(async (identifiers: {
-    appids?: string[];
-    emails?: string[];
-    countids?: number[];
-  }) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.bulkDeleteLicenses(identifiers);
-
-      if (response.success) {
-        showToast(`Successfully deleted ${response.data.deleted} licenses`, 'success');
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Bulk delete failed');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Bulk delete failed';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
-
-  const bulkCreate = useCallback(async (licenses: Array<Partial<LicenseRecord>>) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.bulkCreateLicenses(licenses);
-
-      if (response.success) {
-        showToast(`Successfully created ${response.data.created} licenses`, 'success');
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Bulk create failed');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Bulk create failed';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast]);
+  const bulkCreate = useCallback(
+    async (licenses: Array<Partial<LicenseRecord>>) => {
+      const created = await bulkCreateLicenses(licenses);
+      return { success: true as const, data: { created: created.length, licenses: created } };
+    },
+    [bulkCreateLicenses]
+  );
 
   return {
     bulkUpdate,
@@ -683,7 +356,8 @@ export const useBulkLicenseOperations = () => {
 // ========================================================================
 
 /**
- * Hook for SMS payment management
+ * Hook for SMS payment management.
+ * Thin wrapper over useLicenseStore.
  */
 export const useSmsPayments = (params?: {
   appid?: string;
@@ -697,87 +371,33 @@ export const useSmsPayments = (params?: {
   sortOrder?: 'asc' | 'desc';
   autoFetch?: boolean;
 }) => {
-  const [payments, setPayments] = useState<any[]>([]);
-  const [totals, setTotals] = useState<any>(null);
-  const [pagination, setPagination] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const payments = useLicenseStore(selectSmsPayments);
+  const totals = useLicenseStore(selectSmsTotals);
+  const pagination = useLicenseStore((s) => s.smsPagination);
+  const loading = useLicenseStore(selectSmsPaymentsLoading);
+  const error = useLicenseStore(selectSmsPaymentsError);
+  const fetchSmsPayments = useLicenseStore((s) => s.fetchSmsPayments);
+  const addSmsPayment = useLicenseStore((s) => s.addSmsPayment);
 
-  const { handleError } = useErrorHandler();
-  const { showToast } = useToast();
-
-  const fetchPayments = useCallback(async (overrideParams?: typeof params) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const queryParams = {
-        appid: overrideParams?.appid || params?.appid,
-        emailLicense: overrideParams?.emailLicense || params?.emailLicense,
-        countid: overrideParams?.countid || params?.countid,
-        startDate: overrideParams?.startDate || params?.startDate,
-        endDate: overrideParams?.endDate || params?.endDate,
-        page: overrideParams?.page || params?.page || 1,
-        limit: overrideParams?.limit || params?.limit || 20,
-        sortBy: overrideParams?.sortBy || params?.sortBy,
-        sortOrder: overrideParams?.sortOrder || params?.sortOrder,
-      };
-
-      const response = await licenseApi.getSmsPayments(queryParams);
-
-      if (response.success) {
-        setPayments(response.data.payments);
-        setTotals(response.data.totals);
-        setPagination(response.data.pagination);
-      } else {
-        throw new Error(response.message || 'Failed to fetch SMS payments');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch SMS payments';
-      setError(errorMessage);
-      handleError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [params, handleError]);
-
-  const addPayment = useCallback(async (paymentData: {
-    appid?: string;
-    emailLicense?: string;
-    countid?: number;
-    amount: number;
-    paymentDate?: string;
-    description?: string;
-  }) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await licenseApi.addSmsPayment(paymentData);
-
-      if (response.success) {
-        showToast('SMS payment added successfully', 'success');
-        // Refetch payments to show the new payment
-        fetchPayments();
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Failed to add SMS payment');
-      }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to add SMS payment';
-      setError(errorMessage);
-      handleError(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError, showToast, fetchPayments]);
+  const refetch = useCallback(() => {
+    fetchSmsPayments({
+      appid: params?.appid,
+      emailLicense: params?.emailLicense,
+      countid: params?.countid,
+      startDate: params?.startDate,
+      endDate: params?.endDate,
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 20,
+      sortBy: params?.sortBy,
+      sortOrder: params?.sortOrder,
+    });
+  }, [fetchSmsPayments, params]);
 
   useEffect(() => {
     if (params?.autoFetch !== false) {
-      fetchPayments();
+      refetch();
     }
-  }, [params?.autoFetch, fetchPayments]);
+  }, [params?.autoFetch]); // eslint-disable-line react-hooks/exhaustive-deps -- run on mount / autoFetch toggle
 
   return {
     payments,
@@ -785,7 +405,7 @@ export const useSmsPayments = (params?: {
     pagination,
     loading,
     error,
-    refetch: fetchPayments,
-    addPayment,
+    refetch,
+    addPayment: addSmsPayment,
   };
 };

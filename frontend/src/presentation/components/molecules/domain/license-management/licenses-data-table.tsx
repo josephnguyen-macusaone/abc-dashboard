@@ -377,65 +377,60 @@ export function LicensesDataTable({
     );
   }
 
-  // Empty state with reset button if filters are active
-  if (data.length === 0 && !isLoading && shouldShowResetButton) {
-    return (
-      <div className="p-12 text-center border rounded-md">
-        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="h-8 w-8 text-muted-foreground" />
+  const emptyStateContent =
+    data.length === 0 && !isLoading ? (
+      shouldShowResetButton ? (
+        <div className="p-12 text-center border rounded-md">
+          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <Typography variant="title-s" className="text-foreground mb-2">
+            No licenses found
+          </Typography>
+          <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
+            No licenses match your search criteria. Try adjusting your filters.
+          </Typography>
+          <button
+            onClick={() => {
+              setTableSearch(tableId, "");
+              if (debouncedSearchRef.current) {
+                clearTimeout(debouncedSearchRef.current);
+              }
+              clearTableFilters(tableId);
+              table.setColumnFilters([]);
+              hasPerformedFilteringRef.current = false;
+              table.setPageIndex(0);
+              setTimeout(() => {
+                onQueryChange?.({
+                  page: 1,
+                  limit: table.getState().pagination.pageSize,
+                  sortBy: 'startsAt',
+                  sortOrder: 'desc',
+                });
+              }, 0);
+            }}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Clear filters
+          </button>
         </div>
-        <Typography variant="title-s" className="text-foreground mb-2">
-          No licenses found
-        </Typography>
-        <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
-          No licenses match your search criteria. Try adjusting your filters.
-        </Typography>
-        <button
-          onClick={() => {
-            setTableSearch(tableId, "");
-            if (debouncedSearchRef.current) {
-              clearTimeout(debouncedSearchRef.current);
-            }
-            clearTableFilters(tableId);
-            table.setColumnFilters([]);
-            hasPerformedFilteringRef.current = false;
-            table.setPageIndex(0);
-            setTimeout(() => {
-              onQueryChange?.({
-                page: 1,
-                limit: table.getState().pagination.pageSize,
-                sortBy: 'startsAt',
-                sortOrder: 'desc',
-              });
-            }, 0);
-          }}
-          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
-        >
-          Clear filters
-        </button>
-      </div>
-    );
-  }
-
-  // Empty state without filters
-  if (data.length === 0 && !isLoading) {
-    return (
-      <div className="p-12 text-center border rounded-md">
-        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FileText className="h-8 w-8 text-muted-foreground" />
+      ) : (
+        <div className="p-12 text-center border rounded-md">
+          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <Typography variant="title-s" className="text-foreground mb-2">
+            No licenses found
+          </Typography>
+          <Typography variant="body-s" color="muted" className="text-muted-foreground">
+            No license records are available at this time.
+          </Typography>
         </div>
-        <Typography variant="title-s" className="text-foreground mb-2">
-          No licenses found
-        </Typography>
-        <Typography variant="body-s" color="muted" className="text-muted-foreground">
-          No license records are available at this time.
-        </Typography>
-      </div>
-    );
-  }
+      )
+    ) : undefined;
 
   return (
-    <DataTable table={table}>
+    <DataTable table={table} emptyState={emptyStateContent}>
       <DataTableToolbar
         table={table}
         searchBar={

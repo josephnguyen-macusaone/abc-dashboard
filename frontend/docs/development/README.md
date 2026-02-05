@@ -6,13 +6,14 @@ This section covers development practices, testing strategies, performance optim
 
 | Document | Description | Key Topics |
 |----------|-------------|------------|
-| **[Testing](./testing.md)** | Testing strategies and implementation | Unit tests, integration tests, E2E tests |
+| **Testing** (below) | Testing strategy, conventions, and how to add tests | Unit tests, use-cases, domain, mocks |
 | **[Performance](./performance.md)** | Performance optimization techniques | Bundle analysis, lazy loading, caching |
 | **[Conventions](./conventions.md)** | Code style and development standards | Naming conventions, file structure, best practices |
 
-## 🧪 Testing Strategy
+## 🧪 Testing
 
-### Testing Pyramid
+### Testing pyramid
+
 ```
 End-to-End Tests (E2E)
 ├── Integration Tests
@@ -20,25 +21,56 @@ End-to-End Tests (E2E)
 │   │   ├── Unit Tests
 ```
 
-### Test Categories
+**Unit tests:** Domain business logic, utilities, component/hook logic.  
+**Integration tests:** Repositories, multi-component flows, forms, state.  
+**E2E tests:** Critical user journeys, auth, data flows, cross-browser.
 
-**Unit Tests**
-- Domain layer business logic
-- Utility functions and helpers
-- Component rendering and interactions
-- Custom hook logic
+### Where tests live
 
-**Integration Tests**
-- API repository implementations
-- Multi-component interactions
-- Form submissions and validation
-- State management flows
+- **Location:** Next to the code under `src/**/__tests__/`.
+- **Pattern:** `src/<layer>/<module>/__tests__/<module>.test.ts` or `<name>.spec.ts`.
+- **Examples:**
+  - `src/domain/entities/__tests__/license-entity.test.ts` – domain entities
+  - `src/application/use-cases/license/__tests__/get-licenses-usecase.test.ts` – use-cases
 
-**End-to-End Tests**
-- Critical user journeys
-- Authentication workflows
-- Data manipulation flows
-- Cross-browser compatibility
+Jest discovers tests via `testMatch`: `<rootDir>/src/**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)`.
+
+### What to mock
+
+**Domain** – No infrastructure. Use factory methods (e.g. `License.fromPersistence`, `License.create`) with explicit props so tests don’t rely on `crypto.randomUUID()` or other globals in Jest.
+
+**Application (use-cases)** – Mock repository interfaces (`ILicenseRepository`, `IUserRepository`, etc.). Implement only the methods the use-case calls (e.g. `findAll`). Use `jest.fn().mockResolvedValue(...)` / `mockRejectedValue(...)`. Inject the mock into the use-case constructor; don’t mock the DI container.
+
+```ts
+const mockRepo = {
+  findAll: jest.fn().mockResolvedValue({
+    licenses: [License.fromPersistence({ ... })],
+    total: 1,
+    pagination: { page: 1, limit: 10, totalPages: 1, hasNext: false, hasPrev: false },
+  }),
+  // stub other methods for type satisfaction
+} as unknown as ILicenseRepository;
+const useCase = new GetLicensesUseCaseImpl(mockRepo);
+```
+
+**Stores (optional)** – Prefer testing use-cases and repositories. For store actions (e.g. loading/error state), mock the container or service if needed.
+
+### Coverage expectations
+
+- **New use-cases:** Test that the use-case calls the repository with the right params, maps results to DTOs, and propagates errors.
+- **New domain entities / value objects:** Test construction, validation (invalid inputs throw), and core methods (e.g. `Money.add`, `License.cancel`).
+- **New store actions:** Cover via use-case tests where possible; add store tests only for state transitions or side effects.
+
+Coverage thresholds are in `jest.config.js`; new code should not lower overall coverage.
+
+### Running tests
+
+| Command | Purpose |
+|---------|---------|
+| `npm run test` | Run all tests |
+| `npm run test:watch` | Watch mode |
+| `npm run test:coverage` | Coverage report |
+| `npm run test:ci` | CI (with coverage) |
 
 ## ⚡ Performance Optimization
 
@@ -118,9 +150,9 @@ End-to-End Tests (E2E)
 
 ## 📖 Reading Order
 
-1. **[Testing](./testing.md)** - Understand testing approaches
-2. **[Performance](./performance.md)** - Learn optimization techniques
-3. **[Conventions](./conventions.md)** - Follow coding standards
+1. **Testing** (above) – Conventions and how to add tests
+2. **[Performance](./performance.md)** – Optimization techniques
+3. **[Conventions](./conventions.md)** – Coding standards
 
 ## 🔗 Related Documentation
 

@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button, Input, Typography } from '@/presentation/components/atoms';
-import { Loading } from '@/presentation/components/atoms';
+import { useState, useMemo } from 'react';
+import { Button, Typography } from '@/presentation/components/atoms';
 import { InputField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
-import { authApi } from '@/infrastructure/api/auth';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useForgotPasswordFormStore } from '@/infrastructure/stores/auth/forms';
-import { Mail, CheckCircle, ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
+import { Mail, CheckCircle, AlertCircle } from 'lucide-react';
 import logger from '@/shared/helpers/logger';
 
 interface ForgotPasswordFormProps {
@@ -22,11 +21,15 @@ interface ForgotPasswordFormData {
 export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordFormProps) {
   const toast = useToast();
 
-  // Use Zustand store for form state management
+  const requestPasswordReset = useAuthStore((state) => state.requestPasswordReset);
+  const authLoading = useAuthStore((state) => state.isLoading);
+  const passwordResetSent = useAuthStore((state) => state.passwordResetSent);
+  const passwordResetEmail = useAuthStore((state) => state.passwordResetEmail);
+  const clearPasswordResetState = useAuthStore((state) => state.clearPasswordResetState);
+
   const {
     data: formData,
     errors,
-    isSubmitting: isLoading,
     touched,
     setFieldValue,
     setTouched,
@@ -34,10 +37,7 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
     reset: resetForm,
   } = useForgotPasswordFormStore();
 
-  // Local UI state (minimal)
-  const [isSuccess, setIsSuccess] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [isHelpExpanded, setIsHelpExpanded] = useState(false);
 
   // Real-time email validation
   const emailValidation = useMemo(() => {
@@ -77,16 +77,16 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
     if (!validateForm()) return;
 
     try {
-      await authApi.forgotPassword(formData.email);
-      setIsSuccess(true);
-      resetForm(); // Reset form on success
+      await requestPasswordReset(formData.email);
+      resetForm();
       toast.success('Password reset email sent successfully!', {
         description: 'Check your email for reset instructions.',
         duration: 5000,
       });
-    } catch (error: any) {
-      logger.error('Forgot password error:', error);
-      toast.error(error.message || 'Failed to send password reset email', {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send password reset email';
+      logger.error('Forgot password error:', { error });
+      toast.error(message, {
         description: 'Please try again or contact support if the problem persists.',
         duration: 5000,
       });
@@ -94,11 +94,11 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
   };
 
   const handleTryDifferentEmail = () => {
-    setIsSuccess(false);
+    clearPasswordResetState();
     resetForm();
   };
 
-  if (isSuccess) {
+  if (passwordResetSent && passwordResetEmail) {
     return (
       <div className="text-center space-y-4 mt-6">
         <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in-50 duration-300 delay-150">
@@ -114,7 +114,7 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
               We&apos;ve sent a password reset link to
             </Typography>
             <Typography variant="body-s" className="text-foreground font-medium">
-              {formData.email}
+              {passwordResetEmail}
             </Typography>
           </div>
         </div>
@@ -186,7 +186,7 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
             onChange={(e) => handleInputChange('email', e.target.value)}
             onBlur={() => handleInputBlur('email')}
             error={errors.email}
-            disabled={isLoading}
+            disabled={authLoading}
             icon={
               formData.email && touched.email ? (
                 emailValidation.isValid ? (
@@ -217,9 +217,9 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
             className={`w-full h-11 text-button-m transition-all duration-200 ${emailValidation.isValid ? 'shadow-md hover:shadow-lg' : ''
               }`}
             size="default"
-            disabled={isLoading || !emailValidation.isValid}
+            disabled={authLoading || !emailValidation.isValid}
           >
-            {isLoading ? (
+            {authLoading ? (
               <div className="flex items-center space-x-2">
                 <Typography variant="button-m">Sending reset link...</Typography>
               </div>

@@ -256,6 +256,8 @@ class DependencyContainer {
   reset(): void {
     this._authRepository = undefined;
     this._userRepository = undefined;
+    this._licenseRepository = undefined;
+    this._licenseDomainService = undefined;
 
     this._loginUseCase = undefined;
     this._logoutUseCase = undefined;

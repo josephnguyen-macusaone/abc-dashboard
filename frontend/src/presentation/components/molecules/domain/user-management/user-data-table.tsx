@@ -169,8 +169,8 @@ export function UsersDataTable({
     setTableManualFilters(tableId, initialFilters);
 
     // Reset page to 1 if there are any filters on mount
-    const hasFilters = !!(userStore.filters.search || 
-      userStore.filters.role || 
+    const hasFilters = !!(userStore.filters.search ||
+      userStore.filters.role ||
       userStore.filters.isActive !== undefined);
     if (hasFilters) {
       table.setPageIndex(0);
@@ -244,10 +244,10 @@ export function UsersDataTable({
   const handleSearchChange = useCallback((value: string) => {
     const trimmedValue = value.trim();
     const previousSearch = lastSearchValueRef.current;
-    
+
     // Check if search actually changed
     const searchChanged = trimmedValue !== previousSearch;
-    
+
     // Update input immediately for responsive UI
     setTableSearch(tableId, value);
     hasPerformedFilteringRef.current = true;
@@ -406,75 +406,69 @@ export function UsersDataTable({
     return <UserDataTableSkeleton />;
   }
 
-  // Empty state with reset button if filters are active
-  if (data.length === 0 && !isLoading && shouldShowResetButton) {
-    return (
-      <div className="p-12 text-center border rounded-md">
-        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <UserCircle className="h-8 w-8 text-muted-foreground" />
+  const emptyStateContent =
+    data.length === 0 && !isLoading ? (
+      shouldShowResetButton ? (
+        <div className="p-12 text-center border rounded-md">
+          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserCircle className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <Typography variant="title-s" className="text-foreground mb-2">
+            No users found
+          </Typography>
+          <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
+            No users match your search criteria. Try adjusting your filters.
+          </Typography>
+          <button
+            onClick={() => {
+              isResettingRef.current = true;
+
+              setTableSearch(tableId, "");
+              if (debouncedSearchRef.current) {
+                clearTimeout(debouncedSearchRef.current);
+              }
+              clearTableFilters(tableId);
+              table.setColumnFilters([]);
+              setFilterValues({ role: null, isActive: null });
+              hasPerformedFilteringRef.current = false;
+              table.setPageIndex(0);
+              onQueryChange?.({
+                page: 1,
+                limit: table.getState().pagination.pageSize,
+                sortBy: 'createdAt',
+                sortOrder: 'desc',
+                search: undefined,
+                searchField: undefined,
+                role: undefined,
+                isActive: undefined,
+              });
+
+              setTimeout(() => {
+                isResettingRef.current = false;
+              }, 100);
+            }}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Clear filters
+          </button>
         </div>
-        <Typography variant="title-s" className="text-foreground mb-2">
-          No users found
-        </Typography>
-        <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
-          No users match your search criteria. Try adjusting your filters.
-        </Typography>
-        <button
-          onClick={() => {
-            isResettingRef.current = true;
-
-            setTableSearch(tableId, "");
-            if (debouncedSearchRef.current) {
-              clearTimeout(debouncedSearchRef.current);
-            }
-            clearTableFilters(tableId);
-            table.setColumnFilters([]);
-            setFilterValues({ role: null, isActive: null });
-            hasPerformedFilteringRef.current = false;
-            table.setPageIndex(0);
-            onQueryChange?.({
-              page: 1,
-              limit: table.getState().pagination.pageSize,
-              sortBy: 'createdAt',
-              sortOrder: 'desc',
-              // Explicitly clear filters to prevent store from merging old values
-              search: undefined,
-              searchField: undefined,
-              role: undefined,
-              isActive: undefined,
-            });
-
-            setTimeout(() => {
-              isResettingRef.current = false;
-            }, 100);
-          }}
-          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors"
-        >
-          Clear filters
-        </button>
-      </div>
-    );
-  }
-
-  // Empty state without filters
-  if (data.length === 0 && !isLoading) {
-    return (
-      <div className="p-12 text-center border rounded-md">
-        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <UserCircle className="h-8 w-8 text-muted-foreground" />
+      ) : (
+        <div className="p-12 text-center border rounded-md">
+          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserCircle className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <Typography variant="title-s" className="text-foreground mb-2">
+            No users found
+          </Typography>
+          <Typography variant="body-s" color="muted" className="text-muted-foreground">
+            No user records are available at this time.
+          </Typography>
         </div>
-        <Typography variant="title-s" className="text-foreground mb-2">
-          No users found
-        </Typography>
-        <Typography variant="body-s" color="muted" className="text-muted-foreground">
-          No user records are available at this time.
-        </Typography>
-      </div>
-    );
-  }
+      )
+    ) : undefined;
 
   return (
-    <DataTable table={table}>
+    <DataTable table={table} emptyState={emptyStateContent}>
       <DataTableToolbar
         table={table}
         searchBar={

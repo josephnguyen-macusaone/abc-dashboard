@@ -162,7 +162,7 @@ export function DataGridCellWrapper<TData>({
     [onKeyDownProp, isFocused, isEditing, tableMeta, rowIndex, columnId],
   );
 
-  const rowHeight = tableMeta?.rowHeight ?? "short";
+  const rowHeight = tableMeta?.rowHeight ?? "medium";
 
   return (
     <div

@@ -15,6 +15,7 @@ import {
   type LicenseDashboardMetric,
 } from '@/application/use-cases';
 import type { LicenseMetricsFilters } from '@/application/use-cases/license/get-license-stats-usecase';
+import { container } from '@/shared/di/container';
 import { logger } from '@/shared/helpers';
 import {
   AlertTriangle,
@@ -92,7 +93,7 @@ export function LicenseMetricsSection({
     const loadMetrics = async () => {
       try {
         setIsLoadingMetrics(true);
-        const useCase = createGetLicenseStatsUseCase();
+        const useCase = createGetLicenseStatsUseCase(container.licenseRepository);
         const result = await useCase.execute({
           licenses: useApiMetrics ? undefined : licenses,
           dateRange,
@@ -110,7 +111,7 @@ export function LicenseMetricsSection({
           );
           // Retry with client-side calculation
           try {
-            const useCase = createGetLicenseStatsUseCase();
+            const useCase = createGetLicenseStatsUseCase(container.licenseRepository);
             const result = await useCase.execute({
               licenses,
               dateRange,

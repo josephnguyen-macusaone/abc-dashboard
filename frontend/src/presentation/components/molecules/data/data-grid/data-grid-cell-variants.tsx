@@ -20,11 +20,7 @@ import { Calendar } from "@/presentation/components/atoms/primitives/calendar";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
 import { CalendarIcon, X } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/presentation/components/atoms/primitives/tooltip";
+import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-wrapper";
 import { cn } from "@/shared/helpers";
 import type { CellVariantProps } from "@/types/data-grid";
 
@@ -183,16 +179,15 @@ export function ShortTextCell<TData>({
       onKeyDown={onWrapperKeyDown}
     >
       {!isEditing && fullValue ? (
-        <Tooltip delayDuration={400}>
-          <TooltipTrigger asChild>{contentNode}</TooltipTrigger>
-          <TooltipContent
-            side="top"
-            sideOffset={8}
-            className="max-w-[min(40rem,90vw)] rounded-lg border border-border bg-popover px-4 py-2.5 text-sm text-popover-foreground shadow-md break-words leading-relaxed [&>svg]:fill-popover"
-          >
-            {fullValue}
-          </TooltipContent>
-        </Tooltip>
+        <TooltipWrapper
+          content={fullValue}
+          side="top"
+          delayDuration={400}
+          sideOffset={8}
+          contentClassName="max-w-[min(40rem,90vw)] rounded-lg border border-border bg-popover px-4 py-2.5 text-sm text-popover-foreground shadow-md break-words leading-relaxed [&>svg]:fill-popover"
+        >
+          {contentNode}
+        </TooltipWrapper>
       ) : (
         contentNode
       )}

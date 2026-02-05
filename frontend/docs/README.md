@@ -21,7 +21,7 @@ System design, architectural patterns, and technical decisions.
 | Document | Description |
 |----------|-------------|
 | **[Overview](./architecture/overview.md)** | System architecture with diagrams |
-| **[Clean Architecture](./architecture/clean-architecture.md)** | Clean Architecture implementation |
+| **[Clean Architecture](./architecture/clean-architecture-guide.md)** | Clean Architecture implementation |
 | **[Design Patterns](./architecture/design-patterns.md)** | Patterns and principles used |
 
 ### 🧬 [Components](./components/)
@@ -56,7 +56,7 @@ Development practices, testing, and coding standards.
 
 | Document | Description |
 |----------|-------------|
-| **[Testing](./development/testing.md)** | Testing strategies |
+| **[Testing](./development/README.md#testing)** | Testing strategy and conventions |
 | **[Performance](./development/performance.md)** | Optimization techniques |
 | **[Conventions](./development/conventions.md)** | Code standards |
 

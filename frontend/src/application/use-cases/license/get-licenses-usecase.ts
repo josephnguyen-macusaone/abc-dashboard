@@ -1,5 +1,5 @@
 import { License } from '@/domain/entities/license-entity';
-import { ILicenseRepository, LicenseSpecification } from '@/domain/repositories/i-license-repository';
+import { ILicenseRepository, LicenseSpecification, LicenseSortField } from '@/domain/repositories/i-license-repository';
 import { LicenseListQueryDTO, PaginatedLicenseListDTO } from '@/application/dto/license-dto';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
@@ -44,7 +44,7 @@ export class GetLicensesUseCaseImpl implements GetLicensesUseCase {
           limit: params.limit
         } : undefined,
         sort: params.sortBy ? {
-          field: params.sortBy as any, // Type assertion needed due to DTO vs domain type differences
+          field: params.sortBy as LicenseSortField,
           direction: params.sortOrder === 'desc' ? 'desc' : 'asc'
         } : undefined
       };

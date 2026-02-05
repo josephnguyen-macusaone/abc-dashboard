@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
+import { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { getErrorMessage } from '@/infrastructure/api/errors';
 import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
@@ -81,8 +82,33 @@ interface LicenseState {
   selectedLicenses: (number | string)[];
   /** Timestamp (ms) when licenses were last successfully fetched; null before first fetch */
   lastFetchedAt: number | null;
+  /** License sync status for dashboard (e.g. last sync result) */
+  syncStatus: LicenseSyncStatus | null;
+  syncStatusLoading: boolean;
+  syncStatusError: boolean;
+  /** Dashboard metrics (overview, utilization, alerts - shape depends on backend) */
+  dashboardMetrics: unknown | null;
+  dashboardMetricsLoading: boolean;
+  dashboardMetricsError: string | null;
+  /** Licenses requiring attention (lifecycle) */
+  licensesRequiringAttentionLoading: boolean;
+  licensesRequiringAttentionError: string | null;
+  /** Bulk update by identifiers (appids/emails/countids) */
+  bulkUpdateByIdentifiersLoading: boolean;
+  /** SMS payments */
+  smsPayments: unknown[];
+  smsTotals: unknown;
+  smsPagination: unknown;
+  smsPaymentsLoading: boolean;
+  smsPaymentsError: string | null;
 
   // Actions
+  fetchSyncStatus: () => Promise<void>;
+  fetchDashboardMetrics: (params?: { startsAtFrom?: string; startsAtTo?: string; search?: string; status?: string; dba?: string }) => Promise<void>;
+  fetchLicensesRequiringAttention: (options?: Record<string, unknown>) => Promise<{ expiringSoon: unknown[]; expired: unknown[]; suspended: unknown[]; total: number }>;
+  bulkUpdateByIdentifiers: (identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }, updates: Record<string, unknown>) => Promise<{ updated: number }>;
+  fetchSmsPayments: (params?: { appid?: string; emailLicense?: string; countid?: number; startDate?: string; endDate?: string; page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => Promise<void>;
+  addSmsPayment: (paymentData: { appid?: string; emailLicense?: string; countid?: number; amount: number; paymentDate?: string; description?: string }) => Promise<void>;
   fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[]; startsAtFrom?: string; startsAtTo?: string }>) => Promise<void>;
   fetchLicense: (id: number | string) => Promise<LicenseRecord | null>;
   createLicense: (licenseData: CreateLicenseRequest) => Promise<LicenseRecord>;
@@ -119,6 +145,107 @@ export const useLicenseStore = create<LicenseState>()(
         pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
         selectedLicenses: [],
         lastFetchedAt: null,
+        syncStatus: null,
+        syncStatusLoading: false,
+        syncStatusError: false,
+        dashboardMetrics: null,
+        dashboardMetricsLoading: false,
+        dashboardMetricsError: null,
+        licensesRequiringAttentionLoading: false,
+        licensesRequiringAttentionError: null,
+        bulkUpdateByIdentifiersLoading: false,
+        smsPayments: [],
+        smsTotals: null,
+        smsPagination: null,
+        smsPaymentsLoading: false,
+        smsPaymentsError: null,
+
+        fetchSyncStatus: async () => {
+          set({ syncStatusError: false, syncStatusLoading: true });
+          try {
+            const status = await container.licenseManagementService.getSyncStatus();
+            set({ syncStatus: status, syncStatusLoading: false });
+          } catch {
+            set({ syncStatus: null, syncStatusLoading: false, syncStatusError: true });
+          }
+        },
+
+        fetchDashboardMetrics: async (params) => {
+          set({ dashboardMetricsError: null, dashboardMetricsLoading: true });
+          try {
+            const metrics = await container.licenseManagementService.getDashboardMetrics(params);
+            set({ dashboardMetrics: metrics, dashboardMetricsLoading: false });
+          } catch (err) {
+            set({
+              dashboardMetrics: null,
+              dashboardMetricsLoading: false,
+              dashboardMetricsError: getErrorMessage(err),
+            });
+          }
+        },
+
+        fetchLicensesRequiringAttention: async (options = {}) => {
+          set({ licensesRequiringAttentionError: null, licensesRequiringAttentionLoading: true });
+          try {
+            const result = await container.licenseManagementService.getLicensesRequiringAttention(options);
+            set({ licensesRequiringAttentionLoading: false });
+            return result;
+          } catch (err) {
+            set({
+              licensesRequiringAttentionLoading: false,
+              licensesRequiringAttentionError: getErrorMessage(err),
+            });
+            return { expiringSoon: [], expired: [], suspended: [], total: 0 };
+          }
+        },
+
+        bulkUpdateByIdentifiers: async (identifiers, updates) => {
+          set({ bulkUpdateByIdentifiersLoading: true });
+          try {
+            const result = await container.licenseManagementService.bulkUpdateByIdentifiers(identifiers, updates);
+            set({ bulkUpdateByIdentifiersLoading: false });
+            toast.success(`Successfully updated ${result.updated} licenses`);
+            return result;
+          } catch (err) {
+            set({ bulkUpdateByIdentifiersLoading: false });
+            toast.error(getErrorMessage(err));
+            throw err;
+          }
+        },
+
+        fetchSmsPayments: async (params) => {
+          set({ smsPaymentsError: null, smsPaymentsLoading: true });
+          try {
+            const result = await container.licenseManagementService.getSmsPayments(params);
+            set({
+              smsPayments: result.payments,
+              smsTotals: result.totals,
+              smsPagination: result.pagination,
+              smsPaymentsLoading: false,
+            });
+          } catch (err) {
+            set({
+              smsPayments: [],
+              smsTotals: null,
+              smsPagination: null,
+              smsPaymentsLoading: false,
+              smsPaymentsError: getErrorMessage(err),
+            });
+          }
+        },
+
+        addSmsPayment: async (paymentData) => {
+          set({ smsPaymentsError: null, smsPaymentsLoading: true });
+          try {
+            await container.licenseManagementService.addSmsPayment(paymentData);
+            set({ smsPaymentsLoading: false });
+            toast.success('SMS payment added successfully');
+            await get().fetchSmsPayments();
+          } catch (err) {
+            set({ smsPaymentsLoading: false, smsPaymentsError: getErrorMessage(err) });
+            throw err;
+          }
+        },
 
         fetchLicenses: async (params = {}) => {
           try {
@@ -782,6 +909,20 @@ export const useLicenseStore = create<LicenseState>()(
             pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
             selectedLicenses: [],
             lastFetchedAt: null,
+            syncStatus: null,
+            syncStatusLoading: false,
+            syncStatusError: false,
+            dashboardMetrics: null,
+            dashboardMetricsLoading: false,
+            dashboardMetricsError: null,
+            licensesRequiringAttentionLoading: false,
+            licensesRequiringAttentionError: null,
+            bulkUpdateByIdentifiersLoading: false,
+            smsPayments: [],
+            smsTotals: null,
+            smsPagination: null,
+            smsPaymentsLoading: false,
+            smsPaymentsError: null,
           });
         },
       };
@@ -798,3 +939,16 @@ export const selectLicenseFilters = (state: LicenseState) => state.filters;
 export const selectLicenseError = (state: LicenseState) => state.error;
 export const selectSelectedLicenses = (state: LicenseState) => state.selectedLicenses;
 export const selectLicenseLastFetchedAt = (state: LicenseState) => state.lastFetchedAt;
+export const selectSyncStatus = (state: LicenseState) => state.syncStatus;
+export const selectSyncStatusLoading = (state: LicenseState) => state.syncStatusLoading;
+export const selectSyncStatusError = (state: LicenseState) => state.syncStatusError;
+export const selectDashboardMetrics = (state: LicenseState) => state.dashboardMetrics;
+export const selectDashboardMetricsLoading = (state: LicenseState) => state.dashboardMetricsLoading;
+export const selectDashboardMetricsError = (state: LicenseState) => state.dashboardMetricsError;
+export const selectLicensesRequiringAttentionLoading = (state: LicenseState) => state.licensesRequiringAttentionLoading;
+export const selectLicensesRequiringAttentionError = (state: LicenseState) => state.licensesRequiringAttentionError;
+export const selectBulkUpdateByIdentifiersLoading = (state: LicenseState) => state.bulkUpdateByIdentifiersLoading;
+export const selectSmsPayments = (state: LicenseState) => state.smsPayments;
+export const selectSmsTotals = (state: LicenseState) => state.smsTotals;
+export const selectSmsPaymentsLoading = (state: LicenseState) => state.smsPaymentsLoading;
+export const selectSmsPaymentsError = (state: LicenseState) => state.smsPaymentsError;

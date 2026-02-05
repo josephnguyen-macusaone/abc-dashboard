@@ -191,7 +191,7 @@ export function LicensesDataGrid({
     onDataChange: handleDataChange,
     onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
     onRowsDelete: handleRowsDelete,
-    rowHeight: "short",
+    rowHeight: "medium",
     enableSearch: false, // Disable built-in search, we'll handle it manually
     enablePaste: true,
     autoFocus: true,
@@ -385,7 +385,7 @@ export function LicensesDataGrid({
   // Filter toolbar state (hooks must run before any early return)
   const table = gridState.table;
   const columnFilters = table.getState().columnFilters;
-  const hasActiveFilters = React.useMemo(
+  const hasColumnFilters = React.useMemo(
     () =>
       columnFilters.some((f) => {
         if (!FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number]))
@@ -399,8 +399,12 @@ export function LicensesDataGrid({
       }),
     [columnFilters],
   );
+  const hasSearch = searchInput.trim() !== "";
+  const hasActiveFilters = hasColumnFilters || hasSearch;
 
   const onClearFilters = React.useCallback(() => {
+    setSearchInput("");
+    setSearchQuery("");
     table.setColumnFilters((prev) =>
       prev.filter((f) => !FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number])),
     );
@@ -419,40 +423,19 @@ export function LicensesDataGrid({
     );
   }
 
-  // Empty state
-  if (initialData.length === 0 && !hasChanges) {
-    return (
-      <div className={className}>
-        <div className="space-y-6">
-          <div className="p-12 text-center border rounded-md">
-            <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <Typography variant="title-s" className="text-foreground mb-2">
-              No licenses found
-            </Typography>
-            <Typography variant="body-s" className="text-muted-foreground mb-4">
-              Get started by adding your first license record.
-            </Typography>
-            <Button onClick={handleRowAdd}>Add License</Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const isEmpty = initialData.length === 0 && !hasChanges;
 
   return (
     <div className={className}>
       <div className="space-y-5">
-        {/* Toolbar: Search, Status / Plan / Term filters (like data table), Row height, View, Actions */}
+        {/* Toolbar: always shown so users can search/filter and add a license when empty */}
         <div className="flex flex-nowrap md:flex-wrap items-center gap-2 md:justify-between overflow-x-auto">
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="relative">
               <SearchBar
-                placeholder="Search DBA or agent name..."
+                placeholder="Search..."
                 value={searchInput}
                 onValueChange={setSearchInput}
-                allowClear
                 className="w-32 md:w-40 lg:w-56"
                 inputClassName="h-8"
               />
@@ -525,12 +508,27 @@ export function LicensesDataGrid({
             </div>
           )}
         </div>
-        <DataGrid
-          key={`licenses-data-grid-${dataVersionRef.current}`}
-          {...gridState}
-          height={height}
-          stretchColumns
-        />
+        {isEmpty ? (
+          <div className="p-12 text-center border rounded-md">
+            <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <Typography variant="title-s" className="text-foreground mb-2">
+              No licenses found
+            </Typography>
+            <Typography variant="body-s" className="text-muted-foreground mb-4">
+              Get started by adding your first license record.
+            </Typography>
+            <Button onClick={handleRowAdd}>Add License</Button>
+          </div>
+        ) : (
+          <DataGrid
+            key={`licenses-data-grid-${dataVersionRef.current}`}
+            {...gridState}
+            height={height}
+            stretchColumns
+          />
+        )}
       </div>
     </div>
   );

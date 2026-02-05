@@ -4,7 +4,18 @@ import {
   CreateLicenseProps,
   PersistenceLicenseProps
 } from '@/domain/entities/license-entity';
-import { ILicenseRepository, LicenseSpecification, LicenseStatistics } from '@/domain/repositories/i-license-repository';
+import {
+  ILicenseRepository,
+  LicenseSpecification,
+  LicenseStatistics,
+  LicenseSyncStatus,
+  type DashboardMetricsParams,
+  type LicensesRequiringAttentionResult,
+  type BulkIdentifiers,
+  type SmsPaymentsParams,
+  type SmsPaymentsResult,
+  type AddSmsPaymentData,
+} from '@/domain/repositories/i-license-repository';
 import { licenseApi } from '@/infrastructure/api/licenses';
 import logger from '@/shared/helpers/logger';
 
@@ -516,5 +527,71 @@ export class LicenseRepository implements ILicenseRepository {
       });
       throw error;
     }
+  }
+
+  async getSyncStatus(): Promise<LicenseSyncStatus> {
+    const response = await licenseApi.getLicenseSyncStatus();
+    return {
+      lastSyncResult: response.lastSyncResult,
+    };
+  }
+
+  async getDashboardMetrics(params?: DashboardMetricsParams): Promise<unknown> {
+    const response = await licenseApi.getDashboardMetrics(params);
+    const data = typeof response === 'object' && response !== null && 'data' in response
+      ? (response as { data: unknown }).data
+      : response;
+    const dataObj = data as { metrics?: unknown } | null;
+    return dataObj?.metrics ?? data;
+  }
+
+  async getLicensesRequiringAttention(options?: Record<string, unknown>): Promise<LicensesRequiringAttentionResult> {
+    const response = await licenseApi.getLicensesRequiringAttention(options ?? {});
+    const data = typeof response === 'object' && response !== null && 'data' in response
+      ? (response as { data: unknown }).data
+      : response;
+    const d = data as { expiringSoon?: unknown[]; expired?: unknown[]; suspended?: unknown[]; total?: number } | null;
+    return {
+      expiringSoon: d?.expiringSoon ?? [],
+      expired: d?.expired ?? [],
+      suspended: d?.suspended ?? [],
+      total: d?.total ?? 0,
+    };
+  }
+
+  async bulkUpdateByIdentifiers(identifiers: BulkIdentifiers, updates: Record<string, unknown>): Promise<{ updated: number }> {
+    const response = await licenseApi.bulkUpdateLicenses({ identifiers, updates });
+    const data = typeof response === 'object' && response !== null && 'data' in response
+      ? (response as { data: { updated?: number } }).data
+      : { updated: 0 };
+    return { updated: data?.updated ?? 0 };
+  }
+
+  async getSmsPayments(params?: SmsPaymentsParams): Promise<SmsPaymentsResult> {
+    const response = await licenseApi.getSmsPayments(params ?? {});
+    const data = typeof response === 'object' && response !== null && 'data' in response
+      ? (response as { data: { payments?: unknown[]; totals?: unknown; pagination?: unknown } }).data
+      : { payments: [], totals: null, pagination: null };
+    return {
+      payments: data?.payments ?? [],
+      totals: data?.totals ?? null,
+      pagination: data?.pagination ?? null,
+    };
+  }
+
+  async addSmsPayment(paymentData: AddSmsPaymentData): Promise<unknown> {
+    const response = await licenseApi.addSmsPayment(paymentData);
+    return typeof response === 'object' && response !== null && 'data' in response
+      ? (response as { data: unknown }).data
+      : response;
+  }
+
+  async bulkCreateLicensesRaw(licenses: unknown[]): Promise<{ success?: boolean; data?: { results?: unknown[] }; message?: string }> {
+    const response = await licenseApi.bulkCreateLicenses(licenses as never[]);
+    return response as { success?: boolean; data?: { results?: unknown[] }; message?: string };
+  }
+
+  async bulkUpdateInternalLicensesRaw(updates: unknown[]): Promise<unknown> {
+    return await (licenseApi as { bulkUpdateInternalLicenses: (u: unknown[]) => Promise<unknown> }).bulkUpdateInternalLicenses(updates as never[]);
   }
 }

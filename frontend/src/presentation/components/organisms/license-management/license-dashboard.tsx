@@ -1,9 +1,9 @@
 /**
  * License Dashboard Component
- * Complete example of frontend integration using the license management hooks
+ * Uses license store for all data (metrics, lifecycle, bulk, SMS); no direct API or use-licenses hooks.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
@@ -13,24 +13,31 @@ import { Input } from '@/presentation/components/atoms/forms/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/atoms/primitives/tabs';
 import { Alert, AlertDescription } from '@/presentation/components/atoms/primitives/alert';
 import { LoadingSpinner } from '@/presentation/components/atoms/display/loading';
-// import { ErrorDisplay } from '@/presentation/components/atoms/display/error-display';
-// import { PaginationControls } from '@/presentation/components/molecules/data/pagination-controls';
-// import { MetricsGrid } from '@/presentation/components/molecules/data/metrics-grid';
-
 import {
-  useLicenses,
-  useDashboardMetrics,
-  useLicenseLifecycle,
-  useBulkLicenseOperations,
-  useSmsPayments
-} from '@/presentation/hooks/use-licenses';
+  useLicenseStore,
+  selectLicenses,
+  selectLicensePagination,
+  selectLicenseLoading,
+  selectLicenseError,
+  selectLicenseFilters,
+  selectDashboardMetrics,
+  selectDashboardMetricsLoading,
+  selectDashboardMetricsError,
+  selectLicensesRequiringAttentionLoading,
+  selectLicensesRequiringAttentionError,
+  selectBulkUpdateByIdentifiersLoading,
+  selectSmsPayments,
+  selectSmsTotals,
+  selectSmsPaymentsLoading,
+} from '@/infrastructure/stores/license';
 
+import type { DashboardMetricsAlertItem } from '@/infrastructure/api/licenses/types';
+import type { LicenseStatus } from '@/types';
 import {
   AlertTriangle,
   Calendar,
   CreditCard,
   Database,
-  Download,
   Filter,
   Plus,
   RefreshCw,
@@ -40,97 +47,91 @@ import {
   Zap
 } from 'lucide-react';
 
+/** Shape of dashboard metrics used by this component (store holds unknown). */
+interface DashboardMetricsView {
+  overview?: { active?: number; expiringSoon?: number };
+  utilization?: {
+    newLicensesThisMonth?: number;
+    utilizationRate?: number;
+    availableSeats?: number;
+    licenseIncomeThisMonth?: number;
+    smsIncomeThisMonth?: { smsSent?: number };
+  };
+  alerts?: {
+    expiringSoon: DashboardMetricsAlertItem[];
+    lowSeats: DashboardMetricsAlertItem[];
+  };
+}
+
+function toLicenseStatus(value: string): LicenseStatus | undefined {
+  return value === 'active' || value === 'cancel' ? value : undefined;
+}
+
 export const LicenseDashboard: React.FC = () => {
-  // State for filters and UI
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
 
-  // Hooks for data management
-  const {
-    licenses,
-    pagination,
-    loading: licensesLoading,
-    error: licensesError,
-    goToPage,
-    changeLimit,
-    filter,
-    refetch: refetchLicenses
-  } = useLicenses({
-    page: 1,
-    limit: 20,
-    status: statusFilter,
-    dba: searchTerm,
-    autoFetch: true
-  });
+  const licenses = useLicenseStore(selectLicenses);
+  const pagination = useLicenseStore(selectLicensePagination);
+  const licensesLoading = useLicenseStore(selectLicenseLoading);
+  const licensesError = useLicenseStore(selectLicenseError);
+  const setFilters = useLicenseStore((s) => s.setFilters);
+  const fetchLicenses = useLicenseStore((s) => s.fetchLicenses);
+  const fetchDashboardMetrics = useLicenseStore((s) => s.fetchDashboardMetrics);
+  const fetchLicensesRequiringAttention = useLicenseStore((s) => s.fetchLicensesRequiringAttention);
+  const bulkUpdateByIdentifiers = useLicenseStore((s) => s.bulkUpdateByIdentifiers);
+  const fetchSmsPayments = useLicenseStore((s) => s.fetchSmsPayments);
+  const addSmsPayment = useLicenseStore((s) => s.addSmsPayment);
 
-  const {
-    metrics,
-    loading: metricsLoading,
-    error: metricsError,
-    refetch: refetchMetrics
-  } = useDashboardMetrics({
-    autoFetch: true
-  }) as any;
+  const metrics = useLicenseStore(selectDashboardMetrics) as DashboardMetricsView | null | undefined;
+  const metricsLoading = useLicenseStore(selectDashboardMetricsLoading);
+  const metricsError = useLicenseStore(selectDashboardMetricsError);
+  const lifecycleLoading = useLicenseStore(selectLicensesRequiringAttentionLoading);
+  const lifecycleError = useLicenseStore(selectLicensesRequiringAttentionError);
+  const bulkLoading = useLicenseStore(selectBulkUpdateByIdentifiersLoading);
+  const payments = useLicenseStore(selectSmsPayments);
+  const smsTotals = useLicenseStore(selectSmsTotals);
+  const smsLoading = useLicenseStore(selectSmsPaymentsLoading);
 
-  const {
-    getLicensesRequiringAttention,
-    loading: lifecycleLoading,
-    error: lifecycleError
-  } = useLicenseLifecycle();
+  useEffect(() => {
+    fetchDashboardMetrics();
+  }, [fetchDashboardMetrics]);
 
-  const {
-    bulkUpdate,
-    loading: bulkLoading
-  } = useBulkLicenseOperations();
+  useEffect(() => {
+    setFilters({ search: searchTerm || undefined, status: toLicenseStatus(statusFilter) });
+    fetchLicenses({ page: 1, limit: 20 });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial fetch only
 
-  const {
-    payments,
-    totals: smsTotals,
-    loading: smsLoading,
-    addPayment
-  } = useSmsPayments({
-    autoFetch: false // Only load when needed
-  });
-
-  // Handle license selection
   const handleLicenseSelect = (licenseId: string, selected: boolean) => {
     if (selected) {
-      setSelectedLicenses(prev => [...prev, licenseId]);
+      setSelectedLicenses((prev) => [...prev, licenseId]);
     } else {
-      setSelectedLicenses(prev => prev.filter(id => id !== licenseId));
+      setSelectedLicenses((prev) => prev.filter((id) => id !== licenseId));
     }
   };
 
-  // Handle bulk status update
   const handleBulkStatusUpdate = async (newStatus: string) => {
     if (selectedLicenses.length === 0) return;
-
     try {
-      await bulkUpdate({
-        identifiers: { appids: selectedLicenses },
-        updates: { status: newStatus }
-      });
-
-      // Clear selection and refetch
+      await bulkUpdateByIdentifiers({ appids: selectedLicenses }, { status: newStatus });
       setSelectedLicenses([]);
-      refetchLicenses();
-      refetchMetrics();
-    } catch (error) {
-      // Error is handled by the hook
+      fetchLicenses();
+      fetchDashboardMetrics();
+    } catch {
+      // Error shown by store toast
     }
   };
 
-  // Handle search
   const handleSearch = () => {
-    filter({ dba: searchTerm, status: statusFilter });
+    setFilters({ search: searchTerm || undefined, status: toLicenseStatus(statusFilter) });
+    fetchLicenses({ page: 1, limit: 20 });
   };
 
-  // Handle refresh
   const handleRefresh = () => {
-    refetchLicenses();
-    refetchMetrics();
+    fetchLicenses();
+    fetchDashboardMetrics();
   };
 
   return (
@@ -189,9 +190,9 @@ export const LicenseDashboard: React.FC = () => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-semibold">{metrics.overview.active}</div>
+                    <div className="text-2xl font-semibold">{metrics.overview?.active ?? '—'}</div>
                     <p className="text-xs text-muted-foreground">
-                      +{metrics.utilization.newLicensesThisMonth} from last month
+                      +{metrics.utilization?.newLicensesThisMonth ?? 0} from last month
                     </p>
                   </CardContent>
                 </Card>
@@ -203,7 +204,7 @@ export const LicenseDashboard: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold text-orange-600">
-                      {metrics.overview.expiringSoon}
+                      {metrics.overview?.expiringSoon ?? '—'}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Within 30 days
@@ -218,10 +219,10 @@ export const LicenseDashboard: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold">
-                      {Math.round(metrics.utilization.utilizationRate)}%
+                      {Math.round(metrics.utilization?.utilizationRate ?? 0)}%
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {metrics.utilization.availableSeats} seats available
+                      {metrics.utilization?.availableSeats ?? 0} seats available
                     </p>
                   </CardContent>
                 </Card>
@@ -233,10 +234,10 @@ export const LicenseDashboard: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-semibold">
-                      ${metrics.utilization.licenseIncomeThisMonth}
+                      ${metrics.utilization?.licenseIncomeThisMonth ?? '—'}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      +{metrics.utilization.smsIncomeThisMonth.smsSent} SMS credits
+                      +{metrics.utilization?.smsIncomeThisMonth?.smsSent ?? 0} SMS credits
                     </p>
                   </CardContent>
                 </Card>
@@ -249,7 +250,7 @@ export const LicenseDashboard: React.FC = () => {
           </div>
 
           {/* Alerts Section */}
-          {metrics?.alerts && (
+          {metrics?.alerts && (metrics.alerts.expiringSoon.length > 0 || metrics.alerts.lowSeats.length > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -265,16 +266,16 @@ export const LicenseDashboard: React.FC = () => {
                   <div className="mb-4">
                     <h4 className="font-medium mb-2">Expiring Soon ({metrics.alerts.expiringSoon.length})</h4>
                     <div className="space-y-2">
-                      {metrics.alerts.expiringSoon.slice(0, 5).map((license: any) => (
-                        <div key={license.id} className="flex items-center justify-between p-2 bg-orange-50 rounded">
+                      {metrics.alerts.expiringSoon.slice(0, 5).map((item: DashboardMetricsAlertItem) => (
+                        <div key={item.id} className="flex items-center justify-between p-2 bg-orange-50 rounded">
                           <div>
-                            <span className="font-medium">{license.key}</span>
+                            <span className="font-medium">{item.key ?? item.dba ?? item.id}</span>
                             <span className="text-sm text-muted-foreground ml-2">
-                              Expires in {license.daysUntilExpiry} days
+                              Expires in {item.daysUntilExpiry} days
                             </span>
                           </div>
                           <Badge variant="outline" className="text-orange-600">
-                            {license.daysUntilExpiry} days
+                            {item.daysUntilExpiry} days
                           </Badge>
                         </div>
                       ))}
@@ -286,19 +287,23 @@ export const LicenseDashboard: React.FC = () => {
                   <div>
                     <h4 className="font-medium mb-2">Low Seat Utilization ({metrics.alerts.lowSeats.length})</h4>
                     <div className="space-y-2">
-                      {metrics.alerts.lowSeats.slice(0, 5).map((license: any) => (
-                        <div key={license.id} className="flex items-center justify-between p-2 bg-blue-50 rounded">
-                          <div>
-                            <span className="font-medium">{license.key}</span>
-                            <span className="text-sm text-muted-foreground ml-2">
-                              {license.seatsUsed}/{license.seatsTotal} seats used
-                            </span>
+                      {metrics.alerts.lowSeats.slice(0, 5).map((item: DashboardMetricsAlertItem) => {
+                        const seatsUsed = item.seatsUsed ?? item.usedSeats ?? 0;
+                        const seatsTotal = item.seatsTotal ?? 1;
+                        return (
+                          <div key={item.id} className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                            <div>
+                              <span className="font-medium">{item.key ?? item.dba ?? item.id}</span>
+                              <span className="text-sm text-muted-foreground ml-2">
+                                {seatsUsed}/{seatsTotal} seats used
+                              </span>
+                            </div>
+                            <Badge variant="outline">
+                              {seatsTotal > 0 ? Math.round((seatsUsed / seatsTotal) * 100) : 0}%
+                            </Badge>
                           </div>
-                          <Badge variant="outline">
-                            {Math.round((license.seatsUsed / license.seatsTotal) * 100)}%
-                          </Badge>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -459,7 +464,7 @@ export const LicenseDashboard: React.FC = () => {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Button
-                  onClick={() => getLicensesRequiringAttention()}
+                  onClick={() => fetchLicensesRequiringAttention()}
                   disabled={lifecycleLoading}
                   className="h-20"
                 >
@@ -506,10 +511,11 @@ export const LicenseDashboard: React.FC = () => {
                   SMS payment management integration ready
                 </p>
                 <Button
-                  onClick={() => {/* Load SMS payments */ }}
+                  onClick={() => fetchSmsPayments()}
+                  disabled={smsLoading}
                   className="mt-4"
                 >
-                  Load Payment History
+                  {smsLoading ? 'Loading…' : 'Load Payment History'}
                 </Button>
               </div>
             </CardContent>

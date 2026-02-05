@@ -16,7 +16,6 @@ import {
   XIcon,
 } from "lucide-react";
 import * as React from "react";
-
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -26,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
 import { tableHeadCellClass } from "@/presentation/components/atoms/primitives/table";
+import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-wrapper";
 import { cn } from "@/shared/helpers";
 
 interface DataGridColumnHeaderProps<TData, TValue>
@@ -112,27 +112,33 @@ export function DataGridColumnHeader<TData, TValue>({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          className={cn(
-            "flex size-full items-center justify-between gap-2 text-sm",
-            tableHeadCellClass,
-            "hover:bg-foreground/10 data-[state=open]:bg-foreground/10 [&_svg]:size-4",
-            isAnyColumnResizing && "pointer-events-none",
-            className,
-          )}
-          onPointerDown={onTriggerPointerDown}
-          {...props}
+        <TooltipWrapper content={label} side="top" delayDuration={500}>
+          <DropdownMenuTrigger
+            className={cn(
+              "flex size-full items-center justify-between gap-3 text-sm",
+              tableHeadCellClass,
+              "hover:bg-foreground/10 data-[state=open]:bg-foreground/10 [&_svg]:size-3.5",
+              isAnyColumnResizing && "pointer-events-none",
+              className,
+            )}
+            onPointerDown={onTriggerPointerDown}
+            {...props}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className="truncate">{label}</span>
+            </div>
+            <ChevronDownIcon className="shrink-0 text-muted-foreground" />
+          </DropdownMenuTrigger>
+        </TooltipWrapper>
+        <DropdownMenuContent
+          align="start"
+          sideOffset={8}
+          className="w-max min-w-32 [&_svg]:size-3.5"
         >
-          <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            <span className="truncate">{label}</span>
-          </div>
-          <ChevronDownIcon className="shrink-0 text-muted-foreground" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={0} className="w-60">
           {column.getCanSort() && (
             <>
               <DropdownMenuCheckboxItem
-                className="relative ltr:pr-8 ltr:pl-2 rtl:pr-2 rtl:pl-8 [&>span:first-child]:ltr:right-2 [&>span:first-child]:ltr:left-auto [&>span:first-child]:rtl:right-auto [&>span:first-child]:rtl:left-2 [&_svg]:text-muted-foreground"
+                className="relative gap-3 ltr:pr-8 ltr:pl-2 rtl:pr-2 rtl:pl-8 [&>span:first-child]:ltr:right-2 [&>span:first-child]:ltr:left-auto [&>span:first-child]:rtl:right-auto [&>span:first-child]:rtl:left-2 [&_svg]:text-muted-foreground"
                 checked={column.getIsSorted() === "asc"}
                 onClick={() => onSortingChange("asc")}
               >
@@ -140,7 +146,7 @@ export function DataGridColumnHeader<TData, TValue>({
                 Sort asc
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                className="relative ltr:pr-8 ltr:pl-2 rtl:pr-2 rtl:pl-8 [&>span:first-child]:ltr:right-2 [&>span:first-child]:ltr:left-auto [&>span:first-child]:rtl:right-auto [&>span:first-child]:rtl:left-2 [&_svg]:text-muted-foreground"
+                className="relative gap-3 ltr:pr-8 ltr:pl-2 rtl:pr-2 rtl:pl-8 [&>span:first-child]:ltr:right-2 [&>span:first-child]:ltr:left-auto [&>span:first-child]:rtl:right-auto [&>span:first-child]:rtl:left-2 [&_svg]:text-muted-foreground"
                 checked={column.getIsSorted() === "desc"}
                 onClick={() => onSortingChange("desc")}
               >
@@ -148,7 +154,7 @@ export function DataGridColumnHeader<TData, TValue>({
                 Sort desc
               </DropdownMenuCheckboxItem>
               {column.getIsSorted() && (
-                <DropdownMenuItem onClick={onSortRemove}>
+                <DropdownMenuItem className="gap-3" onClick={onSortRemove}>
                   <XIcon />
                   Remove sort
                 </DropdownMenuItem>
@@ -161,7 +167,7 @@ export function DataGridColumnHeader<TData, TValue>({
 
               {isPinnedLeft ? (
                 <DropdownMenuItem
-                  className="[&_svg]:text-muted-foreground"
+                  className="gap-3 [&_svg]:text-muted-foreground"
                   onClick={onUnpin}
                 >
                   <PinOffIcon />
@@ -169,7 +175,7 @@ export function DataGridColumnHeader<TData, TValue>({
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem
-                  className="[&_svg]:text-muted-foreground"
+                  className="gap-3 [&_svg]:text-muted-foreground"
                   onClick={onLeftPin}
                 >
                   <PinIcon />
@@ -178,7 +184,7 @@ export function DataGridColumnHeader<TData, TValue>({
               )}
               {isPinnedRight ? (
                 <DropdownMenuItem
-                  className="[&_svg]:text-muted-foreground"
+                  className="gap-3 [&_svg]:text-muted-foreground"
                   onClick={onUnpin}
                 >
                   <PinOffIcon />
@@ -186,7 +192,7 @@ export function DataGridColumnHeader<TData, TValue>({
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem
-                  className="[&_svg]:text-muted-foreground"
+                  className="gap-3 [&_svg]:text-muted-foreground"
                   onClick={onRightPin}
                 >
                   <PinIcon />
@@ -199,7 +205,7 @@ export function DataGridColumnHeader<TData, TValue>({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="[&_svg]:text-muted-foreground"
+                className="gap-3 [&_svg]:text-muted-foreground"
                 onClick={() => column.toggleVisibility(false)}
               >
                 <EyeOffIcon />

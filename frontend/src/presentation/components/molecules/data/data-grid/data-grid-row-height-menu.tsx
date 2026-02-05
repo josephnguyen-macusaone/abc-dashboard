@@ -82,7 +82,8 @@ export function DataGridRowHeightMenu<TData>({
       <PopoverContent
         aria-labelledby={labelId}
         aria-describedby={descriptionId}
-        className="flex w-full max-w-[var(--radix-popover-content-available-width)] flex-col gap-3.5 p-4 sm:min-w-[200px]"
+        className="flex w-auto min-w-0 flex-col gap-3.5 p-4 align-top sm:min-w-[8rem]"
+        align="start"
         {...props}
       >
         <div className="flex flex-col gap-1">

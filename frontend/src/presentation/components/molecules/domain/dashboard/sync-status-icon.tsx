@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/presentation/components/atoms/primitives/tooltip';
+import { TooltipWrapper } from '@/presentation/components/molecules/ui/tooltip-wrapper';
 import { cn } from '@/shared/helpers';
-import { licenseApi } from '@/infrastructure/api/licenses';
-import type { LicenseSyncStatusResponse } from '@/infrastructure/api/licenses';
+import {
+  useLicenseStore,
+  selectSyncStatus,
+  selectSyncStatusLoading,
+  selectSyncStatusError,
+} from '@/infrastructure/stores/license';
+import type { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { CloudOff, CloudSync, RefreshCw } from 'lucide-react';
 
 function formatRelativeTime(isoString: string): string {
@@ -27,7 +32,7 @@ function formatRelativeTime(isoString: string): string {
 function getTooltipText(
   loading: boolean,
   error: boolean,
-  status: LicenseSyncStatusResponse | null
+  status: LicenseSyncStatus | null
 ): string {
   if (loading) return 'Sync status: loading…';
   if (error) return 'Sync status unavailable';
@@ -50,32 +55,20 @@ export function SyncStatusIcon({
   iconClassName,
   refreshIntervalMs = 120_000,
 }: SyncStatusIconProps) {
-  const [status, setStatus] = useState<LicenseSyncStatusResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const fetchStatus = useCallback(async () => {
-    try {
-      setError(false);
-      const data = await licenseApi.getLicenseSyncStatus();
-      setStatus(data);
-    } catch {
-      setError(true);
-      setStatus(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const status = useLicenseStore(selectSyncStatus);
+  const loading = useLicenseStore(selectSyncStatusLoading);
+  const error = useLicenseStore(selectSyncStatusError);
+  const fetchSyncStatus = useLicenseStore((state) => state.fetchSyncStatus);
 
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    fetchSyncStatus();
+  }, [fetchSyncStatus]);
 
   useEffect(() => {
     if (refreshIntervalMs <= 0) return;
-    const id = setInterval(fetchStatus, refreshIntervalMs);
+    const id = setInterval(fetchSyncStatus, refreshIntervalMs);
     return () => clearInterval(id);
-  }, [fetchStatus, refreshIntervalMs]);
+  }, [fetchSyncStatus, refreshIntervalMs]);
 
   const tooltipText = getTooltipText(loading, error, status);
   const last = status?.lastSyncResult;
@@ -88,48 +81,43 @@ export function SyncStatusIcon({
   const iconTransition = 'transition-all duration-300 ease-in-out';
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={tooltipText}
-          className={cn('relative h-9 w-9 overflow-visible', className)}
-        >
-          <RefreshCw
-            className={cn(
-              'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
-              iconTransition,
-              showLoading ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-              showLoading && 'animate-spin',
-              iconClassName
-            )}
-            aria-hidden
-          />
-          <CloudOff
-            className={cn(
-              'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
-              iconTransition,
-              showError ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-              iconClassName
-            )}
-            aria-hidden
-          />
-          <CloudSync
-            className={cn(
-              'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
-              iconTransition,
-              showSynced ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-              showSynced && (success ? 'text-green-600' : 'text-destructive'),
-              iconClassName
-            )}
-            aria-hidden
-          />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        {tooltipText}
-      </TooltipContent>
-    </Tooltip>
+    <TooltipWrapper content={tooltipText} side="bottom">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={tooltipText}
+        className={cn('relative h-9 w-9 overflow-visible', className)}
+      >
+        <RefreshCw
+          className={cn(
+            'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
+            iconTransition,
+            showLoading ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
+            showLoading && 'animate-spin',
+            iconClassName
+          )}
+          aria-hidden
+        />
+        <CloudOff
+          className={cn(
+            'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
+            iconTransition,
+            showError ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
+            iconClassName
+          )}
+          aria-hidden
+        />
+        <CloudSync
+          className={cn(
+            'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
+            iconTransition,
+            showSynced ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
+            showSynced && (success ? 'text-green-600' : 'text-destructive'),
+            iconClassName
+          )}
+          aria-hidden
+        />
+      </Button>
+    </TooltipWrapper>
   );
 }

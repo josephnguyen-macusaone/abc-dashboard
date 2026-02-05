@@ -1,5 +1,5 @@
 import { License } from '@/domain/entities/license-entity';
-import { ILicenseRepository } from '@/domain/repositories/i-license-repository';
+import { ILicenseRepository, LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { LicenseRecord, PaginatedResponse } from '@/types';
 import { httpClient } from '@/infrastructure/api/client';
@@ -19,7 +19,6 @@ import {
   LicenseResponseDTO
 } from '@/application/dto/license-dto';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
-import { licenseApi } from '@/infrastructure/api/licenses';
 
 /**
  * License Management Ports
@@ -193,6 +192,70 @@ export class LicenseManagementService {
   /**
    * Get license by ID
    */
+  /**
+   * Get license sync status (e.g. last sync result for dashboard)
+   */
+  async getSyncStatus(): Promise<LicenseSyncStatus> {
+    return this.licenseRepository.getSyncStatus();
+  }
+
+  /**
+   * Get dashboard metrics (overview, utilization, alerts - shape depends on backend)
+   */
+  async getDashboardMetrics(params?: { startsAtFrom?: string; startsAtTo?: string; search?: string; status?: string; dba?: string }): Promise<unknown> {
+    return this.licenseRepository.getDashboardMetrics(params);
+  }
+
+  /**
+   * Get licenses requiring attention (expiring soon, expired, suspended)
+   */
+  async getLicensesRequiringAttention(options: Record<string, unknown> = {}): Promise<{
+    expiringSoon: unknown[];
+    expired: unknown[];
+    suspended: unknown[];
+    total: number;
+  }> {
+    return this.licenseRepository.getLicensesRequiringAttention(options);
+  }
+
+  /**
+   * Bulk update licenses by identifiers (appids, emails, countids)
+   */
+  async bulkUpdateByIdentifiers(identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }, updates: Record<string, unknown>): Promise<{ updated: number }> {
+    return this.licenseRepository.bulkUpdateByIdentifiers(identifiers, updates);
+  }
+
+  /**
+   * Get SMS payments with optional filters
+   */
+  async getSmsPayments(params?: {
+    appid?: string;
+    emailLicense?: string;
+    countid?: number;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ payments: unknown[]; totals: unknown; pagination: unknown }> {
+    return this.licenseRepository.getSmsPayments(params);
+  }
+
+  /**
+   * Add SMS payment
+   */
+  async addSmsPayment(paymentData: {
+    appid?: string;
+    emailLicense?: string;
+    countid?: number;
+    amount: number;
+    paymentDate?: string;
+    description?: string;
+  }): Promise<unknown> {
+    return this.licenseRepository.addSmsPayment(paymentData);
+  }
+
   async getById(id: string): Promise<LicenseResponseDTO> {
     const correlationId = generateCorrelationId();
 
@@ -452,13 +515,13 @@ export class LicenseManagementService {
         licenseCount: normalizedLicenses.length
       });
 
-      const bulkCreateResults = await licenseApi.bulkCreateLicenses(normalizedLicenses);
+      const bulkCreateResults = await this.licenseRepository.bulkCreateLicensesRaw(normalizedLicenses);
 
       // Extract the created licenses from the API response
-      const createdLicenses = bulkCreateResults.data?.results || [];
+      const createdLicenses = (bulkCreateResults.data?.results || []) as LicenseRecord[];
 
       // Convert to the expected response format
-      const results: LicenseResponseDTO[] = createdLicenses.map(license => ({
+      const results: LicenseResponseDTO[] = createdLicenses.map((license: LicenseRecord) => ({
         id: String(license.id),
         key: license.key || '',
         product: license.product || '',
@@ -796,7 +859,7 @@ export class LicenseManagementService {
         }))
       });
 
-      const apiResponse = await (licenseApi as any).bulkUpdateInternalLicenses(normalizedUpdates);
+      const apiResponse = await this.licenseRepository.bulkUpdateInternalLicensesRaw(normalizedUpdates);
 
       this.serviceLogger.debug('Bulk license API response received', {
         correlationId,
@@ -807,26 +870,24 @@ export class LicenseManagementService {
       });
 
       // Handle different response formats from the API
+      const response = apiResponse as LicenseRecord[] | { data?: LicenseRecord[]; results?: LicenseRecord[] };
       let results: LicenseRecord[];
-      if (Array.isArray(apiResponse)) {
-        // API returned direct array of LicenseRecord
-        results = apiResponse;
-      } else if (apiResponse && typeof apiResponse === 'object') {
-        // Check for data property (current backend format)
-        if (apiResponse.data && Array.isArray(apiResponse.data)) {
-          results = apiResponse.data;
-        } else if (apiResponse.results && Array.isArray(apiResponse.results)) {
-          // Fallback for results property
-          results = apiResponse.results;
+      if (Array.isArray(response)) {
+        results = response;
+      } else if (response && typeof response === 'object') {
+        if (response.data && Array.isArray(response.data)) {
+          results = response.data;
+        } else if (response.results && Array.isArray(response.results)) {
+          results = response.results;
         } else {
           this.serviceLogger.error('Unexpected API response format - no valid data array found', {
             correlationId,
             apiResponseType: typeof apiResponse,
-            apiResponseKeys: Object.keys(apiResponse),
-            hasData: !!(apiResponse.data),
-            dataIsArray: Array.isArray(apiResponse.data),
-            hasResults: !!(apiResponse.results),
-            resultsIsArray: Array.isArray(apiResponse.results)
+            apiResponseKeys: Object.keys(response),
+            hasData: !!(response.data),
+            dataIsArray: Array.isArray(response.data),
+            hasResults: !!(response.results),
+            resultsIsArray: Array.isArray(response.results)
           });
           throw new Error('Bulk update API returned unexpected response format');
         }
@@ -866,9 +927,17 @@ export class LicenseManagementService {
   }
 
   async bulkCreateLicenses(licenses: any[]): Promise<LicenseRecord[]> {
-    const result = await licenseApi.bulkCreateLicenses(licenses) as any;
+    const result = await this.licenseRepository.bulkCreateLicensesRaw(licenses) as {
+      success?: boolean;
+      data?: LicenseRecord[] | { results?: LicenseRecord[] };
+      results?: LicenseRecord[];
+      successful?: number;
+      failed?: number;
+      message?: string;
+    };
 
     // Debug logging for troubleshooting
+    const dataArray = Array.isArray(result.data) ? result.data : result.data?.results;
     this.serviceLogger.debug('Bulk create API response received', {
       correlationId: 'bulk_create_' + Date.now(),
       resultType: typeof result,
@@ -876,18 +945,20 @@ export class LicenseManagementService {
       hasResults: !!(result && result.results),
       resultsType: result?.results ? typeof result.results : 'undefined',
       resultsIsArray: Array.isArray(result?.results),
-      resultsLength: Array.isArray(result?.results) ? result.results.length : 'N/A',
+      resultsLength: Array.isArray(result?.results) ? result.results.length : (dataArray?.length ?? 'N/A'),
       successful: result?.successful,
       failed: result?.failed
     });
 
-    // Handle the API response - it returns { success, message, data, timestamp }
-    if (result && result.success && result.data && Array.isArray(result.data)) {
+    // Handle the API response - it returns { success, message, data, timestamp } or { success, data: { results } }
+    if (result && result.success && dataArray && Array.isArray(dataArray)) {
       this.serviceLogger.debug('Bulk create completed', {
         inputCount: licenses.length,
-        outputCount: result.data.length,
+        outputCount: dataArray.length,
         message: result.message
       });
+      return dataArray as LicenseRecord[];
+    } else if (result && result.success && result.data && Array.isArray(result.data)) {
       return result.data as LicenseRecord[];
     } else {
       this.serviceLogger.error('Bulk create failed - invalid response format', {

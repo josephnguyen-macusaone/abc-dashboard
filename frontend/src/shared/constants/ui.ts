@@ -27,6 +27,6 @@ export const THEME_CONFIG = {
   // Default theme
   DEFAULT_THEME: THEMES.LIGHT,
 
-  // Transition settings
-  TRANSITION_DURATION: 200, // ms
+  // Transition settings (match duration in globals.css .theme-transition)
+  TRANSITION_DURATION: 350, // ms
 } as const;

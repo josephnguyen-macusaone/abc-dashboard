@@ -380,13 +380,16 @@ export interface AddSmsPaymentResponse {
 // Dashboard metrics
 // =============================================================================
 
+/** Alert item for dashboard metrics (expiring soon / low seats). */
 export interface DashboardMetricsAlertItem {
   id: string;
+  key?: string;
   dba?: string;
   status?: string;
   expiresAt?: string;
   daysUntilExpiry?: number;
   seatsTotal?: number;
+  seatsUsed?: number;
   usedSeats?: number;
   availableSeats?: number;
   [key: string]: unknown;

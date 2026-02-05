@@ -8,7 +8,7 @@ export interface RequestConfig {
 export interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
-  retryCondition?: (error: any) => boolean;
+  retryCondition?: (error: unknown) => boolean;
 }
 
 // Dashboard Metrics Types
