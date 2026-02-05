@@ -8,13 +8,14 @@ import type {
   GetLicensesParams,
   InternalLicenseUpdatePayload,
   InternalLicenseListResponse,
+  InternalLicenseRow,
   LicenseListMeta,
   LicenseSyncStatusResponse,
   BulkCreateResponse,
   BulkUpdateResponse,
   BulkDeleteResponse,
-  InternalLicenseRow
 } from './types';
+import { transformApiLicenseToRecord } from './transforms';
 
 const log = logger.createChild({ component: 'LicenseApi-Unified' });
 
@@ -39,10 +40,10 @@ export class UnifiedLicenseApi {
       // Use internal API for full functionality
       const response: InternalLicenseListResponse = await InternalLicenseApiService.getLicenses(params);
 
-      // Transform internal API response to frontend repository format
+      const licenses = (response.data ?? []).map(transformApiLicenseToRecord);
       return {
-        licenses: response.data as unknown as LicenseRecord[] || [],
-        pagination: response.meta || {
+        licenses,
+        pagination: response.meta ?? {
           page: params.page || 1,
           limit: params.limit || 20,
           total: 0,

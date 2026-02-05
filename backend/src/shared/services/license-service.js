@@ -214,11 +214,16 @@ export class LicenseService extends ILicenseService {
     const errors = [];
     const startTime = Date.now();
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
     // Process each update using the proper update use case for validation and audit
     for (const [index, { id, updates: data }] of updates.entries()) {
       try {
-        // First, find the license to get its current data
-        const existingLicense = await this.licenseRepository.findById(id);
+        // Resolve id to license: accept UUID or license key (e.g. from external API)
+        let existingLicense = await this.licenseRepository.findById(id);
+        if (!existingLicense && typeof id === 'string' && !uuidRegex.test(id)) {
+          existingLicense = await this.licenseRepository.findByKey(id);
+        }
         if (!existingLicense) {
           errors.push({
             index,

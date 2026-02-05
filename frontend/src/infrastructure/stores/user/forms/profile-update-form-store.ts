@@ -12,34 +12,45 @@ const initialData: ProfileFormData = {
   phone: '',
 };
 
-const validationRules = {
-  displayName: (value: string) => {
-    const required = commonValidationRules.required(value);
-    if (required) return required;
+type ProfileValidator = (
+  value: unknown,
+  data: ProfileFormData
+) => string | null;
 
-    if (value.length < 2) {
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+const validationRules: Record<string, ProfileValidator> = {
+  displayName: (value) => {
+    const s = stringValue(value);
+    const required = commonValidationRules.required(s);
+    if (required) return required;
+    if (s.length < 2) {
       return 'Display name must be at least 2 characters';
     }
-    if (value.length > 50) {
+    if (s.length > 50) {
       return 'Display name must be less than 50 characters';
     }
     return null;
   },
-  bio: (value: string) => {
-    if (value && value.length > 500) {
+  bio: (value) => {
+    const s = stringValue(value);
+    if (s && s.length > 500) {
       return 'Bio must be less than 500 characters';
     }
     return null;
   },
-  phone: (value: string) => {
-    if (value && !/^\+?[1-9]\d{1,14}$/.test(value.replace(/[\s\-\(\)]/g, ''))) {
+  phone: (value) => {
+    const s = stringValue(value);
+    if (s && !/^\+?[1-9]\d{1,14}$/.test(s.replace(/[\s\-\(\)]/g, ''))) {
       return 'Please enter a valid phone number';
     }
     return null;
   },
 };
 
-export const useProfileUpdateFormStore = createFormStore(
+export const useProfileUpdateFormStore = createFormStore<ProfileFormData>(
   'profile-update',
   initialData,
   validationRules

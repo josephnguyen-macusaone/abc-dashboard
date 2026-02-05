@@ -109,17 +109,16 @@ export function UsersDataTable({
     [currentUser.id, currentUser.role, canEdit, canDelete],
   );
 
-  // Create the table instance using the data table hook (must be declared before use)
-  const { table, setFilterValues, setPage } = useDataTable({
+  const { table, setFilterValues, setPage } = useDataTable<User>({
     data,
     columns,
-    pageCount: onQueryChange ? pageCount : undefined,
+    pageCount: (onQueryChange ? pageCount : undefined) ?? -1,
     totalRows: onQueryChange ? totalCount : undefined,
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange,
     shallow: false,
-    clearOnDefault: true, // Remove default values from URL
+    clearOnDefault: true,
     queryKeys: {},
     initialState: {
       pagination: { pageSize: 20, pageIndex: 0 },
@@ -128,7 +127,7 @@ export function UsersDataTable({
         select: false,
       },
     },
-  } as any); // Temporary type assertion to bypass TypeScript issue
+  });
 
   // Track the last query to prevent infinite loops
   const lastQueryRef = useRef<string>("");

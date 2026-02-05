@@ -13,7 +13,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   let suppressCount = 0;
   let lastErrorTime = 0;
 
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     const now = Date.now();
     const message = args[0]?.toString() || '';
 

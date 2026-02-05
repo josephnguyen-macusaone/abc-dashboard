@@ -426,7 +426,10 @@ export const sendErrorResponse = (res, errorKey, templateData = {}, additionalDa
   res.header('Access-Control-Allow-Origin', res.req.headers.origin || '*');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+  );
 
   return res.status(errorResponse.statusCode).json(errorResponse.toResponse());
 };

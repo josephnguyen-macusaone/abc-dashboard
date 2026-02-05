@@ -174,7 +174,7 @@ export function DataGridCellWrapper<TData>({
       data-selected={isSelected ? "" : undefined}
       tabIndex={isFocused && !isEditing ? 0 : -1}
       className={cn(
-        "flex size-full min-w-0 items-center text-start text-sm outline-none",
+        "flex size-full min-w-0 items-center justify-start text-start text-sm outline-none",
         tableCellClass,
         "!px-4 !py-3 whitespace-normal has-data-[slot=checkbox]:pt-2.5",
         "[&_[data-slot=grid-cell-content]]:min-w-0 [&_[data-slot=grid-cell-content]]:break-words",

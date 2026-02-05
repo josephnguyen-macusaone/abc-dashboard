@@ -47,7 +47,7 @@ const OVERSCAN = 6;
 const VIEWPORT_OFFSET = 1;
 const HORIZONTAL_PAGE_SIZE = 5;
 
-const MIN_COLUMN_SIZE = 60;
+const MIN_COLUMN_SIZE = 88;
 const MAX_COLUMN_SIZE = 800;
 const SEARCH_SHORTCUT_KEY = "f";
 const NON_NAVIGABLE_COLUMN_IDS = ["select", "actions"];
@@ -1813,6 +1813,7 @@ function useDataGrid<TData>({
       meta: {
         ...tableMeta,
         totalRows,
+        ...(propsRef.current.meta || {}),
       },
     };
   }, [

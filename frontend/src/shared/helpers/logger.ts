@@ -510,17 +510,17 @@ const enhancedLogger = {
 
   // Request-aware logging methods (for API calls)
   withCorrelationId: (correlationId: string) => ({
-    error: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+    error: (message: string, meta: { userId?: string; category?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.error(message, { correlationId, ...meta }),
-    warn: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+    warn: (message: string, meta: { userId?: string; category?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.warn(message, { correlationId, ...meta }),
-    info: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+    info: (message: string, meta: { userId?: string; category?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.info(message, { correlationId, ...meta }),
-    http: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+    http: (message: string, meta: { userId?: string; category?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.http(message, { correlationId, ...meta }),
-    debug: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+    debug: (message: string, meta: { userId?: string; category?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.debug(message, { correlationId, ...meta }),
-    trace: (message: string, meta: { userId?: string; category?: string; [key: string]: any } = {}) =>
+    trace: (message: string, meta: { userId?: string; category?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.trace(message, { correlationId, ...meta }),
   }),
 
@@ -532,33 +532,33 @@ const enhancedLogger = {
     category?: string;
     [key: string]: unknown;
   }) => ({
-    error: (message: string, meta: { [key: string]: any } = {}) =>
+    error: (message: string, meta: { [key: string]: unknown } = {}) =>
       enhancedLogger.error(message, { ...context, ...meta }),
-    warn: (message: string, meta: { [key: string]: any } = {}) =>
+    warn: (message: string, meta: { [key: string]: unknown } = {}) =>
       enhancedLogger.warn(message, { ...context, ...meta }),
-    info: (message: string, meta: { [key: string]: any } = {}) =>
+    info: (message: string, meta: { [key: string]: unknown } = {}) =>
       enhancedLogger.info(message, { ...context, ...meta }),
-    http: (message: string, meta: { [key: string]: any } = {}) =>
+    http: (message: string, meta: { [key: string]: unknown } = {}) =>
       enhancedLogger.http(message, { ...context, ...meta }),
-    debug: (message: string, meta: { [key: string]: any } = {}) =>
+    debug: (message: string, meta: { [key: string]: unknown } = {}) =>
       enhancedLogger.debug(message, { ...context, ...meta }),
-    trace: (message: string, meta: { [key: string]: any } = {}) =>
+    trace: (message: string, meta: { [key: string]: unknown } = {}) =>
       enhancedLogger.trace(message, { ...context, ...meta }),
   }),
 
   // Category-specific logging methods
   createCategory: (category: string) => ({
-    error: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+    error: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.error(message, { category, ...meta }),
-    warn: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+    warn: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.warn(message, { category, ...meta }),
-    info: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+    info: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.info(message, { category, ...meta }),
-    http: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+    http: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.http(message, { category, ...meta }),
-    debug: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+    debug: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.debug(message, { category, ...meta }),
-    trace: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: any } = {}) =>
+    trace: (message: string, meta: { correlationId?: string; userId?: string; [key: string]: unknown } = {}) =>
       enhancedLogger.trace(message, { category, ...meta }),
   }),
 
@@ -618,7 +618,7 @@ const enhancedLogger = {
   time: (label: string) => {
     const start = typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now();
     return {
-      end: (meta?: { correlationId?: string; userId?: string; [key: string]: any }) => {
+      end: (meta?: { correlationId?: string; userId?: string; [key: string]: unknown }) => {
         const end = typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now();
         const duration = end - start;
         enhancedLogger.performance(`${label} completed`, {

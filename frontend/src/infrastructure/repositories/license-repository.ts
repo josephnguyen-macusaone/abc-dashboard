@@ -17,7 +17,12 @@ import {
   type AddSmsPaymentData,
 } from '@/domain/repositories/i-license-repository';
 import { licenseApi } from '@/infrastructure/api/licenses';
+import type { InternalLicenseRow } from '@/infrastructure/api/licenses/types';
+import type { LicenseRecord } from '@/types';
 import logger from '@/shared/helpers/logger';
+
+/** API or list response license shape accepted by the mapper */
+type LicenseLike = InternalLicenseRow | LicenseRecord | (Record<string, unknown> & { id?: string | number; dba?: string; zip?: string; startsAt?: string; startDay?: string; status?: string; plan?: string; term?: string });
 
 /**
  * Infrastructure Repository: License Management
@@ -100,31 +105,37 @@ export class LicenseRepository implements ILicenseRepository {
   /**
    * Maps API license data to domain entity
    */
-  private mapApiLicenseToDomain(apiLicense: any): License {
+  private mapApiLicenseToDomain(apiLicense: LicenseLike): License {
     try {
+      const key = apiLicense.key as string | undefined;
+      const product = apiLicense.product as string | undefined;
+      const cancelDate = apiLicense.cancelDate as string | undefined;
+      const raw = apiLicense as Record<string, unknown>;
+      const createdAt = raw.createdAt as string | undefined;
+      const updatedAt = raw.updatedAt as string | undefined;
       return License.fromPersistence({
-        id: apiLicense.id,
-        key: apiLicense.key,
-        product: apiLicense.product,
-        dba: apiLicense.dba || '',
-        zip: apiLicense.zip || '',
-        startsAt: apiLicense.startsAt || apiLicense.startDay || new Date().toISOString(),
-        status: apiLicense.status || 'active',
-        cancelDate: apiLicense.cancelDate,
-        plan: apiLicense.plan || '',
-        term: apiLicense.term || 'monthly',
-        seatsTotal: apiLicense.seatsTotal || 1,
-        seatsUsed: apiLicense.seatsUsed || 0,
-        lastPayment: apiLicense.lastPayment || 0,
-        lastActive: apiLicense.lastActive || new Date().toISOString(),
-        smsPurchased: apiLicense.smsPurchased || 0,
-        smsSent: apiLicense.smsSent || 0,
-        agents: apiLicense.agents || 0,
-        agentsName: apiLicense.agentsName || [],
-        agentsCost: apiLicense.agentsCost || 0,
-        notes: apiLicense.notes || '',
-        createdAt: apiLicense.createdAt,
-        updatedAt: apiLicense.updatedAt
+        id: String(apiLicense.id ?? ''),
+        key,
+        product,
+        dba: (apiLicense.dba as string) || '',
+        zip: (apiLicense.zip as string) || '',
+        startsAt: ((apiLicense.startsAt ?? (raw.startDay as string)) as string) || new Date().toISOString(),
+        status: (apiLicense.status === 'cancel' || apiLicense.status === 'active' ? apiLicense.status : 'active') as 'active' | 'cancel',
+        cancelDate,
+        plan: (apiLicense.plan as string) || '',
+        term: (apiLicense.term === 'yearly' || apiLicense.term === 'monthly' ? apiLicense.term : 'monthly') as 'monthly' | 'yearly',
+        seatsTotal: (apiLicense.seatsTotal as number) || 1,
+        seatsUsed: (apiLicense.seatsUsed as number) || 0,
+        lastPayment: (apiLicense.lastPayment as number) || 0,
+        lastActive: (apiLicense.lastActive as string) || new Date().toISOString(),
+        smsPurchased: (apiLicense.smsPurchased as number) || 0,
+        smsSent: (apiLicense.smsSent as number) || 0,
+        agents: (apiLicense.agents as number) || 0,
+        agentsName: (Array.isArray(apiLicense.agentsName) ? apiLicense.agentsName : []) as string[],
+        agentsCost: (apiLicense.agentsCost as number) || 0,
+        notes: (apiLicense.notes as string) || '',
+        createdAt,
+        updatedAt
       });
     } catch (error) {
       this.logger.error('Failed to map API license to domain', {
@@ -138,7 +149,7 @@ export class LicenseRepository implements ILicenseRepository {
   /**
    * Maps domain entity to API format
    */
-  private mapDomainToApiLicense(license: License): any {
+  private mapDomainToApiLicense(license: License): Record<string, unknown> {
     return {
       dba: license.dba,
       zip: license.zip,
@@ -159,7 +170,7 @@ export class LicenseRepository implements ILicenseRepository {
   /**
    * Maps create props to API format
    */
-  private mapCreatePropsToApi(props: CreateLicenseProps): any {
+  private mapCreatePropsToApi(props: CreateLicenseProps): Record<string, unknown> {
     return {
       dba: props.dba,
       zip: props.zip,
@@ -184,10 +195,13 @@ export class LicenseRepository implements ILicenseRepository {
     }
 
     try {
-      const apiLicense = await licenseApi.getLicense(id.toString());
-      if (!apiLicense) {
-        return null;
-      }
+      const response = await licenseApi.getLicense(id.toString());
+      if (!response) return null;
+      const data = response && typeof response === 'object' && 'data' in response ? (response as { data?: { license?: LicenseLike } | LicenseLike }).data : undefined;
+      const apiLicense: LicenseLike | null = data && typeof data === 'object' && data !== null && 'license' in data
+        ? (data as { license: LicenseLike }).license
+        : (data as LicenseLike) ?? null;
+      if (!apiLicense) return null;
 
       const license = this.mapApiLicenseToDomain(apiLicense);
       this.setCachedLicense(id.toString(), license);
@@ -205,7 +219,7 @@ export class LicenseRepository implements ILicenseRepository {
   async findByDba(dba: string): Promise<License[]> {
     try {
       const response = await licenseApi.getLicenses({ dba });
-      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+      return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by DBA', {
         dba,
@@ -217,8 +231,8 @@ export class LicenseRepository implements ILicenseRepository {
 
   async findByStatus(status: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ status: status as any });
-      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+      const response = await licenseApi.getLicenses({ status });
+      return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by status', {
         status,
@@ -238,10 +252,9 @@ export class LicenseRepository implements ILicenseRepository {
         endDate: futureDate.toISOString().split('T')[0]
       });
 
-      // Filter licenses that are expiring within the specified days
       return response.licenses
-        .map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense))
-        .filter((license: any) => {
+        .map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense))
+        .filter((license: License) => {
           const expirationDate = license.calculateExpirationDate();
           const daysUntilExpiration = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           return daysUntilExpiration <= days && daysUntilExpiration > 0;
@@ -258,7 +271,7 @@ export class LicenseRepository implements ILicenseRepository {
   async findByPlan(plan: string): Promise<License[]> {
     try {
       const response = await licenseApi.getLicenses({ license_type: plan });
-      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+      return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by plan', {
         plan,
@@ -271,7 +284,7 @@ export class LicenseRepository implements ILicenseRepository {
   async search(query: string): Promise<License[]> {
     try {
       const response = await licenseApi.getLicenses({});
-      return response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+      return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to search licenses', {
         query,
@@ -293,8 +306,7 @@ export class LicenseRepository implements ILicenseRepository {
     };
   }> {
     try {
-      // Convert specification to API query parameters
-      const queryParams: any = {};
+      const queryParams: Record<string, string | number | undefined> = {};
 
       // General search (matches DBA and agent names); only add searchField when explicitly set
       if (specification.search) {
@@ -320,7 +332,7 @@ export class LicenseRepository implements ILicenseRepository {
       }
 
       const response = await licenseApi.getLicenses(queryParams);
-      const licenses = response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+      const licenses = response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
 
       const result = {
         licenses,
@@ -413,7 +425,7 @@ export class LicenseRepository implements ILicenseRepository {
     // Get a sample of licenses for statistics calculation
     // Use a reasonable limit instead of fetching all
     const response = await licenseApi.getLicenses({ limit: 1000 });
-    const licenses = response.licenses.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+    const licenses = response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
 
     // Calculate statistics from fetched licenses (API no longer provides stats breakdown)
     const stats: LicenseStatistics = {
@@ -483,7 +495,7 @@ export class LicenseRepository implements ILicenseRepository {
       const response = await licenseApi.bulkCreateLicenses(apiLicenses);
 
       // Map back to domain entities
-      const domainLicenses = response.data.results.map((apiLicense: any) => this.mapApiLicenseToDomain(apiLicense));
+      const domainLicenses = (response.data.results as LicenseLike[]).map((apiLicense) => this.mapApiLicenseToDomain(apiLicense));
 
       // Clear all cache since we added new licenses
       this.clearAllLicenseCache();

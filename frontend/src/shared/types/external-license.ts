@@ -25,7 +25,7 @@ export interface ExternalLicense {
   smsBalance: number;
   Email_license: string;
   pass: string;
-  Package?: any;
+  Package?: Record<string, unknown>;
   Note?: string;
   Sendbat_workspace?: string;
   lastActive?: string;
@@ -97,7 +97,7 @@ export interface CreateExternalLicenseRequest {
   zip?: string;
   status?: ExternalLicenseStatus;
   license_type?: ExternalLicenseType;
-  Package?: any;
+  Package?: Record<string, unknown>;
   Note?: string;
   coming_expired?: string;
   sendbat_workspace?: string;

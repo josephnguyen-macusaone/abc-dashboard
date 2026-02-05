@@ -1,4 +1,4 @@
-import { License, LicenseId } from '@/domain/entities/license-entity';
+import { License, LicenseId, Money } from '@/domain/entities/license-entity';
 import { ILicenseRepository } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { UpdateLicenseDTO } from '@/application/dto/license-dto';
@@ -75,30 +75,32 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
         updatedAt: new Date()
       };
 
-      // Create updated license entity (simplified - in real app, entity would have update methods)
-      const updatedLicense = new (License as any)(
+      const lastPaymentAmount = updates.lastPayment ?? existingLicense.lastPayment.getAmount();
+      const agentsCostAmount = updates.agentsCost ?? existingLicense.agentsCost.getAmount();
+
+      const updatedLicense = new License(
         existingLicense.id,
         updates.dba ?? existingLicense.dba,
         updates.zip ?? existingLicense.zip,
-        existingLicense.startsAt, // Start date typically doesn't change
+        existingLicense.startsAt,
         updates.status ?? existingLicense.status,
         updates.plan ?? existingLicense.plan,
         updates.term ?? existingLicense.term,
         updates.seatsTotal ?? existingLicense.seatsTotal,
-        existingLicense.seatsUsed, // This would be updated through business methods
-        updates.lastPayment ? new (existingLicense.lastPayment.constructor as any)(updates.lastPayment) : existingLicense.lastPayment,
-        new Date(), // Update last active
+        existingLicense.seatsUsed,
+        new Money(lastPaymentAmount),
+        new Date(),
         updates.smsPurchased ?? existingLicense.smsPurchased,
-        existingLicense.smsSent, // This would be updated through business methods
+        existingLicense.smsSent,
         updates.agents ?? existingLicense.agents,
         updates.agentsName ?? existingLicense.agentsName,
-        updates.agentsCost ? new (existingLicense.agentsCost.constructor as any)(updates.agentsCost) : existingLicense.agentsCost,
+        new Money(agentsCostAmount),
         updates.notes ?? existingLicense.notes,
         existingLicense.key,
         existingLicense.product,
-        existingLicense.cancelDate, // Keep existing cancel date
+        existingLicense.cancelDate,
         existingLicense.createdAt,
-        new Date() // updatedAt
+        new Date()
       );
 
       // Save updated license

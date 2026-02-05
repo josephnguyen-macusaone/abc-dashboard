@@ -30,7 +30,7 @@ export function TablePagination<TData>({
   const { pageIndex, pageSize } = table.getState().pagination;
   // Prefer totalRows from meta (server-side pagination), fallback to current data length
   // During page transitions, current data might be empty, so meta.totalRows is more reliable
-  const metaTotalRows = (table.options.meta as any)?.totalRows;
+  const metaTotalRows = (table.options.meta as { totalRows?: number })?.totalRows;
   const currentDataLength = table.getFilteredRowModel().rows.length;
   const totalRows = metaTotalRows !== undefined && metaTotalRows !== null
     ? metaTotalRows

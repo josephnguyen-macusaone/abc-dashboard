@@ -134,8 +134,9 @@ class HttpClient {
     // Response interceptor
     this.instance.interceptors.response.use(
       (response: AxiosResponse) => {
-        const correlationId = (response.config as any)?.correlationId;
-        const trace = (response.config as any)?.trace;
+        const config = response.config as InternalAxiosRequestConfig & { correlationId?: string; trace?: TraceContext };
+        const correlationId = config?.correlationId;
+        const trace = config?.trace;
 
         // Log successful response with trace information
         const startTime = (response.config as InternalAxiosRequestConfig & { startTime?: number })?.startTime;

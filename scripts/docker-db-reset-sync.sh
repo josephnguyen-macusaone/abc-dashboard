@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 # Run database reset (optional drop), migrate, seed; optionally run license sync.
+#
 # Usage:
 #   ./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
 #   ./scripts/docker-db-reset-sync.sh --drop        # drop DB, create, migrate + seed
 #   ./scripts/docker-db-reset-sync.sh --drop --sync # same as --drop + license sync
+#
+# Flow: checks backend container is up → (--drop: terminate connections, drop DB, create, migrate) or migrate:fresh
+#       → seed → (--sync: npm run sync:start). All commands run inside containers via docker compose exec.
+#
+# Requires .env at repo root with Docker-friendly DB host/port (backend runs inside Docker):
+#   POSTGRES_HOST=postgres
+#   POSTGRES_PORT=5432
+# If you see ECONNREFUSED on "Running migrations...", fix .env and restart: docker compose up -d
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

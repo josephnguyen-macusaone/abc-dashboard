@@ -162,7 +162,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       ),
       cell: ({ row }) => (
         <LicensePlanBadge
-          plan={row.getValue("plan") as any}
+          plan={row.getValue("plan") as "Basic" | "Premium"}
           variant="minimal"
           showIcon={true}
         />

@@ -6,8 +6,17 @@ import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
 import { User } from '@/domain/entities/user-entity';
 import { logger } from '@/shared/helpers';
-import { useUserStore } from '@/infrastructure/stores/user';
+import { useUserStore, type UserFilters } from '@/infrastructure/stores/user';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
+
+const USER_SEARCH_FIELDS: readonly string[] = ['email', 'displayName', 'username', 'phone'];
+
+function narrowSearchField(
+  value: string | undefined
+): UserFilters['searchField'] {
+  if (value === undefined) return undefined;
+  return USER_SEARCH_FIELDS.includes(value) ? (value as UserFilters['searchField']) : undefined;
+}
 
 // Helper function to check if error should be shown to user
 const shouldShowError = (error: unknown): boolean => {
@@ -83,12 +92,9 @@ export function UserManagementPage() {
     lastLoginTo?: string;
   }) => {
     try {
-      // Convert string values to appropriate types for store
-      const storeParams: any = {
+      const storeParams: Parameters<typeof fetchUsers>[0] = {
         ...params,
-        // searchField stays as string, store interface accepts it
-        // role: can be string | string[], store accepts UserRole | UserRole[]
-        // isActive: convert string | string[] to boolean | boolean[]
+        searchField: narrowSearchField(params.searchField),
         isActive: params.isActive !== undefined
           ? (Array.isArray(params.isActive)
             ? params.isActive.map(v => v === 'true')

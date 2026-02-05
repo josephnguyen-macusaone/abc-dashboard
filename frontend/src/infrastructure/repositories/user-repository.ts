@@ -512,7 +512,7 @@ export class UserRepository implements IUserRepository {
         role: params.role,
         isActive: params.isActive !== undefined ? String(params.isActive) : undefined,
         hasAvatar: params.hasAvatar,
-        sortBy: params.sortBy === 'role' ? SortBy.CREATED_AT : (params.sortBy as any), // Map 'role' to 'createdAt' as fallback
+        sortBy: params.sortBy === 'role' ? SortBy.CREATED_AT : (params.sortBy as SortBy),
         sortOrder: params.sortOrder,
       });
       const response = this.validateApiResponse<UsersListResponseDto>(apiResponse, 'getUsers');

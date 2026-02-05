@@ -160,15 +160,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "agentsName",
       header: "Agents Name",
       size: 200,
-      // Custom accessor to convert array to comma-separated string for editing
-      accessorFn: (row) => {
-        const names = row.agentsName;
-        return Array.isArray(names) ? names.join(", ") : "";
-      },
       enableColumnFilter: false,
       meta: {
         label: "Agents Name",
-        cell: { variant: "short-text" as const },
+        cell: { variant: "agents-name" as const },
       },
     },
     {

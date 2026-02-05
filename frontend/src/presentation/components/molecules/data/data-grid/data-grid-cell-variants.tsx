@@ -624,10 +624,10 @@ export function DateCell<TData>({
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
     >
-      <div className="size-full overflow-hidden">
+      <div className="flex size-full overflow-hidden items-center justify-center">
         <Popover open={isEditing} onOpenChange={onOpenChange}>
           <PopoverAnchor asChild>
-            <span data-slot="grid-cell-content" className="flex h-full items-center">
+            <span data-slot="grid-cell-content" className="inline-flex items-center">
               {formatDateForDisplay(value)}
             </span>
           </PopoverAnchor>
@@ -784,6 +784,71 @@ export function MultiSelectCell<TData>({
           )}
         </div>
       ) : null}
+    </DataGridCellWrapper>
+  );
+}
+
+export function AgentsNameCell<TData>({
+  cell,
+  tableMeta,
+  rowIndex,
+  columnId,
+  isFocused,
+  isSelected,
+  readOnly,
+}: CellVariantProps<TData>) {
+  const row = cell.row.original as Record<string, unknown>;
+  const agentsName = (row?.agentsName ?? row?.[columnId]) as string[] | undefined;
+  const list = Array.isArray(agentsName) ? agentsName : [];
+  const displayText = list.length === 0 ? "" : list.join(", ");
+  const onOpenEditor = tableMeta?.onOpenAgentsNameEditor;
+
+  const onCellClick = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (readOnly || !onOpenEditor) return;
+      onOpenEditor(rowIndex, columnId, list);
+    },
+    [onOpenEditor, rowIndex, columnId, list, readOnly],
+  );
+
+  const content = (
+    <span className="truncate block min-w-0" data-slot="grid-cell-content">
+      {displayText || (
+        <span className="text-muted-foreground">No agents</span>
+      )}
+    </span>
+  );
+
+  return (
+    <DataGridCellWrapper
+      cell={cell}
+      tableMeta={tableMeta}
+      rowIndex={rowIndex}
+      columnId={columnId}
+      isEditing={false}
+      isFocused={isFocused}
+      isSelected={isSelected}
+    >
+      {!readOnly && onOpenEditor ? (
+        <div
+          role="button"
+          tabIndex={-1}
+          className="cursor-pointer size-full min-w-0 flex items-center"
+          onClick={onCellClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onCellClick(e as unknown as React.MouseEvent);
+            }
+          }}
+        >
+          {content}
+        </div>
+      ) : (
+        content
+      )}
     </DataGridCellWrapper>
   );
 }

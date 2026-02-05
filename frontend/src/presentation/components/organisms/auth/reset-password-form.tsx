@@ -69,8 +69,8 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
             onSuccess?.();
             return 'Password reset successfully!';
           },
-          error: (error: any) => {
-            return error.message || 'Failed to reset password';
+          error: (error: unknown) => {
+            return (error as { message?: string })?.message || 'Failed to reset password';
           }
         }
       );

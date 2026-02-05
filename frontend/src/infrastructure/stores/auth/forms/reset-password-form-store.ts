@@ -10,17 +10,26 @@ const initialData: ResetPasswordFormData = {
   confirmPassword: '',
 };
 
-const validationRules = {
-  password: (value: string) => {
-    const required = commonValidationRules.required(value);
-    if (required) return required;
+type ResetPasswordValidator = (
+  value: unknown,
+  data: ResetPasswordFormData
+) => string | null;
 
-    return commonValidationRules.password(value);
+const validationRules: Record<string, ResetPasswordValidator> = {
+  password: (value) => {
+    const s = typeof value === 'string' ? value : '';
+    const required = commonValidationRules.required(s);
+    if (required) return required;
+    return commonValidationRules.password(s);
   },
-  confirmPassword: commonValidationRules.confirmPassword('password'),
+  confirmPassword: (value, data) =>
+    commonValidationRules.confirmPassword('password')(
+      value as string,
+      data as unknown as Record<string, unknown>
+    ),
 };
 
-export const useResetPasswordFormStore = createFormStore(
+export const useResetPasswordFormStore = createFormStore<ResetPasswordFormData>(
   'reset-password',
   initialData,
   validationRules

@@ -12,21 +12,30 @@ const initialData: ChangePasswordFormData = {
   confirmPassword: '',
 };
 
-const validationRules = {
-  currentPassword: (value: string) => {
+type ChangePasswordValidator = (
+  value: unknown,
+  data: ChangePasswordFormData
+) => string | null;
+
+const validationRules: Record<string, ChangePasswordValidator> = {
+  currentPassword: (_value) => {
     // Only required if not a forced change (handled by component logic)
     return null; // Validation will be conditional in component
   },
-  newPassword: (value: string) => {
-    const required = commonValidationRules.required(value);
+  newPassword: (value) => {
+    const s = typeof value === 'string' ? value : '';
+    const required = commonValidationRules.required(s);
     if (required) return required;
-
-    return commonValidationRules.password(value);
+    return commonValidationRules.password(s);
   },
-  confirmPassword: commonValidationRules.confirmPassword('newPassword'),
+  confirmPassword: (value, data) =>
+    commonValidationRules.confirmPassword('newPassword')(
+      value as string,
+      data as unknown as Record<string, unknown>
+    ),
 };
 
-export const useChangePasswordFormStore = createFormStore(
+export const useChangePasswordFormStore = createFormStore<ChangePasswordFormData>(
   'change-password',
   initialData,
   validationRules

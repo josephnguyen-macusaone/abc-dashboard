@@ -18,7 +18,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
     // Only create ref callback if ref is actually provided
     // This prevents the library from trying to access a null ref
     const numberInputProps = React.useMemo(() => {
-      const baseProps: any = {
+      const baseProps: Record<string, unknown> & { className?: string; ref?: (node: HTMLInputElement | null) => void } = {
         className: cn(
           'file:text-foreground placeholder:text-muted-foreground',
           'selection:bg-primary selection:text-primary-foreground',

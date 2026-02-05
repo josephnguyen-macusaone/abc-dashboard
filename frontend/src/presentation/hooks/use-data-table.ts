@@ -12,6 +12,7 @@ import {
   type PaginationState,
   type RowSelectionState,
   type SortingState,
+  type TableMeta,
   type TableOptions,
   type TableState,
   type Updater,
@@ -318,7 +319,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
         filters: filtersKey,
         joinOperator: joinOperatorKey,
       },
-    } as any,
+    } as TableMeta<TData>,
   });
 
   return { 

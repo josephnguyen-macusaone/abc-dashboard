@@ -12,6 +12,10 @@ import {
   ValidationException,
 } from '../../domain/exceptions/domain.exception.js';
 
+/** ANSI: dark grey for error-detail in logs (terminal only; harmless in file/JSON) */
+const ANSI_DIM = '\x1b[90m';
+const ANSI_RESET = '\x1b[0m';
+
 /**
  * External License API Service
  * Client for interacting with the external license management API
@@ -179,16 +183,7 @@ export class ExternalLicenseApiService {
                   (errorText.includes('Expecting value') ||
                     errorText.includes('Unexpected token') ||
                     errorText.includes('Invalid JSON'));
-                if (isServerParseError) {
-                  logger.warn(
-                    'External API returned 500 (server-side parse error); sync will skip this page',
-                    {
-                      correlationId: this.correlationId,
-                      url,
-                      errorPreview: errorText.substring(0, 150),
-                    }
-                  );
-                } else {
+                if (!isServerParseError) {
                   logger.error('External API returned error response', {
                     correlationId: this.correlationId,
                     status: response.status,
@@ -301,8 +296,8 @@ export class ExternalLicenseApiService {
                   msg.includes('Invalid JSON') ||
                   msg.includes('Internal server error'));
               if (isSuccessFalseParseError) {
-                logger.warn(
-                  'External API returned success:false with server/parse error; sync will skip this page',
+                logger.debug(
+                  'External API returned success:false with server/parse error; skipping page',
                   {
                     correlationId: this.correlationId,
                     url,
@@ -315,14 +310,16 @@ export class ExternalLicenseApiService {
 
               return responseData;
             } catch (error) {
-              logger.error('External API request failed', {
-                correlationId: this.correlationId,
-                url,
-                method: requestOptions.method,
-                error: error.message,
-                duration: Date.now() - startTime,
-                operationName,
-              });
+              if (!error.message?.includes('skipping page')) {
+                logger.error('External API request failed', {
+                  correlationId: this.correlationId,
+                  url,
+                  method: requestOptions.method,
+                  error: error.message,
+                  duration: Date.now() - startTime,
+                  operationName,
+                });
+              }
               throw error;
             }
           },
@@ -362,6 +359,7 @@ export class ExternalLicenseApiService {
         },
         correlationId: this.correlationId,
         operationName,
+        silentNonRetryable: true,
       }
     );
   }
@@ -505,29 +503,23 @@ export class ExternalLicenseApiService {
         totalFetched: allLicenses.length,
       });
 
-      let lastLoggedProgressPct = -1;
-      const progressLogIntervalPct = 10;
-
       // Fetch remaining pages in parallel batches
       for (
         let pageBatchStart = 2;
         pageBatchStart <= totalPages;
         pageBatchStart += concurrencyLimit
       ) {
+        const pageBatchEnd = Math.min(pageBatchStart + concurrencyLimit - 1, totalPages);
         const pct = Math.round((pageBatchStart / totalPages) * 100);
-        const step = Math.floor(pct / progressLogIntervalPct) * progressLogIntervalPct;
-        if (step > lastLoggedProgressPct) {
-          lastLoggedProgressPct = step;
-          logger.info(
-            `📥 Fetching pages ${pageBatchStart}-${Math.min(pageBatchStart + concurrencyLimit - 1, totalPages)} of ${totalPages} (${pct}% complete)`,
-            {
-              correlationId: this.correlationId,
-              totalLicensesFetched: allLicenses.length,
-              pagesCompleted: pagesFetched,
-              failedSoFar: failedPages.length,
-            }
-          );
-        }
+        logger.info(
+          `Fetching pages ${pageBatchStart}-${pageBatchEnd} of ${totalPages} (${pct}% complete)`,
+          {
+            correlationId: this.correlationId,
+            totalLicensesFetched: allLicenses.length,
+            pagesCompleted: pagesFetched,
+            failedSoFar: failedPages.length,
+          }
+        );
 
         const pagePromises = [];
 
@@ -546,11 +538,15 @@ export class ExternalLicenseApiService {
                 error: error.message,
                 timestamp: new Date().toISOString(),
               });
-              logger.error(`Error fetching page ${pageNum}`, {
-                correlationId: this.correlationId,
-                error: error.message,
-                consecutiveErrors,
-              });
+              logger.error(
+                `Error fetching page ${pageNum} ${ANSI_DIM}{ ${error.message} }${ANSI_RESET} skipping page`,
+                {
+                  correlationId: this.correlationId,
+                  page: pageNum,
+                  error: error.message,
+                  consecutiveErrors,
+                }
+              );
 
               // If we have too many consecutive errors, the API might be down
               if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -588,9 +584,9 @@ export class ExternalLicenseApiService {
         for (const response of pageResults) {
           pagesInThisBatch++;
 
-          // Skip null responses (failed/skipped pages)
+          // Skip null responses (failed/skipped pages; page-level error already logged in catch)
           if (response === null) {
-            logger.warn('Skipping null response (likely malformed data on external API)', {
+            logger.debug('Skipping null response (likely malformed data on external API)', {
               correlationId: this.correlationId,
               batchIndex:
                 Math.floor((pageBatchStart + pagesInThisBatch - 1) / concurrencyLimit) + 1,

@@ -75,13 +75,12 @@ export function handleApiError(error: unknown): ApiExceptionDto {
 /**
  * Checks if an error is retryable
  */
-export function isRetryableError(error: any): boolean {
-  if (!error.response) return true; // Network errors are retryable
+export function isRetryableError(error: unknown): boolean {
+  const err = error as { response?: { status?: number } };
+  if (!err?.response) return true;
 
-  const { status } = error.response;
-
-  // Retry on server errors (5xx) and rate limiting (429)
-  return status >= 500 || status === 429;
+  const { status } = err.response;
+  return (typeof status === 'number' && status >= 500) || status === 429;
 }
 
 /**
@@ -106,17 +105,17 @@ export function getLoginErrorMessage(error: unknown): string {
 /**
  * Gets user-friendly error message
  */
-export function getErrorMessage(error: any): string {
+export function getErrorMessage(error: unknown): string {
   if (error instanceof ApiExceptionDto) {
     return error.message;
   }
 
-  if (error.response?.data?.message) {
-    return error.response.data.message;
+  const err = error as { response?: { data?: { message?: string } }; message?: string };
+  if (err?.response?.data?.message && typeof err.response.data.message === 'string') {
+    return err.response.data.message;
   }
-
-  if (error.message) {
-    return error.message;
+  if (typeof err?.message === 'string') {
+    return err.message;
   }
 
   return 'An unexpected error occurred';
@@ -125,7 +124,7 @@ export function getErrorMessage(error: any): string {
 /**
  * Creates a standardized error response
  */
-export function createErrorResponse(error: any): ApiErrorDto {
+export function createErrorResponse(error: unknown): ApiErrorDto {
   const apiException = error instanceof ApiExceptionDto ? error : handleApiError(error);
 
   return {
@@ -139,17 +138,19 @@ export function createErrorResponse(error: any): ApiErrorDto {
 /**
  * Logs API errors for debugging
  */
-export function logApiError(error: any, context?: string): void {
+export function logApiError(error: unknown, context?: string): void {
   const errorInfo = createErrorResponse(error);
   const logMessage = context ? `[${context}] API Error:` : 'API Error:';
+  const err = error as { response?: { config?: { url?: string; method?: string } } };
+  const details = errorInfo.details as { error?: { category?: string }; category?: string } | undefined;
 
   logger.error(logMessage, {
     message: errorInfo.message,
     code: errorInfo.code,
     status: errorInfo.status,
-    category: errorInfo.details?.error?.category || errorInfo.details?.category,
-    endpoint: error.response?.config?.url,
-    method: error.response?.config?.method?.toUpperCase(),
+    category: details?.error?.category ?? details?.category,
+    endpoint: err?.response?.config?.url,
+    method: err?.response?.config?.method?.toUpperCase(),
     details: errorInfo.details,
   });
 }

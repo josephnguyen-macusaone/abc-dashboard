@@ -76,8 +76,10 @@ export function UserDeleteForm({
         errorMessage = err.message;
         errorDetails = err.stack || '';
       } else if (typeof err === 'object' && err !== null) {
-        // Try to extract meaningful error information
-        const errorObj = err as any;
+        const errorObj = err as {
+          message?: string; error?: string; code?: string; category?: string; details?: unknown;
+          response?: { data?: { message?: string; error?: string; code?: string; category?: string } };
+        };
         if (errorObj.message) errorMessage = errorObj.message;
         if (errorObj.error && typeof errorObj.error === 'string') errorMessage = errorObj.error;
         if (errorObj.code) errorCode = errorObj.code;

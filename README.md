@@ -46,6 +46,10 @@ docker compose logs -f
 docker compose exec backend npm run db:status
 docker compose exec backend npm run seed:fresh
 docker compose exec postgres psql -U abc_user -d abc_dashboard
+
+# Reset DB + seed (+ optional license sync) – from repo root
+./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
+./scripts/docker-db-reset-sync.sh --drop --sync   # drop DB, migrate, seed, then sync licenses
 ```
 
 ### Building

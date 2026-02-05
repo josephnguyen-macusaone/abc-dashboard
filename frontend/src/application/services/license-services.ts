@@ -1,4 +1,4 @@
-import { License } from '@/domain/entities/license-entity';
+import { License, type CreateLicenseProps } from '@/domain/entities/license-entity';
 import { ILicenseRepository, LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { LicenseRecord, PaginatedResponse } from '@/types';
@@ -28,6 +28,13 @@ export interface LicensePorts {
   getLicenses: GetLicensesUseCase;
   createLicense: CreateLicenseUseCase;
   updateLicense: UpdateLicenseUseCase;
+}
+
+/** Result shape returned by bulkUpdateLicenses for store ID mapping */
+export interface BulkUpdateLicenseResult {
+  _isBulkUpdateResult: true;
+  results: LicenseRecord[];
+  idMapping: Record<string, string>;
 }
 
 // =====================================================================================
@@ -454,17 +461,15 @@ export class LicenseManagementService {
       const normalizedLicenses: CreateLicenseDTO[] = [];
 
       dto.licenses.forEach((license, index) => {
-        // Keep field names consistent (ensure startsAt exists) and preserve key field
-        const licenseAny = license as any; // Cast to any to handle unknown fields
-        const normalizedLicense = {
+        const withStartDay = license as Partial<LicenseRecord> & { startDay?: string; key?: string };
+        const normalizedLicense: Partial<CreateLicenseDTO> & { startDay?: string; key?: string } = {
           ...license,
-          startsAt: license.startsAt || licenseAny.startDay // Handle both field names
+          startsAt: license.startsAt ?? withStartDay.startDay
         };
-        delete (normalizedLicense as any).startDay; // Remove the wrong field name if it exists
+        delete normalizedLicense.startDay;
 
-        // Ensure key field is preserved (added by page component)
-        if (!(normalizedLicense as any).key && licenseAny.key) {
-          (normalizedLicense as any).key = licenseAny.key;
+        if (normalizedLicense.key === undefined && withStartDay.key !== undefined) {
+          normalizedLicense.key = withStartDay.key;
         }
 
         // Set default values for missing required fields to prevent validation errors
@@ -491,10 +496,10 @@ export class LicenseManagementService {
           normalizedLicense.zip = '00000'; // Default ZIP
         }
 
-        normalizedLicenses.push(normalizedLicense);
+        normalizedLicenses.push(normalizedLicense as CreateLicenseDTO);
 
         // Validate the normalized license
-        const validation = LicenseDomainService.validateLicenseCreation(normalizedLicense);
+        const validation = LicenseDomainService.validateLicenseCreation(normalizedLicense as CreateLicenseProps);
         if (!validation.isValid) {
           validationErrors.push(`License ${index + 1}: ${validation.errors.join(', ')}`);
         }
@@ -734,13 +739,21 @@ export class LicenseManagementService {
     };
   }
 
-  async bulkUpdateLicenses(updates: any[]): Promise<LicenseRecord[]> {
+  async bulkUpdateLicenses(
+    updates: Array<Partial<LicenseRecord> & { id: number | string }>,
+    options?: { currentLicenses?: LicenseRecord[] }
+  ): Promise<BulkUpdateLicenseResult> {
     const correlationId = generateCorrelationId();
 
     try {
-      // First, fetch current licenses to map IDs properly
-      const currentLicensesResult = await this.list({ limit: 1000 }); // Get all current licenses
-      const currentLicenses = currentLicensesResult.licenses;
+      // Use provided list (e.g. store's current page) for key resolution so filtered/paginated rows resolve; otherwise fetch
+      let currentLicenses: LicenseRecord[];
+      if (options?.currentLicenses != null && Array.isArray(options.currentLicenses)) {
+        currentLicenses = options.currentLicenses;
+      } else {
+        const currentLicensesResult = await this.list({ limit: 1000 });
+        currentLicenses = currentLicensesResult.licenses;
+      }
 
       // Create ID mapping: original input ID -> UUID
       const idMapping: Map<string | number, string> = new Map();
@@ -753,10 +766,10 @@ export class LicenseManagementService {
         // Map field names if needed (startDay -> startsAt)
         const normalizedUpdate = {
           ...update,
-          startsAt: update.startsAt || (update as any).startDay, // Handle both field names
-          _originalId: update.id // Keep track of original ID for store matching
+          startsAt: update.startsAt ?? (update as Partial<LicenseRecord> & { startDay?: string }).startDay,
+          _originalId: update.id
         };
-        delete (normalizedUpdate as any).startDay; // Remove the wrong field name
+        delete (normalizedUpdate as Partial<LicenseRecord> & { startDay?: string }).startDay;
 
         // Basic validation - check if we have required fields for updates
         if (!normalizedUpdate.id) {
@@ -771,7 +784,7 @@ export class LicenseManagementService {
           // If ID is a number, assume it's an index into current licenses
           const licenseIndex = normalizedUpdate.id;
           if (licenseIndex >= 0 && licenseIndex < currentLicenses.length) {
-            actualLicenseId = currentLicenses[licenseIndex].id;
+            actualLicenseId = String(currentLicenses[licenseIndex].id);
             idMapping.set(normalizedUpdate.id, actualLicenseId);
             // ID mapping completed silently
           } else {
@@ -791,7 +804,7 @@ export class LicenseManagementService {
             // It's a numeric string, treat as index
             const licenseIndex = parseInt(idStr);
             if (licenseIndex >= 0 && licenseIndex < currentLicenses.length) {
-              actualLicenseId = currentLicenses[licenseIndex].id;
+              actualLicenseId = String(currentLicenses[licenseIndex].id);
               idMapping.set(normalizedUpdate.id, actualLicenseId);
               // ID mapping completed silently
             } else {
@@ -799,20 +812,43 @@ export class LicenseManagementService {
               return;
             }
           } else {
-            // Invalid ID format
-            validationErrors.push(`License ${index + 1}: Invalid ID format "${idStr}". Expected UUID or valid index.`);
-            return;
+            // Non-UUID string: treat as license key (e.g. from external API or id=appid in list response)
+            const byKey = currentLicenses.find(
+              (l) => (l.key && String(l.key) === idStr) || String(l.id) === idStr
+            );
+            if (byKey) {
+              actualLicenseId = String(byKey.id);
+              idMapping.set(normalizedUpdate.id, actualLicenseId);
+            } else {
+              validationErrors.push(`License ${index + 1}: Invalid ID format "${idStr}". Expected UUID, license key, or valid index.`);
+              return;
+            }
           }
         }
 
         normalizedUpdate.id = actualLicenseId;
 
+        // Normalize agentsName to array so backend always receives array (grid may send string from cell edit)
+        const rawAgentsName = (normalizedUpdate as Record<string, unknown>).agentsName;
+        if (rawAgentsName !== undefined) {
+          (normalizedUpdate as Record<string, unknown>).agentsName = Array.isArray(rawAgentsName)
+            ? rawAgentsName
+            : typeof rawAgentsName === 'string'
+              ? rawAgentsName.split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [];
+        }
+
         // For bulk updates, we allow partial updates, so we don't validate all fields
-        // Just ensure we have at least one field to update
+        // Just ensure we have at least one field to update (agentsName counts even when [])
         const updatableFields = ['dba', 'zip', 'startsAt', 'status', 'plan', 'term', 'seatsTotal', 'lastPayment', 'smsPurchased', 'agents', 'agentsName', 'agentsCost', 'notes'];
 
         // Check if we have at least one field to update
-        const hasUpdates = updatableFields.some(field => normalizedUpdate[field] !== undefined && normalizedUpdate[field] !== null && normalizedUpdate[field] !== '');
+        const hasUpdates = updatableFields.some(field => {
+          const v = (normalizedUpdate as Record<string, unknown>)[field];
+          if (v === undefined || v === null) return false;
+          if (field === 'agentsName') return true; // empty array [] is a valid update (clear names)
+          return v !== '';
+        });
 
         if (!hasUpdates) {
           this.serviceLogger.warn(`Skipping license ${normalizedUpdate.id} - no valid updates provided`, {
@@ -832,7 +868,7 @@ export class LicenseManagementService {
           originalCount: updates.length,
           validationErrors: validationErrors.length
         });
-        return [];
+        return { _isBulkUpdateResult: true as const, results: [], idMapping: {} };
       }
 
       if (validationErrors.length > 0) {
@@ -909,12 +945,11 @@ export class LicenseManagementService {
         operation: 'service_bulk_update_success'
       });
 
-      // Return both results and ID mapping for store to match properly
       return {
         results,
         idMapping: Object.fromEntries(idMapping),
-        _isBulkUpdateResult: true // Marker to identify bulk update results
-      } as any;
+        _isBulkUpdateResult: true as const
+      };
     } catch (error) {
       this.serviceLogger.error('Failed to bulk update licenses via API', {
         correlationId,
@@ -926,7 +961,7 @@ export class LicenseManagementService {
     }
   }
 
-  async bulkCreateLicenses(licenses: any[]): Promise<LicenseRecord[]> {
+  async bulkCreateLicenses(licenses: Array<Partial<LicenseRecord>>): Promise<LicenseRecord[]> {
     const result = await this.licenseRepository.bulkCreateLicensesRaw(licenses) as {
       success?: boolean;
       data?: LicenseRecord[] | { results?: LicenseRecord[] };

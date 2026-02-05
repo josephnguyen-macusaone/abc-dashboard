@@ -50,8 +50,8 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
             setTimeout(() => router.replace('/login'), 100);
             return 'Logged out successfully!';
           },
-          error: (error: any) => {
-            return error.message || 'Failed to logout';
+          error: (error: unknown) => {
+            return (error as { message?: string })?.message || 'Failed to logout';
           }
         }
       );

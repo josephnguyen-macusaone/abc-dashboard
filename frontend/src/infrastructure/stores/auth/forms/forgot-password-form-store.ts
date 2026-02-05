@@ -8,16 +8,21 @@ const initialData: ForgotPasswordFormData = {
   email: '',
 };
 
-const validationRules = {
-  email: (value: string) => {
-    const required = commonValidationRules.required(value);
-    if (required) return required;
+type ForgotPasswordValidator = (
+  value: unknown,
+  data: ForgotPasswordFormData
+) => string | null;
 
-    return commonValidationRules.email(value);
+const validationRules: Record<string, ForgotPasswordValidator> = {
+  email: (value) => {
+    const s = typeof value === 'string' ? value : '';
+    const required = commonValidationRules.required(s);
+    if (required) return required;
+    return commonValidationRules.email(s);
   },
 };
 
-export const useForgotPasswordFormStore = createFormStore(
+export const useForgotPasswordFormStore = createFormStore<ForgotPasswordFormData>(
   'forgot-password',
   initialData,
   validationRules

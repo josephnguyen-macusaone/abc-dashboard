@@ -115,6 +115,7 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
     retryableErrors,
     retryOn,
     onRetry,
+    silentNonRetryable,
     correlationId = `retry_${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
   } = config;
 
@@ -137,9 +138,11 @@ export const withRetry = async (fn, options = {}, operation = 'unknown') => {
       // Check if error is retryable (custom retryOn takes precedence)
       const isRetryable = retryOn ? retryOn(error) : isRetryableError(error, retryableErrors);
       if (!isRetryable) {
-        logger.warn(
-          `${operation} failed (non-retryable): ${error.message}${correlationId ? ` [${correlationId}]` : ''}`
-        );
+        if (!silentNonRetryable) {
+          logger.warn(
+            `${operation} failed (non-retryable): ${error.message}${correlationId ? ` [${correlationId}]` : ''}`
+          );
+        }
         break;
       }
 

@@ -125,9 +125,9 @@ export function ChangePasswordForm({
 
       // Success toast will be handled by the page component
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Error toast will be handled by the auth store
-      logger.error('Password change form error:', error);
+      logger.error('Password change form error:', { error });
     }
   };
 

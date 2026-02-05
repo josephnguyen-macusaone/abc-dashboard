@@ -140,7 +140,7 @@ export class AuthApiService {
    */
   static async getProfile(): Promise<UserProfileDto> {
     try {
-      const response = await httpClient.get<ApiResponse<{ user: any; isAuthenticated: boolean }>>('/auth/profile');
+      const response = await httpClient.get<ApiResponse<{ user: UserProfileDto; isAuthenticated: boolean }>>('/auth/profile');
 
       if (!response.data) {
         throw new Error('Get profile response missing data');

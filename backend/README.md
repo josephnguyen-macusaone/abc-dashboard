@@ -83,11 +83,18 @@ PORT=5000
 ```bash
 npm run dev          # Development server
 npm start            # Production server
-npm test             # Run all tests (Jest suite)
+npm test             # Run all tests (unit + integration)
+npm run test:unit    # Unit tests only (no DB)
+npm run test:integration  # Integration tests (requires test DB)
 npm run lint         # Code linting
 npm run format       # Code formatting
 npm run migrate      # Database migrations
 npm run seed         # Seed test data
+
+# External license sync
+npm run sync:test-connectivity   # Test connection to external license API
+npm run sync:start              # Run one-off sync from external API
+npm run sync:status             # Show sync status and DB/API health
 
 # Email Testing Suite
 npm run test:email:suite     # Complete email testing
@@ -95,6 +102,71 @@ npm run test:email:config    # Validate email config
 npm run test:email:send      # Test email sending
 npm run test:email:health    # Check email health
 ```
+
+## Testing
+
+Tests use **Jest** with ESM (`NODE_OPTIONS='--experimental-vm-modules'`). Unit tests are in `tests/unit/`, integration tests in `tests/integration/`.
+
+### Unit tests (no database)
+
+Unit tests mock dependencies and do not require PostgreSQL:
+
+```bash
+npm run test:unit
+```
+
+Runs all tests under `tests/unit/` (auth, use-cases, validators, token service, etc.). **No test DB needed.**
+
+### Integration tests (database required)
+
+Integration tests hit the real app and PostgreSQL. You need a **dedicated test database** and migrations applied.
+
+**1. Create the test database** (once):
+
+```bash
+# Default name from tests/setup.js is abc_dashboard_test
+createdb abc_dashboard_test
+```
+
+Or match the name to your test env (see `POSTGRES_DB` in `.env` when `NODE_ENV=test`).
+
+**2. Run migrations for the test environment** (once, or after schema changes):
+
+```bash
+NODE_ENV=test npm run migrate
+```
+
+**3. Run integration tests:**
+
+```bash
+npm run test:integration
+```
+
+This runs `tests/integration/auth-integration.test.js` (login, refresh, profile, logout against the real API). If the test database is not available, those tests are skipped and the suite still passes.
+
+**Note:** `tests/integration/license-dashboard-metrics.test.js` is excluded from the default Jest run (optional `TEST_ACCESS_TOKEN` and DB). Run it explicitly if needed.
+
+### Full test run
+
+```bash
+npm test
+```
+
+Runs unit tests and integration tests (except the email suite and the license dashboard metrics integration test). Integration tests will be skipped if the test DB is not set up.
+
+### Test environment variables
+
+The test setup (`tests/setup.js`) sets `NODE_ENV=test` and expects these for the test DB (defaults shown):
+
+- `POSTGRES_HOST=localhost`
+- `POSTGRES_PORT=5432`
+- `POSTGRES_DB=abc_dashboard_test`
+- `POSTGRES_USER=abc_user`
+- `POSTGRES_PASSWORD=abc_password`
+- `JWT_SECRET=test-jwt-secret-for-testing-only`
+- `BCRYPT_ROUNDS=4` (faster tests)
+
+Override via `.env` or environment when running tests.
 
 ## Environment
 
@@ -290,6 +362,79 @@ docker run -p 5000:5000 \
 - Use Docker secrets or environment variables for sensitive data
 - Configure Google Workspace or other email service
 - Set `CLIENT_URL` to your production domain
+
+## Syncing with external license management
+
+The backend can pull licenses from an **external license management API** into the local PostgreSQL database (and optionally into the internal `licenses` table). Sync can be run manually or on a schedule when the server is running.
+
+### Prerequisites
+
+- **PostgreSQL** running and migrated (same as normal API).
+- **External API** reachable and **API key** from the license provider.
+
+### 1. Configure environment
+
+In `.env` (or your environment), set:
+
+```env
+EXTERNAL_LICENSE_API_URL=http://your-external-license-api.example.com
+EXTERNAL_LICENSE_API_KEY=your-api-key-from-provider
+```
+
+Optional: `EXTERNAL_LICENSE_API_TIMEOUT_MS`, `LICENSE_SYNC_BATCH_SIZE`, etc. (see `src/infrastructure/config/license-sync-config.js`).
+
+### 2. Test connectivity
+
+Verify the backend can reach the external API and authenticate:
+
+```bash
+npm run sync:test-connectivity
+```
+
+On success you should see `Connectivity Test: { success: true, ... }`. If it fails, check the URL, API key, and network/firewall.
+
+### 3. Run a sync
+
+Run a one-off sync (fetches from external API and updates `external_licenses` and optionally internal `licenses`):
+
+```bash
+npm run sync:start
+```
+
+This uses the sync use case with comprehensive sync and duplicate detection. Logs show created/updated/failed counts and any errors.
+
+### 4. Check sync status
+
+Inspect internal DB counts, last sync time, and external API health:
+
+```bash
+npm run sync:status
+```
+
+### 5. Scheduled sync (when server is running)
+
+When you start the API with `npm run dev` or `npm start`, the **license sync scheduler** starts and runs sync on a **cron schedule** (default: every 15 minutes). So with `EXTERNAL_LICENSE_API_URL` and `EXTERNAL_LICENSE_API_KEY` set, sync runs automatically. You can also trigger sync via the API (see license/sync routes and Swagger) if your role has the right permissions.
+
+**Summary**
+
+| Step              | Command                                                   |
+| ----------------- | --------------------------------------------------------- |
+| Test connectivity | `npm run sync:test-connectivity`                          |
+| Run sync once     | `npm run sync:start`                                      |
+| Check status      | `npm run sync:status`                                     |
+| Automatic sync    | Start server (`npm run dev`); scheduler runs every 15 min |
+
+### Docker: reset DB and run sync (root script)
+
+From the **repo root** (not `backend/`), with the stack running (`docker compose up -d`), you can reset the database, re-seed, and optionally run a full license sync in one go:
+
+```bash
+./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
+./scripts/docker-db-reset-sync.sh --drop      # drop DB, create, migrate + seed
+./scripts/docker-db-reset-sync.sh --drop --sync   # same + license sync (npm run sync:start)
+```
+
+Requires the `backend` and `postgres` containers to be up. See [scripts/README.md](../scripts/README.md) for deploy and DB usage.
 
 ## Email Testing Suite
 

@@ -10,17 +10,22 @@ const initialData: LoginFormData = {
   password: '',
 };
 
-const validationRules = {
-  email: (value: string) => {
-    const required = commonValidationRules.required(value);
-    if (required) return required;
+type LoginValidator = (
+  value: unknown,
+  data: LoginFormData
+) => string | null;
 
-    return commonValidationRules.email(value);
+const validationRules: Record<string, LoginValidator> = {
+  email: (value) => {
+    const s = typeof value === 'string' ? value : '';
+    const required = commonValidationRules.required(s);
+    if (required) return required;
+    return commonValidationRules.email(s);
   },
-  password: commonValidationRules.required,
+  password: (value) => commonValidationRules.required(value),
 };
 
-export const useLoginFormStore = createFormStore(
+export const useLoginFormStore = createFormStore<LoginFormData>(
   'login',
   initialData,
   validationRules

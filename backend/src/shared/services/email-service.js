@@ -494,10 +494,16 @@ export class EmailService {
     return executeWithDegradation(
       'email_service',
       () =>
-        this.sendEmail(to, subject, html, {}, {
-          text,
-          templateName: 'passwordResetWithGeneratedPassword',
-        }),
+        this.sendEmail(
+          to,
+          subject,
+          html,
+          {},
+          {
+            text,
+            templateName: 'passwordResetWithGeneratedPassword',
+          }
+        ),
       (error) =>
         this.handleEmailDegradation(
           'password_reset_with_generated_password',
@@ -522,16 +528,18 @@ export class EmailService {
     return executeWithDegradation(
       'email_service',
       () =>
-        this.sendEmail(to, subject, html, {}, {
-          text,
-          templateName: 'passwordResetConfirmation',
-        }),
-      (error) =>
-        this.handleEmailDegradation(
-          'password_reset_confirmation',
-          { to, subject, data },
-          error
+        this.sendEmail(
+          to,
+          subject,
+          html,
+          {},
+          {
+            text,
+            templateName: 'passwordResetConfirmation',
+          }
         ),
+      (error) =>
+        this.handleEmailDegradation('password_reset_confirmation', { to, subject, data }, error),
       { operation: 'sendPasswordResetConfirmationEmail', to, correlationId: this.correlationId }
     );
   }
@@ -550,16 +558,17 @@ export class EmailService {
     return executeWithDegradation(
       'email_service',
       () =>
-        this.sendEmail(to, subject, html, {}, {
-          text,
-          templateName: 'passwordReset',
-        }),
-      (error) =>
-        this.handleEmailDegradation(
-          'password_reset',
-          { to, subject, data },
-          error
+        this.sendEmail(
+          to,
+          subject,
+          html,
+          {},
+          {
+            text,
+            templateName: 'passwordReset',
+          }
         ),
+      (error) => this.handleEmailDegradation('password_reset', { to, subject, data }, error),
       { operation: 'sendPasswordResetEmail', to, correlationId: this.correlationId }
     );
   }

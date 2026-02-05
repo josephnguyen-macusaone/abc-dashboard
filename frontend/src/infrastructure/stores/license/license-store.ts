@@ -284,8 +284,7 @@ export const useLicenseStore = create<LicenseState>()(
 
             set({ loading: true, error: null, filters: appliedFilters });
 
-            // Convert array filters to comma-separated strings for API compatibility
-            const apiParams: any = {
+            const apiParams: Record<string, string | number | undefined> = {
               ...queryParams,
               status: Array.isArray(queryParams.status)
                 ? queryParams.status.join(',')
@@ -296,7 +295,7 @@ export const useLicenseStore = create<LicenseState>()(
               term: Array.isArray(queryParams.term)
                 ? queryParams.term.join(',')
                 : queryParams.term,
-              sortBy: queryParams.sortBy as 'dba' | 'status' | 'plan' | 'startsAt' | 'createdAt' | 'updatedAt' | 'lastActive' | 'seatsTotal' | 'seatsUsed' | 'smsBalance' | 'lastPayment' | undefined
+              sortBy: queryParams.sortBy
             };
 
             // Silent operation - no logging
@@ -330,8 +329,8 @@ export const useLicenseStore = create<LicenseState>()(
             set({
               licenses: [],
               pagination: {
-                page: apiParams.page || 1,
-                limit: apiParams.limit || 20,
+                page: Number(apiParams.page) || 1,
+                limit: Number(apiParams.limit) || 20,
                 total: 0,
                 totalPages: 0
               },
@@ -349,10 +348,10 @@ export const useLicenseStore = create<LicenseState>()(
               set({
                 licenses: response.data,
                 pagination: {
-                  page: apiParams.page || 1,
-                  limit: apiParams.limit || 20,
+                  page: Number(apiParams.page) || 1,
+                  limit: Number(apiParams.limit) || 20,
                   total: response.data.length,
-                  totalPages: Math.ceil(response.data.length / (apiParams.limit || 20))
+                  totalPages: Math.ceil(response.data.length / (Number(apiParams.limit) || 20))
                 },
                 loading: false,
                 lastFetchedAt: Date.now(),
@@ -456,7 +455,7 @@ export const useLicenseStore = create<LicenseState>()(
               toUpdate: licensesToUpdate.length
             });
 
-            const results = [];
+            const results: LicenseRecord[] = [];
 
             // Handle creates first
             if (licensesToCreate.length > 0) {
@@ -470,26 +469,29 @@ export const useLicenseStore = create<LicenseState>()(
               }
             }
 
-            // Handle updates
+            let updateIdMapping: Record<string, string> = {};
+            // Handle updates (pass current store licenses so key-style ids resolve against the same list the user is editing)
             if (licensesToUpdate.length > 0) {
               try {
-                const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate);
+                const storeLicenses = get().licenses;
+                const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate, {
+                  currentLicenses: Array.isArray(storeLicenses) ? storeLicenses : []
+                });
 
-                // Handle the service response format
                 let updatedLicenses: LicenseRecord[];
-                const resultObj = updateResult as any;
+                const resultObj = updateResult as { _isBulkUpdateResult?: boolean; results?: LicenseRecord[]; idMapping?: Record<string, string> } | LicenseRecord[];
 
                 storeLogger.debug('Bulk update result received', {
                   resultType: typeof updateResult,
                   isArray: Array.isArray(updateResult),
-                  has_isBulkUpdateResult: !!(resultObj && typeof resultObj === 'object' && resultObj._isBulkUpdateResult),
-                  resultsType: resultObj?.results ? typeof resultObj.results : 'undefined',
-                  resultsIsArray: Array.isArray(resultObj?.results)
+                  has_isBulkUpdateResult: !!(resultObj && typeof resultObj === 'object' && !Array.isArray(resultObj) && (resultObj as { _isBulkUpdateResult?: boolean })._isBulkUpdateResult),
+                  resultsType: resultObj && typeof resultObj === 'object' && !Array.isArray(resultObj) && 'results' in resultObj ? typeof (resultObj as { results?: LicenseRecord[] }).results : 'undefined',
+                  resultsIsArray: Array.isArray(resultObj && typeof resultObj === 'object' && !Array.isArray(resultObj) ? (resultObj as { results?: LicenseRecord[] }).results : null)
                 });
 
-                if (resultObj && typeof resultObj === 'object' && resultObj._isBulkUpdateResult) {
-                  // New format with ID mapping
-                  updatedLicenses = resultObj.results || [];
+                if (resultObj && typeof resultObj === 'object' && !Array.isArray(resultObj) && (resultObj as { _isBulkUpdateResult?: boolean })._isBulkUpdateResult) {
+                  updatedLicenses = ((resultObj as { results?: LicenseRecord[] }).results ?? []) as LicenseRecord[];
+                  updateIdMapping = (resultObj as { idMapping?: Record<string, string> }).idMapping ?? {};
                 } else if (Array.isArray(updateResult)) {
                   // Direct array format
                   updatedLicenses = updateResult;
@@ -517,12 +519,31 @@ export const useLicenseStore = create<LicenseState>()(
               }
             }
 
-            // Update the store with all results
+            // Merge into current list: replace updated rows (by idMapping or key), prepend created
             const currentLicenses = get().licenses;
-            const updatedLicenses = [...results, ...currentLicenses];
+            const safeCurrent = Array.isArray(currentLicenses) ? currentLicenses : [];
+            const mergedList = safeCurrent.map((license) => {
+                  if (!license || typeof license !== 'object') return license;
+                  const originalId = license.id;
+                  const uuid = updateIdMapping[String(originalId)] ?? (typeof originalId === 'string' ? updateIdMapping[originalId] : undefined);
+                  if (uuid) {
+                    const updated = results.find((r) => r.id === uuid);
+                    if (updated) return updated;
+                  }
+                  // Fallback: match by key when id is key (e.g. external API)
+                  const byKey = results.find(
+                    (r) => r.key != null && license.key != null && String(r.key) === String(license.key)
+                  );
+                  return byKey ?? license;
+                });
 
+            const newResults = results.filter(
+              (r) => !!r && typeof r === 'object' && 'id' in r && !safeCurrent.some((l) =>
+                l?.id === r.id || (l?.key != null && r.key != null && String(l.key) === String(r.key))
+              )
+            );
             set({
-              licenses: updatedLicenses,
+              licenses: [...newResults, ...mergedList],
               loading: false
             });
 
@@ -640,26 +661,29 @@ export const useLicenseStore = create<LicenseState>()(
               sampleUpdates: updates.slice(0, 2)
             });
 
-            const response = await container.licenseManagementService.bulkUpdateLicenses(updates);
+            const storeLicenses = get().licenses;
+            const response = await container.licenseManagementService.bulkUpdateLicenses(updates, {
+              currentLicenses: Array.isArray(storeLicenses) ? storeLicenses : []
+            });
+
+            type BulkUpdateResponse = { _isBulkUpdateResult?: boolean; results?: LicenseRecord[]; idMapping?: Record<string, string> };
+            const responseObj = response as BulkUpdateResponse | LicenseRecord[];
 
             storeLogger.debug('Bulk update store received response', {
               responseType: typeof response,
               isArray: Array.isArray(response),
               responseKeys: response && typeof response === 'object' ? Object.keys(response) : [],
-              has_isBulkUpdateResult: !!(response && typeof response === 'object' && (response as any)._isBulkUpdateResult),
-              resultsType: response && typeof response === 'object' && (response as any).results ? typeof (response as any).results : 'undefined',
-              resultsIsArray: Array.isArray((response as any)?.results)
+              has_isBulkUpdateResult: !!(responseObj && typeof responseObj === 'object' && !Array.isArray(responseObj) && responseObj._isBulkUpdateResult),
+              resultsType: responseObj && typeof responseObj === 'object' && !Array.isArray(responseObj) && responseObj.results ? typeof responseObj.results : 'undefined',
+              resultsIsArray: Array.isArray(responseObj && typeof responseObj === 'object' && !Array.isArray(responseObj) ? responseObj.results : undefined)
             });
 
-            // Handle bulk update result with ID mapping
-            let results: any[];
+            let results: LicenseRecord[];
             let idMapping: Record<string, string> = {};
 
-            const responseObj = response as any; // Cast to any to access custom properties
-            if (responseObj && typeof responseObj === 'object' && responseObj._isBulkUpdateResult) {
-              // New format with ID mapping
-              results = responseObj.results || [];
-              idMapping = responseObj.idMapping || {};
+            if (responseObj && typeof responseObj === 'object' && !Array.isArray(responseObj) && responseObj._isBulkUpdateResult) {
+              results = responseObj.results ?? [];
+              idMapping = responseObj.idMapping ?? {};
 
               storeLogger.debug('Processing new format response', {
                 resultsType: typeof results,
@@ -764,14 +788,20 @@ export const useLicenseStore = create<LicenseState>()(
                 let updatedLicense;
 
                 if (Object.keys(idMapping).length > 0) {
-                  // Use ID mapping: find result by mapping original ID to UUID
-                  const uuid = idMapping[license.id];
+                  // Use ID mapping: find result by mapping original ID (or key) to UUID
+                  const uuid = idMapping[String(license.id)] ?? idMapping[license.id as string];
                   if (uuid) {
                     updatedLicense = results.find(updated => updated.id === uuid);
                   }
                 } else {
                   // Direct matching (legacy)
                   updatedLicense = results.find(updated => updated.id === license.id);
+                }
+                // Fallback: when current row uses key as id (e.g. external API), match by key
+                if (!updatedLicense && license.key != null) {
+                  updatedLicense = results.find(
+                    (r) => r.key != null && String(r.key) === String(license.key)
+                  );
                 }
 
                 return updatedLicense || license;

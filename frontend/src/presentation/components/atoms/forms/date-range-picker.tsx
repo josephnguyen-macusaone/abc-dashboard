@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/presentation/components/atoms/forms/select';
 import { Switch } from '@/presentation/components/atoms/forms/switch';
+import { TooltipWrapper } from '@/presentation/components/molecules/ui/tooltip-wrapper';
 import { cn } from '@/shared/helpers';
 
 export interface DateRange {
@@ -352,34 +353,58 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
       }}
     >
       <PopoverTrigger asChild>
-        <Button
-          size="default"
-          variant="outline"
-          className={cn('justify-start', className)}
-        >
-          <CalendarIcon className="h-3 w-3 shrink-0 opacity-60" />
-          <div className="text-left">
-            <div className="py-1">
-              <div className="text-body-xs">{`${formatDate(range.from, locale)}${range.to != null ? ' - ' + formatDate(range.to, locale) : ''
-                }`}</div>
-            </div>
-            {rangeCompare != null && (
-              <div className="opacity-60 text-body-xs -mt-1">
-                vs. {formatDate(rangeCompare.from, locale)}
-                {rangeCompare.to != null
-                  ? ` - ${formatDate(rangeCompare.to, locale)}`
-                  : ''}
+        <div className="inline-flex">
+          <TooltipWrapper
+            content={
+              <span className="text-xs">
+                {`${formatDate(range.from, locale)}${range.to != null ? ' – ' + formatDate(range.to, locale) : ''}`}
+                {rangeCompare != null && (
+                  <>
+                    <br />
+                    <span className="text-muted-foreground">
+                      Compare: {formatDate(rangeCompare.from, locale)}
+                      {rangeCompare.to != null ? ` – ${formatDate(rangeCompare.to, locale)}` : ''}
+                    </span>
+                  </>
+                )}
+              </span>
+            }
+            side="bottom"
+            sideOffset={6}
+          >
+            <Button
+              size="default"
+              variant="outline"
+              className={cn(
+                'justify-center sm:justify-start h-8 w-8 sm:h-9 sm:w-auto sm:min-w-[200px] p-0 sm:px-3 sm:py-2',
+                className
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5 sm:h-3 sm:w-3 shrink-0 opacity-60" />
+              <div className="hidden sm:block text-left flex-1 min-w-0">
+                <div className="py-0.5">
+                  <div className="text-xs sm:text-body-xs">{`${formatDate(range.from, locale)}${range.to != null ? ' - ' + formatDate(range.to, locale) : ''
+                    }`}</div>
+                </div>
+                {rangeCompare != null && (
+                  <div className="opacity-60 text-body-xs text-xs -mt-0.5">
+                    vs. {formatDate(rangeCompare.from, locale)}
+                    {rangeCompare.to != null
+                      ? ` - ${formatDate(rangeCompare.to, locale)}`
+                      : ''}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div className="ml-auto pl-2 opacity-60 -mr-2">
-            {isOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </div>
-        </Button>
+              <div className="hidden sm:flex ml-auto pl-2 opacity-60 -mr-2 shrink-0">
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </div>
+            </Button>
+          </TooltipWrapper>
+        </div>
       </PopoverTrigger>
       <PopoverContent align={align} className="w-auto p-0 mt-2">
         <div className="flex py-4">

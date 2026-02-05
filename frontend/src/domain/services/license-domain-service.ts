@@ -52,7 +52,7 @@ export class LicenseDomainService {
       errors.push('Plan is required');
     }
 
-    if (!props.term || !LicenseTermValues.includes(props.term as any)) {
+    if (!props.term || !LicenseTermValues.includes(props.term as (typeof LicenseTermValues)[number])) {
       errors.push('Valid license term is required');
     }
 

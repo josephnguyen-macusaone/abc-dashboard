@@ -36,7 +36,7 @@ export class UserApiService {
       const response = await httpClient.get<{
         success: boolean;
         data: UserProfileDto[];
-        meta: { pagination: UsersListResponseDto['pagination']; stats: any };
+        meta: { pagination: UsersListResponseDto['pagination']; stats?: UsersListResponseDto['stats'] };
       }>(url);
 
       if (!response.success || !response.data) {

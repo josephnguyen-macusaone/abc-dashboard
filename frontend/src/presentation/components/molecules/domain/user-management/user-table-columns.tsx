@@ -165,7 +165,7 @@ export function getUserTableColumns({
       cell: ({ row }) => {
         const role = row.getValue("role") as string;
         return (
-          <RoleBadge role={role as any} variant="minimal" showIcon={true} />
+          <RoleBadge role={role as import('@/shared/constants/auth').UserRoleType} variant="minimal" showIcon={true} />
         );
       },
       enableColumnFilter: true,

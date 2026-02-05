@@ -1025,6 +1025,23 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   /**
+   * Normalize agents_name from DB (jsonb may be string or array) to array for entity/DTO
+   */
+  _normalizeAgentsName(agentsName) {
+    if (agentsName == null) return [];
+    if (Array.isArray(agentsName)) return agentsName;
+    if (typeof agentsName === 'string') {
+      try {
+        const parsed = JSON.parse(agentsName);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return agentsName.trim() ? [agentsName] : [];
+      }
+    }
+    return [];
+  }
+
+  /**
    * Convert database row to License entity
    */
   _toLicenseEntity(licenseRow) {
@@ -1071,7 +1088,7 @@ export class LicenseRepository extends ILicenseRepository {
       smsSent: licenseRow.sms_sent,
       smsBalance: licenseRow.sms_balance,
       agents: licenseRow.agents,
-      agentsName: licenseRow.agents_name,
+      agentsName: this._normalizeAgentsName(licenseRow.agents_name),
       agentsCost: parseFloat(licenseRow.agents_cost) || 0,
       notes: licenseRow.notes,
       createdAt: licenseRow.created_at,

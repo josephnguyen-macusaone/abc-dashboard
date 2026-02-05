@@ -50,7 +50,7 @@ export function LicenseManagementPage() {
         page: params?.page || 1,
         limit: params?.limit || 20,
         search: params?.search,
-        status: params?.status as any,
+        status: params?.status as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
       });
     } catch (error) {
       if (shouldShowError(error)) {
@@ -75,14 +75,12 @@ export function LicenseManagementPage() {
       try {
         // Transform agentsName from comma-separated string back to array
         const transformedData = data.map(license => {
-          const agentsNameValue = (license as any).agentsName;
+          const agentsNameValue = (license as { agentsName?: string | string[] }).agentsName;
 
-          // If it's already an array, keep it
           if (Array.isArray(agentsNameValue)) {
             return license;
           }
 
-          // If it's a string, split by comma and trim whitespace
           if (typeof agentsNameValue === 'string') {
             const agentsArray = agentsNameValue
               .split(',')
@@ -243,9 +241,9 @@ export function LicenseManagementPage() {
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
         search: params.search,
-        status: statusParam as any,
-        plan: planParam as any,
-        term: termParam as any,
+        status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
+        plan: planParam,
+        term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[] | undefined,
         startsAtFrom: filters.startsAtFrom,
         startsAtTo: filters.startsAtTo,
       });

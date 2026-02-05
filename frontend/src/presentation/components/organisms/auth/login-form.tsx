@@ -57,8 +57,8 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
             onSuccess?.();
             return 'Welcome back!';
           },
-          error: (error: any) => {
-            return error?.message || 'Login failed';
+          error: (error: unknown) => {
+            return (error as { message?: string })?.message || 'Login failed';
           }
         }
       );

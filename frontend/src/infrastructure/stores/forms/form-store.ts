@@ -6,7 +6,7 @@ export interface FormFieldError {
   message: string;
 }
 
-export interface FormState<T = Record<string, any>> {
+export interface FormState<T = object> {
   // State
   data: T;
   errors: Record<string, string>;
@@ -29,10 +29,10 @@ export interface FormState<T = Record<string, any>> {
 }
 
 // Generic form store factory
-export function createFormStore<T extends Record<string, any>>(
+export function createFormStore<T extends object>(
   storeName: string,
   initialData: T,
-  validationRules?: Record<string, (value: any, data: T) => string | null>
+  validationRules?: Record<string, (value: unknown, data: T) => string | null>
 ) {
   return create<FormState<T>>()(
     devtools(
@@ -134,7 +134,8 @@ export function createFormStore<T extends Record<string, any>>(
           const state = get();
           if (!validationRules?.[field]) return true;
 
-          const error = validationRules[field](state.data[field], state.data);
+          const data = state.data as Record<string, unknown>;
+          const error = validationRules[field](data[field], state.data);
           if (error) {
             set((state) => ({
               errors: { ...state.errors, [field]: error },
@@ -156,9 +157,10 @@ export function createFormStore<T extends Record<string, any>>(
           let isValid = true;
 
           if (validationRules) {
+            const data = state.data as Record<string, unknown>;
             Object.keys(validationRules).forEach((field) => {
               const rule = validationRules[field];
-              const error = rule(state.data[field], state.data);
+              const error = rule(data[field], state.data);
               if (error) {
                 newErrors[field] = error;
                 isValid = false;
@@ -179,7 +181,7 @@ export function createFormStore<T extends Record<string, any>>(
 
 // Common validation rules
 export const commonValidationRules = {
-  required: (value: any): string | null => {
+  required: (value: unknown): string | null => {
     if (value === null || value === undefined || value === '') {
       return 'This field is required';
     }
@@ -214,7 +216,7 @@ export const commonValidationRules = {
     return null;
   },
 
-  confirmPassword: (passwordField: string) => (value: string, data: any): string | null => {
+  confirmPassword: (passwordField: string) => (value: string, data: Record<string, unknown>): string | null => {
     if (!value) return null;
     if (value !== data[passwordField]) {
       return 'Passwords do not match';

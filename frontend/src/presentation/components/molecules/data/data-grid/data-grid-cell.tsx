@@ -4,6 +4,7 @@ import type { Cell, TableMeta } from "@tanstack/react-table";
 import * as React from "react";
 
 import {
+  AgentsNameCell,
   CheckboxCell,
   DateCell,
   MultiSelectCell,
@@ -80,6 +81,9 @@ function DataGridCellImpl<TData>({
       break;
     case "date":
       Comp = DateCell;
+      break;
+    case "agents-name":
+      Comp = AgentsNameCell;
       break;
     default:
       Comp = ShortTextCell;

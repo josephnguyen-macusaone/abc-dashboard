@@ -363,7 +363,7 @@ class TracingUtils {
               }
               return resolvedResult;
             })
-            .catch((error: any) => {
+            .catch((error: unknown) => {
               this.endSpan(trace, {
                 success: false,
                 error: error instanceof Error ? error.message : String(error),

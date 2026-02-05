@@ -6,11 +6,11 @@ import { ApiExceptionDto } from '@/application/dto/api-dto';
 export function getErrorStatus(error: unknown): number | undefined {
   if (!error) return undefined;
 
-  const anyError = error as any;
+  const err = error as { statusCode?: number; status?: number; response?: { status?: number } };
 
-  if (typeof anyError.statusCode === 'number') return anyError.statusCode;
-  if (typeof anyError.status === 'number') return anyError.status;
-  if (typeof anyError?.response?.status === 'number') return anyError.response.status;
+  if (typeof err.statusCode === 'number') return err.statusCode;
+  if (typeof err.status === 'number') return err.status;
+  if (typeof err?.response?.status === 'number') return err.response.status;
   if (error instanceof ApiExceptionDto && typeof error.status === 'number') return error.status;
 
   return undefined;

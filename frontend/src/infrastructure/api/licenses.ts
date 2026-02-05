@@ -3,6 +3,14 @@ import type { DashboardMetricsResponse } from '@/infrastructure/api/types';
 import type { LicenseRecord } from '@/types';
 import type { LicenseBulkResponse } from '@/application/services/license-services';
 import logger from '@/shared/helpers/logger';
+import type {
+  ApiLicenseRaw,
+  ApiLicensePayload,
+  GetLicensesParams,
+  LicensesListApiResponse,
+  BulkUpdateApiResponse,
+} from '@/infrastructure/api/licenses-types';
+import { extractApiLicenseFromResponse, extractBulkUpdateResults } from '@/infrastructure/api/licenses-types';
 
 const log = logger.createChild({ component: 'LicenseApi' });
 
@@ -36,7 +44,7 @@ export interface LicenseSyncStatusResponse {
  * Handles both external (ActivateDate, monthlyFee, license_type, status as number)
  * and internal (startDay, lastPayment, plan, status as string) API shapes.
  */
-function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
+function transformApiLicenseToRecord(apiLicense: ApiLicenseRaw): LicenseRecord {
   // Status: active | cancel only
   let status: LicenseRecord['status'] = 'active';
   if (apiLicense.status !== undefined && apiLicense.status !== null) {
@@ -89,9 +97,14 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
   // plan: internal has plan; external has license_type
   const plan = apiLicense.plan ?? apiLicense.license_type ?? 'Basic';
 
+  // Prefer UUID as id when present (internal API); otherwise use appid/key so grid can resolve
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const idFromApi = apiLicense.id != null ? String(apiLicense.id) : '';
+  const id = uuidRegex.test(idFromApi) ? idFromApi : (apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`);
+
   return {
-    id: apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`,
-    key: (apiLicense.appid ?? apiLicense.key ?? '') as string,
+    id: id as LicenseRecord['id'],
+    key: (apiLicense.appid ?? apiLicense.key ?? (typeof id === 'string' && !uuidRegex.test(id) ? id : '')) as string,
     product: (apiLicense.product ?? 'ABC Business Suite') as string,
     dba: apiLicense.dba ?? '',
     zip: apiLicense.zip ?? '',
@@ -118,22 +131,18 @@ function transformApiLicenseToRecord(apiLicense: any): LicenseRecord {
  * Transform frontend LicenseRecord to backend API format
  * Filters out undefined, null, and empty values to ensure clean API payloads
  */
-function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
-  const apiLicense: any = {};
+function transformRecordToApiLicense(license: Partial<LicenseRecord>): ApiLicensePayload {
+  const apiLicense: ApiLicensePayload = {};
 
-  // Helper to check if value should be included
-  const shouldInclude = (value: any): boolean => {
-    return value !== undefined && value !== null && value !== '';
-  };
+  const shouldInclude = (value: unknown): boolean =>
+    value !== undefined && value !== null && value !== '';
 
-  // Map frontend fields to external API fields
-  if (shouldInclude((license as any).key) || shouldInclude(license.id)) {
-    apiLicense.appid = (license as any).key || license.id; // External API uses appid
+  if (shouldInclude(license.key) || shouldInclude(license.id)) {
+    apiLicense.appid = String(license.key ?? license.id ?? '');
   }
 
-  // External API required fields
   if (shouldInclude(license.id)) {
-    apiLicense.appid = license.id; // Ensure we always have appid
+    apiLicense.appid = String(license.id);
   }
 
   // Map frontend fields to external API fields
@@ -145,9 +154,8 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): any {
     apiLicense.zip = license.zip;
   }
 
-  // Required fields for external API
   if (shouldInclude(license.id)) {
-    apiLicense.appid = license.id; // External API uses appid as identifier
+    apiLicense.appid = String(license.id);
   }
 
   // For external API, we need Email_license and pass as required fields
@@ -248,7 +256,7 @@ export class LicenseApiService {
   /**
    * Get licenses with pagination and filtering
    */
-  static async getLicenses(params: any = {}): Promise<{
+  static async getLicenses(params: GetLicensesParams = {}): Promise<{
     licenses: LicenseRecord[];
     pagination: {
       page: number;
@@ -264,7 +272,6 @@ export class LicenseApiService {
 
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          // Handle array values for filters like status - send as comma-separated string
           if (Array.isArray(value)) {
             queryParams.append(key, value.join(','));
           } else {
@@ -274,26 +281,12 @@ export class LicenseApiService {
       });
 
       const url = `/licenses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      const response = await httpClient.get<{
-        success: boolean;
-        message: string;
-        timestamp: string;
-        data: any[];
-        meta: {
-          page: number;
-          limit: number;
-          total: number;
-          totalPages: number;
-          hasNext: boolean;
-          hasPrev: boolean;
-        };
-      }>(url);
+      const response = await httpClient.get<LicensesListApiResponse>(url);
 
       if (!response.success || !response.data) {
         throw new Error('Get licenses response missing data');
       }
 
-      // Transform API licenses to LicenseRecords
       const licenses = response.data.map(transformApiLicenseToRecord);
 
       const apiMeta = response.meta || {
@@ -326,9 +319,9 @@ export class LicenseApiService {
    */
   static async getLicense(id: number | string): Promise<LicenseRecord> {
     try {
-      // Backend expects string ID (UUID)
-      const response = await httpClient.get<any>(`/external-licenses/${String(id)}`);
-      const apiLicense = response.data?.license || response.data;
+      const response = await httpClient.get<{ data?: { license?: ApiLicenseRaw } | ApiLicenseRaw }>(`/external-licenses/${String(id)}`);
+      const apiLicense = extractApiLicenseFromResponse(response);
+      if (!apiLicense) throw new Error('Get license response missing data');
       return transformApiLicenseToRecord(apiLicense);
     } catch (error) {
       throw error;
@@ -353,8 +346,9 @@ export class LicenseApiService {
         throw new Error('Password is required and cannot be empty');
       }
 
-      const response = await httpClient.post<any>('/external-licenses', apiData);
-      const apiLicense = response.data?.license || response.data;
+      const response = await httpClient.post<{ data?: { license?: ApiLicenseRaw } | ApiLicenseRaw }>('/external-licenses', apiData);
+      const apiLicense = extractApiLicenseFromResponse(response);
+      if (!apiLicense) throw new Error('Create license response missing data');
       return transformApiLicenseToRecord(apiLicense);
     } catch (error) {
       throw error;
@@ -369,8 +363,9 @@ export class LicenseApiService {
       const apiData = transformRecordToApiLicense(updates);
       // Backend expects ID in both URL and request body
       apiData.id = String(id);
-      const response = await httpClient.put<any>(`/external-licenses/${String(id)}`, apiData);
-      const apiLicense = response.data?.license || response.data;
+      const response = await httpClient.put<{ data?: { license?: ApiLicenseRaw } | ApiLicenseRaw }>(`/external-licenses/${String(id)}`, apiData);
+      const apiLicense = extractApiLicenseFromResponse(response);
+      if (!apiLicense) throw new Error('Update license response missing data');
       return transformApiLicenseToRecord(apiLicense);
     } catch (error) {
       throw error;
@@ -383,8 +378,8 @@ export class LicenseApiService {
   static async deleteLicense(id: number | string): Promise<{ message: string }> {
     try {
       // Backend expects string ID (UUID)
-      const response = await httpClient.delete<any>(`/external-licenses/${String(id)}`);
-      return response.data || { message: 'License deleted successfully' };
+      const response = await httpClient.delete<{ data?: { message?: string } }>(`/external-licenses/${String(id)}`);
+      return { message: response?.data?.message ?? 'License deleted successfully' };
     } catch (error) {
       throw error;
     }
@@ -412,8 +407,8 @@ export class LicenseApiService {
       const results = [];
       for (const apiLicense of apiLicenses) {
         try {
-          const response = await httpClient.post<any>('/external-licenses', apiLicense);
-          results.push(response.data);
+          const response = await httpClient.post<{ data?: ApiLicenseRaw }>('/external-licenses', apiLicense);
+          if (response?.data) results.push(response.data);
         } catch (error) {
           // Log error but continue with other licenses
           log.error('Failed to create license', { apiLicense, error });
@@ -456,8 +451,8 @@ export class LicenseApiService {
       const results = [];
       for (const update of validUpdates) {
         try {
-          const response = await httpClient.put<any>(`/external-licenses/${update.id}`, update.updates);
-          results.push(response.data);
+          const response = await httpClient.put<{ data?: ApiLicenseRaw }>(`/external-licenses/${update.id}`, update.updates);
+          if (response?.data) results.push(response.data);
         } catch (error) {
           // Log error but continue with other updates
           log.error('Failed to update license', { id: update.id, error });
@@ -477,33 +472,15 @@ export class LicenseApiService {
    */
   static async bulkUpdateInternalLicenses(updates: Array<Partial<LicenseRecord> & { id: number | string }>): Promise<LicenseRecord[]> {
     try {
-      // Send the array directly to the internal bulk update endpoint
-      const response = await httpClient.patch('/licenses/bulk', updates) as any;
+      const response = await httpClient.patch<BulkUpdateApiResponse>('/licenses/bulk', updates);
 
-      // Extract results from the response
-      log.debug('Bulk update API response', {
-        hasData: !!response.data,
-        dataType: typeof response.data,
-        dataKeys: response.data ? Object.keys(response.data) : [],
-        hasResults: !!(response.data && response.data.results),
-        resultsType: response.data?.results ? typeof response.data.results : 'undefined',
-        resultsIsArray: Array.isArray(response.data?.results),
-        resultsLength: Array.isArray(response.data?.results) ? response.data.results.length : 'N/A'
-      });
-
-      if (response.data && response.data.results) {
-        const transformed = response.data.results.map(transformApiLicenseToRecord);
-        log.debug('Bulk update API returning transformed results', { count: transformed.length });
-        return transformed;
-      } else if (Array.isArray(response.data)) {
-        // Fallback for old format
-        const transformed = response.data.map(transformApiLicenseToRecord);
-        log.debug('Bulk update API returning fallback transformed results', { count: transformed.length });
-        return transformed;
-      } else {
-        log.warn('Unexpected bulk update response format', { data: response.data });
-        return [];
+      const results = extractBulkUpdateResults(response as unknown);
+      if (results.length > 0) {
+        log.debug('Bulk update API returning transformed results', { count: results.length });
+        return results.map(transformApiLicenseToRecord);
       }
+      log.warn('Unexpected bulk update response format', { data: (response as { data?: unknown }).data });
+      return [];
     } catch (error) {
       throw error;
     }
@@ -566,7 +543,7 @@ export class InternalLicenseApiService {
   } = {}): Promise<{
     success: boolean;
     message: string;
-    data: any[];
+    data: ApiLicenseRaw[];
     meta: {
       page: number;
       limit: number;
@@ -594,7 +571,7 @@ export class InternalLicenseApiService {
   static async getLicense(id: string): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.get(`/licenses/${id}`);
   }
@@ -618,7 +595,7 @@ export class InternalLicenseApiService {
   }): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.post('/licenses', licenseData);
   }
@@ -635,7 +612,7 @@ export class InternalLicenseApiService {
   }>): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.put(`/licenses/${id}`, updates);
   }
@@ -659,14 +636,14 @@ export class InternalLicenseApiService {
       emails?: string[];
       countids?: number[];
     };
-    updates: Record<string, any>;
+    updates: Record<string, unknown>;
   }): Promise<{
     success: boolean;
     message: string;
     data: {
       updated: number;
       failed: number;
-      results: any[];
+      results: ApiLicenseRaw[];
     };
   }> {
     return httpClient.patch('/licenses/bulk', updates);
@@ -694,7 +671,7 @@ export class InternalLicenseApiService {
     data: {
       created: number;
       failed: number;
-      results: any[];
+      results: ApiLicenseRaw[];
     };
   }> {
     return httpClient.post('/licenses/bulk', licenses);
@@ -713,7 +690,7 @@ export class InternalLicenseApiService {
     data: {
       deleted: number;
       failed: number;
-      results: any[];
+      results: ApiLicenseRaw[];
     };
   }> {
     return httpClient.delete('/licenses/bulk', { data: identifiers });
@@ -725,7 +702,7 @@ export class InternalLicenseApiService {
   static async getLicenseByEmail(email: string): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.get(`/licenses/email/${encodeURIComponent(email)}`);
   }
@@ -733,10 +710,10 @@ export class InternalLicenseApiService {
   /**
    * Update license by email
    */
-  static async updateLicenseByEmail(email: string, updates: Record<string, any>): Promise<{
+  static async updateLicenseByEmail(email: string, updates: Record<string, unknown>): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.put(`/licenses/email/${encodeURIComponent(email)}`, updates);
   }
@@ -757,7 +734,7 @@ export class InternalLicenseApiService {
   static async getLicenseByCountId(countId: number): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.get(`/licenses/countid/${countId}`);
   }
@@ -765,10 +742,10 @@ export class InternalLicenseApiService {
   /**
    * Update license by count ID
    */
-  static async updateLicenseByCountId(countId: number, updates: Record<string, any>): Promise<{
+  static async updateLicenseByCountId(countId: number, updates: Record<string, unknown>): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.put(`/licenses/countid/${countId}`, updates);
   }
@@ -815,7 +792,7 @@ export class InternalLicenseApiService {
   }): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.post('/licenses/row', licenseData);
   }
@@ -848,8 +825,8 @@ export class InternalLicenseApiService {
           utilizationRate: number;
         };
         alerts: {
-          expiringSoon: any[];
-          lowSeats: any[];
+          expiringSoon: unknown[];
+          lowSeats: unknown[];
         };
       };
     };
@@ -899,7 +876,7 @@ export class InternalLicenseApiService {
   }): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.post(`/licenses/${licenseId}/renew`, renewalOptions);
   }
@@ -917,7 +894,7 @@ export class InternalLicenseApiService {
       proposedExpiration: string;
       extensionDays: number;
       costImpact: number;
-      conflicts: any[];
+      conflicts: unknown[];
     };
   }> {
     const queryParams = new URLSearchParams();
@@ -938,7 +915,7 @@ export class InternalLicenseApiService {
   }): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.post(`/licenses/${licenseId}/extend`, extensionOptions);
   }
@@ -951,7 +928,7 @@ export class InternalLicenseApiService {
   }): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.post(`/licenses/${licenseId}/expire`, expirationOptions);
   }
@@ -967,7 +944,7 @@ export class InternalLicenseApiService {
       proposedStatus: string;
       gracePeriodDays: number;
       autoSuspendEnabled: boolean;
-      conflicts: any[];
+      conflicts: unknown[];
     };
   }> {
     return httpClient.get(`/licenses/${licenseId}/expire-preview`);
@@ -981,7 +958,7 @@ export class InternalLicenseApiService {
   }): Promise<{
     success: boolean;
     message: string;
-    data: { license: any };
+    data: { license: ApiLicenseRaw };
   }> {
     return httpClient.post(`/licenses/${licenseId}/reactivate`, reactivationOptions);
   }
@@ -998,9 +975,9 @@ export class InternalLicenseApiService {
     success: boolean;
     message: string;
     data: {
-      expiringSoon: any[];
-      expired: any[];
-      suspended: any[];
+      expiringSoon: unknown[];
+      expired: unknown[];
+      suspended: unknown[];
       total: number;
     };
   }> {
@@ -1036,7 +1013,7 @@ export class InternalLicenseApiService {
     data: {
       renewed: number;
       failed: number;
-      results: any[];
+      results: unknown[];
     };
   }> {
     return httpClient.post('/licenses/lifecycle/bulk-renew', renewalData);
@@ -1054,7 +1031,7 @@ export class InternalLicenseApiService {
     data: {
       expired: number;
       failed: number;
-      results: any[];
+      results: unknown[];
     };
   }> {
     return httpClient.post('/licenses/lifecycle/bulk-expire', expirationData);
@@ -1110,7 +1087,7 @@ export class InternalLicenseApiService {
       expiredLicenses: number;
       suspendedLicenses: number;
       utilizationRate: number;
-      monthlyBreakdown: any[];
+      monthlyBreakdown: unknown[];
       statusDistribution: Record<string, number>;
     };
   }> {
@@ -1152,7 +1129,7 @@ export class SmsPaymentApiService {
     success: boolean;
     message: string;
     data: {
-      payments: any[];
+      payments: unknown[];
       totals: {
         totalPayments: number;
         totalAmount: number;
@@ -1194,8 +1171,8 @@ export class SmsPaymentApiService {
     success: boolean;
     message: string;
     data: {
-      payment: any;
-      updatedLicense: any;
+      payment: unknown;
+      updatedLicense: unknown;
     };
   }> {
     return httpClient.post('/add-sms-payment', paymentData);
@@ -1234,15 +1211,15 @@ export class UnifiedLicenseApi {
     sortOrder?: 'asc' | 'desc';
   } = {}) {
     try {
-      // Use internal API for full functionality
-      const response = await InternalLicenseApiService.getLicenses(params) as any;
+      const response = await InternalLicenseApiService.getLicenses(params);
+      const data = response.data ?? [];
+      const licenses = data.map(transformApiLicenseToRecord);
 
-      // Transform internal API response to frontend repository format
       return {
-        licenses: response.data || [],
-        pagination: response.meta || {
-          page: params.page || 1,
-          limit: params.limit || 20,
+        licenses,
+        pagination: response.meta ?? {
+          page: params.page ?? 1,
+          limit: params.limit ?? 20,
           total: 0,
           totalPages: 0,
           hasNext: false,
@@ -1321,7 +1298,7 @@ export class UnifiedLicenseApi {
       emails?: string[];
       countids?: number[];
     };
-    updates: Record<string, any>;
+    updates: Record<string, unknown>;
   }) {
     return await InternalLicenseApiService.bulkUpdateLicenses(updates);
   }
@@ -1330,11 +1307,9 @@ export class UnifiedLicenseApi {
    * Bulk update internal licenses (by IDs)
    */
   static async bulkUpdateInternalLicenses(updates: Array<Partial<LicenseRecord> & { id: number | string }>): Promise<LicenseRecord[]> {
-    // Send the array directly to the internal bulk update endpoint
-    const response = await httpClient.patch('/licenses/bulk', updates) as any;
-
-    // Extract results from the response - backend returns array directly
-    return Array.isArray(response) ? response : (response.data || []);
+    const response = await httpClient.patch<BulkUpdateApiResponse>('/licenses/bulk', updates);
+    const results = extractBulkUpdateResults(response as unknown);
+    return results.map(transformApiLicenseToRecord);
   }
 
   /**
@@ -1346,7 +1321,7 @@ export class UnifiedLicenseApi {
     data: {
       created: number;
       failed: number;
-      results: any[];
+      results: ApiLicenseRaw[];
     };
   }> {
     return await InternalLicenseApiService.bulkCreateLicenses(licenses);

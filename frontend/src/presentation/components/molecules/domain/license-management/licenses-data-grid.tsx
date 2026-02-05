@@ -10,7 +10,6 @@ import { toast } from "sonner";
 
 import {
   DataGrid,
-  DataGridRowHeightMenu,
   DataGridViewMenu,
 } from "@/presentation/components/molecules/data/data-grid";
 import { DataTableFacetedFilter } from "@/presentation/components/molecules/data/data-table";
@@ -20,6 +19,7 @@ import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
+import { AgentsNameEditorModal } from "./agents-name-editor-modal";
 import { getLicenseGridColumns } from "./license-grid-columns";
 import {
   STATUS_OPTIONS,
@@ -71,6 +71,13 @@ export function LicensesDataGrid({
   const [hasChanges, setHasChanges] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const dataVersionRef = React.useRef(0);
+
+  const [agentsNameModal, setAgentsNameModal] = React.useState<{
+    open: boolean;
+    rowIndex: number;
+    columnId: string;
+    initialValue: string[];
+  }>({ open: false, rowIndex: 0, columnId: "agentsName", initialValue: [] });
 
   // Track the last initial data to detect changes (reference + identity for server-driven updates e.g. date filter)
   const lastInitialDataRef = React.useRef<LicenseRecord[]>(initialData);
@@ -185,6 +192,35 @@ export function LicensesDataGrid({
     return () => clearTimeout(timeoutId);
   }, [searchInput]);
 
+  const onOpenAgentsNameEditor = React.useCallback(
+    (rowIndex: number, columnId: string, initialValue: string[]) => {
+      setAgentsNameModal({
+        open: true,
+        rowIndex,
+        columnId,
+        initialValue: Array.isArray(initialValue) ? [...initialValue] : [],
+      });
+    },
+    [],
+  );
+
+  const onAgentsNameModalSave = React.useCallback(
+    (newList: string[]) => {
+      const { rowIndex } = agentsNameModal;
+      setData((prev) => {
+        const next = [...prev];
+        const row = next[rowIndex];
+        if (row) {
+          next[rowIndex] = { ...row, agentsName: newList };
+        }
+        return next;
+      });
+      setHasChanges(true);
+      setAgentsNameModal((m) => ({ ...m, open: false }));
+    },
+    [agentsNameModal.rowIndex],
+  );
+
   const gridState = useDataGrid({
     data,
     columns,
@@ -200,7 +236,7 @@ export function LicensesDataGrid({
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange, // Enable server-side filtering when onQueryChange provided
-    // Don't pass onQueryChange to useDataGrid - we'll handle it manually
+    meta: { onOpenAgentsNameEditor },
   });
 
   // Track changes manually (adapted from licenses-data-table.tsx)
@@ -318,7 +354,7 @@ export function LicensesDataGrid({
     // Process table column filters to utilize backend API
     if (tableColumnFilters && tableColumnFilters.length > 0) {
       tableColumnFilters.forEach(filter => {
-        const filterValue = filter.value as any;
+        const filterValue = filter.value as { value?: unknown; operator?: string } | undefined;
 
         if (filterValue?.value !== undefined) {
           // Handle complex filters with operators (from DataGridFilterMenu)
@@ -327,8 +363,7 @@ export function LicensesDataGrid({
 
           // Map frontend operators to backend API parameters
           if (filter.id === 'dba' && operator === 'contains') {
-            // "Contains" on DBA field maps to general search
-            apiParams.search = value;
+            apiParams.search = typeof value === 'string' ? value : undefined;
           } else if (filter.id === 'status') {
             // Status filtering - backend supports array
             apiParams.status = Array.isArray(value) ? value : [value];
@@ -429,8 +464,8 @@ export function LicensesDataGrid({
     <div className={className}>
       <div className="space-y-5">
         {/* Toolbar: always shown so users can search/filter and add a license when empty */}
-        <div className="flex flex-nowrap md:flex-wrap items-center gap-2 md:justify-between overflow-x-auto">
-          <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-nowrap md:flex-wrap items-center gap-1.5 sm:gap-2 md:justify-between overflow-x-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <div className="relative">
               <SearchBar
                 placeholder="Search..."
@@ -476,18 +511,17 @@ export function LicensesDataGrid({
                 <span className="hidden sm:inline">Reset</span>
               </Button>
             )}
-            <DataGridRowHeightMenu table={table} />
             <DataGridViewMenu table={table} />
           </div>
           {/* Action buttons */}
           {hasChanges && (
-            <div className="flex items-center gap-2 flex-shrink-0 ml-auto md:ml-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-auto md:ml-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleReset}
                 disabled={isSaving}
-                className="gap-2"
+                className="gap-1.5 sm:gap-2"
                 aria-label="Discard changes"
               >
                 <RotateCcw className="h-4 w-4 shrink-0" />
@@ -497,7 +531,7 @@ export function LicensesDataGrid({
                 size="sm"
                 onClick={handleSave}
                 disabled={!onSave || isSaving}
-                className="gap-2"
+                className="gap-1.5 sm:gap-2"
                 aria-label={isSaving ? "Saving changes" : "Save changes"}
               >
                 <Save className="h-4 w-4 shrink-0" />
@@ -529,6 +563,14 @@ export function LicensesDataGrid({
             stretchColumns
           />
         )}
+        <AgentsNameEditorModal
+          open={agentsNameModal.open}
+          onOpenChange={(open) =>
+            setAgentsNameModal((m) => ({ ...m, open }))
+          }
+          agentsName={agentsNameModal.initialValue}
+          onSave={onAgentsNameModalSave}
+        />
       </div>
     </div>
   );
