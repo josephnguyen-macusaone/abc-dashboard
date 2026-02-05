@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
-import type { LicenseRecord } from '@/types';
+import type { LicenseRecord, LicenseStatus } from '@/types';
 import {
   useLicenseStore,
   selectLicenses,
@@ -29,6 +29,15 @@ import type { CreateLicenseRequest, UpdateLicenseRequest } from '@/infrastructur
 // ========================================================================
 // CORE LICENSE HOOKS
 // ========================================================================
+
+function normalizeStatus(
+  s: string | LicenseStatus | LicenseStatus[] | undefined
+): LicenseStatus | LicenseStatus[] | undefined {
+  if (s === undefined) return undefined;
+  if (Array.isArray(s)) return s;
+  if (s === 'active' || s === 'cancel') return s;
+  return undefined;
+}
 
 /**
  * Hook for fetching licenses with pagination and filtering.
@@ -60,7 +69,7 @@ export const useLicenses = (params: {
     fetchLicenses({
       page: params.page ?? pagination.page,
       limit: params.limit ?? pagination.limit,
-      status: params.status ?? filters.status,
+      status: normalizeStatus(params.status ?? filters.status),
       dba: params.dba ?? filters.dba,
       startsAtFrom: params.startDate ?? filters.startsAtFrom,
       startsAtTo: params.endDate ?? filters.startsAtTo,
@@ -84,6 +93,7 @@ export const useLicenses = (params: {
       sortBy: params.sortBy ?? 'created_at',
       sortOrder: params.sortOrder ?? 'desc',
       ...nextFilters,
+      status: normalizeStatus(nextFilters.status),
     });
   }, [filters, params, setFilters, fetchLicenses]);
 
