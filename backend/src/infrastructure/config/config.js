@@ -1,3 +1,10 @@
+import { resolveDbPassword } from './resolve-db-password.js';
+
+// Resolve DB password once (supports plain or enc:<hex> from encryptToHex with context 'db_password')
+const resolvedDbPassword = resolveDbPassword(
+  process.env.POSTGRES_PASSWORD || 'abc_password'
+);
+
 // Environment configuration
 export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -6,12 +13,12 @@ export const config = {
   // PostgreSQL Database configuration
   DATABASE_URL:
     process.env.DATABASE_URL ||
-    `postgresql://${process.env.POSTGRES_USER || 'abc_user'}:${process.env.POSTGRES_PASSWORD || 'abc_password'}@${process.env.POSTGRES_HOST || 'localhost'}:${process.env.POSTGRES_PORT || 5432}/${process.env.POSTGRES_DB || 'abc_dashboard'}`,
+    `postgresql://${process.env.POSTGRES_USER || 'abc_user'}:${encodeURIComponent(resolvedDbPassword)}@${process.env.POSTGRES_HOST || 'localhost'}:${process.env.POSTGRES_PORT || 5432}/${process.env.POSTGRES_DB || 'abc_dashboard'}`,
   POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
   POSTGRES_PORT: parseInt(process.env.POSTGRES_PORT) || 5432,
   POSTGRES_DB: process.env.POSTGRES_DB || 'abc_dashboard',
   POSTGRES_USER: process.env.POSTGRES_USER || 'abc_user',
-  POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'abc_password',
+  POSTGRES_PASSWORD: resolvedDbPassword,
   POSTGRES_POOL_MIN: parseInt(process.env.POSTGRES_POOL_MIN) || 2,
   POSTGRES_POOL_MAX: parseInt(process.env.POSTGRES_POOL_MAX) || 10,
 

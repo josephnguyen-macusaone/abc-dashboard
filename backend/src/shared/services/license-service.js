@@ -157,11 +157,18 @@ export class LicenseService extends ILicenseService {
     // Process each license using the proper create use case for validation and audit
     for (const [index, licenseData] of licensesData.entries()) {
       try {
-        // Use the create use case for proper validation and audit logging
+        // Extract userId - only use if it's a valid string
+        // For bulk operations from frontend/sync, this is typically undefined
         const userId = licenseData.createdBy || licenseData.updatedBy;
+        const validUserId =
+          userId && typeof userId === 'string' && userId.trim() !== '' ? userId : undefined;
 
-        const createdLicense = await this.createLicenseUseCase.execute(licenseData, {
-          userId: userId,
+        // Remove createdBy/updatedBy from licenseData to prevent FK violations
+        // The use case will handle setting these based on context
+        const { createdBy, updatedBy, ...cleanLicenseData } = licenseData;
+
+        const createdLicense = await this.createLicenseUseCase.execute(cleanLicenseData, {
+          userId: validUserId,
         });
 
         createdLicenses.push(createdLicense);
@@ -201,7 +208,7 @@ export class LicenseService extends ILicenseService {
       });
     }
 
-    return createdLicenses;
+    return { createdLicenses, errors };
   }
 
   /**
@@ -239,7 +246,7 @@ export class LicenseService extends ILicenseService {
         // Use the update use case for proper validation and audit logging
         const userId = licenseData.updatedBy;
         const updatedLicense = await this.updateLicenseUseCase.execute(existingLicense.id, data, {
-          userId: userId,
+          userId
         });
 
         updatedLicenses.push(updatedLicense);
@@ -289,6 +296,15 @@ export class LicenseService extends ILicenseService {
    */
   async getAuditEvents(licenseId, options) {
     return await this.licenseRepository.findAuditEvents(licenseId, options);
+  }
+
+  /**
+   * Bulk delete licenses by IDs
+   * @param {string[]} ids - License IDs to delete
+   * @returns {Promise<number>} Number of licenses deleted
+   */
+  async bulkDelete(ids) {
+    return this.licenseRepository.bulkDelete(ids);
   }
 
   /**

@@ -3,5 +3,9 @@ export { AccessDeniedCard, type AccessDeniedCardProps } from './access-denied-ca
 export { Breadcrumb } from './breadcrumb';
 export { ThemeSwitcher, ThemeToggle } from './theme-switcher';
 export { TooltipWrapper, type TooltipWrapperProps } from './tooltip-wrapper';
-export { SearchBar, type SearchBarProps } from './search-bar';
+export {
+  SearchBar,
+  type SearchBarProps,
+  type SearchPrefixValue,
+} from './search-bar';
 export * from './fields';

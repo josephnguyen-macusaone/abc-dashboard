@@ -130,12 +130,6 @@ declare module "@tanstack/react-table" {
     onPasteDialogOpenChange?: (open: boolean) => void;
     onPasteWithExpansion?: () => void;
     onPasteWithoutExpansion?: () => void;
-    /** Open agents-name editor modal (rowIndex, columnId, current value). Used by agents-name cell variant. */
-    onOpenAgentsNameEditor?: (
-      rowIndex: number,
-      columnId: string,
-      initialValue: string[],
-    ) => void;
   }
 }
 

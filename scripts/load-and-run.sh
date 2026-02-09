@@ -1,98 +1,70 @@
 #!/bin/bash
 
 # =================================================================
-# ABC License - Load and Run (Option A: Server)
+# ABC License - Deploy & run (server) or start stack only (local/server)
 # =================================================================
-# Load Docker images from compressed files and start the stack.
-# Run this on your low-resource server after transferring images.
+# - Without --start-only: load images from dist/*.tar.gz then start stack (server after transfer).
+# - With --start-only: only start the stack (sets POSTGRES_PASSWORD_PLAIN when .env has enc:).
 #
-# Usage: ./scripts/load-and-run.sh [--no-start]
+# Usage:
+#   ./scripts/load-and-run.sh              # Load images + start (server)
+#   ./scripts/load-and-run.sh --no-start   # Load images only
+#   ./scripts/load-and-run.sh --start-only up -d   # Start stack only (local or server)
+#   ./scripts/load-and-run.sh --start-only down    # Stop stack
 
-set -e  # Exit on error
+set -e
 
-# =================================================================
-# CONFIGURATION
-# =================================================================
-
-# Get repo root (parent of scripts/ dir)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# Directory containing the image files
 DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
-
-# Image files
 BACKEND_IMAGE_FILE="$DIST_DIR/backend.tar.gz"
 FRONTEND_IMAGE_FILE="$DIST_DIR/frontend.tar.gz"
 
-# Parse arguments
-NO_START=false
-if [ "$1" = "--no-start" ]; then
-    NO_START=true
+# Start stack with enc: password support (set POSTGRES_PASSWORD_PLAIN then docker compose)
+start_stack() {
+    cd "$REPO_ROOT"
+    export POSTGRES_PASSWORD_PLAIN
+    POSTGRES_PASSWORD_PLAIN=$(cd "$REPO_ROOT/backend" && node scripts/resolve-db-password-for-docker.js)
+    exec docker compose "$@"
+}
+
+if [ "$1" = "--start-only" ]; then
+    shift
+    start_stack "$@"
 fi
 
-# =================================================================
-# PRE-LOAD CHECKS
-# =================================================================
+# --- Load + (optionally) start ---
+NO_START=false
+[ "$1" = "--no-start" ] && NO_START=true
 
 echo "=========================================="
-echo "ABC License - Load & Run (Option A)"
+echo "ABC License - Load & Run"
 echo "=========================================="
 echo "Repo root: $REPO_ROOT"
 echo "Dist dir:  $DIST_DIR"
 echo ""
 
-# Check if image files exist
 if [ ! -f "$BACKEND_IMAGE_FILE" ]; then
     echo "❌ ERROR: Backend image not found: $BACKEND_IMAGE_FILE"
-    echo "  Please transfer backend.tar.gz from dev machine"
     exit 1
 fi
-
 if [ ! -f "$FRONTEND_IMAGE_FILE" ]; then
     echo "❌ ERROR: Frontend image not found: $FRONTEND_IMAGE_FILE"
-    echo "  Please transfer frontend.tar.gz from dev machine"
     exit 1
 fi
-
 echo "✓ Image files found"
 echo ""
 
-# =================================================================
-# LOAD IMAGES
-# =================================================================
-
 echo "[1/2] Loading backend image..."
 docker load < "$BACKEND_IMAGE_FILE"
-echo ""
-
 echo "[2/2] Loading frontend image..."
 docker load < "$FRONTEND_IMAGE_FILE"
-echo ""
-
-echo "✅ Images loaded successfully"
-echo ""
-
-# Verify images
-echo "Images loaded. Verifying:"
+echo "✅ Images loaded"
 docker images | grep abc-license | head -5
 echo ""
 
-# =================================================================
-# START STACK
-# =================================================================
-
 if [ "$NO_START" = false ]; then
-    echo "Starting stack..."
-    cd "$REPO_ROOT"
-    docker compose up -d
-    echo ""
-    echo "✅ Stack started"
-    echo ""
-    echo "Done. Check: docker compose ps"
-else
-    echo "⚠️  Skipping stack start (--no-start flag)"
-    echo "  Start manually with: cd $REPO_ROOT && docker compose up -d"
+    echo "Starting stack... (use ./scripts/load-and-run.sh --start-only up -d to start only)"
+    start_stack up -d
 fi
-
 echo "=========================================="

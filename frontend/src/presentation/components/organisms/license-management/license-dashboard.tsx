@@ -101,7 +101,12 @@ export const LicenseDashboard: React.FC = () => {
 
   useEffect(() => {
     setFilters({ search: searchTerm || undefined, status: toLicenseStatus(statusFilter) });
-    fetchLicenses({ page: 1, limit: 20 });
+    fetchLicenses({
+      page: 1,
+      limit: 20,
+      search: searchTerm || undefined,
+      status: toLicenseStatus(statusFilter),
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial fetch only
 
   const handleLicenseSelect = (licenseId: string, selected: boolean) => {
@@ -126,7 +131,12 @@ export const LicenseDashboard: React.FC = () => {
 
   const handleSearch = () => {
     setFilters({ search: searchTerm || undefined, status: toLicenseStatus(statusFilter) });
-    fetchLicenses({ page: 1, limit: 20 });
+    fetchLicenses({
+      page: 1,
+      limit: 20,
+      search: searchTerm || undefined,
+      status: toLicenseStatus(statusFilter),
+    });
   };
 
   const handleRefresh = () => {

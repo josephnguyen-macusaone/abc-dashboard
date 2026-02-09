@@ -3,10 +3,25 @@
 import * as React from 'react';
 import { Input } from '@/presentation/components/atoms';
 import { Button } from '@/presentation/components/atoms/primitives/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/atoms/forms/select';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 
-export interface SearchBarProps extends Omit<React.ComponentProps<"input">, "type"> {
+/** Prefix option for "search in" (e.g. DBA vs Agents Name). Used when prefix is shown. */
+export type SearchPrefixValue = 'dba' | 'agentsName';
+
+const PREFIX_OPTIONS: { value: SearchPrefixValue; label: string }[] = [
+  { value: 'dba', label: 'DBA' },
+  { value: 'agentsName', label: 'Agents' },
+];
+
+export interface SearchBarProps extends Omit<React.ComponentProps<'input'>, 'type'> {
   /**
    * Placeholder text for the search input
    */
@@ -43,6 +58,13 @@ export interface SearchBarProps extends Omit<React.ComponentProps<"input">, "typ
    * Optional handler when cleared
    */
   onClear?: () => void;
+
+  /** Optional: show "search in" prefix (DBA / Agents). When set, renders dropdown + input. */
+  searchField?: SearchPrefixValue | undefined;
+  /** Called when prefix selection changes. Required when searchField is used. */
+  onSearchFieldChange?: (value: SearchPrefixValue) => void;
+  /** If true, hide the prefix dropdown even when searchField/onSearchFieldChange are set */
+  hidePrefix?: boolean;
 }
 
 export function SearchBar({
@@ -56,7 +78,9 @@ export function SearchBar({
   disabled,
   onClear,
   onKeyDown,
-  ...props
+  searchField,
+  onSearchFieldChange,
+  hidePrefix = false,
 }: SearchBarProps) {
   const handleChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,11 +92,9 @@ export function SearchBar({
 
   const handleKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
-      // Prevent form submission on Enter key
       if (event.key === 'Enter') {
         event.preventDefault();
       }
-      // Call the parent's onKeyDown if provided
       onKeyDown?.(event);
     },
     [onKeyDown],
@@ -83,9 +105,17 @@ export function SearchBar({
     onClear?.();
   }, [onClear, onValueChange]);
 
-  return (
-    <div className={cn('relative w-full', className)}>
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+  const effectiveField = searchField ?? 'dba';
+  const showPrefix = !hidePrefix && searchField !== undefined && onSearchFieldChange !== undefined;
+
+  const inputBlock = (
+    <div className={cn('relative w-full', showPrefix && 'flex-1 min-w-0')}>
+      <Search
+        className={cn(
+          'absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground pointer-events-none z-10',
+          showPrefix && 'left-2',
+        )}
+      />
       <Input
         type="search"
         placeholder={placeholder}
@@ -93,7 +123,11 @@ export function SearchBar({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={cn('pl-10 pr-8', inputClassName)}
+        className={cn(
+          'pl-10 pr-8',
+          showPrefix && 'h-8 rounded-none border-0 border-l border-input py-2 pl-9',
+          inputClassName,
+        )}
       />
       {allowClear && value && !disabled ? (
         <Button
@@ -109,5 +143,42 @@ export function SearchBar({
       ) : null}
     </div>
   );
-}
 
+  if (showPrefix) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-0 rounded-md border border-input bg-transparent overflow-hidden',
+          className,
+        )}
+      >
+        <Select
+          value={effectiveField}
+          onValueChange={(v) => onSearchFieldChange(v as SearchPrefixValue)}
+        >
+          <SelectTrigger
+            className={cn(
+              'h-8 min-w-0 w-[100px] max-w-[100px] shrink-0 rounded-none border-0 border-r border-input bg-muted/30 shadow-none',
+              'text-xs text-left',
+              '[&>span]:text-xs [&>span]:text-left [&>span]:line-clamp-1',
+              'focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
+            )}
+            aria-label="Search in"
+          >
+            <SelectValue placeholder="Search in" />
+          </SelectTrigger>
+          <SelectContent size="sm">
+            {PREFIX_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="py-1.5">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {inputBlock}
+      </div>
+    );
+  }
+
+  return <div className={cn('relative w-full', className)}>{inputBlock}</div>;
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef, Suspense } from 'react';
+import { useCallback, useMemo, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import type { LicenseRecord } from '@/types';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
@@ -107,17 +107,19 @@ export function AdminDashboard({
     [filters, setFilters, fetchLicenses, setTableSearch, clearTableFilters],
   );
 
-  // Handle pagination and filtering changes using Zustand store
+  // Handle pagination and filtering changes using Zustand store (read date range from store at call time to avoid stale closure)
   const handleQueryChange = useCallback(async (params: {
     page: number;
     limit: number;
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
+    search?: string;
+    searchField?: 'dba' | 'agentsName';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
-    search?: string;
   }) => {
+    const storeFilters = useLicenseStore.getState().filters;
     try {
       // Convert array filters to comma-separated strings for API
       const statusParam = Array.isArray(params.status)
@@ -135,17 +137,18 @@ export function AdminDashboard({
         limit: params.limit,
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
+        search: params.search,
+        searchField: params.searchField,
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[],
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[],
-        search: params.search,
-        startsAtFrom: filters.startsAtFrom,
-        startsAtTo: filters.startsAtTo,
+        startsAtFrom: storeFilters.startsAtFrom,
+        startsAtTo: storeFilters.startsAtTo,
       });
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
     }
-  }, [fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
+  }, [fetchLicenses]);
 
   // Initial load: use current month as default date range when none is set so picker and data match
   const hasInitializedDateRef = useRef(false);
@@ -172,9 +175,10 @@ export function AdminDashboard({
     const now = new Date();
     const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    setFilters({ ...filters, startsAtFrom, startsAtTo });
+    const currentFilters = useLicenseStore.getState().filters;
+    setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
     fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
-  }, [licensesProp, fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
+  }, [licensesProp, fetchLicenses, setFilters, filters.startsAtFrom, filters.startsAtTo]);
 
   // Periodic refresh; pass current filters so date range filter is preserved
   useEffect(() => {
@@ -192,6 +196,16 @@ export function AdminDashboard({
 
     return () => clearInterval(intervalId);
   }, [licensesProp, fetchLicenses, paginationFromStore.page, paginationFromStore.limit, filters.startsAtFrom, filters.startsAtTo]);
+
+  // Clear search when leaving this page so it doesn't persist when switching pages
+  useEffect(() => {
+    return () => {
+      setTableSearch(LICENSES_TABLE_ID, '');
+      clearTableFilters(LICENSES_TABLE_ID);
+      const currentFilters = useLicenseStore.getState().filters;
+      setFilters({ ...currentFilters, search: undefined, searchField: undefined });
+    };
+  }, [setFilters, setTableSearch, clearTableFilters]);
 
   return (
     <div className={`space-y-6 ${className || ''}`}>

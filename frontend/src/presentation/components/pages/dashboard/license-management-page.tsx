@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/infrastructure/stores/auth";
@@ -44,24 +44,68 @@ export function LicenseManagementPage() {
     return { from: isNaN(from?.getTime() ?? NaN) ? undefined : from, to: isNaN(to?.getTime() ?? NaN) ? undefined : to };
   }, [filters.startsAtFrom, filters.startsAtTo]);
 
-  const loadLicenses = useCallback(async (params?: { page?: number; limit?: number; search?: string; status?: string }) => {
-    try {
-      await fetchLicenses({
-        page: params?.page || 1,
-        limit: params?.limit || 20,
-        search: params?.search,
-        status: params?.status as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
-      });
-    } catch (error) {
-      if (shouldShowError(error)) {
-        toast.error("Failed to load licenses");
+  const loadLicenses = useCallback(
+    async (params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      searchField?: 'dba' | 'agentsName';
+      status?: string;
+      startsAtFrom?: string;
+      startsAtTo?: string;
+    }) => {
+      const storeFilters = useLicenseStore.getState().filters;
+      try {
+        await fetchLicenses({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 20,
+          search: params?.search,
+          searchField: params?.searchField,
+          status: params?.status as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
+          startsAtFrom: params?.startsAtFrom ?? storeFilters.startsAtFrom,
+          startsAtTo: params?.startsAtTo ?? storeFilters.startsAtTo,
+        });
+      } catch (error) {
+        if (shouldShowError(error)) {
+          toast.error("Failed to load licenses");
+        }
       }
-    }
-  }, [fetchLicenses]);
+    },
+    [fetchLicenses]
+  );
 
+  // Initial load: same as admin dashboard — default to current month when no date filter is set
+  const hasInitializedDateRef = useRef(false);
   useEffect(() => {
-    loadLicenses({ page: 1, limit: 20 });
-  }, [loadLicenses]);
+    const from = filters.startsAtFrom;
+    const to = filters.startsAtTo;
+
+    if (from && to) {
+      hasInitializedDateRef.current = true;
+      fetchLicenses({ page: 1, limit: 20, startsAtFrom: from, startsAtTo: to });
+      return;
+    }
+
+    if (hasInitializedDateRef.current) {
+      fetchLicenses({ page: 1, limit: 20 });
+      return;
+    }
+
+    hasInitializedDateRef.current = true;
+    const now = new Date();
+    const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    setFilters({ ...filters, startsAtFrom, startsAtTo });
+    fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
+  }, []);
+
+  // Clear search when leaving this page so it doesn't persist when switching pages
+  useEffect(() => {
+    return () => {
+      const currentFilters = useLicenseStore.getState().filters;
+      setFilters({ ...currentFilters, search: undefined, searchField: undefined });
+    };
+  }, [setFilters]);
 
   // Generate a unique license key
   const generateLicenseKey = useCallback((): string => {
@@ -100,9 +144,20 @@ export function LicenseManagementPage() {
           };
         });
 
-        // Separate new licenses (temp IDs) from existing ones
-        const newLicenses = transformedData.filter(license => typeof license.id === 'string' && license.id.startsWith('temp-'));
-        const existingLicenses = transformedData.filter(license => !newLicenses.includes(license));
+        // Separate new licenses (no valid server id) from existing ones (UUID or numeric id)
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isNewLicense = (license: LicenseRecord): boolean => {
+          const id = license.id;
+          if (id == null || id === "") return true;
+          if (typeof id === "number" && Number.isInteger(id)) return false;
+          const s = String(id).trim();
+          if (s === "" || s === "undefined" || s === "null") return true;
+          if (s.startsWith("temp-")) return true;
+          if (UUID_REGEX.test(s)) return false;
+          return true; // other strings (e.g. key or lost temp id) -> create
+        };
+        const newLicenses = transformedData.filter(isNewLicense);
+        const existingLicenses = transformedData.filter((license) => !isNewLicense(license));
 
         let hasOperations = false;
 
@@ -110,6 +165,7 @@ export function LicenseManagementPage() {
         if (newLicenses.length > 0) {
           const licensesToCreate = newLicenses.map(license => {
             const licenseKey = generateLicenseKey();
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars -- omit id for create payload
             const { id, ...licenseData } = license;
             return {
               ...licenseData,
@@ -168,6 +224,7 @@ export function LicenseManagementPage() {
   }, []);
 
   const onDeleteRows = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by grid
     async (rows: LicenseRecord[], _indices: number[]) => {
       try {
         const ids = rows.map((row) => row.id);
@@ -203,28 +260,18 @@ export function LicenseManagementPage() {
     });
   }, [filters, setFilters, fetchLicenses]);
 
-  if (!currentUser) {
-    return (
-      <DashboardTemplate>
-        <div className="text-center py-8">
-          <p>Please log in to access license management.</p>
-        </div>
-      </DashboardTemplate>
-    );
-  }
-
   const handleQueryChange = useCallback(async (params: {
     page: number;
     limit: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
+    searchField?: 'dba' | 'agentsName';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
   }) => {
     try {
-      // Convert array filters to comma-separated strings for API
       const statusParam = Array.isArray(params.status)
         ? params.status.join(',')
         : params.status;
@@ -241,6 +288,7 @@ export function LicenseManagementPage() {
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
         search: params.search,
+        searchField: params.searchField,
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[] | undefined,
@@ -254,8 +302,17 @@ export function LicenseManagementPage() {
     }
   }, [fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
 
-  // Key so TanStack grid remounts when date filter changes and shows server-filtered data
   const dataSourceKey = [filters.startsAtFrom ?? '', filters.startsAtTo ?? ''].join(',');
+
+  if (!currentUser) {
+    return (
+      <DashboardTemplate>
+        <div className="text-center py-8">
+          <p>Please log in to access license management.</p>
+        </div>
+      </DashboardTemplate>
+    );
+  }
 
   return (
     <LicenseManagement

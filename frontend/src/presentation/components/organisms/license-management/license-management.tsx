@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Typography } from '@/presentation/components/atoms';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
@@ -57,6 +57,8 @@ interface LicenseManagementProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
+    /** When set, search is limited to this field only (DBA or Agents Name) */
+    searchField?: 'dba' | 'agentsName';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
@@ -92,10 +94,11 @@ export function LicenseManagement({
     await onSaveLicenses?.(data);
   }, [onSaveLicenses]);
 
-  // Add row handler
+  // Add row handler: must return a row with a temp id (e.g. temp-xxx) so the save flow treats it as "create", not "update"
   const handleAddRow = useCallback(async (): Promise<LicenseRecord> => {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const fallback: LicenseRecord = {
-      id: licenses.length + 1,
+      id: tempId,
       dba: '',
       zip: '',
       startsAt: new Date().toISOString().split('T')[0],
@@ -120,13 +123,22 @@ export function LicenseManagement({
     const result = onAddLicense();
     if (result instanceof Promise) {
       try {
-        return await result;
+        const row = await result;
+        // Ensure id is never numeric so the row is always classified as "new" on save
+        if (row && typeof (row as { id?: unknown }).id === 'number') {
+          return { ...row, id: tempId };
+        }
+        return row;
       } catch {
         return fallback;
       }
     }
-    return result;
-  }, [licenses.length, onAddLicense]);
+    const row = result as LicenseRecord;
+    if (row && typeof (row as { id?: unknown }).id === 'number') {
+      return { ...row, id: tempId };
+    }
+    return row;
+  }, [onAddLicense]);
 
   // Delete rows handler
   const handleDeleteRows = useCallback(

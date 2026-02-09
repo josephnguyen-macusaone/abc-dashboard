@@ -44,11 +44,11 @@ export function LicensesDataGridSkeleton({
     <div className={cn("space-y-5", className)}>
       {/* Toolbar - matches actual LicensesDataGrid toolbar */}
       <div className="flex flex-wrap items-center gap-2 justify-between">
-        {/* Left side - Search and filter menus */}
+        {/* Left side - Search bar with prefix (prefix 100px + input) and filter menus */}
         <div className="flex items-center gap-2">
-          {/* Search bar */}
-          <div className="relative">
-            <ShapeSkeleton width="40 lg:56" height="8" variant="rounded" />
+          <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-40 md:w-52 lg:w-72">
+            <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
+            <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
           </div>
 
           {/* DataGridFilterMenu */}

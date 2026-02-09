@@ -1183,6 +1183,9 @@ export class LicenseRepository extends ILicenseRepository {
     if (data.startDay !== undefined) {
       dbData.starts_at = data.startDay;
     } // Handle API field name
+    if (dbData.starts_at === undefined) {
+      dbData.starts_at = new Date().toISOString().slice(0, 10);
+    }
     if (data.expiresAt !== undefined) {
       dbData.expires_at = data.expiresAt;
     }

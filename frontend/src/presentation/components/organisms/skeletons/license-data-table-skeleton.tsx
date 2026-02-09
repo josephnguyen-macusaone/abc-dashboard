@@ -1,6 +1,6 @@
 import { Typography } from "@/presentation/components/atoms";
 import { TextSkeleton, ShapeSkeleton } from '@/presentation/components/atoms';
-import { ButtonSkeleton, InputSkeleton } from '@/presentation/components/molecules';
+import { ButtonSkeleton } from '@/presentation/components/molecules';
 import {
   Table,
   TableBody,
@@ -57,9 +57,10 @@ export function LicenseDataTableSkeleton({
         aria-orientation="horizontal"
         className="flex w-full flex-wrap items-center gap-2 py-1"
       >
-        {/* Search bar on the left - matches SearchBar with w-64 and h-8 */}
-        <div className="flex items-center">
-          <InputSkeleton size="md" className="w-64" showLabel={false} />
+        {/* Search bar with prefix - prefix w-[120px], total w-72 md:w-80 to match SearchBar with searchField */}
+        <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-72 md:w-80">
+          <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
+          <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
         </div>
 
         {/* Filter components - Status filter button */}

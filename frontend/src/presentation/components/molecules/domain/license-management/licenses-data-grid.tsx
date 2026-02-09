@@ -17,9 +17,7 @@ import { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
-import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
-import { AgentsNameEditorModal } from "./agents-name-editor-modal";
 import { getLicenseGridColumns } from "./license-grid-columns";
 import {
   STATUS_OPTIONS,
@@ -28,6 +26,7 @@ import {
 } from "./license-table-columns";
 import type { LicenseRecord } from "@/types";
 import logger from "@/shared/helpers/logger";
+import { useLicenseStore } from "@/infrastructure/stores/license";
 
 const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
 
@@ -48,7 +47,10 @@ interface LicensesDataGridProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
+    searchField?: 'dba' | 'agentsName';
     status?: string | string[];
+    plan?: string | string[];
+    term?: string | string[];
   }) => void;
 }
 
@@ -72,12 +74,21 @@ export function LicensesDataGrid({
   const [isSaving, setIsSaving] = React.useState(false);
   const dataVersionRef = React.useRef(0);
 
-  const [agentsNameModal, setAgentsNameModal] = React.useState<{
-    open: boolean;
-    rowIndex: number;
-    columnId: string;
-    initialValue: string[];
-  }>({ open: false, rowIndex: 0, columnId: "agentsName", initialValue: [] });
+  /** Search scope: dba = DBA only, agentsName = Agents Name only. Default DBA. */
+  const [searchField, setSearchField] = React.useState<'dba' | 'agentsName'>('dba');
+
+  // When using the license store (onQueryChange provided), sync search state from store on mount so grid matches table/store behavior
+  React.useEffect(() => {
+    if (!onQueryChange) return;
+    const filters = useLicenseStore.getState().filters;
+    const storeSearch = filters.search ?? "";
+    const storeField = filters.searchField === "agentsName" ? "agentsName" : "dba";
+    if (storeSearch !== "") {
+      setSearchInput(storeSearch);
+      setSearchQuery(storeSearch);
+    }
+    setSearchField(storeField);
+  }, [onQueryChange]);
 
   // Track the last initial data to detect changes (reference + identity for server-driven updates e.g. date filter)
   const lastInitialDataRef = React.useRef<LicenseRecord[]>(initialData);
@@ -89,7 +100,7 @@ export function LicensesDataGrid({
     [initialData]
   );
 
-  // Sync with initialData when it changes (e.g. after date filter or pagination), but only if we don't have unsaved changes
+  // Sync with initialData when it changes (e.g. after date filter or pagination), but only if we don't have unsaved changes or locally added rows
   React.useLayoutEffect(() => {
     if (lastInitialDataRef.current === initialData) {
       return;
@@ -104,8 +115,8 @@ export function LicensesDataGrid({
     if (hasChanges) {
       return;
     }
+    // Apply server data (search/filter/pagination). When hasChanges is false we always show what the server returned.
     setData(initialData);
-    dataVersionRef.current += 1;
   }, [initialData, dataIdentity, hasChanges, useComplexSync]);
 
   const columns = React.useMemo(() => getLicenseGridColumns(), []);
@@ -177,49 +188,41 @@ export function LicensesDataGrid({
   const [searchInput, setSearchInput] = React.useState(""); // What user types
   const [searchQuery, setSearchQuery] = React.useState(""); // What gets sent to API (debounced)
 
-  // Debounce search input to API calls (500ms delay to wait for user to finish typing)
-  React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const trimmedInput = searchInput.trim();
-      setSearchQuery(trimmedInput);
-      // Clear the reset tracking when search query updates (after debounce)
-      // This allows reset to happen again for the new search value
-      if (hasResetPageForSearchRef.current !== trimmedInput) {
-        hasResetPageForSearchRef.current = "";
-      }
-    }, 500); // 500ms debounce to wait for complete editing
+  // Ref for debounced search API call (same pattern as licenses-data-table handleSearchChange)
+  const debouncedSearchRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tableStateGetterRef = React.useRef<() => { columnFilters: { id: string; value: unknown }[]; pagination?: { pageSize?: number }; sorting?: Array<{ id?: string; desc?: boolean }> }>(() => ({ columnFilters: [] }));
 
-    return () => clearTimeout(timeoutId);
-  }, [searchInput]);
-
-  const onOpenAgentsNameEditor = React.useCallback(
-    (rowIndex: number, columnId: string, initialValue: string[]) => {
-      setAgentsNameModal({
-        open: true,
-        rowIndex,
-        columnId,
-        initialValue: Array.isArray(initialValue) ? [...initialValue] : [],
+  // Helper: extract status, plan, term from column filters (same shape as table's manualFilterValues for license store)
+  const getStatusPlanTermFromFilters = React.useCallback(
+    (columnFilters: { id: string; value: unknown }[]): { status?: string[]; plan?: string[]; term?: string[] } => {
+      const result: { status?: string[]; plan?: string[]; term?: string[] } = {};
+      columnFilters.forEach((filter) => {
+        if (filter.id === "status" || filter.id === "plan" || filter.id === "term") {
+          const v = filter.value;
+          const arr =
+            typeof v === "object" && v !== null && "value" in (v as object)
+              ? (v as { value?: unknown }).value
+              : v;
+          const values = Array.isArray(arr) ? arr.map(String) : arr != null && arr !== "" ? [String(arr)] : undefined;
+          if (values?.length) result[filter.id as "status" | "plan" | "term"] = values;
+        }
       });
+      return result;
     },
     [],
   );
 
-  const onAgentsNameModalSave = React.useCallback(
-    (newList: string[]) => {
-      const { rowIndex } = agentsNameModal;
-      setData((prev) => {
-        const next = [...prev];
-        const row = next[rowIndex];
-        if (row) {
-          next[rowIndex] = { ...row, agentsName: newList };
-        }
-        return next;
-      });
-      setHasChanges(true);
-      setAgentsNameModal((m) => ({ ...m, open: false }));
-    },
-    [agentsNameModal.rowIndex],
-  );
+  // Debounce search input to local state (for effect)
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const trimmedInput = searchInput.trim();
+      setSearchQuery(trimmedInput);
+      if (hasResetPageForSearchRef.current !== trimmedInput) {
+        hasResetPageForSearchRef.current = "";
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
 
   const gridState = useDataGrid({
     data,
@@ -236,7 +239,7 @@ export function LicensesDataGrid({
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange, // Enable server-side filtering when onQueryChange provided
-    meta: { onOpenAgentsNameEditor },
+    meta: {},
   });
 
   // Track changes manually (adapted from licenses-data-table.tsx)
@@ -245,6 +248,7 @@ export function LicensesDataGrid({
   const lastPageSizeRef = React.useRef<number>(20);
   const lastSortRef = React.useRef<string>("");
   const lastSearchRef = React.useRef<string>("");
+  const lastSearchFieldRef = React.useRef<string | undefined>(undefined);
   const lastFiltersRef = React.useRef<string>("");
   const lastQueryRef = React.useRef<string>(""); // Track last query to prevent duplicate calls
   const isResettingRef = React.useRef(false); // Track if we're in a reset operation
@@ -267,6 +271,7 @@ export function LicensesDataGrid({
     const currentSortString = JSON.stringify(tableSorting);
     const currentFiltersString = JSON.stringify(tableColumnFilters);
     const currentSearch = searchQuery.trim();
+    const currentSearchField = searchField;
 
     // Initialize refs on first run (skip initial call)
     if (!hasInitializedRef.current) {
@@ -275,6 +280,7 @@ export function LicensesDataGrid({
       lastPageSizeRef.current = tablePageSize;
       lastSortRef.current = currentSortString;
       lastSearchRef.current = currentSearch;
+      lastSearchFieldRef.current = currentSearchField;
       lastFiltersRef.current = currentFiltersString;
       // If there's a search on mount, ensure page is 1
       if (currentSearch && tablePageIndex !== 0) {
@@ -292,6 +298,7 @@ export function LicensesDataGrid({
       tablePageSize !== lastPageSizeRef.current;
     const sortChanged = currentSortString !== lastSortRef.current;
     const searchChanged = currentSearch !== lastSearchRef.current;
+    const searchFieldChanged = currentSearchField !== lastSearchFieldRef.current;
     const filtersChanged = currentFiltersString !== lastFiltersRef.current;
 
     // Reset page to 1 when search or filters change
@@ -308,8 +315,8 @@ export function LicensesDataGrid({
       }
     }
 
-    if (filtersChanged) {
-      // Reset page when filters change
+    if (filtersChanged || searchFieldChanged) {
+      // Reset page when filters or search field change
       if (tablePageIndex !== 0) {
         isResettingRef.current = true;
         gridState.table.setPageIndex(0);
@@ -318,8 +325,8 @@ export function LicensesDataGrid({
     }
 
     // Early return: Skip if only pagination changed due to our reset (prevent loop)
-    // But allow through if search/filter changed (we need to call API)
-    if (isResettingRef.current && paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
+    // But allow through if search/filter/searchField changed (we need to call API)
+    if (isResettingRef.current && paginationChanged && !sortChanged && !searchChanged && !filtersChanged && !searchFieldChanged) {
       isResettingRef.current = false;
       // Update refs to reflect the reset
       lastPageIndexRef.current = 0;
@@ -327,19 +334,20 @@ export function LicensesDataGrid({
     }
 
     // Early return if nothing changed
-    if (!paginationChanged && !sortChanged && !searchChanged && !filtersChanged) {
+    if (!paginationChanged && !sortChanged && !searchChanged && !filtersChanged && !searchFieldChanged) {
       return;
     }
 
     // Build query params with proper filter processing
-    // Always use page 1 when search or filters change, otherwise use current page
-    const targetPage = (searchChanged || filtersChanged) ? 1 : (tablePageIndex + 1);
+    // Always use page 1 when search, searchField, or filters change, otherwise use current page
+    const targetPage = (searchChanged || filtersChanged || searchFieldChanged) ? 1 : (tablePageIndex + 1);
     const apiParams: {
       page: number;
       limit: number;
       sortBy?: string;
       sortOrder: "asc" | "desc";
       search?: string;
+      searchField?: 'dba' | 'agentsName';
       status?: string | string[];
       plan?: string | string[];
       term?: string | string[];
@@ -349,9 +357,12 @@ export function LicensesDataGrid({
       sortBy: activeSort?.id,
       sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
       search: currentSearch || undefined,
+      ...(currentSearch ? { searchField } : {}),
     };
 
     // Process table column filters to utilize backend API
+    // When the search bar has a value, it takes precedence over DBA column filter (so e.g. "Bánh mì" is not overwritten)
+    const searchBarHasValue = Boolean(currentSearch?.trim());
     if (tableColumnFilters && tableColumnFilters.length > 0) {
       tableColumnFilters.forEach(filter => {
         const filterValue = filter.value as { value?: unknown; operator?: string } | undefined;
@@ -362,7 +373,7 @@ export function LicensesDataGrid({
           const value = filterValue.value;
 
           // Map frontend operators to backend API parameters
-          if (filter.id === 'dba' && operator === 'contains') {
+          if (filter.id === 'dba' && operator === 'contains' && !searchBarHasValue) {
             apiParams.search = typeof value === 'string' ? value : undefined;
           } else if (filter.id === 'status') {
             // Status filtering - backend supports array
@@ -375,8 +386,8 @@ export function LicensesDataGrid({
             apiParams.term = Array.isArray(value) ? value : [value];
           }
         } else if (filter.value !== undefined) {
-          // Handle simple filters without operators
-          if (filter.id === 'dba') {
+          // Handle simple filters without operators (don't overwrite search bar)
+          if (filter.id === 'dba' && !searchBarHasValue) {
             apiParams.search = String(filter.value);
           } else if (filter.id === 'status') {
             apiParams.status = Array.isArray(filter.value)
@@ -405,21 +416,63 @@ export function LicensesDataGrid({
     }
 
     // Update refs after API call
-    // Use 0 for pageIndex if search/filter changed (we just reset it)
-    const finalPageIndex = (searchChanged || filtersChanged) ? 0 : tablePageIndex;
+    // Use 0 for pageIndex if search/filter/searchField changed (we just reset it)
+    const finalPageIndex = (searchChanged || filtersChanged || searchFieldChanged) ? 0 : tablePageIndex;
     lastPageIndexRef.current = finalPageIndex;
     lastPageSizeRef.current = tablePageSize;
     lastSortRef.current = currentSortString;
     lastSearchRef.current = currentSearch;
+    lastSearchFieldRef.current = currentSearchField;
     lastFiltersRef.current = currentFiltersString;
 
     // Clear reset flag after processing
     isResettingRef.current = false;
-  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, onQueryChange, gridState.table]);
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchQuery, searchField, onQueryChange, gridState.table]);
 
   // Filter toolbar state (hooks must run before any early return)
   const table = gridState.table;
+  tableStateGetterRef.current = () => table.getState();
   const columnFilters = table.getState().columnFilters;
+
+  // Debounced search handler: call onQueryChange with search + filters (same as licenses-data-table handleSearchChange)
+  const handleSearchChange = React.useCallback(
+    (value: string) => {
+      const trimmedValue = value.trim();
+      setSearchInput(value);
+      if (debouncedSearchRef.current) clearTimeout(debouncedSearchRef.current);
+      debouncedSearchRef.current = setTimeout(() => {
+        debouncedSearchRef.current = null;
+        if (!onQueryChange) return;
+        const state = tableStateGetterRef.current();
+        const pageSize = state?.pagination?.pageSize ?? 20;
+        const sorting = state?.sorting;
+        const activeSort = sorting && Array.isArray(sorting) ? sorting[0] : undefined;
+        const filters = state?.columnFilters ?? [];
+        const { status: s, plan: p, term: t } = getStatusPlanTermFromFilters(filters);
+        const params = {
+          page: 1,
+          limit: pageSize,
+          sortBy: (activeSort?.id as string) ?? "startsAt",
+          sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
+          search: trimmedValue || undefined,
+          searchField,
+          status: s?.length ? s : undefined,
+          plan: p?.length ? p : undefined,
+          term: t?.length ? t : undefined,
+        };
+        onQueryChange(params);
+        lastQueryRef.current = JSON.stringify(params);
+        lastSearchRef.current = trimmedValue;
+      }, 500);
+    },
+    [onQueryChange, searchField, getStatusPlanTermFromFilters],
+  );
+
+  React.useEffect(() => {
+    return () => {
+      if (debouncedSearchRef.current) clearTimeout(debouncedSearchRef.current);
+    };
+  }, []);
   const hasColumnFilters = React.useMemo(
     () =>
       columnFilters.some((f) => {
@@ -440,10 +493,24 @@ export function LicensesDataGrid({
   const onClearFilters = React.useCallback(() => {
     setSearchInput("");
     setSearchQuery("");
+    setSearchField('dba');
     table.setColumnFilters((prev) =>
       prev.filter((f) => !FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number])),
     );
-  }, [table]);
+    // Notify parent so store clears filters and refetches with no search/filters
+    const activeSort = table.getState().sorting?.[0];
+    onQueryChange?.({
+      page: 1,
+      limit: table.getState().pagination.pageSize,
+      sortBy: (activeSort?.id as string) || "startsAt",
+      sortOrder: activeSort?.desc ? "desc" : "asc",
+      search: undefined,
+      searchField: 'dba',
+      status: undefined,
+      plan: undefined,
+      term: undefined,
+    });
+  }, [table, onQueryChange]);
 
   const statusColumn = table.getColumn("status");
   const planColumn = table.getColumn("plan");
@@ -466,15 +533,15 @@ export function LicensesDataGrid({
         {/* Toolbar: always shown so users can search/filter and add a license when empty */}
         <div className="flex flex-nowrap md:flex-wrap items-center gap-1.5 sm:gap-2 md:justify-between overflow-x-auto">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            <div className="relative">
-              <SearchBar
-                placeholder="Search..."
-                value={searchInput}
-                onValueChange={setSearchInput}
-                className="w-32 md:w-40 lg:w-56"
-                inputClassName="h-8"
-              />
-            </div>
+            <SearchBar
+              value={searchInput}
+              onValueChange={handleSearchChange}
+              searchField={searchField}
+              onSearchFieldChange={(v) => setSearchField(v)}
+              placeholder="Search..."
+              className="w-40 md:w-52 lg:w-72"
+              allowClear={false}
+            />
             {statusColumn && (
               <DataTableFacetedFilter
                 column={statusColumn}
@@ -563,14 +630,6 @@ export function LicensesDataGrid({
             stretchColumns
           />
         )}
-        <AgentsNameEditorModal
-          open={agentsNameModal.open}
-          onOpenChange={(open) =>
-            setAgentsNameModal((m) => ({ ...m, open }))
-          }
-          agentsName={agentsNameModal.initialValue}
-          onSave={onAgentsNameModalSave}
-        />
       </div>
     </div>
   );

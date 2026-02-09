@@ -65,7 +65,6 @@ export function encrypt(plaintext, context = '') {
     ]);
 
     return combined.toString('base64');
-
   } catch (error) {
     logger.error('Encryption failed', {
       error: error.message,
@@ -73,6 +72,75 @@ export function encrypt(plaintext, context = '') {
       dataLength: plaintext.length
     });
     throw new Error('Encryption failed');
+  }
+}
+
+/**
+ * Encrypt sensitive data and return as hex string (for env vars, e.g. DB password).
+ * @param {string} plaintext - Data to encrypt
+ * @param {string} context - Optional context for AAD (use 'db_password' for DB password)
+ * @returns {string} Encrypted data as hex string (IV + auth tag + ciphertext)
+ */
+export function encryptToHex(plaintext, context = '') {
+  if (!plaintext) return null;
+  try {
+    const iv = crypto.randomBytes(ENCRYPTION_CONFIG.ivLength);
+    const cipher = crypto.createCipheriv(
+      ENCRYPTION_CONFIG.algorithm,
+      encryptionKey,
+      iv
+    );
+    cipher.setAAD(Buffer.from(context));
+    let encrypted = cipher.update(plaintext, 'utf8', 'base64');
+    encrypted += cipher.final('base64');
+    const authTag = cipher.getAuthTag();
+    const combined = Buffer.concat([
+      iv,
+      authTag,
+      Buffer.from(encrypted, 'base64')
+    ]);
+    return combined.toString('hex');
+  } catch (error) {
+    logger.error('Encrypt to hex failed', { error: error.message, context });
+    throw new Error('Encryption failed');
+  }
+}
+
+/**
+ * Decrypt data that was encrypted with encryptToHex (hex string).
+ * @param {string} hexData - Encrypted data as hex string
+ * @param {string} context - Context used during encryption (must match encryptToHex)
+ * @returns {string} Decrypted plaintext
+ */
+export function decryptFromHex(hexData, context = '') {
+  if (!hexData) return null;
+  try {
+    const combined = Buffer.from(hexData, 'hex');
+    const iv = combined.subarray(0, ENCRYPTION_CONFIG.ivLength);
+    const authTag = combined.subarray(
+      ENCRYPTION_CONFIG.ivLength,
+      ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength
+    );
+    const encrypted = combined.subarray(
+      ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength
+    );
+    const decipher = crypto.createDecipheriv(
+      ENCRYPTION_CONFIG.algorithm,
+      encryptionKey,
+      iv
+    );
+    decipher.setAAD(Buffer.from(context));
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encrypted);
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    logger.error('Decrypt from hex failed', {
+      error: error.message,
+      context,
+      dataLength: hexData.length
+    });
+    throw new Error('Decryption failed');
   }
 }
 

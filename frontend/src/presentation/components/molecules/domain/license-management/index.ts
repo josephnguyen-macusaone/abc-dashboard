@@ -1,5 +1,3 @@
-export { AgentsNameEditorModal } from './agents-name-editor-modal';
-export type { AgentsNameEditorModalProps } from './agents-name-editor-modal';
 export { LicensesDataGrid } from './licenses-data-grid';
 export { getLicenseGridColumns } from './license-grid-columns';
 

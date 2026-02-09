@@ -46,10 +46,11 @@ export interface LicenseTableSectionProps {
     limit: number;
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
+    search?: string;
+    searchField?: 'dba' | 'agentsName';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
-    search?: string;
   }) => void;
 }
 

@@ -153,9 +153,9 @@ export function ShortTextCell<TData>({
       onInput={onInput}
       suppressContentEditableWarning
       className={cn(
-        "block min-w-0 w-full overflow-hidden outline-none",
+        "block min-w-0 w-full overflow-hidden outline-none text-left",
         !isEditing && "truncate",
-        isEditing && "flex min-h-full items-center",
+        isEditing && "flex min-h-full min-w-0 items-center justify-start",
         {
           "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden":
             isEditing,
@@ -300,10 +300,10 @@ export function NumberCell<TData>({
           step={step}
           onBlur={onBlur}
           onChange={onChange}
-          className="w-full border-none bg-transparent p-0 outline-none"
+          className="w-full min-w-0 border-none bg-transparent p-0 text-left outline-none"
         />
       ) : (
-        <span data-slot="grid-cell-content">{value}</span>
+        <span data-slot="grid-cell-content" className="text-left">{value}</span>
       )}
     </DataGridCellWrapper>
   );
@@ -473,7 +473,7 @@ export function SelectCell<TData>({
           open={isEditing}
           onOpenChange={onOpenChange}
         >
-          <SelectTrigger className="size-full items-start border-none p-0 shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden">
+          <SelectTrigger className="size-full min-w-0 items-center justify-start border-none p-0 text-left shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden">
             <SelectValue />
           </SelectTrigger>
           <SelectContent
@@ -491,7 +491,7 @@ export function SelectCell<TData>({
           </SelectContent>
         </Select>
       ) : (
-        <span data-slot="grid-cell-content">{displayLabel}</span>
+        <span data-slot="grid-cell-content" className="text-left">{displayLabel}</span>
       )}
     </DataGridCellWrapper>
   );
@@ -624,10 +624,10 @@ export function DateCell<TData>({
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
     >
-      <div className="flex size-full overflow-hidden items-center justify-center">
+      <div className="flex size-full min-w-0 overflow-hidden items-center justify-start">
         <Popover open={isEditing} onOpenChange={onOpenChange}>
           <PopoverAnchor asChild>
-            <span data-slot="grid-cell-content" className="inline-flex items-center">
+            <span data-slot="grid-cell-content" className="inline-flex items-center text-left">
               {formatDateForDisplay(value)}
             </span>
           </PopoverAnchor>
@@ -788,11 +788,20 @@ export function MultiSelectCell<TData>({
   );
 }
 
+/** Parse comma-separated string into trimmed non-empty agent names (Excel-like). */
+function parseAgentsNameInput(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function AgentsNameCell<TData>({
   cell,
   tableMeta,
   rowIndex,
   columnId,
+  isEditing,
   isFocused,
   isSelected,
   readOnly,
@@ -800,54 +809,170 @@ export function AgentsNameCell<TData>({
   const row = cell.row.original as Record<string, unknown>;
   const agentsName = (row?.agentsName ?? row?.[columnId]) as string[] | undefined;
   const list = Array.isArray(agentsName) ? agentsName : [];
-  const displayText = list.length === 0 ? "" : list.join(", ");
-  const onOpenEditor = tableMeta?.onOpenAgentsNameEditor;
+  const initialText = list.length === 0 ? "" : list.join(", ");
+  const [editValue, setEditValue] = React.useState(initialText);
+  const cellRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const onCellClick = React.useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (readOnly || !onOpenEditor) return;
-      onOpenEditor(rowIndex, columnId, list);
+  const prevListRef = React.useRef(list);
+  if (list !== prevListRef.current) {
+    prevListRef.current = list;
+    const nextText = list.length === 0 ? "" : list.join(", ");
+    setEditValue(nextText);
+    if (cellRef.current && !isEditing) {
+      cellRef.current.textContent = nextText;
+    }
+  }
+
+  const commitEdit = React.useCallback(
+    (raw: string) => {
+      const parsed = parseAgentsNameInput(raw);
+      const same =
+        list.length === parsed.length &&
+        list.every((v, i) => v === parsed[i]);
+      if (!same) {
+        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: parsed });
+      }
+      tableMeta?.onCellEditingStop?.();
     },
-    [onOpenEditor, rowIndex, columnId, list, readOnly],
+    [tableMeta, rowIndex, columnId, list],
   );
 
-  const content = (
-    <span className="truncate block min-w-0" data-slot="grid-cell-content">
-      {displayText || (
-        <span className="text-muted-foreground">No agents</span>
+  const onBlur = React.useCallback(() => {
+    const currentValue = cellRef.current?.textContent ?? editValue;
+    if (!readOnly) {
+      commitEdit(currentValue);
+    } else {
+      tableMeta?.onCellEditingStop?.();
+    }
+  }, [tableMeta, readOnly, editValue, commitEdit]);
+
+  const onInput = React.useCallback(
+    (event: React.FormEvent<HTMLDivElement>) => {
+      setEditValue(event.currentTarget.textContent ?? "");
+    },
+    [],
+  );
+
+  const onWrapperKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (isEditing) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const currentValue = cellRef.current?.textContent ?? editValue;
+          commitEdit(currentValue);
+          tableMeta?.onCellEditingStop?.({ moveToNextRow: true });
+        } else if (event.key === "Tab") {
+          event.preventDefault();
+          const currentValue = cellRef.current?.textContent ?? editValue;
+          commitEdit(currentValue);
+          tableMeta?.onCellEditingStop?.({
+            direction: event.shiftKey ? "left" : "right",
+          });
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setEditValue(initialText);
+          if (cellRef.current) {
+            cellRef.current.textContent = initialText;
+          }
+          tableMeta?.onCellEditingStop?.();
+        }
+      } else if (
+        isFocused &&
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        setEditValue(event.key);
+        queueMicrotask(() => {
+          if (cellRef.current && cellRef.current.contentEditable === "true") {
+            cellRef.current.textContent = event.key;
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.selectNodeContents(cellRef.current);
+            range.collapse(false);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+          }
+        });
+      }
+    },
+    [isEditing, isFocused, initialText, editValue, tableMeta, commitEdit],
+  );
+
+  React.useEffect(() => {
+    if (isEditing && cellRef.current) {
+      cellRef.current.focus();
+      const text = list.length === 0 ? "" : list.join(", ");
+      if (!cellRef.current.textContent && text) {
+        cellRef.current.textContent = text;
+      }
+      if (cellRef.current.textContent) {
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(cellRef.current);
+        range.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    }
+  }, [isEditing, list]);
+
+  const displayText = !isEditing ? (editValue ?? initialText) : "";
+  const fullText = initialText || "";
+
+  const contentNode = (
+    <div
+      role="textbox"
+      data-slot="grid-cell-content"
+      contentEditable={isEditing && !readOnly}
+      tabIndex={-1}
+      ref={cellRef}
+      onBlur={onBlur}
+      onInput={onInput}
+      suppressContentEditableWarning
+      className={cn(
+        "block min-w-0 w-full overflow-hidden outline-none text-left",
+        !isEditing && "truncate",
+        isEditing && "flex min-h-full min-w-0 items-center justify-start",
+        {
+          "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden":
+            isEditing,
+        },
       )}
-    </span>
+    >
+      {displayText}
+    </div>
   );
 
   return (
-    <DataGridCellWrapper
+    <DataGridCellWrapper<TData>
+      ref={containerRef}
       cell={cell}
       tableMeta={tableMeta}
       rowIndex={rowIndex}
       columnId={columnId}
-      isEditing={false}
+      isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      onKeyDown={onWrapperKeyDown}
     >
-      {!readOnly && onOpenEditor ? (
-        <div
-          role="button"
-          tabIndex={-1}
-          className="cursor-pointer size-full min-w-0 flex items-center"
-          onClick={onCellClick}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onCellClick(e as unknown as React.MouseEvent);
-            }
-          }}
+      {!isEditing && !fullText ? (
+        <span className="text-left text-muted-foreground" data-slot="grid-cell-content">
+          No agents
+        </span>
+      ) : !isEditing && fullText ? (
+        <TooltipWrapper
+          content={fullText}
+          side="top"
+          delayDuration={400}
+          sideOffset={8}
+          contentClassName="max-w-[min(40rem,90vw)] rounded-lg border border-border bg-popover px-4 py-2.5 text-sm text-popover-foreground shadow-md break-words leading-relaxed [&>svg]:fill-popover"
         >
-          {content}
-        </div>
+          {contentNode}
+        </TooltipWrapper>
       ) : (
-        content
+        contentNode
       )}
     </DataGridCellWrapper>
   );

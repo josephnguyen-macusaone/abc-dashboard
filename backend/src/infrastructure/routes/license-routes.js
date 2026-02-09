@@ -92,13 +92,21 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *         name: search
    *         schema:
    *           type: string
-   *         description: Filter metrics to licenses matching this term (DBA and Agents Name by default). Use searchField to limit to one field (e.g. agentsName).
+   *         description: |
+   *           Filter metrics to licenses matching this term.
+   *           Default: searches **DBA and Agents Name** (multi-field).
+   *           Use `searchField` to limit search to a single field.
+   *         example: salon
    *       - in: query
    *         name: searchField
    *         schema:
    *           type: string
    *           enum: [key, dba, product, plan, agentsName]
-   *         description: When set with search, limit search to this field only (e.g. agentsName to filter by agent names).
+   *         description: |
+   *           When set with `search`, limit search to this field only.
+   *           **UI exposes:** `dba`, `agentsName`. API also supports `key`, `product`, `plan`.
+   *           Omit for multi-field search (DBA + Agents).
+   *         example: dba
    *     responses:
    *       200:
    *         description: Dashboard metrics retrieved successfully
@@ -288,13 +296,25 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *         name: search
    *         schema:
    *           type: string
-   *         description: Search term; matches DBA and Agents Name by default. Use searchField to limit to one field (e.g. agentsName).
+   *         description: |
+   *           Search term; matches **DBA and Agents Name** by default (multi-field).
+   *           Use `searchField` to limit search to a single field.
+   *           Examples:
+   *           - `?search=salon` → searches DBA and agent names containing "salon"
+   *           - `?search=john&searchField=agentsName` → searches agent names only
+   *           - `?search=Main&searchField=dba` → searches DBA only
+   *         example: salon
    *       - in: query
    *         name: searchField
    *         schema:
    *           type: string
    *           enum: [key, dba, product, plan, agentsName]
-   *         description: When set with search, limit search to this field only (e.g. agentsName to search by agent names only).
+   *         description: |
+   *           When set with `search`, limit search to this field only.
+   *           **UI exposes:** `dba`, `agentsName` (and "All" which searches both)
+   *           **API also supports:** `key`, `product`, `plan` (for programmatic access)
+   *           - Omit or leave empty - Search both DBA and Agents (default)
+   *         example: agentsName
    *       - in: query
    *         name: status
    *         schema:

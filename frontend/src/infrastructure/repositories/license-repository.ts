@@ -324,6 +324,11 @@ export class LicenseRepository implements ILicenseRepository {
       if (specification.startsAtFrom) queryParams.startsAtFrom = specification.startsAtFrom;
       if (specification.startsAtTo) queryParams.startsAtTo = specification.startsAtTo;
 
+      if (specification.sort) {
+        queryParams.sortBy = specification.sort.field;
+        queryParams.sortOrder = specification.sort.direction;
+      }
+
       // Handle pagination - backend expects page and limit only
       if (specification.pagination) {
         const { page, limit } = specification.pagination;

@@ -325,10 +325,16 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         <DataTableColumnHeader column={column} label="Agents Name" />
       ),
       cell: ({ row }) => {
-        const names = row.getValue("agentsName") as string[];
+        const raw = row.getValue("agentsName");
+        const names = Array.isArray(raw) ? raw : raw != null && typeof raw === "string" ? [raw] : [];
+        const hasNames = names.length > 0 && names.some((n) => String(n).trim() !== "");
+        const display = hasNames ? names.map(String).join(", ") : "No Agent";
         return (
-          <span className="truncate max-w-[320px]" title={names.join(", ")}>
-            {names.join(", ")}
+          <span
+            className={hasNames ? "truncate max-w-[320px]" : "text-muted-foreground"}
+            title={hasNames ? display : undefined}
+          >
+            {display}
           </span>
         );
       },

@@ -1,4 +1,4 @@
-import { License, type CreateLicenseProps } from '@/domain/entities/license-entity';
+import type { CreateLicenseProps } from '@/domain/entities/license-entity';
 import { ILicenseRepository, LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { LicenseRecord, PaginatedResponse } from '@/types';
@@ -14,7 +14,6 @@ import {
   LicenseListQueryDTO,
   PaginatedLicenseListDTO,
   BulkCreateLicensesDTO,
-  BulkUpdateLicensesDTO,
   BulkOperationResultDTO,
   LicenseResponseDTO
 } from '@/application/dto/license-dto';
@@ -564,7 +563,7 @@ export class LicenseManagementService {
         successful: results.length,
         failed: errors.length,
         results: [
-          ...results.map((license, index) => ({
+          ...results.map((license) => ({
             id: license.id,
             success: true as const,
             result: license
@@ -992,8 +991,16 @@ export class LicenseManagementService {
         outputCount: dataArray.length,
         message: result.message
       });
+      if (licenses.length > 0 && dataArray.length === 0) {
+        const errors = (result as { errors?: Array<{ error: string }> }).errors;
+        const msg = errors?.length ? errors.map((e) => e.error).join('; ') : 'No licenses were created. Check validation or server logs.';
+        throw new Error(msg);
+      }
       return dataArray as LicenseRecord[];
     } else if (result && result.success && result.data && Array.isArray(result.data)) {
+      if (licenses.length > 0 && (result.data as LicenseRecord[]).length === 0) {
+        throw new Error('No licenses were created. Check validation or server logs.');
+      }
       return result.data as LicenseRecord[];
     } else {
       this.serviceLogger.error('Bulk create failed - invalid response format', {

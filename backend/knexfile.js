@@ -1,10 +1,13 @@
 // Knex configuration file for CLI commands
 import dotenv from 'dotenv';
+import { resolveDbPassword } from './src/infrastructure/config/resolve-db-password.js';
 // Suppress dotenv output
 const originalStdoutWrite = process.stdout.write;
 process.stdout.write = () => {};
 dotenv.config();
 process.stdout.write = originalStdoutWrite;
+
+const dbPassword = resolveDbPassword(process.env.POSTGRES_PASSWORD || 'abc_password');
 
 const config = {
   development: {
@@ -14,7 +17,7 @@ const config = {
       port: parseInt(process.env.POSTGRES_PORT) || 5432,
       database: process.env.POSTGRES_DB || 'abc_dashboard',
       user: process.env.POSTGRES_USER || 'abc_user',
-      password: process.env.POSTGRES_PASSWORD || 'abc_password',
+      password: dbPassword,
     },
     pool: {
       min: 2,
@@ -36,7 +39,7 @@ const config = {
       port: parseInt(process.env.POSTGRES_PORT) || 5432,
       database: process.env.POSTGRES_DB,
       user: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
+      password: process.env.POSTGRES_PASSWORD ? resolveDbPassword(process.env.POSTGRES_PASSWORD) : undefined,
     },
     pool: {
       min: 2,
@@ -53,7 +56,8 @@ const config = {
 
   production: {
     client: 'pg',
-    connection: process.env.DATABASE_URL,
+    connection: process.env.DATABASE_URL
+      || `postgresql://${process.env.POSTGRES_USER}:${encodeURIComponent(process.env.POSTGRES_PASSWORD ? resolveDbPassword(process.env.POSTGRES_PASSWORD) : '')}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`,
     pool: {
       min: 2,
       max: 30, // Increased from 20 for sync operations
@@ -81,7 +85,7 @@ const config = {
       port: parseInt(process.env.POSTGRES_PORT) || 5432,
       database: process.env.POSTGRES_DB || 'abc_dashboard_test',
       user: process.env.POSTGRES_USER || 'abc_user',
-      password: process.env.POSTGRES_PASSWORD || 'abc_password',
+      password: dbPassword,
     },
     pool: {
       min: 2,

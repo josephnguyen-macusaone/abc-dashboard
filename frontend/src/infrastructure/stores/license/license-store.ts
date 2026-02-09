@@ -7,6 +7,11 @@ import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
 
+/**
+ * License filters are shared between Dashboard and License Management page.
+ * Date range (startsAtFrom, startsAtTo) should be respected by all fetches; the store
+ * preserves current filter values when callers pass undefined (e.g. stale closure).
+ */
 export interface LicenseFilters {
   /** Search term; backend matches DBA and agent names by default when searchField is not set */
   search?: string;
@@ -252,13 +257,24 @@ export const useLicenseStore = create<LicenseState>()(
             const currentFilters = get().filters;
             const currentPagination = get().pagination;
 
-            // Only send page and limit from pagination, not metadata (total, totalPages, hasNext, hasPrev)
+            // Only send page and limit from pagination, not metadata (total, totalPages, hasNext, hasPrev).
+            // Merge params so undefined does not overwrite current filters (keeps date range when caller has stale closure).
             const queryParams = {
               ...currentFilters,
               page: params.page ?? currentPagination.page,
               limit: params.limit ?? currentPagination.limit,
-              ...params,
-            };
+            } as Record<string, unknown>;
+            (Object.keys(params) as (keyof typeof params)[]).forEach((key) => {
+              const v = (params as Record<string, unknown>)[key];
+              if (v !== undefined) queryParams[key as string] = v;
+            });
+
+            // When caller explicitly passes undefined/null/'' for filter keys, clear them (e.g. on reset)
+            const filterKeysToClear: (keyof LicenseFilters)[] = ['search', 'searchField', 'status', 'plan', 'term', 'dba', 'zip'];
+            filterKeysToClear.forEach((key) => {
+              const p = (params as Record<string, unknown>)[key];
+              if (p === undefined || p === null || p === '') delete queryParams[key as string];
+            });
 
             // Remove undefined values from queryParams before sending to API
             (Object.keys(queryParams) as Array<keyof typeof queryParams>)
@@ -287,15 +303,15 @@ export const useLicenseStore = create<LicenseState>()(
             const apiParams: Record<string, string | number | undefined> = {
               ...queryParams,
               status: Array.isArray(queryParams.status)
-                ? queryParams.status.join(',')
-                : queryParams.status,
+                ? (queryParams.status as string[]).join(',')
+                : (queryParams.status as string | undefined),
               plan: Array.isArray(queryParams.plan)
-                ? queryParams.plan.join(',')
-                : queryParams.plan,
+                ? (queryParams.plan as string[]).join(',')
+                : (queryParams.plan as string | undefined),
               term: Array.isArray(queryParams.term)
-                ? queryParams.term.join(',')
-                : queryParams.term,
-              sortBy: queryParams.sortBy
+                ? (queryParams.term as string[]).join(',')
+                : (queryParams.term as string | undefined),
+              sortBy: queryParams.sortBy as string | undefined
             };
 
             // Silent operation - no logging
@@ -396,9 +412,17 @@ export const useLicenseStore = create<LicenseState>()(
 
         bulkCreateLicenses: async (licenses: Array<Partial<LicenseRecord>>) => {
           try {
+            storeLogger.debug('Bulk create started', { count: licenses.length });
             set({ loading: true, error: null });
 
-            const createdLicenses = await container.licenseManagementService.bulkCreateLicenses(licenses as Array<Omit<LicenseRecord, 'id' | 'updatedAt' | 'createdAt' | 'smsBalance'>>);
+            const raw = await container.licenseManagementService.bulkCreateLicenses(licenses as Array<Omit<LicenseRecord, 'id' | 'updatedAt' | 'createdAt' | 'smsBalance'>>);
+            const createdLicenses = Array.isArray(raw) ? raw : [];
+
+            if (!Array.isArray(raw)) {
+              storeLogger.warn('Bulk create returned non-array; treating as empty', { type: typeof raw });
+            }
+
+            storeLogger.debug('Bulk create completed', { created: createdLicenses.length });
 
             // Add the new licenses to the list
             const currentLicenses = get().licenses;
@@ -411,6 +435,7 @@ export const useLicenseStore = create<LicenseState>()(
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to bulk create licenses';
             set({ error: errorMessage, loading: false });
+            storeLogger.error('Bulk create failed', { error: errorMessage });
             throw error;
           }
         },
@@ -460,9 +485,11 @@ export const useLicenseStore = create<LicenseState>()(
             // Handle creates first
             if (licensesToCreate.length > 0) {
               try {
+                storeLogger.debug('Bulk upsert: bulk create started', { count: licensesToCreate.length });
                 const createdLicenses = await container.licenseManagementService.bulkCreateLicenses(licensesToCreate);
-                results.push(...createdLicenses);
-                storeLogger.debug('Bulk create completed', { created: createdLicenses.length });
+                const createdList = Array.isArray(createdLicenses) ? createdLicenses : [];
+                results.push(...createdList);
+                storeLogger.debug('Bulk upsert: bulk create completed', { created: createdList.length });
               } catch (createError) {
                 storeLogger.error('Bulk create failed', { error: createError instanceof Error ? createError.message : String(createError) });
                 throw createError;

@@ -241,9 +241,9 @@ export class LicenseController {
   };
 
   bulkUpdate = async (req, res) => {
+    let licensesToUpdate = [];
     try {
       // Extract the licenses to update based on the format
-      let licensesToUpdate = [];
       if (req.body.updates && Array.isArray(req.body.updates)) {
         // Structured format
         licensesToUpdate = req.body.updates;
@@ -307,12 +307,6 @@ export class LicenseController {
 
       const updated = await this.licenseService.bulkUpdateLicenses(licensesToUpdate);
 
-      const response = {
-        results: updated,
-        updated: updated.length,
-        total: licensesToUpdate.length,
-      };
-
       const message =
         updated.length === licensesToUpdate.length
           ? 'All licenses updated successfully'
@@ -347,13 +341,16 @@ export class LicenseController {
         licensesToCreate = req.body.licenses;
       } else if (Array.isArray(req.body)) {
         // Direct array format - transform to structured format
+        const today = new Date().toISOString().slice(0, 10);
         licensesToCreate = req.body.map((license) => {
-          // Handle field name differences (startsAt vs startDay)
+          // Handle field name differences (startsAt vs startDay); DB requires starts_at
           const processedLicense = { ...license };
-          if (processedLicense.startsAt && !processedLicense.startDay) {
-            processedLicense.startDay = processedLicense.startsAt;
-            delete processedLicense.startsAt;
-          }
+          const startValue = processedLicense.startsAt || processedLicense.startDay;
+          processedLicense.startDay =
+            startValue && String(startValue).trim()
+              ? String(startValue).trim().slice(0, 10)
+              : today;
+          delete processedLicense.startsAt;
           return processedLicense;
         });
       } else {
@@ -367,17 +364,33 @@ export class LicenseController {
         throw new ValidationException('No licenses provided for creation');
       }
 
-      // Add audit fields to each license
+      // Add audit fields. Use null for createdBy/updatedBy so the insert does not require
+      // the authenticated user to exist in the users table (avoids FK violation on licenses_created_by_foreign).
       const licensesWithAudit = licensesToCreate.map((license) => ({
         ...license,
-        createdBy: req.user?.id,
-        updatedBy: req.user?.id,
+        createdBy: undefined,
+        updatedBy: undefined,
         seatsUsed: license.seatsUsed || 0, // Ensure seatsUsed is set
       }));
 
-      const created = await this.licenseService.bulkCreateLicenses(licensesWithAudit);
+      const { createdLicenses, errors } =
+        await this.licenseService.bulkCreateLicenses(licensesWithAudit);
 
-      return res.created(created, 'Licenses created successfully');
+      if (createdLicenses.length === 0) {
+        const message =
+          errors.length > 0
+            ? `License creation failed: ${errors[0].error}`
+            : 'No licenses were created. Check validation or server logs.';
+        return res.status(400).json({
+          success: false,
+          message,
+          data: [],
+          errors: errors.length > 0 ? errors : [{ index: 0, key: 'unknown', error: message }],
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.created(createdLicenses, 'Licenses created successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
@@ -389,7 +402,6 @@ export class LicenseController {
   addRow = async (req, res) => {
     try {
       // Reuse create validation; allows empty dba/zip for grid add flow by relaxing requirements
-      // Only enforce required fields after save
       const payload = { ...req.body };
       if (!payload.dba) {
         payload.dba = '';
@@ -398,7 +410,12 @@ export class LicenseController {
         payload.startDay = new Date().toISOString().slice(0, 10);
       }
 
-      const license = await this.repository.save(payload);
+      const context = {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+      const license = await this.licenseService.createLicense(payload, context);
       return res.created({ license }, 'License row created successfully');
     } catch (error) {
       if (error instanceof ValidationException) {
@@ -411,7 +428,7 @@ export class LicenseController {
   bulkDelete = async (req, res) => {
     try {
       LicenseValidator.validateIdsArray(req.body);
-      const deletedCount = await this.repository.bulkDelete(req.body.ids);
+      const deletedCount = await this.licenseService.bulkDelete(req.body.ids);
 
       return res.success({ deleted: deletedCount }, 'Licenses deleted successfully');
     } catch (error) {
