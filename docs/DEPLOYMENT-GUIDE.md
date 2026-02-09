@@ -94,10 +94,10 @@ openssl rand -base64 48
 
 ## Deploy
 
-Push to `develop` or `main` branch:
+Push to `main` branch (only `main` triggers production deploy; `develop` is for integration without deploying):
 
 ```bash
-git push origin develop
+git push origin main
 
 # Monitor deployment
 gh run watch
@@ -162,7 +162,7 @@ gh secret set NEXT_SERVER_ACTIONS_ENCRYPTION_KEY -b "$NEW_NEXT"
 
 # Redeploy
 git commit --allow-empty -m "chore: trigger redeploy after secret rotation"
-git push origin develop
+git push origin main
 ```
 
 **Note:** Rotating JWT_SECRET will log out all users.
