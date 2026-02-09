@@ -544,7 +544,7 @@ export class LicenseManagementService {
         smsSent: license.smsSent || 0,
         smsBalance: license.smsBalance || 0,
         agents: license.agents || 0,
-        agentsName: license.agentsName || [],
+        agentsName: license.agentsName || '',
         agentsCost: license.agentsCost || 0,
         notes: license.notes || '',
         expirationDate: '', // These would be calculated in a real implementation
@@ -827,25 +827,25 @@ export class LicenseManagementService {
 
         normalizedUpdate.id = actualLicenseId;
 
-        // Normalize agentsName to array so backend always receives array (grid may send string from cell edit)
+        // Normalize agentsName to string (backend expects string)
         const rawAgentsName = (normalizedUpdate as Record<string, unknown>).agentsName;
         if (rawAgentsName !== undefined) {
-          (normalizedUpdate as Record<string, unknown>).agentsName = Array.isArray(rawAgentsName)
+          (normalizedUpdate as Record<string, unknown>).agentsName = typeof rawAgentsName === 'string'
             ? rawAgentsName
-            : typeof rawAgentsName === 'string'
-              ? rawAgentsName.split(',').map((s: string) => s.trim()).filter(Boolean)
-              : [];
+            : Array.isArray(rawAgentsName)
+              ? rawAgentsName.join(', ')
+              : '';
         }
 
         // For bulk updates, we allow partial updates, so we don't validate all fields
-        // Just ensure we have at least one field to update (agentsName counts even when [])
+        // Just ensure we have at least one field to update (agentsName counts even when empty string)
         const updatableFields = ['dba', 'zip', 'startsAt', 'status', 'plan', 'term', 'seatsTotal', 'lastPayment', 'smsPurchased', 'agents', 'agentsName', 'agentsCost', 'notes'];
 
         // Check if we have at least one field to update
         const hasUpdates = updatableFields.some(field => {
           const v = (normalizedUpdate as Record<string, unknown>)[field];
           if (v === undefined || v === null) return false;
-          if (field === 'agentsName') return true; // empty array [] is a valid update (clear names)
+          if (field === 'agentsName') return true; // empty string is a valid update (clear names)
           return v !== '';
         });
 

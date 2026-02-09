@@ -131,7 +131,7 @@ export class LicenseRepository implements ILicenseRepository {
         smsPurchased: (apiLicense.smsPurchased as number) || 0,
         smsSent: (apiLicense.smsSent as number) || 0,
         agents: (apiLicense.agents as number) || 0,
-        agentsName: (Array.isArray(apiLicense.agentsName) ? apiLicense.agentsName : []) as string[],
+        agentsName: (typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '') as string,
         agentsCost: (apiLicense.agentsCost as number) || 0,
         notes: (apiLicense.notes as string) || '',
         createdAt,
@@ -181,7 +181,7 @@ export class LicenseRepository implements ILicenseRepository {
       lastPayment: props.lastPayment || 0,
       smsPurchased: props.smsPurchased || 0,
       agents: props.agents || 0,
-      agentsName: props.agentsName || [],
+      agentsName: props.agentsName || '',
       agentsCost: props.agentsCost || 0,
       notes: props.notes || ''
     };

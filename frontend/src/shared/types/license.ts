@@ -28,7 +28,7 @@ export interface LicenseRecord {
   smsSent: number;
   smsBalance: number;
   agents: number;
-  agentsName: string[];
+  agentsName: string;
   agentsCost: number;
   notes: string;
 }

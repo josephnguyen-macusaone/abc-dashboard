@@ -20,7 +20,7 @@ export interface CreateLicenseDTO {
   lastPayment?: number;
   smsPurchased?: number;
   agents?: number;
-  agentsName?: string[];
+  agentsName?: string;
   agentsCost?: number;
   notes?: string;
 }
@@ -39,7 +39,7 @@ export interface UpdateLicenseDTO {
   lastPayment?: number;
   smsPurchased?: number;
   agents?: number;
-  agentsName?: string[];
+  agentsName?: string;
   agentsCost?: number;
   notes?: string;
 }
@@ -127,7 +127,7 @@ export interface LicenseResponseDTO {
   smsSent: number;
   smsBalance: number;
   agents: number;
-  agentsName: string[];
+  agentsName: string;
   agentsCost: number;
   notes: string;
   // Computed fields

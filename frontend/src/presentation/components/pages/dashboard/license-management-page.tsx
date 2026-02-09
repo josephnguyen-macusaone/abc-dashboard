@@ -117,32 +117,11 @@ export function LicenseManagementPage() {
   const onSave = useCallback(
     async (data: LicenseRecord[]) => {
       try {
-        // Transform agentsName from comma-separated string back to array
-        const transformedData = data.map(license => {
-          const agentsNameValue = (license as { agentsName?: string | string[] }).agentsName;
-
-          if (Array.isArray(agentsNameValue)) {
-            return license;
-          }
-
-          if (typeof agentsNameValue === 'string') {
-            const agentsArray = agentsNameValue
-              .split(',')
-              .map(name => name.trim())
-              .filter(name => name.length > 0);
-
-            return {
-              ...license,
-              agentsName: agentsArray,
-            };
-          }
-
-          // Default to empty array if undefined/null
-          return {
-            ...license,
-            agentsName: [],
-          };
-        });
+        // agentsName is now a string, no transformation needed
+        const transformedData = data.map(license => ({
+          ...license,
+          agentsName: typeof license.agentsName === 'string' ? license.agentsName : '',
+        }));
 
         // Separate new licenses (no valid server id) from existing ones (UUID or numeric id)
         const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -217,7 +196,7 @@ export function LicenseManagementPage() {
       smsSent: 0,
       smsBalance: 0,
       agents: 0,
-      agentsName: [],
+      agentsName: '',
       agentsCost: 0,
       notes: "",
     };

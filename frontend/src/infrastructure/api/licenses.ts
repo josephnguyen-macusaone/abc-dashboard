@@ -121,7 +121,7 @@ function transformApiLicenseToRecord(apiLicense: ApiLicenseRaw): LicenseRecord {
     seatsTotal: Number(apiLicense.seatsTotal ?? 1),
     seatsUsed: Number(apiLicense.seatsUsed ?? 0),
     agents: Number(apiLicense.agents ?? 0),
-    agentsName: Array.isArray(apiLicense.agentsName) ? apiLicense.agentsName : [],
+    agentsName: typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '',
     agentsCost: Number(apiLicense.agentsCost ?? 0),
     notes: apiLicense.Note ?? apiLicense.notes ?? '',
   };

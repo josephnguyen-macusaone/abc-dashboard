@@ -143,7 +143,7 @@ export class License {
     private _smsPurchased: number,
     private _smsSent: number,
     private _agents: number,
-    private _agentsName: string[],
+    private _agentsName: string,
     private _agentsCost: Money,
     private _notes: string,
     private _key?: string,
@@ -171,7 +171,7 @@ export class License {
   public get smsSent(): number { return this._smsSent; }
   public get smsBalance(): number { return this._smsPurchased - this._smsSent; }
   public get agents(): number { return this._agents; }
-  public get agentsName(): string[] { return [...this._agentsName]; }
+  public get agentsName(): string { return this._agentsName; }
   public get agentsCost(): Money { return this._agentsCost; }
   public get notes(): string { return this._notes; }
   public get key(): string | undefined { return this._key; }
@@ -432,7 +432,7 @@ export class License {
       props.smsPurchased || 0,
       0, // smsSent starts at 0
       props.agents || 0,
-      props.agentsName || [],
+      props.agentsName || '',
       new Money(props.agentsCost || 0),
       props.notes || '',
       props.key,
@@ -473,7 +473,7 @@ export class License {
       props.smsPurchased || 0,
       props.smsSent || 0,
       props.agents || 0,
-      props.agentsName || [],
+      props.agentsName || '',
       new Money(props.agentsCost || 0),
       props.notes || '',
       props.key,
@@ -527,7 +527,7 @@ export interface CreateLicenseProps {
   lastPayment?: number;
   smsPurchased?: number;
   agents?: number;
-  agentsName?: string[];
+  agentsName?: string;
   agentsCost?: number;
   notes?: string;
   key?: string;
@@ -552,7 +552,7 @@ export interface PersistenceLicenseProps {
   smsPurchased?: number;
   smsSent?: number;
   agents?: number;
-  agentsName?: string[];
+  agentsName?: string;
   agentsCost?: number;
   notes?: string;
   createdAt?: string;

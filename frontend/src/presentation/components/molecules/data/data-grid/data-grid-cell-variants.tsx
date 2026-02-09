@@ -788,14 +788,6 @@ export function MultiSelectCell<TData>({
   );
 }
 
-/** Parse comma-separated string into trimmed non-empty agent names (Excel-like). */
-function parseAgentsNameInput(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 export function AgentsNameCell<TData>({
   cell,
   tableMeta,
@@ -807,17 +799,16 @@ export function AgentsNameCell<TData>({
   readOnly,
 }: CellVariantProps<TData>) {
   const row = cell.row.original as Record<string, unknown>;
-  const agentsName = (row?.agentsName ?? row?.[columnId]) as string[] | undefined;
-  const list = Array.isArray(agentsName) ? agentsName : [];
-  const initialText = list.length === 0 ? "" : list.join(", ");
+  const agentsName = (row?.agentsName ?? row?.[columnId]) as string | undefined;
+  const initialText = typeof agentsName === 'string' ? agentsName : '';
   const [editValue, setEditValue] = React.useState(initialText);
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const prevListRef = React.useRef(list);
-  if (list !== prevListRef.current) {
-    prevListRef.current = list;
-    const nextText = list.length === 0 ? "" : list.join(", ");
+  const prevAgentsNameRef = React.useRef(agentsName);
+  if (agentsName !== prevAgentsNameRef.current) {
+    prevAgentsNameRef.current = agentsName;
+    const nextText = typeof agentsName === 'string' ? agentsName : '';
     setEditValue(nextText);
     if (cellRef.current && !isEditing) {
       cellRef.current.textContent = nextText;
@@ -826,16 +817,14 @@ export function AgentsNameCell<TData>({
 
   const commitEdit = React.useCallback(
     (raw: string) => {
-      const parsed = parseAgentsNameInput(raw);
-      const same =
-        list.length === parsed.length &&
-        list.every((v, i) => v === parsed[i]);
-      if (!same) {
-        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: parsed });
+      const trimmed = raw.trim();
+      const currentValue = typeof agentsName === 'string' ? agentsName : '';
+      if (trimmed !== currentValue) {
+        tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: trimmed });
       }
       tableMeta?.onCellEditingStop?.();
     },
-    [tableMeta, rowIndex, columnId, list],
+    [tableMeta, rowIndex, columnId, agentsName],
   );
 
   const onBlur = React.useCallback(() => {

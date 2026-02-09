@@ -326,9 +326,9 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       ),
       cell: ({ row }) => {
         const raw = row.getValue("agentsName");
-        const names = Array.isArray(raw) ? raw : raw != null && typeof raw === "string" ? [raw] : [];
-        const hasNames = names.length > 0 && names.some((n) => String(n).trim() !== "");
-        const display = hasNames ? names.map(String).join(", ") : "No Agent";
+        const agentsName = typeof raw === 'string' ? raw : '';
+        const hasNames = agentsName.trim().length > 0;
+        const display = hasNames ? agentsName : "No Agent";
         return (
           <span
             className={hasNames ? "truncate max-w-[320px]" : "text-muted-foreground"}

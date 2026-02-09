@@ -1025,20 +1025,29 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   /**
-   * Normalize agents_name from DB (jsonb may be string or array) to array for entity/DTO
+   * Normalize agents_name from DB (jsonb may be string or array) to string for entity/DTO
+   * Handles backward compatibility: converts arrays to comma-separated strings
    */
   _normalizeAgentsName(agentsName) {
-    if (agentsName == null) return [];
-    if (Array.isArray(agentsName)) return agentsName;
+    if (agentsName == null) return '';
     if (typeof agentsName === 'string') {
+      // If it's a JSON string, try to parse it
       try {
         const parsed = JSON.parse(agentsName);
-        return Array.isArray(parsed) ? parsed : [];
+        if (Array.isArray(parsed)) {
+          return parsed.filter(Boolean).join(', ');
+        }
+        return typeof parsed === 'string' ? parsed : '';
       } catch {
-        return agentsName.trim() ? [agentsName] : [];
+        // Not JSON, return as-is
+        return agentsName.trim();
       }
     }
-    return [];
+    if (Array.isArray(agentsName)) {
+      // Backward compatibility: convert array to comma-separated string
+      return agentsName.filter(Boolean).join(', ');
+    }
+    return '';
   }
 
   /**
@@ -1217,7 +1226,8 @@ export class LicenseRepository extends ILicenseRepository {
       dbData.agents = data.agents;
     }
     if (data.agentsName !== undefined) {
-      dbData.agents_name = JSON.stringify(data.agentsName);
+      // Store as string directly (not JSON.stringify)
+      dbData.agents_name = typeof data.agentsName === 'string' ? data.agentsName : String(data.agentsName || '');
     }
     if (data.agentsCost !== undefined) {
       dbData.agents_cost = data.agentsCost;
@@ -1689,7 +1699,7 @@ export class LicenseRepository extends ILicenseRepository {
    */
   async getAllAgentNames() {
     try {
-      // Get all licenses with agents_name field (stored as JSON array in database)
+      // Get all licenses with agents_name field (stored as string in database)
       const licenses = await this.db(this.licensesTable)
         .select('agents_name')
         .whereNotNull('agents_name');
@@ -1699,19 +1709,34 @@ export class LicenseRepository extends ILicenseRepository {
 
       licenses.forEach((license) => {
         if (license.agents_name) {
-          // agents_name is stored as JSON array in database
-          const names =
-            typeof license.agents_name === 'string'
-              ? JSON.parse(license.agents_name)
-              : license.agents_name;
-
-          if (Array.isArray(names)) {
-            names.forEach((name) => {
-              if (name && name.trim()) {
-                agentNamesSet.add(name.trim());
+          let names = [];
+          
+          // Handle backward compatibility: may be string, JSON string, or array
+          if (typeof license.agents_name === 'string') {
+            // Try to parse as JSON first (for backward compatibility)
+            try {
+              const parsed = JSON.parse(license.agents_name);
+              if (Array.isArray(parsed)) {
+                names = parsed;
+              } else {
+                // It's a plain string, split by comma
+                names = license.agents_name.split(',').map(n => n.trim()).filter(Boolean);
               }
-            });
+            } catch {
+              // Not JSON, treat as comma-separated string
+              names = license.agents_name.split(',').map(n => n.trim()).filter(Boolean);
+            }
+          } else if (Array.isArray(license.agents_name)) {
+            // Backward compatibility: handle array format
+            names = license.agents_name;
           }
+
+          // Add each name to the set
+          names.forEach((name) => {
+            if (name && name.trim()) {
+              agentNamesSet.add(name.trim());
+            }
+          });
         }
       });
 

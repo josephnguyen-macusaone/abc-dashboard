@@ -54,7 +54,7 @@ export interface CreateLicenseRequest {
   smsPurchased?: number;
   smsSent?: number;
   agents?: number;
-  agentsName?: string[];
+  agentsName?: string;
   agentsCost?: number;
   notes?: string;
 }
@@ -71,7 +71,7 @@ export interface UpdateLicenseRequest {
   smsPurchased?: number;
   smsSent?: number;
   agents?: number;
-  agentsName?: string[];
+  agentsName?: string;
   agentsCost?: number;
   notes?: string;
 }

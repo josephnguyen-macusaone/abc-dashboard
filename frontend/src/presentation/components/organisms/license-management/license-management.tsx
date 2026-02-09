@@ -111,7 +111,7 @@ export function LicenseManagement({
       smsSent: 0,
       smsBalance: 0,
       agents: 0,
-      agentsName: [],
+      agentsName: '',
       agentsCost: 0,
       notes: '',
     };

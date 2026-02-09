@@ -349,13 +349,11 @@ const swaggerDefinition = {
             example: 25.0,
           },
           agentsName: {
-            type: 'array',
+            type: 'string',
             description: 'Names of agents',
-            items: {
-              type: 'string',
-            },
+            maxLength: 500,
             nullable: true,
-            example: ['John Doe', 'Jane Smith'],
+            example: 'John Doe, Jane Smith',
           },
           createdAt: {
             type: 'string',

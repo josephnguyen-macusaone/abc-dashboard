@@ -198,8 +198,8 @@ export const licenseSchemas = {
       'number.base': 'Agents cost must be a number',
     }),
 
-    agentsName: Joi.array().items(Joi.string()).messages({
-      'array.base': 'Agents name must be an array',
+    agentsName: Joi.string().trim().allow('').max(500).messages({
+      'string.max': 'Agents name cannot exceed 500 characters',
     }),
   }),
 
@@ -267,8 +267,8 @@ export const licenseSchemas = {
       'number.base': 'Agents cost must be a number',
     }),
 
-    agentsName: Joi.array().items(Joi.string()).messages({
-      'array.base': 'Agents name must be an array',
+    agentsName: Joi.string().trim().allow('').max(500).messages({
+      'string.max': 'Agents name cannot exceed 500 characters',
     }),
   })
     .min(1)
@@ -358,7 +358,7 @@ export const licenseSchemas = {
               smsSent: Joi.number().min(0).integer(),
               agents: Joi.number().min(0).integer(),
               agentsCost: Joi.number().min(0),
-              agentsName: Joi.array().items(Joi.string()),
+              agentsName: Joi.string().trim().allow('').max(500),
             })
               .or('startsAt', 'startDay')
               .messages({
@@ -401,7 +401,7 @@ export const licenseSchemas = {
             lastActive: Joi.string().optional(),
             agents: Joi.number().min(0).integer().optional(),
             agentsCost: Joi.number().min(0).optional(),
-            agentsName: Joi.array().items(Joi.string()).optional(),
+            agentsName: Joi.string().trim().allow('').max(500).optional(),
             notes: Joi.string().allow('').optional(),
             // Allow unknown fields for flexibility
           }).unknown(true)
