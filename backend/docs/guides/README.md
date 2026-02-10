@@ -11,6 +11,7 @@ Step-by-step guides for configuring and setting up specific features and integra
 | **[Google Workspace Domain Setup](./google-workspace-domain-setup.md)** | Complete Google Workspace domain verification & SMTP setup | High       | 45 min |
 | **[Password Reset Flow](./password-reset-flow.md)**                     | Password reset process and email templates                 | Low        | 10 min |
 | **[User Management System](./user-management-system.md)**               | Role-based access control and user management              | Medium     | 20 min |
+| **[Agents Name Field](./agents-name-field.md)**                         | agentsName/agents_name: string type, API and DB behavior   | Low        | 5 min  |
 
 ## 🚀 Quick Setup Paths
 

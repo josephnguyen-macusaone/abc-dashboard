@@ -40,7 +40,6 @@
     "encrypt-db-password": "node scripts/encrypt-db-password.js",
     "db:create": "createdb abc_dashboard_dev || echo 'Database might already exist'",
     "db:drop": "dropdb abc_dashboard_dev || echo 'Database might not exist'",
-    "db:reset": "./reset-database.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",

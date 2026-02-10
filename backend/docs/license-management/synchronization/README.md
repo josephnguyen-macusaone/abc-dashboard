@@ -726,7 +726,7 @@ Each license in the response contains **both internal and external fields**:
       "smsSent": 750,
       "smsBalance": 250,
       "agents": 5,
-      "agentsName": ["Agent 1", "Agent 2"],
+      "agentsName": "Agent 1, Agent 2",
       "agentsCost": 150.00,
       "notes": "Customer notes",
 

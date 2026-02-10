@@ -13,6 +13,7 @@
 #   POSTGRES_HOST=postgres
 #   POSTGRES_PORT=5432
 # If you see ECONNREFUSED on "Running migrations...", fix .env and restart: docker compose up -d
+# If you see "password authentication failed for user abc_user", see docs/DEPLOYMENT-GUIDE.md (Troubleshooting)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,10 +40,20 @@ if [ "$DO_DROP" = "1" ]; then
   echo "Dropping and recreating database..."
   docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\";" -c "CREATE DATABASE \"$POSTGRES_DB\";"'
   echo "Running migrations..."
-  docker compose exec backend npm run migrate
+  if ! docker compose exec backend npm run migrate; then
+    echo ""
+    echo "Migrations failed. If the error is 'password authentication failed for user \"abc_user\"',"
+    echo "see docs/DEPLOYMENT-GUIDE.md (Troubleshooting) for plain vs encrypted POSTGRES_PASSWORD and how to start the stack."
+    exit 1
+  fi
 else
   echo "Resetting database (rollback + fresh migrations)..."
-  docker compose exec backend npm run migrate:fresh
+  if ! docker compose exec backend npm run migrate:fresh; then
+    echo ""
+    echo "Migrations failed. If the error is 'password authentication failed for user \"abc_user\"',"
+    echo "see docs/DEPLOYMENT-GUIDE.md (Troubleshooting) for plain vs encrypted POSTGRES_PASSWORD and how to start the stack."
+    exit 1
+  fi
 fi
 
 echo "Running seeds..."

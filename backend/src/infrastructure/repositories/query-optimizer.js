@@ -257,7 +257,9 @@ export function applyPagination(query, page = 1, limit = 10) {
  * @return {Object} Modified query
  */
 export function applySorting(query, sortBy, sortOrder = 'asc', tableName = null) {
-  if (!sortBy) return query;
+  if (!sortBy) {
+    return query;
+  }
 
   const sortField = tableName ? `${tableName}.${sortBy}` : sortBy;
   return query.orderBy(sortField, sortOrder);
@@ -358,7 +360,9 @@ export async function batchLoad(db, tableName, foreignKey, ids, projection = ['*
  * @return {Object} Modified query
  */
 export function applyFullTextSearch(query, searchTerm, fields, tableName) {
-  if (!searchTerm) return query;
+  if (!searchTerm) {
+    return query;
+  }
 
   // Use the pre-created GIN index
   const vectorExpression = fields

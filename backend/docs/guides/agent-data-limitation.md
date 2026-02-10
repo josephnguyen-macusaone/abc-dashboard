@@ -38,7 +38,7 @@ The external license management API (`https://mapi.abcsalon.us:2342/api/v1/licen
 **Missing Fields:**
 
 - `agents` (number)
-- `agentsName` (array of strings)
+- `agentsName` (string; e.g. comma-separated names)
 - `agentsCost` (number)
 
 ## Internal System Fields
@@ -49,7 +49,7 @@ Our internal license system includes agent data for tracking purposes:
 {
   "id": "894328a1-d9a0-483d-8fe3-9788deec2e9f",
   "agents": 3,
-  "agentsName": ["Agent 1", "Agent 2", "Agent 3"],
+  "agentsName": "Agent 1, Agent 2, Agent 3",
   "agentsCost": 150
   // ... other fields
 }

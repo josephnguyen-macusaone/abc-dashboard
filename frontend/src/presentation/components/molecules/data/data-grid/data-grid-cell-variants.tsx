@@ -39,14 +39,15 @@ export function ShortTextCell<TData>({
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const prevInitialValueRef = React.useRef(initialValue);
-  if (initialValue !== prevInitialValueRef.current) {
-    prevInitialValueRef.current = initialValue;
+  React.useEffect(() => {
     setValue(initialValue);
-    if (cellRef.current && !isEditing) {
+  }, [initialValue]);
+
+  React.useEffect(() => {
+    if (!isEditing && cellRef.current) {
       cellRef.current.textContent = initialValue;
     }
-  }
+  }, [initialValue, isEditing]);
 
   const onBlur = React.useCallback(() => {
     const currentValue = cellRef.current?.textContent ?? "";
@@ -215,11 +216,9 @@ export function NumberCell<TData>({
   const max = numberCellOpts?.max;
   const step = numberCellOpts?.step;
 
-  const prevInitialValueRef = React.useRef(initialValue);
-  if (initialValue !== prevInitialValueRef.current) {
-    prevInitialValueRef.current = initialValue;
+  React.useEffect(() => {
     setValue(String(initialValue ?? ""));
-  }
+  }, [initialValue]);
 
   const onBlur = React.useCallback(() => {
     const numValue = value === "" ? null : Number(value);
@@ -322,11 +321,9 @@ export function CheckboxCell<TData>({
   const [value, setValue] = React.useState(Boolean(initialValue));
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const prevInitialValueRef = React.useRef(initialValue);
-  if (initialValue !== prevInitialValueRef.current) {
-    prevInitialValueRef.current = initialValue;
+  React.useEffect(() => {
     setValue(Boolean(initialValue));
-  }
+  }, [initialValue]);
 
   const onCheckedChange = React.useCallback(
     (checked: boolean) => {
@@ -408,11 +405,9 @@ export function SelectCell<TData>({
   const cellOpts = cell.column.columnDef.meta?.cell;
   const options = cellOpts?.variant === "select" ? cellOpts.options : [];
 
-  const prevInitialValueRef = React.useRef(initialValue);
-  if (initialValue !== prevInitialValueRef.current) {
-    prevInitialValueRef.current = initialValue;
+  React.useEffect(() => {
     setValue(initialValue);
-  }
+  }, [initialValue]);
 
   const onValueChange = React.useCallback(
     (newValue: string) => {
@@ -515,15 +510,15 @@ export function DateCell<TData>({
 }: CellVariantProps<TData>) {
   const initialValue = cell.getValue() as string;
   const [value, setValue] = React.useState(initialValue ?? "");
-  const [inputValue, setInputValue] = React.useState(formatDateForDisplay(value));
+  const [inputValue, setInputValue] = React.useState(() =>
+    formatDateForDisplay(initialValue ?? ""),
+  );
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const prevInitialValueRef = React.useRef(initialValue);
-  if (initialValue !== prevInitialValueRef.current) {
-    prevInitialValueRef.current = initialValue;
+  React.useEffect(() => {
     setValue(initialValue ?? "");
     setInputValue(formatDateForDisplay(initialValue ?? ""));
-  }
+  }, [initialValue]);
 
   const selectedDate = value ? new Date(value) : undefined;
 
@@ -805,15 +800,17 @@ export function AgentsNameCell<TData>({
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const prevAgentsNameRef = React.useRef(agentsName);
-  if (agentsName !== prevAgentsNameRef.current) {
-    prevAgentsNameRef.current = agentsName;
+  React.useEffect(() => {
     const nextText = typeof agentsName === 'string' ? agentsName : '';
     setEditValue(nextText);
-    if (cellRef.current && !isEditing) {
+  }, [agentsName]);
+
+  React.useEffect(() => {
+    if (!isEditing && cellRef.current) {
+      const nextText = typeof agentsName === 'string' ? agentsName : '';
       cellRef.current.textContent = nextText;
     }
-  }
+  }, [agentsName, isEditing]);
 
   const commitEdit = React.useCallback(
     (raw: string) => {
@@ -892,7 +889,7 @@ export function AgentsNameCell<TData>({
   React.useEffect(() => {
     if (isEditing && cellRef.current) {
       cellRef.current.focus();
-      const text = list.length === 0 ? "" : list.join(", ");
+      const text = initialText ?? "";
       if (!cellRef.current.textContent && text) {
         cellRef.current.textContent = text;
       }
@@ -905,7 +902,7 @@ export function AgentsNameCell<TData>({
         selection?.addRange(range);
       }
     }
-  }, [isEditing, list]);
+  }, [isEditing, initialText]);
 
   const displayText = !isEditing ? (editValue ?? initialText) : "";
   const fullText = initialText || "";

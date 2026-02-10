@@ -48,8 +48,7 @@ ENV NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN NODE_OPTIONS="--max-old-space-size=1024" \
-    npm run build
+RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
 
 # Verify standalone build was created
 RUN ls -lah .next/standalone || (echo "ERROR: Standalone build not found!" && exit 1)

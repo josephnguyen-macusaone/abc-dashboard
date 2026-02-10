@@ -1085,8 +1085,12 @@ export class SyncExternalLicensesUseCase {
         lastActive: this._sanitizeDate(baseData.lastActive) || new Date().toISOString(),
         cancelDate: baseData.cancelDate ? this._sanitizeDate(baseData.cancelDate) : null,
 
-        // Handle array fields
-        agentsName: Array.isArray(baseData.agentsName) ? baseData.agentsName : [],
+        // Handle agentsName (string; legacy external data may be array)
+        agentsName: Array.isArray(baseData.agentsName)
+          ? baseData.agentsName.filter(Boolean).join(', ')
+          : typeof baseData.agentsName === 'string'
+            ? baseData.agentsName.trim()
+            : '',
 
         // Handle notes
         notes: this._sanitizeString(baseData.notes) || '',
@@ -1130,7 +1134,7 @@ export class SyncExternalLicensesUseCase {
         seatsTotal: 1,
         seatsUsed: 0,
         agents: 0,
-        agentsName: [],
+        agentsName: '',
         agentsCost: 0,
         startsAt: new Date().toISOString().split('T')[0],
         lastActive: new Date().toISOString(),

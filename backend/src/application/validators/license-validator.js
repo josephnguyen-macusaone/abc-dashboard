@@ -329,9 +329,7 @@ export class LicenseValidator {
     ensureNumber(input.agents, 'agents');
     ensureNumber(input.agentsCost, 'agentsCost');
 
-    if (input.agentsName && !Array.isArray(input.agentsName)) {
-      throw new ValidationException('agentsName must be an array');
-    }
+    ensureString(input.agentsName, 'agentsName', 500);
 
     ensureString(input.notes, 'notes');
   }
@@ -409,10 +407,7 @@ export class LicenseValidator {
     ensureNumber(input.agents, 'agents');
     ensureNumber(input.agentsCost, 'agentsCost');
     ensureString(input.notes, 'notes');
-
-    if (input.agentsName !== undefined && !Array.isArray(input.agentsName)) {
-      throw new ValidationException('agentsName must be an array');
-    }
+    ensureString(input.agentsName, 'agentsName', 500);
   }
 
   static validateBulkUpdateInput(body) {

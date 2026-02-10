@@ -708,10 +708,9 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       minimum: 0
    *                       description: Cost of agents
    *                     agentsName:
-   *                       type: array
-   *                       items:
-   *                         type: string
-   *                       description: Names of agents
+   *                       type: string
+   *                       maxLength: 500
+   *                       description: Names of agents (e.g. comma-separated or single name)
    *     responses:
    *       200:
    *         description: Licenses updated successfully
@@ -826,10 +825,9 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       minimum: 0
    *                       description: Cost of agents
    *                     agentsName:
-   *                       type: array
-   *                       items:
-   *                         type: string
-   *                       description: Names of agents
+   *                       type: string
+   *                       maxLength: 500
+   *                       description: Names of agents (e.g. comma-separated or single name)
    *     responses:
    *       201:
    *         description: Licenses created successfully

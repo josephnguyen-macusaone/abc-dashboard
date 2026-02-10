@@ -3,8 +3,13 @@
 Three scripts cover deploy and DB operations:
 
 - **`build-and-save.sh`** – Build images, save to `dist/*.tar.gz` (manual deploy from dev machine).
+- **`docker-compose-up.sh`** – Start/stop the stack (uses current images). Handles `POSTGRES_PASSWORD=enc:...`. Example: `./scripts/docker-compose-up.sh up -d --force-recreate`.
 - **`load-and-run.sh`** – On server: load images and start stack. With `--start-only`: only start/stop the stack (use when `.env` has `POSTGRES_PASSWORD=enc:...`).
 - **`docker-db-reset-sync.sh`** – Reset DB (migrate:fresh or drop), seed, optional license sync.
+
+## Password authentication failed (Docker)
+
+If you see **`password authentication failed for user "abc_user"`** when running `./scripts/docker-db-reset-sync.sh` or migrations in the backend container, the postgres and backend containers are using different passwords. See **[docs/DEPLOYMENT-GUIDE.md](../docs/DEPLOYMENT-GUIDE.md#21-docker--database)** (Troubleshooting → Docker / database) for causes and fixes (plain vs encrypted `POSTGRES_PASSWORD`, and how to start the stack with `./scripts/load-and-run.sh --start-only` when using `enc:`).
 
 ## Encrypted DB password (`POSTGRES_PASSWORD=enc:...`)
 
@@ -14,8 +19,10 @@ Start the stack with **`./scripts/load-and-run.sh --start-only up -d`** so the P
 
 **Local Docker: start stack and reset DB**
 ```bash
-# From repo root. When POSTGRES_PASSWORD is enc:..., use --start-only so postgres gets plain password.
-./scripts/load-and-run.sh --start-only up -d --build
+# From repo root. After building images:
+./scripts/build-and-save.sh
+./scripts/docker-compose-up.sh up -d --force-recreate
+# Or use load-and-run.sh --start-only when POSTGRES_PASSWORD=enc:...
 ./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
 # Optional: ./scripts/docker-db-reset-sync.sh --drop        # drop DB + migrate + seed
 # Optional: ./scripts/docker-db-reset-sync.sh --drop --sync # same + license sync
@@ -38,10 +45,12 @@ sleep 10
 ./scripts/docker-db-reset-sync.sh --drop --sync
 ```
 
-**DB only (on server or local):**
+**DB only (on server or local with Docker):**
 ```bash
 cd /path/to/abc-dashboard
 ./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
 ./scripts/docker-db-reset-sync.sh --drop       # drop DB + migrate + seed
 ./scripts/docker-db-reset-sync.sh --drop --sync # same + license sync
 ```
+
+**Backend only (local, no Docker):** Use Docker-based reset above, or from `backend/` run `npm run migrate:fresh` and `npm run seed` after dropping/recreating the DB yourself (e.g. `dropdb`/`createdb` with `POSTGRES_DB`/`POSTGRES_USER` from `.env`).

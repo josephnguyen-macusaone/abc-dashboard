@@ -1645,7 +1645,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       seatsTotal: 1, // Default to 1 seat for external licenses
       seatsUsed: 0,
       agents: 0,
-      agentsName: [],
+      agentsName: '',
       agentsCost: 0,
       notes: externalLicense.note || '',
 
