@@ -217,6 +217,69 @@ See also [scripts/README.md](../scripts/README.md) for encrypted DB password and
 
 ---
 
+### Server: Full DB reset (drop, migrate, seed, sync) {#server-db-reset}
+
+Use this when you want to **drop the database, run migrations, seed data, and run the external license sync** on the server. The server has the app directory (e.g. `/root/abc-dashboard`) with `docker-compose.yml`, `.env`, and the **scripts** from the repo (`scripts/load-and-run.sh`, `scripts/docker-db-reset-sync.sh`). Images are already loaded (from CI/CD or manual transfer).
+
+**Prerequisites on server**
+
+- App directory: `docker-compose.yml`, `.env`, `scripts/load-and-run.sh`, `scripts/docker-db-reset-sync.sh`
+- Backend image must include `backend/scripts/resolve-db-password-for-docker.js` if you use encrypted DB password (so `load-and-run.sh --start-only` can set `POSTGRES_PASSWORD_PLAIN`)
+
+**Plan (encrypted DB password: `POSTGRES_PASSWORD=enc:...`)**
+
+1. SSH to the server and go to the app directory:
+   ```bash
+   ssh root@<SERVER_IP>
+   cd /root/abc-dashboard
+   ```
+2. Stop the stack and remove the Postgres volume (so the DB is recreated with the correct password):
+   ```bash
+   docker compose down -v
+   ```
+3. Start the stack so Postgres gets the **decrypted** password (required when using `enc:`):
+   ```bash
+   ./scripts/load-and-run.sh --start-only up -d
+   ```
+4. Wait for the backend to be healthy (e.g. 15–30 seconds), then run drop + migrate + seed + sync:
+   ```bash
+   sleep 15
+   ./scripts/docker-db-reset-sync.sh --drop --sync
+   ```
+5. Sync can take several minutes (many pages). When it finishes, the DB has fresh schema, seed users, and licenses from the external API.
+
+**Plan (plain DB password)**
+
+If `.env` has a plain `POSTGRES_PASSWORD=...` (no `enc:`):
+
+1. SSH and `cd /root/abc-dashboard`.
+2. Optional full reset of data: `docker compose down -v` then `docker compose up -d`. Otherwise leave the stack up.
+3. Wait for backend: `sleep 15`.
+4. Run: `./scripts/docker-db-reset-sync.sh --drop --sync`.
+
+**If you don’t have the scripts on the server**
+
+You can run the same steps manually (from the app directory where `docker-compose.yml` and `.env` exist):
+
+```bash
+# 1. Terminate connections and drop/recreate DB
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '\''"$POSTGRES_DB"'\'' AND pid <> pg_backend_pid();"'
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\";" -c "CREATE DATABASE \"$POSTGRES_DB\";"'
+
+# 2. Migrate
+docker compose exec backend npm run migrate
+
+# 3. Seed
+docker compose exec backend npm run seed
+
+# 4. Sync (optional; can take several minutes)
+docker compose exec backend npm run sync:start
+```
+
+When using an encrypted password, start the stack with `./scripts/load-and-run.sh --start-only up -d` (or ensure Postgres was given the decrypted password) before running these commands; otherwise migrations will fail with password authentication errors.
+
+---
+
 ### Backend unhealthy / ECONNREFUSED to Postgres
 
 **Cause:** Backend can’t reach Postgres (wrong host/port or DB not ready).
@@ -299,7 +362,7 @@ See also [scripts/README.md](../scripts/README.md) for encrypted DB password and
 | Encrypted DB password, start command | [scripts/README.md](../scripts/README.md) |
 | Deploy and secrets | [1. Deployment](#1-deployment) |
 | agentsName / agents_name | [backend/docs/guides/agents-name-field.md](../backend/docs/guides/agents-name-field.md) |
-| Server: drop DB and redeploy | `./scripts/docker-db-reset-sync.sh --drop` ([scripts/README.md](../scripts/README.md)) |
+| Server: drop DB, migrate, seed, sync | [Server: Full DB reset](#server-db-reset) |
 
 ---
 
