@@ -1,0 +1,505 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: "class",
+  // Disable CSS processing to avoid lightningcss issues
+  css: false,
+  content: [
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/presentation/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  safelist: [
+    // Typography classes - ensure they're not purged
+    'text-display-xl', 'text-display-l', 'text-display-m',
+    'text-title-xl', 'text-title-l', 'text-title-m', 'text-title-s', 'text-title-xs',
+    'text-body-m', 'text-body-s', 'text-body-xs',
+    'text-label-l', 'text-label-m', 'text-label-s',
+    'text-caption',
+    'text-button-l', 'text-button-m', 'text-button-s',
+
+    // Table classes - ensure table styling isn't purged
+    'bg-muted', 'bg-muted/50', 'bg-muted/30', 'bg-muted/20',
+    'hover:bg-muted/50', 'hover:bg-muted/70', 'hover:bg-white/70', 'hover:bg-gray-700/70',
+    'data-[state=selected]:bg-muted', 'data-[state=selected]:bg-blue-50', 'data-[state=selected]:bg-blue-900/30',
+    'border-b', 'border-t', 'border-border',
+    'transition-colors', 'transition-all',
+  ],
+  theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
+    extend: {
+      /* ========================================
+         FONT FAMILIES
+         MAC USA ONE Typography System
+         ======================================== */
+      fontFamily: {
+        display: ["var(--font-archivo)", "ui-sans-serif", "system-ui", "sans-serif"],
+        body: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "SF Mono", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+      },
+
+      /* ========================================
+         FONT SIZES
+         MAC USA ONE Typography Scale
+         ======================================== */
+      fontSize: {
+        /* ========================================
+           FLUID DISPLAY SIZES
+           Using clamp() for responsive scaling
+           ======================================== */
+
+        /* Display XL: Scales from 48px (mobile) to 72px (desktop) */
+        "display-xl": ["clamp(3rem, 6vw + 1rem, 4.5rem)", { lineHeight: "1", fontWeight: "600", letterSpacing: "-0.02em" }],
+        "display-l": ["clamp(2.5rem, 4.5vw + 0.8rem, 3.5rem)", { lineHeight: "1", fontWeight: "600", letterSpacing: "-0.02em" }],
+        "display-m": ["clamp(2rem, 3.5vw + 0.6rem, 2.75rem)", { lineHeight: "1.1", fontWeight: "500", letterSpacing: "-0.01em" }],
+
+        /* ========================================
+           FLUID TITLE SIZES
+           Moderate scaling for headings
+           ======================================== */
+
+        /* Title XL: Scales from 28px (mobile) to 36px (desktop) */
+        "title-xl": ["clamp(1.75rem, 3vw + 0.5rem, 2.25rem)", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
+        "title-l": ["clamp(1.375rem, 2.5vw + 0.4rem, 1.75rem)", { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.01em" }],
+        "title-m": ["clamp(1.25rem, 2vw + 0.4rem, 1.5rem)", { lineHeight: "1.3", fontWeight: "500" }],
+        "title-s": ["clamp(1.125rem, 1.5vw + 0.4rem, 1.25rem)", { lineHeight: "1.4", fontWeight: "500" }],
+        "title-xs": ["clamp(1rem, 1.2vw + 0.4rem, 1.125rem)", { lineHeight: "1.4", fontWeight: "500" }],
+
+        /* ========================================
+           SEMI-FLUID BODY SIZES
+           Subtle scaling for content readability
+           ======================================== */
+
+        /* Body M: Scales from 15px (mobile) to 16px (desktop) */
+        "body-m": ["clamp(0.9375rem, 1vw + 0.8rem, 1rem)", { lineHeight: "1.5", fontWeight: "400" }],
+        "body-s": ["clamp(0.8125rem, 0.8vw + 0.75rem, 0.875rem)", { lineHeight: "1.5", fontWeight: "400" }],
+        "body-xs": ["clamp(0.75rem, 0.5vw + 0.7rem, 0.75rem)", { lineHeight: "1.4", fontWeight: "400" }],
+
+        /* ========================================
+           FIXED LABEL SIZES
+           UI elements need consistent sizing
+           ======================================== */
+
+        /* Label sizes - kept fixed for UI consistency */
+        "label-l": ["1rem", { lineHeight: "1", fontWeight: "500" }],
+        "label-m": ["0.875rem", { lineHeight: "1", fontWeight: "500" }],
+        "label-s": ["0.75rem", { lineHeight: "1", fontWeight: "500" }],
+
+        /* Caption - kept fixed for metadata consistency */
+        "caption": ["0.75rem", { lineHeight: "1.3", fontWeight: "400" }],
+
+        /* ========================================
+           SEMI-FLUID BUTTON SIZES
+           Slight scaling for better touch targets
+           ======================================== */
+
+        /* Button sizes - minimal scaling for consistency */
+        "button-l": ["clamp(0.9375rem, 1vw + 0.8rem, 1rem)", { lineHeight: "1", fontWeight: "600" }],
+        "button-m": ["clamp(0.8125rem, 0.8vw + 0.75rem, 0.875rem)", { lineHeight: "1", fontWeight: "600" }],
+        "button-s": ["0.75rem", { lineHeight: "1", fontWeight: "600" }],
+      },
+
+      /* ========================================
+         COLORS
+         MAC USA ONE Color System
+         ======================================== */
+      colors: {
+        /* Core semantic colors */
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+
+        /* Brand colors */
+        brand: {
+          DEFAULT: "#F66600",
+          secondary: "#0B80D8",
+          typography: "#262627",
+          background: "#FEFEFE",
+        },
+
+        /* Primary (Orange) */
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+          50: "var(--primary-50)",
+          100: "var(--primary-100)",
+          200: "var(--primary-200)",
+          300: "var(--primary-300)",
+          400: "var(--primary-400)",
+          500: "var(--primary-500)",
+          600: "var(--primary-600)",
+          700: "var(--primary-700)",
+          800: "var(--primary-800)",
+          900: "var(--primary-900)",
+          950: "var(--primary-950)",
+        },
+
+        /* Secondary (Blue) */
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+          50: "var(--secondary-50)",
+          100: "var(--secondary-100)",
+          200: "var(--secondary-200)",
+          300: "var(--secondary-300)",
+          400: "var(--secondary-400)",
+          500: "var(--secondary-500)",
+          600: "var(--secondary-600)",
+          700: "var(--secondary-700)",
+          800: "var(--secondary-800)",
+          900: "var(--secondary-900)",
+          950: "var(--secondary-950)",
+        },
+
+        /* Destructive */
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+
+        /* Muted */
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+
+        /* Accent */
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+
+        /* Popover */
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+
+        /* Card */
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+
+        /* Semantic state colors */
+        success: {
+          DEFAULT: "var(--success)",
+          foreground: "var(--success-foreground)",
+          50: "var(--green-50)",
+          100: "var(--green-100)",
+          200: "var(--green-200)",
+          300: "var(--green-300)",
+          400: "var(--green-400)",
+          500: "var(--green-500)",
+          600: "var(--green-600)",
+          700: "var(--green-700)",
+          800: "var(--green-800)",
+          900: "var(--green-900)",
+        },
+
+        warning: {
+          DEFAULT: "var(--warning)",
+          foreground: "var(--warning-foreground)",
+          50: "var(--amber-50)",
+          100: "var(--amber-100)",
+          200: "var(--amber-200)",
+          300: "var(--amber-300)",
+          400: "var(--amber-400)",
+          500: "var(--amber-500)",
+          600: "var(--amber-600)",
+          700: "var(--amber-700)",
+          800: "var(--amber-800)",
+          900: "var(--amber-900)",
+        },
+
+        error: {
+          DEFAULT: "var(--error)",
+          foreground: "var(--error-foreground)",
+          50: "var(--red-50)",
+          100: "var(--red-100)",
+          200: "var(--red-200)",
+          300: "var(--red-300)",
+          400: "var(--red-400)",
+          500: "var(--red-500)",
+          600: "var(--red-600)",
+          700: "var(--red-700)",
+          800: "var(--red-800)",
+          900: "var(--red-900)",
+        },
+
+        info: {
+          DEFAULT: "var(--info)",
+          foreground: "var(--info-foreground)",
+          50: "var(--sky-50)",
+          100: "var(--sky-100)",
+          200: "var(--sky-200)",
+          300: "var(--sky-300)",
+          400: "var(--sky-400)",
+          500: "var(--sky-500)",
+          600: "var(--sky-600)",
+          700: "var(--sky-700)",
+          800: "var(--sky-800)",
+          900: "var(--sky-900)",
+        },
+
+        /* Indicator colors */
+        indicator: {
+          online: "var(--clr-indicator-online)",
+          away: "var(--clr-indicator-away)",
+          offline: "var(--clr-indicator-offline)",
+        },
+
+        /* Sidebar */
+        sidebar: {
+          DEFAULT: "var(--sidebar-background)",
+          foreground: "var(--sidebar-foreground)",
+          primary: "var(--sidebar-primary)",
+          "primary-foreground": "var(--sidebar-primary-foreground)",
+          accent: "var(--sidebar-accent)",
+          "accent-foreground": "var(--sidebar-accent-foreground)",
+          border: "var(--sidebar-border)",
+          ring: "var(--sidebar-ring)",
+        },
+
+        /* Chart colors */
+        chart: {
+          1: "var(--chart-1)",
+          2: "var(--chart-2)",
+          3: "var(--chart-3)",
+          4: "var(--chart-4)",
+          5: "var(--chart-5)",
+        },
+
+        /* Color scales */
+        orange: {
+          50: "var(--orange-50)",
+          100: "var(--orange-100)",
+          200: "var(--orange-200)",
+          300: "var(--orange-300)",
+          400: "var(--orange-400)",
+          500: "var(--orange-500)",
+          600: "var(--orange-600)",
+          700: "var(--orange-700)",
+          800: "var(--orange-800)",
+          900: "var(--orange-900)",
+        },
+
+        blue: {
+          50: "var(--blue-50)",
+          100: "var(--blue-100)",
+          200: "var(--blue-200)",
+          300: "var(--blue-300)",
+          400: "var(--blue-400)",
+          500: "var(--blue-500)",
+          600: "var(--blue-600)",
+          700: "var(--blue-700)",
+          800: "var(--blue-800)",
+          900: "var(--blue-900)",
+        },
+
+        green: {
+          50: "var(--green-50)",
+          100: "var(--green-100)",
+          200: "var(--green-200)",
+          300: "var(--green-300)",
+          400: "var(--green-400)",
+          500: "var(--green-500)",
+          600: "var(--green-600)",
+          700: "var(--green-700)",
+          800: "var(--green-800)",
+          900: "var(--green-900)",
+        },
+
+        red: {
+          50: "var(--red-50)",
+          100: "var(--red-100)",
+          200: "var(--red-200)",
+          300: "var(--red-300)",
+          400: "var(--red-400)",
+          500: "var(--red-500)",
+          600: "var(--red-600)",
+          700: "var(--red-700)",
+          800: "var(--red-800)",
+          900: "var(--red-900)",
+        },
+
+        yellow: {
+          50: "var(--yellow-50)",
+          100: "var(--yellow-100)",
+          200: "var(--yellow-200)",
+          300: "var(--yellow-300)",
+          400: "var(--yellow-400)",
+          500: "var(--yellow-500)",
+          600: "var(--yellow-600)",
+          700: "var(--yellow-700)",
+          800: "var(--yellow-800)",
+          900: "var(--yellow-900)",
+        },
+
+        amber: {
+          50: "var(--amber-50)",
+          100: "var(--amber-100)",
+          200: "var(--amber-200)",
+          300: "var(--amber-300)",
+          400: "var(--amber-400)",
+          500: "var(--amber-500)",
+          600: "var(--amber-600)",
+          700: "var(--amber-700)",
+          800: "var(--amber-800)",
+          900: "var(--amber-900)",
+        },
+
+        sky: {
+          50: "var(--sky-50)",
+          100: "var(--sky-100)",
+          200: "var(--sky-200)",
+          300: "var(--sky-300)",
+          400: "var(--sky-400)",
+          500: "var(--sky-500)",
+          600: "var(--sky-600)",
+          700: "var(--sky-700)",
+          800: "var(--sky-800)",
+          900: "var(--sky-900)",
+        },
+
+        slate: {
+          50: "var(--slate-50)",
+          100: "var(--slate-100)",
+          200: "var(--slate-200)",
+          300: "var(--slate-300)",
+          400: "var(--slate-400)",
+          500: "var(--slate-500)",
+          600: "var(--slate-600)",
+          700: "var(--slate-700)",
+          800: "var(--slate-800)",
+          900: "var(--slate-900)",
+        },
+
+        gray: {
+          50: "var(--gray-50)",
+          100: "var(--gray-100)",
+          200: "var(--gray-200)",
+          300: "var(--gray-300)",
+          400: "var(--gray-400)",
+          500: "var(--gray-500)",
+          600: "var(--gray-600)",
+          700: "var(--gray-700)",
+          800: "var(--gray-800)",
+          900: "var(--gray-900)",
+        },
+
+        neutral: {
+          50: "var(--neutral-50)",
+          100: "var(--neutral-100)",
+          200: "var(--neutral-200)",
+          300: "var(--neutral-300)",
+          400: "var(--neutral-400)",
+          500: "var(--neutral-500)",
+          600: "var(--neutral-600)",
+          700: "var(--neutral-700)",
+          800: "var(--neutral-800)",
+          900: "var(--neutral-900)",
+        },
+      },
+
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+
+      /* ========================================
+         TABLE SPACING
+         Custom spacing for table elements
+         ======================================== */
+      spacing: {
+        'table-cell': '1rem', // Standard table cell padding
+        'table-header': '0.75rem 1rem', // Header padding
+        'table-compact': '0.5rem', // Compact table spacing
+        'table-comfortable': '1rem', // Comfortable table spacing
+      },
+
+      /* ========================================
+         TABLE BORDERS
+         Enhanced border utilities for tables
+         ======================================== */
+      borderWidth: {
+        'table': '1px',
+        'table-thick': '2px',
+      },
+
+      backgroundImage: {
+        "brand-gradient": "linear-gradient(135deg, #FF885C, #F88800, #CC4700, #471A02)",
+        "brand-gradient-horizontal": "linear-gradient(90deg, #FF885C, #F88800, #CC4700, #471A02)",
+        "brand-gradient-vertical": "linear-gradient(180deg, #FF885C, #F88800, #CC4700, #471A02)",
+        "table-header-gradient": "linear-gradient(135deg, hsl(var(--muted)), hsl(var(--muted) / 0.8))",
+        "table-stripe": "linear-gradient(90deg, transparent, hsl(var(--muted) / 0.3), transparent)",
+      },
+
+      boxShadow: {
+        'table': '0 1px 3px 0 hsl(var(--foreground) / 0.1)',
+        'table-hover': '0 2px 8px 0 hsl(var(--foreground) / 0.15)',
+        'table-selected': '0 0 0 2px hsl(var(--primary) / 0.2)',
+      },
+
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "table-row-fade-in": {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "table-hover-scale": {
+          "0%": { transform: "scale(1)" },
+          "100%": { transform: "scale(1.002)" },
+        },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+      },
+
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        "table-row-fade-in": "table-row-fade-in 0.3s ease-in-out",
+        "table-hover-scale": "table-hover-scale 0.2s ease-out",
+      },
+
+      /* ========================================
+         TABLE SYSTEM
+         Enhanced table styling and utilities
+         ======================================== */
+      table: {
+        spacing: {
+          'compact': '0.5rem',
+          'comfortable': '1rem',
+          'spacious': '1.5rem',
+        },
+        colors: {
+          'header-bg': 'hsl(var(--muted))',
+          'row-bg': 'hsl(var(--background))',
+          'row-hover': 'hsl(var(--muted) / 0.5)',
+          'row-selected': 'hsl(var(--primary) / 0.1)',
+          'border': 'hsl(var(--border))',
+        },
+      },
+    },
+  },
+  plugins: [],
+};

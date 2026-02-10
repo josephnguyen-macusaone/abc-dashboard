@@ -1,0 +1,93 @@
+/* Custom Swagger UI theming for ABC Dashboard */
+:root {
+  --swagger-bg: #0b1220;
+  --swagger-panel: #111827;
+  --swagger-text: #e5e7eb;
+  --swagger-accent: #06b6d4;
+  --swagger-accent-strong: #22d3ee;
+  --swagger-border: #1f2937;
+  --swagger-muted: #9ca3af;
+}
+
+body {
+  background: var(--swagger-bg);
+  color: var(--swagger-text);
+}
+
+.swagger-ui .topbar {
+  background: var(--swagger-panel);
+  border-bottom: 1px solid var(--swagger-border);
+}
+
+.swagger-ui .topbar .download-url-wrapper input {
+  background: var(--swagger-bg);
+  color: var(--swagger-text);
+  border: 1px solid var(--swagger-border);
+}
+
+.swagger-ui .topbar-wrapper img[alt='Swagger UI'],
+.swagger-ui .topbar-wrapper img {
+  content: url('/assets/logo_dark.svg');
+  max-height: 40px;
+}
+
+.swagger-ui .opblock {
+  background: var(--swagger-panel);
+  border-color: var(--swagger-border);
+}
+
+.swagger-ui .opblock-summary-method {
+  text-transform: uppercase;
+}
+
+.swagger-ui .opblock-summary {
+  color: var(--swagger-text);
+}
+
+.swagger-ui .opblock-tag {
+  color: var(--swagger-text);
+}
+
+.swagger-ui .markdown p,
+.swagger-ui .info .title,
+.swagger-ui .info .base-url {
+  color: var(--swagger-text);
+}
+
+.swagger-ui .scheme-container {
+  background: var(--swagger-panel);
+  border-color: var(--swagger-border);
+}
+
+.swagger-ui .btn.authorize {
+  background: var(--swagger-accent);
+  border-color: var(--swagger-accent);
+  color: #0b1220;
+}
+
+.swagger-ui .btn.authorize:hover {
+  background: var(--swagger-accent-strong);
+  border-color: var(--swagger-accent-strong);
+}
+
+.swagger-ui .model-box-control:after,
+.swagger-ui .opblock-summary-control:after {
+  color: var(--swagger-muted);
+}
+
+.swagger-ui textarea,
+.swagger-ui input[type='text'],
+.swagger-ui input[type='email'],
+.swagger-ui select {
+  background: var(--swagger-bg);
+  color: var(--swagger-text);
+  border: 1px solid var(--swagger-border);
+}
+
+.swagger-ui .response-col_status {
+  color: var(--swagger-accent-strong);
+}
+
+.swagger-ui .responses-inner {
+  background: var(--swagger-bg);
+}

@@ -1,0 +1,5 @@
+# Root .dockerignore - not used by docker-compose but helpful for analysis
+# Individual services have their own .dockerignore files
+
+# This file exists for documentation purposes
+# Each service (frontend/backend) should have its own .dockerignore

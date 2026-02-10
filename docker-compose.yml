@@ -1,0 +1,157 @@
+services:
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: abc-license-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --loglevel warning
+    ports:
+      - "6379:6379"
+    networks:
+      - abc-license-network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL
+  # When .env has POSTGRES_PASSWORD=enc:<hex>, Postgres needs the PLAIN password.
+  # Use: ./scripts/load-and-run.sh --start-only up -d   so POSTGRES_PASSWORD_PLAIN is set when .env has enc:.
+  postgres:
+    image: postgres:16-alpine
+    container_name: abc-license-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_PLAIN:-${POSTGRES_PASSWORD}}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    networks:
+      - abc-license-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    image: abc-license-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+      # Optional: uncomment to use previous image as cache (can cause "importing cache manifest" on first build)
+      # cache_from:
+      #   - abc-license-backend:latest
+    container_name: abc-license-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M  # Increased from 256M for sync operations
+          cpus: '0.5'   # Increased from 0.3
+        reservations:
+          memory: 256M  # Increased from 128M
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=5000
+      # Backend builds DATABASE_URL from POSTGRES_* when not set (see backend config.js).
+      # Backend accepts POSTGRES_PASSWORD=enc:<hex> and decrypts at runtime; no POSTGRES_PASSWORD_PLAIN needed here.
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-abc_dashboard}
+      - POSTGRES_USER=${POSTGRES_USER:-abc_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - CLIENT_URL=${CLIENT_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_ENABLED=${REDIS_ENABLED:-true}
+      - CACHE_TYPE=${CACHE_TYPE:-redis}
+      - EMAIL_SERVICE=${EMAIL_SERVICE}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
+      - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
+    volumes:
+      - ./backend/logs:/app/logs
+    networks:
+      - abc-license-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Next.js (host port 3001 if 3000 is in use)
+  frontend:
+    image: abc-license-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
+        - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+        - BUILDKIT_INLINE_CACHE=1
+      cache_from:
+        - abc-license-frontend:latest
+      target: production
+    container_name: abc-license-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
+      - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+    networks:
+      - abc-license-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  abc-license-network:
+    driver: bridge
