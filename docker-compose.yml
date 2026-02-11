@@ -87,6 +87,7 @@ services:
       - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
       - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
       - LICENSE_SYNC_SCHEDULE=${LICENSE_SYNC_SCHEDULE:-}
+      - WEBSOCKET_ENABLED=${WEBSOCKET_ENABLED:-true}
     volumes:
       - ./backend/logs:/app/logs
     networks:

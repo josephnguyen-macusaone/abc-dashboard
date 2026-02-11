@@ -91,6 +91,8 @@ interface LicenseState {
   syncStatus: LicenseSyncStatus | null;
   syncStatusLoading: boolean;
   syncStatusError: boolean;
+  /** Last known sync timestamp; used to detect new sync and trigger refetch */
+  lastKnownSyncTimestamp: string | null;
   /** Dashboard metrics (overview, utilization, alerts - shape depends on backend) */
   dashboardMetrics: unknown | null;
   dashboardMetricsLoading: boolean;
@@ -153,6 +155,7 @@ export const useLicenseStore = create<LicenseState>()(
         syncStatus: null,
         syncStatusLoading: false,
         syncStatusError: false,
+        lastKnownSyncTimestamp: null,
         dashboardMetrics: null,
         dashboardMetricsLoading: false,
         dashboardMetricsError: null,
@@ -169,7 +172,21 @@ export const useLicenseStore = create<LicenseState>()(
           set({ syncStatusError: false, syncStatusLoading: true });
           try {
             const status = await container.licenseManagementService.getSyncStatus();
+            const newTimestamp = status?.lastSyncResult?.timestamp ?? null;
+            const prevTimestamp = get().lastKnownSyncTimestamp;
+
             set({ syncStatus: status, syncStatusLoading: false });
+
+            // When sync completes (new timestamp since last poll), refetch licenses and dashboard
+            set({ lastKnownSyncTimestamp: newTimestamp ?? prevTimestamp });
+            if (newTimestamp && prevTimestamp !== null && newTimestamp !== prevTimestamp) {
+              const { fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention } = get();
+              await Promise.all([
+                fetchLicenses(),
+                fetchDashboardMetrics(),
+                fetchLicensesRequiringAttention(),
+              ]);
+            }
           } catch {
             set({ syncStatus: null, syncStatusLoading: false, syncStatusError: true });
           }
@@ -969,6 +986,7 @@ export const useLicenseStore = create<LicenseState>()(
             syncStatus: null,
             syncStatusLoading: false,
             syncStatusError: false,
+            lastKnownSyncTimestamp: null,
             dashboardMetrics: null,
             dashboardMetricsLoading: false,
             dashboardMetricsError: null,

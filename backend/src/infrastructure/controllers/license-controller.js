@@ -4,9 +4,10 @@ import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import logger from '../config/logger.js';
 
 export class LicenseController {
-  constructor(licenseService, syncExternalLicensesUseCase = null) {
+  constructor(licenseService, syncExternalLicensesUseCase = null, licenseRealtimeService = null) {
     this.licenseService = licenseService;
     this.syncExternalLicensesUseCase = syncExternalLicensesUseCase;
+    this.licenseRealtimeService = licenseRealtimeService;
   }
 
   getLicenses = async (req, res) => {
@@ -137,7 +138,7 @@ export class LicenseController {
       // Return immediately with sync status
       res.success({ message: 'Sync started in background' }, 'Sync initiated successfully');
 
-      // Wait for sync to complete and log result
+      // Wait for sync to complete, log result, and emit real-time event
       syncPromise
         .then((result) => {
           logger.info('Manual sync completed', {
@@ -146,6 +147,16 @@ export class LicenseController {
             created: result?.created,
             updated: result?.updated,
           });
+          if (this.licenseRealtimeService?.emitSyncComplete) {
+            this.licenseRealtimeService.emitSyncComplete({
+              timestamp: new Date().toISOString(),
+              duration: 0,
+              created: result?.created ?? 0,
+              updated: result?.updated ?? 0,
+              failed: result?.failed ?? 0,
+              success: result?.success ?? false,
+            });
+          }
         })
         .catch((error) => {
           logger.error('Manual sync failed', { error: error.message });
@@ -286,6 +297,13 @@ export class LicenseController {
           ? 'All licenses updated successfully'
           : `${updated.length} of ${licensesToUpdate.length} licenses updated successfully`;
 
+      if (this.licenseRealtimeService?.emitDataChanged) {
+        this.licenseRealtimeService.emitDataChanged({
+          source: 'bulk_update',
+          ids: updated.map((u) => String(u?.id)).filter(Boolean),
+        });
+      }
+
       // For bulk operations, return data as array for frontend compatibility
       return res.status(200).json({
         success: true,
@@ -350,6 +368,13 @@ export class LicenseController {
       const { createdLicenses, errors } =
         await this.licenseService.bulkCreateLicenses(licensesWithAudit);
 
+      if (this.licenseRealtimeService?.emitDataChanged && createdLicenses.length > 0) {
+        this.licenseRealtimeService.emitDataChanged({
+          source: 'bulk_create',
+          ids: createdLicenses.map((l) => String(l?.id)).filter(Boolean),
+        });
+      }
+
       if (createdLicenses.length === 0) {
         const message =
           errors.length > 0
@@ -403,6 +428,13 @@ export class LicenseController {
     try {
       LicenseValidator.validateIdsArray(req.body);
       const deletedCount = await this.licenseService.bulkDelete(req.body.ids);
+
+      if (this.licenseRealtimeService?.emitDataChanged && deletedCount > 0) {
+        this.licenseRealtimeService.emitDataChanged({
+          source: 'bulk_delete',
+          ids: req.body.ids?.map(String) || [],
+        });
+      }
 
       return res.success({ deleted: deletedCount }, 'Licenses deleted successfully');
     } catch (error) {

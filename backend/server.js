@@ -6,6 +6,7 @@ import 'joi';
 // Load environment configuration FIRST (this will load the appropriate .env file)
 import './src/infrastructure/config/env.js';
 
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -256,8 +257,26 @@ const startServer = async () => {
       });
     });
 
+    // Create HTTP server (required for Socket.IO attachment)
+    server = http.createServer(app);
+
+    // Initialize Socket.IO for real-time sync (Phase 2)
+    if (config.WEBSOCKET_ENABLED) {
+      try {
+        const { initSocketIO } = await import('./src/infrastructure/realtime/socket-server.js');
+        const io = initSocketIO(server);
+        const realtimeService = awilixContainer.getLicenseRealtimeService();
+        realtimeService.attach(io);
+        logger.startup('WebSocket (Socket.IO) enabled for real-time sync');
+      } catch (error) {
+        logger.warn('WebSocket initialization failed, real-time sync disabled', {
+          error: error.message,
+        });
+      }
+    }
+
     // Start the HTTP server
-    server = app.listen(PORT, async () => {
+    server.listen(PORT, async () => {
       logger.startup(`Server started successfully on port ${PORT}`);
       logger.startup(`API available at http://localhost:${PORT}`);
       logger.startup(`API Documentation at http://localhost:${PORT}/api-docs`);
