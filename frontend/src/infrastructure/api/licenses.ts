@@ -18,6 +18,7 @@ const log = logger.createChild({ component: 'LicenseApi' });
 export interface LicenseSyncStatusResponse {
   enabled?: boolean;
   running?: boolean;
+  syncInProgress?: boolean;
   timezone?: string;
   schedule?: string;
   lastSyncResult?: {
