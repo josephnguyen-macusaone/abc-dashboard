@@ -265,7 +265,10 @@ class Container {
   async getLicenseSyncScheduler() {
     if (!this.instances.has('licenseSyncScheduler')) {
       const syncUseCase = await this.getSyncExternalLicensesUseCase();
-      this.instances.set('licenseSyncScheduler', new LicenseSyncScheduler(syncUseCase));
+      const config = {
+        syncSchedule: process.env.LICENSE_SYNC_SCHEDULE || '*/30 * * * *',
+      };
+      this.instances.set('licenseSyncScheduler', new LicenseSyncScheduler(syncUseCase, config));
     }
     return this.instances.get('licenseSyncScheduler');
   }

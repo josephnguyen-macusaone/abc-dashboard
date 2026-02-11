@@ -10,8 +10,8 @@ export class LicenseSyncScheduler {
     this.syncExternalLicensesUseCase = syncExternalLicensesUseCase;
     this.config = {
       enabled: config.enabled !== false,
-      // Run every 15 minutes
-      syncSchedule: config.syncSchedule || '*/15 * * * *',
+      // Run every 30 min by default (server-friendly); was */15 (every 15 min)
+      syncSchedule: config.syncSchedule || '*/30 * * * *',
       timezone: config.timezone || 'UTC',
       // Sync configuration
       batchSize: config.batchSize || 20,
@@ -23,6 +23,7 @@ export class LicenseSyncScheduler {
 
     this.jobs = new Map();
     this.isRunning = false;
+    this.syncInProgress = false;
     this.lastSyncResult = null;
     this.syncStats = {
       totalRuns: 0,
@@ -110,6 +111,13 @@ export class LicenseSyncScheduler {
   async runLicenseSync() {
     const jobName = 'licenseSync';
 
+    if (this.syncInProgress) {
+      logger.warn('Skipping scheduled license sync: previous sync still in progress');
+      return;
+    }
+
+    this.syncInProgress = true;
+
     try {
       logger.info('Running scheduled license sync');
 
@@ -177,6 +185,8 @@ export class LicenseSyncScheduler {
       };
 
       this.logJobError(jobName, error);
+    } finally {
+      this.syncInProgress = false;
     }
   }
 
@@ -252,6 +262,7 @@ export class LicenseSyncScheduler {
     return {
       enabled: this.config.enabled,
       running: this.isRunning,
+      syncInProgress: this.syncInProgress,
       timezone: this.config.timezone,
       schedule: this.config.syncSchedule,
       config: {

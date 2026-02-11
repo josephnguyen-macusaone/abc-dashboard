@@ -6,6 +6,7 @@ Three scripts cover deploy and DB operations:
 - **`docker-compose-up.sh`** – Start/stop the stack (uses current images). Handles `POSTGRES_PASSWORD=enc:...`. Example: `./scripts/docker-compose-up.sh up -d --force-recreate`.
 - **`load-and-run.sh`** – On server: load images and start stack. With `--start-only`: only start/stop the stack (use when `.env` has `POSTGRES_PASSWORD=enc:...`).
 - **`docker-db-reset-sync.sh`** – Reset DB (migrate:fresh or drop), seed, optional license sync.
+- **`server-db-reset-sync.sh`** – From dev machine: SSH to server and run full DB reset + sync (drop, migrate, seed, sync). Requires `SERVER_HOST=my.server.com`.
 
 ## Password authentication failed (Docker)
 
@@ -36,12 +37,12 @@ ssh root@YOUR_SERVER 'cd /root/abc-dashboard && ./scripts/load-and-run.sh'
 ```
 
 **Server: drop DB, migrate, seed, sync (full reset)**  
-See **`docs/SERVER-DROP-REDEPLOY-RUNBOOK.md`**. Short version:
+See **`docs/DEPLOYMENT-GUIDE.md`** (section “Server: Full DB reset”). Short version:
 ```bash
 cd /root/abc-dashboard
-docker compose down
-./scripts/load-and-run.sh --start-only up -d    # or ./scripts/load-and-run.sh if loading new images
-sleep 10
+docker compose down -v
+./scripts/load-and-run.sh --start-only up -d    # required when POSTGRES_PASSWORD=enc:...
+sleep 15
 ./scripts/docker-db-reset-sync.sh --drop --sync
 ```
 
