@@ -15,6 +15,7 @@ import { LicenseLifecycleService } from '../../infrastructure/services/license-l
 import { LicenseNotificationService } from '../../infrastructure/services/license-notification-service.js';
 import { LicenseLifecycleScheduler } from '../../infrastructure/jobs/license-lifecycle-scheduler.js';
 import { LicenseSyncScheduler } from '../../infrastructure/jobs/license-sync-scheduler.js';
+import { LicenseRealtimeService } from '../../infrastructure/realtime/license-realtime-service.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
@@ -262,13 +263,24 @@ class Container {
     return this.instances.get('licenseLifecycleScheduler');
   }
 
+  getLicenseRealtimeService() {
+    if (!this.instances.has('licenseRealtimeService')) {
+      this.instances.set('licenseRealtimeService', new LicenseRealtimeService());
+    }
+    return this.instances.get('licenseRealtimeService');
+  }
+
   async getLicenseSyncScheduler() {
     if (!this.instances.has('licenseSyncScheduler')) {
       const syncUseCase = await this.getSyncExternalLicensesUseCase();
+      const realtimeService = this.getLicenseRealtimeService();
       const config = {
         syncSchedule: process.env.LICENSE_SYNC_SCHEDULE || '*/30 * * * *',
       };
-      this.instances.set('licenseSyncScheduler', new LicenseSyncScheduler(syncUseCase, config));
+      this.instances.set(
+        'licenseSyncScheduler',
+        new LicenseSyncScheduler(syncUseCase, config, realtimeService)
+      );
     }
     return this.instances.get('licenseSyncScheduler');
   }
@@ -448,9 +460,10 @@ class Container {
     if (!this.instances.has('licenseController')) {
       const licenseService = await this.getLicenseService();
       const syncExternalLicensesUseCase = await this.getSyncExternalLicensesUseCase();
+      const realtimeService = this.getLicenseRealtimeService();
       this.instances.set(
         'licenseController',
-        new LicenseController(licenseService, syncExternalLicensesUseCase)
+        new LicenseController(licenseService, syncExternalLicensesUseCase, realtimeService)
       );
     }
     return this.instances.get('licenseController');

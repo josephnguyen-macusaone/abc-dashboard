@@ -366,6 +366,19 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 
 ---
 
+## WebSocket (Real-time Sync)
+
+When using OpenLiteSpeed as a reverse proxy, configure a WebSocket proxy for real-time license sync:
+
+1. WebAdmin Console → **Virtual Hosts → Your Virtual Host → WebSocket Proxy → Add**
+2. **URI:** `/socket.io`
+3. **Address:** `127.0.0.1:5000` (or the host:port where the backend container listens)
+4. Save and graceful restart
+
+See [docs/WEBSOCKET_REALTIME_SYNC_PLAN.md](WEBSOCKET_REALTIME_SYNC_PLAN.md) for full details.
+
+---
+
 ## Additional resources
 
 - GitHub Actions: https://docs.github.com/en/actions

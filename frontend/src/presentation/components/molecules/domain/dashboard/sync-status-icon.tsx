@@ -53,7 +53,7 @@ export interface SyncStatusIconProps {
 export function SyncStatusIcon({
   className,
   iconClassName,
-  refreshIntervalMs = 120_000,
+  refreshIntervalMs = 60_000,
 }: SyncStatusIconProps) {
   const status = useLicenseStore(selectSyncStatus);
   const loading = useLicenseStore(selectSyncStatusLoading);

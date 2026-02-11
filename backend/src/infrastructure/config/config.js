@@ -51,6 +51,9 @@ export const config = {
   // Cache configuration
   CACHE_USER_DATA_TTL: parseInt(process.env.CACHE_USER_DATA_TTL) || 1800, // 30 minutes
   CACHE_API_RESPONSE_TTL: parseInt(process.env.CACHE_API_RESPONSE_TTL) || 300, // 5 minutes
+
+  // WebSocket real-time sync (Phase 2)
+  WEBSOCKET_ENABLED: process.env.WEBSOCKET_ENABLED !== 'false',
 };
 
 export default config;

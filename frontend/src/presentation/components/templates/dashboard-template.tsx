@@ -8,6 +8,7 @@ import { ReactNode, useMemo, useCallback, useTransition } from 'react';
 import { useToast } from '@/presentation/contexts';
 import { PermissionUtils, getNavigationItems } from '@/shared/constants';
 import { useSidebarStore, useAuthStore } from '@/infrastructure/stores';
+import { useRealtimeSync } from '@/presentation/hooks/use-realtime-sync';
 
 interface DashboardTemplateProps {
   children: ReactNode;
@@ -24,6 +25,9 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   // Use global sidebar store
   const { isMobile, isCollapsed, toggleCollapsed } = useSidebarStore();
   const sidebarOpen = !isMobile ? true : !isCollapsed;
+
+  // WebSocket real-time sync (Phase 2); no-op when not authenticated
+  useRealtimeSync();
 
   // Get navigation items based on user role
   const navigationItems = useMemo(() => {

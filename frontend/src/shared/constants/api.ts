@@ -101,3 +101,20 @@ export const API_CONFIG: Readonly<ApiConfig> = {
     [API_URL_ENV_KEY]: process.env.NEXT_PUBLIC_API_URL,
   }),
 } as const;
+
+/**
+ * Resolves the WebSocket/Socket.IO server URL.
+ * - When using relative API: same origin (proxy forwards /socket.io to backend)
+ * - When using absolute API: origin of the API URL (e.g. https://api.example.com)
+ */
+export function resolveRealtimeSocketUrl(): string {
+  if (typeof window === 'undefined') return '';
+  const baseUrl = API_CONFIG.BASE_URL;
+  if (baseUrl.startsWith('/')) return window.location.origin;
+  try {
+    const url = new URL(baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`);
+    return url.origin;
+  } catch {
+    return window.location.origin;
+  }
+}

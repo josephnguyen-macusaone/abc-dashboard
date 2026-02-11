@@ -6,8 +6,9 @@ import cron from 'node-cron';
 import logger from '../config/logger.js';
 
 export class LicenseSyncScheduler {
-  constructor(syncExternalLicensesUseCase, config = {}) {
+  constructor(syncExternalLicensesUseCase, config = {}, licenseRealtimeService = null) {
     this.syncExternalLicensesUseCase = syncExternalLicensesUseCase;
+    this.licenseRealtimeService = licenseRealtimeService;
     this.config = {
       enabled: config.enabled !== false,
       // Run every 30 min by default (server-friendly); was */15 (every 15 min)
@@ -159,6 +160,17 @@ export class LicenseSyncScheduler {
         failed: syncResult.failed,
         errors: syncResult.errors?.length || 0,
       });
+
+      if (this.licenseRealtimeService?.emitSyncComplete) {
+        this.licenseRealtimeService.emitSyncComplete({
+          timestamp: this.lastSyncResult.timestamp,
+          duration: this.lastSyncResult.duration,
+          created: syncResult.created ?? 0,
+          updated: syncResult.updated ?? 0,
+          failed: syncResult.failed ?? 0,
+          success: syncResult.success ?? false,
+        });
+      }
 
       // Log metrics for monitoring
       this.logJobMetrics(jobName, {

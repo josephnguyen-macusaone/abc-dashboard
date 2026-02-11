@@ -61,7 +61,7 @@ export function AppHeader({
       </div>
 
       <div className="flex items-center gap-1">
-        <SyncStatusIcon refreshIntervalMs={120_000} />
+        <SyncStatusIcon refreshIntervalMs={60_000} />
         <ThemeSwitcher />
       </div>
     </header>
