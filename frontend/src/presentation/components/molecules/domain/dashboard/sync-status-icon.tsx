@@ -29,19 +29,31 @@ function formatRelativeTime(isoString: string): string {
   return date.toLocaleDateString();
 }
 
+function formatSyncStats(last: LicenseSyncStatus['lastSyncResult']): string {
+  const parts: string[] = [];
+  if (last?.created != null && last.created > 0) parts.push(`${last.created} created`);
+  if (last?.updated != null && last.updated > 0) parts.push(`${last.updated} updated`);
+  if (last?.failed != null && last.failed > 0) parts.push(`${last.failed} failed`);
+  return parts.length > 0 ? ` (${parts.join(', ')})` : '';
+}
+
 function getTooltipText(
   loading: boolean,
   error: boolean,
   status: LicenseSyncStatus | null
 ): string {
   if (loading) return 'Sync status: loading…';
+  if (status?.syncInProgress) return 'Syncing…';
   if (error) return 'Sync status unavailable';
   const last = status?.lastSyncResult;
   if (!last?.timestamp) return 'Last sync: —';
   const timeStr = formatRelativeTime(last.timestamp);
   const success = last.success === true;
   const failReason = last.error ? ` – ${last.error}` : '';
-  return success ? `Last sync: ${timeStr} – Success` : `Last sync: ${timeStr} – Failed${failReason}`;
+  const stats = formatSyncStats(last);
+  return success
+    ? `Last sync: ${timeStr} – Success${stats}`
+    : `Last sync: ${timeStr} – Failed${failReason}${stats}`;
 }
 
 export interface SyncStatusIconProps {
@@ -73,12 +85,19 @@ export function SyncStatusIcon({
   const tooltipText = getTooltipText(loading, error, status);
   const last = status?.lastSyncResult;
   const success = last?.success === true;
+  const syncInProgress = status?.syncInProgress === true;
 
   const showLoading = loading;
-  const showError = !loading && (error || !last?.timestamp);
-  const showSynced = !loading && !showError;
+  const showSyncing = !loading && syncInProgress;
+  const showError = !loading && !showSyncing && (error || !last?.timestamp);
+  const showSynced = !loading && !showSyncing && !showError;
 
+  const showSpinner = showLoading || showSyncing;
   const iconTransition = 'transition-all duration-300 ease-in-out';
+
+  const onRefreshClick = () => {
+    fetchSyncStatus();
+  };
 
   return (
     <TooltipWrapper content={tooltipText} side="bottom">
@@ -87,13 +106,14 @@ export function SyncStatusIcon({
         size="icon"
         aria-label={tooltipText}
         className={cn('relative h-9 w-9 overflow-visible', className)}
+        onClick={onRefreshClick}
       >
         <RefreshCw
           className={cn(
             'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
             iconTransition,
-            showLoading ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-            showLoading && 'animate-spin',
+            showSpinner ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
+            showSpinner && 'animate-spin',
             iconClassName
           )}
           aria-hidden

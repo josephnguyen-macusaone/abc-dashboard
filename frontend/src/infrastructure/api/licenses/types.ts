@@ -100,6 +100,7 @@ export interface LicenseGetResponse {
 export interface LicenseSyncStatusResponse {
   enabled?: boolean;
   running?: boolean;
+  syncInProgress?: boolean;
   timezone?: string;
   schedule?: string;
   lastSyncResult?: {

@@ -549,7 +549,18 @@ export class LicenseRepository implements ILicenseRepository {
   async getSyncStatus(): Promise<LicenseSyncStatus> {
     const response = await licenseApi.getLicenseSyncStatus();
     return {
-      lastSyncResult: response.lastSyncResult,
+      syncInProgress: response.syncInProgress,
+      lastSyncResult: response.lastSyncResult
+        ? {
+            timestamp: response.lastSyncResult.timestamp,
+            success: response.lastSyncResult.success,
+            error: response.lastSyncResult.error,
+            created: response.lastSyncResult.created,
+            updated: response.lastSyncResult.updated,
+            failed: response.lastSyncResult.failed,
+            duration: response.lastSyncResult.duration,
+          }
+        : undefined,
     };
   }
 
