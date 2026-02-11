@@ -66,8 +66,6 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=5000
-      # Backend builds DATABASE_URL from POSTGRES_* when not set (see backend config.js).
-      # Backend accepts POSTGRES_PASSWORD=enc:<hex> and decrypts at runtime; no POSTGRES_PASSWORD_PLAIN needed here.
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-abc_dashboard}
@@ -88,6 +86,7 @@ services:
       - EMAIL_PASS=${EMAIL_PASS}
       - EXTERNAL_LICENSE_API_URL=${EXTERNAL_LICENSE_API_URL}
       - EXTERNAL_LICENSE_API_KEY=${EXTERNAL_LICENSE_API_KEY}
+      - LICENSE_SYNC_SCHEDULE=${LICENSE_SYNC_SCHEDULE:-}
     volumes:
       - ./backend/logs:/app/logs
     networks:

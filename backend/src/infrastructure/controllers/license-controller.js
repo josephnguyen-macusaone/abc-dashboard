@@ -21,19 +21,8 @@ export class LicenseController {
 
       const result = await this.licenseService.getLicenses(query);
 
-      // VALIDATION: Check for external API data contamination
-      const integrityCheck = this._validateInternalDataIntegrity(result, query, req.correlationId);
-
-      // ALERT: Report data integrity violations
-      if (integrityCheck.violations.length > 0) {
-        logger.error('🚨 DATA INTEGRITY ALERT: External API contamination detected', {
-          correlationId: req.correlationId,
-          violations: integrityCheck.violations,
-          query: req.query,
-          userId: req.user?.id,
-          action: 'alert_security_team',
-        });
-      }
+      // VALIDATION: Check for external API data contamination (logged inside _validateInternalDataIntegrity)
+      this._validateInternalDataIntegrity(result, query, req.correlationId);
 
       // Get the correct total count from external API for display
       // BUT ONLY when no filters are applied - when filters are active, use the filtered total
@@ -68,7 +57,8 @@ export class LicenseController {
   };
 
   /**
-   * Validate that license data comes from internal database, not external API
+   * Validate that license data comes from internal database, not external API.
+   * Contamination = returning unfiltered external API total when filters are applied.
    * @returns {Object} Validation result with violations array
    */
   _validateInternalDataIntegrity(result, query, correlationId) {
@@ -77,41 +67,32 @@ export class LicenseController {
     const hasFilters = query.filters && Object.keys(query.filters).length > 0;
     const total = meta?.total ?? 0;
 
-    // Check for signs of external API data contamination
+    // Check for signs of external API data contamination (only when filters are applied)
     const violations = [];
 
-    // 1. Check if we have filters but total is suspiciously high
-    if (hasFilters && total > 1000) {
+    // 1. With filters: total matches known external API total (2836) — suggests unfiltered count leaked
+    if (hasFilters && total === 2836) {
       violations.push({
-        type: 'high_total_with_filters',
-        description: `High total (${total}) with filters applied`,
-        severity: 'high',
-      });
-    }
-
-    // 2. Check if filtered query returns data but total suggests unfiltered results
-    if (hasFilters && data.length === 1 && total > 100) {
-      violations.push({
-        type: 'single_result_high_total',
-        description: `Single result but high total (${total}) suggests unfiltered data`,
-        severity: 'high',
-      });
-    }
-
-    // 3. Check for known external API total (2836)
-    if (total === 2836) {
-      violations.push({
-        type: 'known_external_total',
-        description: 'Total matches known external API value (2836)',
+        type: 'known_external_total_with_filters',
+        description: 'Filtered query total (2836) matches external API total — likely unfiltered count',
         severity: 'critical',
       });
     }
 
-    // Note: Do not compare data.length to total for filtered queries — with pagination,
-    // data.length is the page size and total is the full matching count; they differ by design.
+    // 2. With filters: single result but total suggests unfiltered (strong signal)
+    if (hasFilters && data.length === 1 && total > 10) {
+      violations.push({
+        type: 'single_result_high_total',
+        description: `Single result but total (${total}) suggests unfiltered data`,
+        severity: 'high',
+      });
+    }
+
+    // Note: total === 2836 with NO filters is valid — that's the expected full license count.
+    // Note: hasFilters && total > 1000 removed — broad filters (e.g. status=active) can legitimately match many rows.
 
     if (violations.length > 0) {
-      logger.error('EXTERNAL API DATA CONTAMINATION DETECTED', {
+      logger.warn('Possible external API data contamination', {
         correlationId,
         violations: violations.map((v) => v.description),
         hasFilters,
@@ -120,24 +101,17 @@ export class LicenseController {
         filters: Object.keys(query.filters || {}),
       });
 
-      // Force correction for filtered queries (meta is flat: total, totalPages at top level)
+      // Force correction for filtered queries when meta appears wrong
       if (
         hasFilters &&
         violations.some((v) => v.severity === 'high' || v.severity === 'critical')
       ) {
-        logger.warn('Auto-correcting contaminated data for filtered query', { correlationId });
+        logger.debug('Auto-correcting meta for filtered query', { correlationId });
         if (data.length === 0 && total > 0 && meta && typeof meta === 'object') {
           meta.total = 0;
           meta.totalPages = 0;
         }
       }
-    } else {
-      logger.debug('Data integrity check passed', {
-        correlationId,
-        hasFilters,
-        dataLength: data.length,
-        total,
-      });
     }
 
     return { violations, hasViolations: violations.length > 0 };

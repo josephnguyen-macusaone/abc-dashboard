@@ -42,6 +42,7 @@ export class LicenseSyncMonitor {
     this.metrics.set('sync_data_processed_total', { type: 'counter', value: 0, labels: new Map() }); // Added labels
     this.metrics.set('sync_memory_peak_usage', { type: 'gauge', value: 0 });
     this.metrics.set('sync_active_operations', { type: 'gauge', value: 0 });
+    this.metrics.set('sync_last_completed_timestamp', { type: 'gauge', value: 0 });
     this.metrics.set('external_api_requests_total', {
       type: 'counter',
       value: 0,
@@ -96,6 +97,7 @@ export class LicenseSyncMonitor {
       operation_type: operationContext.operationType,
     });
     this.recordHistogram('sync_operations_duration', duration);
+    this.metrics.get('sync_last_completed_timestamp').value = Date.now();
 
     if (result.success) {
       logger.debug('Sync operation completed successfully', {
@@ -475,13 +477,12 @@ export class LicenseSyncMonitor {
   }
 
   _checkPerformanceAlerts(operationType, duration, result) {
-    // Alert on very slow sync operations
-    if (duration > 300000) {
-      // 5 minutes
+    // Alert on very slow sync operations (10 min threshold for large datasets, ~150 pages)
+    if (duration > 600000) {
       this.createAlert('warning', 'VERY_SLOW_SYNC_OPERATION', {
         operationType,
         duration,
-        threshold: '5 minutes',
+        threshold: '10 minutes',
       });
     }
 
@@ -568,16 +569,14 @@ export class LicenseSyncMonitor {
   }
 
   _getLastActivityTime() {
-    // Find the most recent activity from metrics
     if (!this.metrics || !(this.metrics instanceof Map)) {
       return null;
     }
 
     try {
-      const operations = this.metrics.get('sync_operations_total');
-      if (operations && operations.value > 0) {
-        // This is approximate - in a real system you'd track actual timestamps
-        return new Date(Date.now() - Math.random() * 3600000); // Mock recent activity
+      const lastTs = this.metrics.get('sync_last_completed_timestamp')?.value;
+      if (lastTs && lastTs > 0) {
+        return lastTs;
       }
     } catch (error) {
       logger.error('Error getting last activity time', { error: error.message });

@@ -141,6 +141,7 @@ abc-dashboard/
 
 ## Documentation
 
+- **Local setup:** [docs/SETUP-LOCAL.md](./docs/SETUP-LOCAL.md) – Prerequisites, .env, Docker or native run, migrate/seed/sync
 - **Deploy:** [QUICK-START.md](./QUICK-START.md) – Production deployment
 - **CI/CD:** [.github/workflows/README.md](.github/workflows/README.md) – GitHub secrets
 - **Scripts:** [scripts/README.md](./scripts/README.md) – Utility scripts
