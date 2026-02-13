@@ -42,6 +42,9 @@ export type CellOpts =
       variant: "agents-name";
     }
   | {
+      variant: "plan-modules";
+    }
+  | {
       variant: "url";
     }
   | {

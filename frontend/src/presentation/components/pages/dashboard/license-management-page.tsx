@@ -99,6 +99,23 @@ export function LicenseManagementPage() {
     fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
   }, []);
 
+  // Refetch when tab becomes visible to recover from stuck loading when tab was inactive
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const storeFilters = useLicenseStore.getState().filters;
+        fetchLicenses({
+          page: 1,
+          limit: 20,
+          startsAtFrom: storeFilters.startsAtFrom,
+          startsAtTo: storeFilters.startsAtTo,
+        }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [fetchLicenses]);
+
   // Clear search when leaving this page so it doesn't persist when switching pages
   useEffect(() => {
     return () => {
@@ -188,7 +205,7 @@ export function LicenseManagementPage() {
       zip: "",
       startsAt: new Date().toISOString().split("T")[0],
       status: "active",
-      plan: "Basic",
+      plan: "",
       term: "monthly",
       lastPayment: 0,
       lastActive: new Date().toISOString().split("T")[0],

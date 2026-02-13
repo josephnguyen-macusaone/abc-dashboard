@@ -56,11 +56,11 @@ export const licenseSchemas = {
 
     plan: Joi.alternatives()
       .try(
-        Joi.string().valid('Basic', 'Premium'),
-        Joi.array().items(Joi.string().valid('Basic', 'Premium'))
+        Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'),
+        Joi.array().items(Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'))
       )
       .messages({
-        'any.only': 'Plan must be one of: Basic, Premium',
+        'any.only': 'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
       }),
 
     term: Joi.alternatives()
@@ -154,8 +154,8 @@ export const licenseSchemas = {
       'any.only': 'Status must be one of: active, cancel',
     }),
 
-    plan: Joi.string().valid('Basic', 'Premium').messages({
-      'any.only': 'Plan must be one of: Basic, Premium',
+    plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS').messages({
+      'any.only': 'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
     }),
 
     term: Joi.string().valid('monthly', 'yearly').messages({
@@ -223,8 +223,8 @@ export const licenseSchemas = {
       'any.only': 'Status must be one of: active, cancel',
     }),
 
-    plan: Joi.string().valid('Basic', 'Premium').messages({
-      'any.only': 'Plan must be one of: Basic, Premium',
+    plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS').messages({
+      'any.only': 'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
     }),
 
     term: Joi.string().valid('monthly', 'yearly').messages({
@@ -345,7 +345,7 @@ export const licenseSchemas = {
               startsAt: Joi.string().optional(), // Frontend uses startsAt
               startDay: Joi.string().optional(), // Alternative field name
               status: Joi.string().valid('active', 'cancel').default('active'),
-              plan: Joi.string().valid('Basic', 'Premium'),
+              plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'),
               term: Joi.string().valid('monthly', 'yearly'),
               seatsTotal: Joi.number().min(1).integer().default(1),
               cancelDate: Joi.when('status', {
@@ -387,7 +387,7 @@ export const licenseSchemas = {
             startsAt: Joi.string().optional(), // Frontend uses startsAt, backend uses startDay
             startDay: Joi.string().optional(), // Alternative field name
             status: Joi.string().valid('active', 'cancel').optional(),
-            plan: Joi.string().valid('Basic', 'Premium').optional(),
+            plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS').optional(),
             term: Joi.string().valid('monthly', 'yearly').optional(),
             seatsTotal: Joi.number().min(1).integer().optional(),
             cancelDate: Joi.when('status', {

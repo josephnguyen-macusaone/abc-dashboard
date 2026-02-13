@@ -6,7 +6,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
-import { STATUS_OPTIONS, PLAN_OPTIONS, TERM_OPTIONS } from "./license-table-columns";
+import { STATUS_OPTIONS, PLAN_MODULE_OPTIONS, TERM_OPTIONS } from "./license-table-columns";
 
 export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
   return [
@@ -63,18 +63,19 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "plan",
       accessorKey: "plan",
       header: "Plan",
-      size: 120,
+      size: 200,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
-        return Array.isArray(value) ? value.includes(plan) : value === plan;
+        const modules = plan ? plan.split(',').map((s) => s.trim()) : [];
+        if (Array.isArray(value)) {
+          return value.some((v) => modules.includes(v));
+        }
+        return modules.includes(value);
       },
       meta: {
         label: "Plan",
-        cell: {
-          variant: "select" as const,
-          options: PLAN_OPTIONS,
-        },
+        cell: { variant: "plan-modules" as const },
       },
     },
     {
@@ -98,10 +99,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
     {
       id: "lastPayment",
       accessorKey: "lastPayment",
-      header: "Last Payment",
+      header: "Monthly Fee",
       size: 130,
       meta: {
-        label: "Last Payment",
+        label: "Monthly Fee",
         cell: { variant: "number" as const, min: 0 },
       },
     },

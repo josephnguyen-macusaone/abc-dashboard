@@ -4,6 +4,7 @@
  */
 
 import logger from './logger';
+import { STORAGE_KEYS } from '@/shared/constants';
 
 export interface TokenPayload {
   sub: string;
@@ -250,7 +251,7 @@ export class TokenManager {
       return null;
     };
 
-    return getCookie('token') || localStorage.getItem('token');
+    return getCookie('token') || localStorage.getItem(STORAGE_KEYS.TOKEN);
   }
 
   /**

@@ -91,12 +91,18 @@ function transformApiLicenseToRecord(apiLicense: ApiLicenseRaw): LicenseRecord {
     return dateTimeStr;
   };
 
-  // startsAt: internal uses startDay; external uses ActivateDate
-  const startsAtRaw = apiLicense.startDay ?? apiLicense.ActivateDate ?? apiLicense.startsAt ?? '';
+  // startsAt: external uses ActivateDate; internal uses startDay
+  const startsAtRaw = apiLicense.ActivateDate ?? apiLicense.startDay ?? apiLicense.startsAt ?? '';
   const startsAt = startsAtRaw.includes('/') ? convertDate(startsAtRaw) : (startsAtRaw || '');
 
-  // plan: internal has plan; external has license_type
-  const plan = apiLicense.plan ?? apiLicense.license_type ?? 'Basic';
+  // plan: derive from Package or package_data (basic, print_check, staff_performance, sms_package_6000) - empty when nothing
+  const pkg = (apiLicense.Package ?? (apiLicense as Record<string, unknown>).package_data) as Record<string, unknown> | undefined;
+  const planModules: string[] = [];
+  if (pkg?.basic) planModules.push('Basic');
+  if (pkg?.print_check) planModules.push('Print Check');
+  if (pkg?.staff_performance) planModules.push('Staff Performance');
+  if (pkg?.sms_package_6000) planModules.push('Unlimited SMS');
+  const plan = planModules.length > 0 ? planModules.join(', ') : (apiLicense.plan ?? apiLicense.license_type ?? '');
 
   // Prefer UUID as id when present (internal API); otherwise use appid/key so grid can resolve
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,6 +118,7 @@ function transformApiLicenseToRecord(apiLicense: ApiLicenseRaw): LicenseRecord {
     startsAt,
     status,
     plan,
+    Package: pkg && typeof pkg === 'object' ? pkg : undefined,
     term: (apiLicense.term ?? 'monthly') as LicenseRecord['term'],
     cancelDate: apiLicense.cancelDate ?? '',
     lastPayment: Number(apiLicense.monthlyFee ?? apiLicense.lastPayment ?? 0),
@@ -182,8 +189,27 @@ function transformRecordToApiLicense(license: Partial<LicenseRecord>): ApiLicens
     apiLicense.monthlyFee = license.lastPayment; // External API uses monthlyFee
   }
 
+  if (shouldInclude(license.startsAt)) {
+    apiLicense.ActivateDate = license.startsAt; // External API uses ActivateDate for start date
+  }
+
   if (shouldInclude(license.notes)) {
     apiLicense.Note = license.notes; // External API uses Note
+  }
+
+  // Package from plan (comma-separated) or license.Package
+  const planStr = license.plan;
+  const pkg = license.Package as Record<string, unknown> | undefined;
+  if (pkg && typeof pkg === 'object') {
+    apiLicense.Package = pkg;
+  } else if (typeof planStr === 'string' && planStr.trim()) {
+    const labels = planStr.split(',').map((s) => s.trim()).filter(Boolean);
+    apiLicense.Package = {
+      basic: labels.includes('Basic'),
+      print_check: labels.includes('Print Check'),
+      staff_performance: labels.includes('Staff Performance'),
+      sms_package_6000: labels.includes('Unlimited SMS'),
+    };
   }
 
   return apiLicense;

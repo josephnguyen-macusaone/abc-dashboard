@@ -14,5 +14,5 @@ export { LicensePlanBadge, LICENSE_PLAN_OPTIONS_WITH_ICONS } from './badges';
 export type { LicensePlanBadgeProps } from './badges';
 
 // Shared constants
-export { STATUS_OPTIONS, PLAN_OPTIONS, TERM_OPTIONS } from './license-table-columns';
+export { STATUS_OPTIONS, PLAN_OPTIONS, PLAN_MODULE_OPTIONS, TERM_OPTIONS } from './license-table-columns';
 

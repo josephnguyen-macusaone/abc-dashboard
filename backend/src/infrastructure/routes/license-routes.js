@@ -450,7 +450,7 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                 description: License status
    *               plan:
    *                 type: string
-   *                 enum: [Basic, Premium]
+   *                 enum: [Basic, Premium, Print Check, Staff Performance, Unlimited SMS]
    *                 description: Subscription plan
    *               term:
    *                 type: string
@@ -558,7 +558,7 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                 description: License status
    *               plan:
    *                 type: string
-   *                 enum: [Basic, Premium]
+   *                 enum: [Basic, Premium, Print Check, Staff Performance, Unlimited SMS]
    *                 description: Subscription plan
    *               term:
    *                 type: string
@@ -678,7 +678,7 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       description: License status
    *                     plan:
    *                       type: string
-   *                       enum: [Basic, Premium]
+   *                       enum: [Basic, Premium, Print Check, Staff Performance, Unlimited SMS]
    *                       description: Subscription plan
    *                     term:
    *                       type: string
@@ -795,7 +795,7 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       description: License status
    *                     plan:
    *                       type: string
-   *                       enum: [Basic, Premium]
+   *                       enum: [Basic, Premium, Print Check, Staff Performance, Unlimited SMS]
    *                       description: Subscription plan
    *                     term:
    *                       type: string

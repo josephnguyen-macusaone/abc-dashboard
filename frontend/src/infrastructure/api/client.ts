@@ -9,7 +9,7 @@ import { RequestConfig, RetryConfig } from '@/infrastructure/api/types';
 import { handleApiError } from '@/infrastructure/api/errors';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 import { startTrace, injectIntoHeaders, TraceContext } from '@/shared/helpers/tracing';
-import { API_CONFIG } from '@/shared/constants';
+import { API_CONFIG, STORAGE_KEYS } from '@/shared/constants';
 import { createApiCircuitBreaker, CircuitBreaker } from '@/shared/helpers/circuit-breaker';
 
 // Default configuration - API_CONFIG.BASE_URL already handles validation and normalization
@@ -86,7 +86,8 @@ class HttpClient {
           const token = this.getAuthToken();
           if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
-          } else {
+          } else if (config.url && !/\/auth\/(login|register|forgot-password|verify-email)/.test(String(config.url))) {
+            // Only log when token is missing for protected endpoints (skip auth routes)
             this.httpLogger.debug('No token found for request', {
               correlationId,
               url: config.url,
@@ -271,12 +272,12 @@ class HttpClient {
   }
 
   /**
-   * Get authentication token from cookies or localStorage
+   * Get authentication token from cookies or localStorage.
+   * Uses same keys as CookieService ('token') and LocalStorageService (STORAGE_KEYS.TOKEN).
    */
   private getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
 
-    // Try cookies first
     const getCookie = (name: string) => {
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);
@@ -284,15 +285,16 @@ class HttpClient {
       return null;
     };
 
-    return getCookie('token') || localStorage.getItem('token');
+    return getCookie('token') || localStorage.getItem(STORAGE_KEYS.TOKEN);
   }
 
   /**
-   * Get refresh token from localStorage
+   * Get refresh token from localStorage.
+   * Uses same key as LocalStorageService (STORAGE_KEYS.REFRESH_TOKEN).
    */
   private getRefreshToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('refreshToken');
+    return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   }
 
   /**

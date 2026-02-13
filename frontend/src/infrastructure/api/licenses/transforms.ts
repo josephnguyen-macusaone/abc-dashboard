@@ -52,12 +52,24 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     return dateTimeStr;
   };
 
-  // startsAt: internal uses startDay; external uses ActivateDate
-  const startsAtRaw = String(apiLicense.startDay ?? apiLicense.ActivateDate ?? apiLicense.startsAt ?? '');
+  // startsAt: external uses ActivateDate; internal uses startDay
+  const startsAtRaw = String(apiLicense.ActivateDate ?? apiLicense.startDay ?? apiLicense.startsAt ?? '');
   const startsAt = startsAtRaw.includes('/') ? convertDate(startsAtRaw) : (startsAtRaw || '');
 
-  // plan: internal has plan; external has license_type
-  const plan = String(apiLicense.plan ?? apiLicense.license_type ?? 'Basic');
+  // plan: derive from Package or package_data (basic, print_check, staff_performance, sms_package_6000) - empty when nothing
+  const pkg = (apiLicense.Package ?? (apiLicense as Record<string, unknown>).package_data) as Record<string, unknown> | undefined;
+  const planModules: string[] = [];
+  if (pkg?.basic) planModules.push('Basic');
+  if (pkg?.print_check) planModules.push('Print Check');
+  if (pkg?.staff_performance) planModules.push('Staff Performance');
+  if (pkg?.sms_package_6000) planModules.push('Unlimited SMS');
+  const plan: string =
+    planModules.length > 0
+      ? planModules.join(', ')
+      : Array.isArray(apiLicense.plan)
+        ? apiLicense.plan.join(', ')
+        : String(apiLicense.plan ?? apiLicense.license_type ?? '');
+
 
   const lastActiveVal = apiLicense.lastActive != null ? String(apiLicense.lastActive) : '';
   const lastActive = lastActiveVal.includes('/') ? convertDateTime(lastActiveVal) : lastActiveVal;
@@ -71,6 +83,7 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     startsAt,
     status,
     plan,
+    Package: pkg && typeof pkg === 'object' ? pkg : undefined,
     term: (apiLicense.term ?? 'monthly') as LicenseRecord['term'],
     cancelDate: String(apiLicense.cancelDate ?? ''),
     lastPayment: Number(apiLicense.monthlyFee ?? apiLicense.lastPayment ?? 0),
@@ -156,8 +169,27 @@ export function transformRecordToApiLicense(license: Partial<LicenseRecord>): Ex
     apiLicense.monthlyFee = license.lastPayment; // External API uses monthlyFee
   }
 
+  if (shouldInclude(license.startsAt)) {
+    apiLicense.ActivateDate = license.startsAt; // External API uses ActivateDate for start date
+  }
+
   if (shouldInclude(license.notes)) {
     apiLicense.Note = license.notes; // External API uses Note
+  }
+
+  // Package from plan (comma-separated) or license.Package
+  const planStr = license.plan;
+  const pkg = license.Package as Record<string, unknown> | undefined;
+  if (pkg && typeof pkg === 'object') {
+    apiLicense.Package = pkg;
+  } else if (typeof planStr === 'string' && planStr.trim()) {
+    const labels = planStr.split(',').map((s) => s.trim()).filter(Boolean);
+    apiLicense.Package = {
+      basic: labels.includes('Basic'),
+      print_check: labels.includes('Print Check'),
+      staff_performance: labels.includes('Staff Performance'),
+      sms_package_6000: labels.includes('Unlimited SMS'),
+    };
   }
 
   return apiLicense;

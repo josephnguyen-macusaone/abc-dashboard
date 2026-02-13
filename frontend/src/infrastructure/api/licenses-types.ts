@@ -62,6 +62,8 @@ export interface ApiLicenseRaw {
   notes?: string;
   emailLicense?: string;
   pass?: string;
+  Package?: Record<string, unknown>;
+  package_data?: Record<string, unknown>;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;

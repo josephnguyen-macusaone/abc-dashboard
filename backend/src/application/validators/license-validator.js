@@ -2,7 +2,7 @@ import { ValidationException } from '../../domain/exceptions/domain.exception.js
 import logger from '../../infrastructure/config/logger.js';
 
 const STATUS_VALUES = ['active', 'cancel'];
-const PLAN_VALUES = ['Basic', 'Premium'];
+const PLAN_VALUES = ['Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'];
 const TERM_VALUES = ['monthly', 'yearly'];
 
 function ensureString(value, field, maxLength) {
@@ -87,13 +87,18 @@ export class LicenseValidator {
     }
 
     if (query.plan) {
-      // Handle comma-separated plan values (e.g., "Basic,Premium")
-      const planValues = Array.isArray(query.plan)
+      // Handle comma-separated plan values (e.g., "Basic,Premium" or "Basic,Staff+Performance")
+      const rawValues = Array.isArray(query.plan)
         ? query.plan
-        : query.plan
-            .split(',')
-            .map((p) => p.trim())
-            .filter((p) => p.length > 0);
+        : query.plan.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
+      // Decode URL-encoded values (e.g. Staff+Performance or Staff%20Performance -> Staff Performance)
+      const planValues = rawValues.map((p) => {
+        try {
+          return decodeURIComponent(p.replace(/\+/g, ' '));
+        } catch {
+          return p;
+        }
+      });
 
       // Validate each plan value
       for (const plan of planValues) {

@@ -180,21 +180,40 @@ export function AdminDashboard({
     fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
   }, [licensesProp, fetchLicenses, setFilters, filters.startsAtFrom, filters.startsAtTo]);
 
-  // Periodic refresh; pass current filters so date range filter is preserved
+  // Periodic refresh; only when tab visible to avoid stuck loading when tab inactive
   useEffect(() => {
     if (licensesProp) return;
 
     const REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
-    const intervalId = setInterval(() => {
-      fetchLicenses({
-        page: paginationFromStore.page,
-        limit: paginationFromStore.limit,
-        startsAtFrom: filters.startsAtFrom,
-        startsAtTo: filters.startsAtTo,
-      });
-    }, REFRESH_INTERVAL_MS);
+    const runWhenVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchLicenses({
+          page: paginationFromStore.page,
+          limit: paginationFromStore.limit,
+          startsAtFrom: filters.startsAtFrom,
+          startsAtTo: filters.startsAtTo,
+        });
+      }
+    };
 
-    return () => clearInterval(intervalId);
+    const intervalId = setInterval(runWhenVisible, REFRESH_INTERVAL_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLicenses({
+          page: paginationFromStore.page,
+          limit: paginationFromStore.limit,
+          startsAtFrom: filters.startsAtFrom,
+          startsAtTo: filters.startsAtTo,
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [licensesProp, fetchLicenses, paginationFromStore.page, paginationFromStore.limit, filters.startsAtFrom, filters.startsAtTo]);
 
   // Clear search when leaving this page so it doesn't persist when switching pages

@@ -343,10 +343,29 @@ export class LicenseRepository extends ILicenseRepository {
       query = query.whereRaw('product ILIKE ?', [`%${filters.product}%`]);
     }
     if (filters.plan) {
-      if (Array.isArray(filters.plan)) {
-        query = query.whereIn('plan', filters.plan);
-      } else {
-        query = query.whereRaw('plan ILIKE ?', [`%${filters.plan}%`]);
+      const planValues = Array.isArray(filters.plan) ? filters.plan : [filters.plan];
+      const planToPackageKey = {
+        Basic: 'basic',
+        'Print Check': 'print_check',
+        'Staff Performance': 'staff_performance',
+        'Unlimited SMS': 'sms_package_6000',
+      };
+      const packageConditions = [];
+      const planConditions = [];
+      for (const p of planValues) {
+        const key = planToPackageKey[p];
+        if (key) {
+          packageConditions.push(`(package IS NOT NULL AND (package->>'${key}')::text = 'true')`);
+        }
+        if (p === 'Basic') {
+          planConditions.push("(plan ILIKE '%Basic%')");
+        } else if (p === 'Premium') {
+          planConditions.push("(plan ILIKE '%Premium%')");
+        }
+      }
+      const orParts = [...packageConditions, ...planConditions];
+      if (orParts.length > 0) {
+        query = query.whereRaw(`(${orParts.join(' OR ')})`);
       }
     }
     return query;

@@ -9,6 +9,7 @@ import {
   DateCell,
   MultiSelectCell,
   NumberCell,
+  PlanModulesCell,
   SelectCell,
   ShortTextCell,
 } from "./data-grid-cell-variants";
@@ -78,6 +79,9 @@ function DataGridCellImpl<TData>({
       break;
     case "multi-select":
       Comp = MultiSelectCell;
+      break;
+    case "plan-modules":
+      Comp = PlanModulesCell;
       break;
     case "date":
       Comp = DateCell;

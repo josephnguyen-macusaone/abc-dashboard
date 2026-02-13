@@ -3,20 +3,40 @@
  * Print plain POSTGRES_PASSWORD for Docker postgres service.
  * Loads .env from repo root; if POSTGRES_PASSWORD starts with "enc:", decrypts and prints plain; else prints as-is.
  * Run from repo root: POSTGRES_PASSWORD_PLAIN=$(cd backend && node scripts/resolve-db-password-for-docker.js) docker compose up -d
+ * Uses only Node built-ins so it works without npm install (e.g. on host or in CI).
  */
-import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootEnv = path.resolve(__dirname, '../../.env');
-// Suppress dotenv log so only the password is written to stdout
-const noop = () => {};
-const orig = process.stdout.write;
-process.stdout.write = noop;
-dotenv.config({ path: rootEnv });
-process.stdout.write = orig;
+
+function loadEnv(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const noop = () => {};
+  const orig = process.stdout.write;
+  process.stdout.write = noop;
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let val = trimmed.slice(eq + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+        val = val.slice(1, -1).replace(/\\(.)/g, '$1');
+      if (!(key in process.env)) process.env[key] = val;
+    }
+  } finally {
+    process.stdout.write = orig;
+  }
+}
+
+loadEnv(rootEnv);
 
 const raw = process.env.POSTGRES_PASSWORD || '';
 if (!raw.startsWith('enc:')) {
