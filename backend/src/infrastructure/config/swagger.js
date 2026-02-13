@@ -280,8 +280,8 @@ const swaggerDefinition = {
           },
           plan: {
             type: 'string',
-            enum: ['Basic', 'Premium', 'Enterprise'],
-            description: 'Subscription plan',
+            enum: ['Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'],
+            description: 'Subscription plan (modules: Basic, Print Check, Staff Performance, Unlimited SMS)',
             nullable: true,
             example: 'Premium',
           },

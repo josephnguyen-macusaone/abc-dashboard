@@ -21,7 +21,7 @@ import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { getLicenseGridColumns } from "./license-grid-columns";
 import {
   STATUS_OPTIONS,
-  PLAN_OPTIONS,
+  PLAN_MODULE_OPTIONS,
   TERM_OPTIONS,
 } from "./license-table-columns";
 import type { LicenseRecord } from "@/types";
@@ -554,7 +554,7 @@ export function LicensesDataGrid({
               <DataTableFacetedFilter
                 column={planColumn}
                 title="Plan"
-                options={PLAN_OPTIONS}
+                options={PLAN_MODULE_OPTIONS}
                 multiple
               />
             )}

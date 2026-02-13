@@ -542,6 +542,14 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *           schema:
    *             type: object
    *             properties:
+   *               emailLicense:
+   *                 type: string
+   *               pass:
+   *                 type: string
+   *               monthlyFee:
+   *                 type: number
+   *               Mid:
+   *                 type: string
    *               dba:
    *                 type: string
    *               zip:
@@ -550,12 +558,17 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                 type: integer
    *               license_type:
    *                 type: string
-   *               monthlyFee:
-   *                 type: number
-   *               smsBalance:
-   *                 type: number
+   *               ActivateDate:
+   *                 type: string
+   *                 description: Activation date (ISO or MM/DD/YYYY)
+   *               coming_expired:
+   *                 type: string
+   *               Package:
+   *                 type: object
    *               Note:
    *                 type: string
+   *               smsBalance:
+   *                 type: number
    *     responses:
    *       200:
    *         description: License updated successfully

@@ -73,13 +73,33 @@ export function SyncStatusIcon({
   const fetchSyncStatus = useLicenseStore((state) => state.fetchSyncStatus);
 
   useEffect(() => {
-    fetchSyncStatus();
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      fetchSyncStatus();
+    }
   }, [fetchSyncStatus]);
 
   useEffect(() => {
     if (refreshIntervalMs <= 0) return;
-    const id = setInterval(fetchSyncStatus, refreshIntervalMs);
-    return () => clearInterval(id);
+
+    const runWhenVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchSyncStatus();
+      }
+    };
+
+    const id = setInterval(runWhenVisible, refreshIntervalMs);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchSyncStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [fetchSyncStatus, refreshIntervalMs]);
 
   const tooltipText = getTooltipText(loading, error, status);

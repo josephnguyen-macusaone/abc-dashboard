@@ -18,7 +18,9 @@ export interface LicenseRecord {
   startsAt: string; // ISO date string
   status: LicenseStatus;
   cancelDate?: string; // Required when status is 'cancel'
-  plan: string;
+  plan: string; // Comma-separated module names or empty; derived from Package
+  /** Package object for API round-trip (basic, print_check, staff_performance, sms_package_6000) */
+  Package?: Record<string, unknown>;
   term: LicenseTerm;
   seatsTotal?: number; // Total number of seats
   seatsUsed?: number; // Number of seats used

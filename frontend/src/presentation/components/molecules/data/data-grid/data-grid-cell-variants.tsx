@@ -783,6 +783,123 @@ export function MultiSelectCell<TData>({
   );
 }
 
+/** Plan module options for license plan cell */
+const PLAN_MODULE_OPTIONS = [
+  { label: 'Basic', value: 'Basic' },
+  { label: 'Print Check', value: 'Print Check' },
+  { label: 'Staff Performance', value: 'Staff Performance' },
+  { label: 'Unlimited SMS', value: 'Unlimited SMS' },
+];
+
+export function PlanModulesCell<TData>({
+  cell,
+  tableMeta,
+  rowIndex,
+  columnId,
+  isFocused,
+  isEditing,
+  isSelected,
+  readOnly,
+}: CellVariantProps<TData>) {
+  const row = cell.row.original as Record<string, unknown>;
+  const planValue = (row?.plan ?? cell.getValue()) as string | undefined;
+  const pkg = row?.Package as Record<string, unknown> | undefined;
+  const initialModules: string[] = React.useMemo(() => {
+    if (pkg && typeof pkg === 'object') {
+      const arr: string[] = [];
+      if (pkg.basic) arr.push('Basic');
+      if (pkg.print_check) arr.push('Print Check');
+      if (pkg.staff_performance) arr.push('Staff Performance');
+      if (pkg.sms_package_6000) arr.push('Unlimited SMS');
+      return arr;
+    }
+    if (typeof planValue === 'string' && planValue.trim()) {
+      return planValue.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [planValue, pkg]);
+
+  const [selectedModules, setSelectedModules] = React.useState<string[]>(initialModules);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setSelectedModules(initialModules);
+  }, [initialModules]);
+
+  const onToggle = React.useCallback(
+    (value: string, checked: boolean) => {
+      if (readOnly) return;
+      const next = checked
+        ? [...selectedModules, value]
+        : selectedModules.filter((v) => v !== value);
+      setSelectedModules(next);
+      const planStr = next.join(', ');
+      const nextPackage = {
+        basic: next.includes('Basic'),
+        print_check: next.includes('Print Check'),
+        staff_performance: next.includes('Staff Performance'),
+        sms_package_6000: next.includes('Unlimited SMS'),
+      };
+      tableMeta?.onDataUpdate?.([
+        { rowIndex, columnId, value: planStr },
+        { rowIndex, columnId: 'Package', value: nextPackage },
+      ]);
+    },
+    [tableMeta, rowIndex, columnId, selectedModules, readOnly],
+  );
+
+  const displayLabels = selectedModules;
+
+  return (
+    <DataGridCellWrapper<TData>
+      ref={containerRef}
+      cell={cell}
+      tableMeta={tableMeta}
+      rowIndex={rowIndex}
+      columnId={columnId}
+      isEditing={isEditing}
+      isFocused={isFocused}
+      isSelected={isSelected}
+    >
+      {isEditing && !readOnly ? (
+        <div className="flex flex-col gap-1 py-1">
+          {PLAN_MODULE_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-2 text-xs cursor-pointer"
+            >
+              <Checkbox
+                checked={selectedModules.includes(opt.value)}
+                onCheckedChange={(checked) =>
+                  onToggle(opt.value, checked === true)
+                }
+                className="border-primary"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1 overflow-hidden">
+          {displayLabels.length > 0 ? (
+            displayLabels.map((label) => (
+              <Badge
+                key={label}
+                variant="secondary"
+                className="h-5 shrink-0 px-1.5 text-xs"
+              >
+                {label}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          )}
+        </div>
+      )}
+    </DataGridCellWrapper>
+  );
+}
+
 export function AgentsNameCell<TData>({
   cell,
   tableMeta,

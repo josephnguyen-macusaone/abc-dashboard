@@ -53,13 +53,14 @@ const archivo = Archivo({
 });
 
 // Configure Inter font for body/UI text
-// Optimized: reduced weights and improved preloading strategy
+// Optimized: reduced weights. preload: false avoids "preloaded but not used" browser warnings
+// (common when display: optional or when dynamic content delays font usage)
 const inter = Inter({
   subsets: ["latin", "latin-ext"], // Removed vietnamese to reduce size
-  display: "optional", // Better performance - use system font initially, swap only if web font loads quickly
+  display: "swap", // Ensures font is used when loaded; avoids preload warning with optional
   variable: "--font-inter",
   weight: ["400", "500", "600"], // Removed 700 - use 600 as bold (semibold is sufficient)
-  preload: true, // Preload the most common weight for better UX
+  preload: false, // Avoids "resource preloaded but not used within a few seconds" warning
   fallback: ["system-ui", "sans-serif"],
 });
 

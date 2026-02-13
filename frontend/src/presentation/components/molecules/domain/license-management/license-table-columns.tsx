@@ -21,7 +21,8 @@ import {
 import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
-import { LicenseStatusBadge, LicensePlanBadge, LICENSE_PLAN_OPTIONS_WITH_ICONS } from "./badges";
+import { LicenseStatusBadge, LICENSE_PLAN_OPTIONS_WITH_ICONS } from "./badges";
+import { PLAN_MODULE_OPTIONS as PLAN_MODULE_OPTIONS_FROM_CONSTANTS } from "@/shared/constants/license";
 import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
 import { LICENSE_STATUS_LABELS } from "@/shared/constants/license";
 import { LICENSE_STATUS_OPTIONS_WITH_ICONS } from "./badges";
@@ -35,6 +36,9 @@ export const STATUS_OPTIONS = LICENSE_STATUS_OPTIONS_WITH_ICONS.filter(
 export const PLAN_OPTIONS = LICENSE_PLAN_OPTIONS_WITH_ICONS.filter(
   (option) => option.value === "Basic" || option.value === "Premium"
 );
+
+// Plan module options for filter (Basic, Print Check, Staff Performance, Unlimited SMS)
+export const PLAN_MODULE_OPTIONS = PLAN_MODULE_OPTIONS_FROM_CONSTANTS;
 
 // Term options for filter
 export const TERM_OPTIONS = [
@@ -160,22 +164,30 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="Plan" />
       ),
-      cell: ({ row }) => (
-        <LicensePlanBadge
-          plan={row.getValue("plan") as "Basic" | "Premium"}
-          variant="minimal"
-          showIcon={true}
-        />
-      ),
+      cell: ({ row }) => {
+        const plan = row.getValue("plan") as string;
+        const modules = plan ? plan.split(',').map((s) => s.trim()).filter(Boolean) : [];
+        if (modules.length === 0) return <span className="text-muted-foreground text-sm">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {modules.map((m) => (
+              <Badge key={m} variant="secondary" className="text-xs">
+                {m}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
-        return Array.isArray(value) ? value.includes(plan) : value === plan;
+        const modules = plan ? plan.split(',').map((s) => s.trim()) : [];
+        return Array.isArray(value) ? value.some((v) => modules.includes(v)) : modules.includes(value);
       },
       meta: {
         label: "Plan",
         variant: "multiSelect",
-        options: PLAN_OPTIONS,
+        options: PLAN_MODULE_OPTIONS,
         icon: Briefcase,
       },
     },
@@ -208,7 +220,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       id: "lastPayment",
       accessorKey: "lastPayment",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Last Payment" />
+        <DataTableColumnHeader column={column} label="Monthly Fee" />
       ),
       cell: ({ row }) => (
         <span className="text-sm text-right">
@@ -222,7 +234,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         return payment === Number(value);
       },
       meta: {
-        label: "Last Payment",
+        label: "Monthly Fee",
         variant: "number",
         unit: "$",
       },

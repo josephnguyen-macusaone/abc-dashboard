@@ -103,7 +103,7 @@ export function LicenseManagement({
       zip: '',
       startsAt: new Date().toISOString().split('T')[0],
       status: 'active',
-      plan: 'Basic',
+      plan: '',
       term: 'monthly',
       lastPayment: 0,
       lastActive: new Date().toISOString().split('T')[0],

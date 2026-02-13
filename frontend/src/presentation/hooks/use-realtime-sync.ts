@@ -25,16 +25,20 @@ export function useRealtimeSync() {
   const fetchSyncStatus = useLicenseStore((s) => s.fetchSyncStatus);
 
   const onDataChangedRef = useRef(() => {
-    fetchLicenses();
-    fetchDashboardMetrics();
-    fetchLicensesRequiringAttention();
-    fetchSyncStatus();
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      fetchLicenses();
+      fetchDashboardMetrics();
+      fetchLicensesRequiringAttention();
+      fetchSyncStatus();
+    }
   });
   onDataChangedRef.current = () => {
-    fetchLicenses();
-    fetchDashboardMetrics();
-    fetchLicensesRequiringAttention();
-    fetchSyncStatus();
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      fetchLicenses();
+      fetchDashboardMetrics();
+      fetchLicensesRequiringAttention();
+      fetchSyncStatus();
+    }
   };
 
   useEffect(() => {
@@ -46,7 +50,7 @@ export function useRealtimeSync() {
     const socket = io(url, {
       path: '/socket.io',
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
     });
 
     socketRef.current = socket;
