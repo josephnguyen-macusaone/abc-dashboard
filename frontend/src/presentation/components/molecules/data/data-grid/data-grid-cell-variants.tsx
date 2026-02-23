@@ -447,7 +447,7 @@ export function SelectCell<TData>({
   );
 
   const displayLabel =
-    options.find((opt) => opt.value === value)?.label ?? value;
+    options.find((opt) => opt.value === value)?.label ?? (value || (options[0]?.label ?? ""));
 
   return (
     <DataGridCellWrapper<TData>
@@ -622,8 +622,14 @@ export function DateCell<TData>({
       <div className="flex size-full min-w-0 overflow-hidden items-center justify-start">
         <Popover open={isEditing} onOpenChange={onOpenChange}>
           <PopoverAnchor asChild>
-            <span data-slot="grid-cell-content" className="inline-flex items-center text-left">
-              {formatDateForDisplay(value)}
+            <span
+              data-slot="grid-cell-content"
+              className={cn(
+                "inline-flex items-center text-left",
+                !value && "text-muted-foreground"
+              )}
+            >
+              {formatDateForDisplay(value) || "—"}
             </span>
           </PopoverAnchor>
           {isEditing && (

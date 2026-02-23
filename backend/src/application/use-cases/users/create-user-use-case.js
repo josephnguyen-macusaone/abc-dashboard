@@ -5,7 +5,6 @@
 import logger from '../../../infrastructure/config/logger.js';
 import { config } from '../../../infrastructure/config/config.js';
 import { generateTemporaryPassword } from '../../../shared/utils/security/crypto.js';
-import { CreateUserRequestDto } from '../../dto/user/index.js';
 import { UserResponseDto } from '../../dto/user/index.js';
 import {
   ValidationException,
@@ -73,7 +72,9 @@ export class CreateUserUseCase {
           creatorUserRole: creatorUser.role,
         });
       } else if (!validRoles.includes(userRole)) {
-        throw new ValidationException(`Invalid role '${userRole}'. Must be one of: ${validRoles.join(', ')}`);
+        throw new ValidationException(
+          `Invalid role '${userRole}'. Must be one of: ${validRoles.join(', ')}`
+        );
       }
 
       // Create user entity - admin-created users are immediately active
@@ -113,7 +114,7 @@ export class CreateUserUseCase {
       // Send welcome email with temporary password
       let emailSent = false;
       let emailError = null;
-      
+
       try {
         const emailResult = await this.emailService.sendWelcomeWithPassword(user.email, {
           displayName: user.displayName,
@@ -186,7 +187,8 @@ export class CreateUserUseCase {
       if (emailSent) {
         message += ' Welcome email sent with temporary password.';
       } else if (emailError) {
-        message += ' However, the welcome email could not be sent. Please manually provide the user with their temporary password or use the password reset feature.';
+        message +=
+          ' However, the welcome email could not be sent. Please manually provide the user with their temporary password or use the password reset feature.';
       } else {
         message += ' Welcome email has been queued for delivery.';
       }
@@ -196,13 +198,17 @@ export class CreateUserUseCase {
         message,
         emailSent,
         temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined, // Only expose in dev
-        warning: !emailSent ? 'Email service temporarily unavailable. User account created but notification pending.' : undefined,
+        warning: !emailSent
+          ? 'Email service temporarily unavailable. User account created but notification pending.'
+          : undefined,
       };
     } catch (error) {
       // Re-throw domain exceptions as-is
-      if (error instanceof ValidationException ||
-          error instanceof EmailAlreadyExistsException ||
-          error instanceof ResourceNotFoundException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof EmailAlreadyExistsException ||
+        error instanceof ResourceNotFoundException
+      ) {
         throw error;
       }
 

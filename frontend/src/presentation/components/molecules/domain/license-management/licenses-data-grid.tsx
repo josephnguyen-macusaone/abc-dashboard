@@ -227,6 +227,7 @@ export function LicensesDataGrid({
   const gridState = useDataGrid({
     data,
     columns,
+    initialState: { sorting: [{ id: "startsAt", desc: true }] },
     onDataChange: handleDataChange,
     onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
     onRowsDelete: handleRowsDelete,
@@ -361,7 +362,6 @@ export function LicensesDataGrid({
     };
 
     // Process table column filters to utilize backend API
-    // When the search bar has a value, it takes precedence over DBA column filter (so e.g. "Bánh mì" is not overwritten)
     const searchBarHasValue = Boolean(currentSearch?.trim());
     if (tableColumnFilters && tableColumnFilters.length > 0) {
       tableColumnFilters.forEach(filter => {
@@ -453,7 +453,7 @@ export function LicensesDataGrid({
           page: 1,
           limit: pageSize,
           sortBy: (activeSort?.id as string) ?? "startsAt",
-          sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
+          sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : "desc") as "asc" | "desc",
           search: trimmedValue || undefined,
           searchField,
           status: s?.length ? s : undefined,
@@ -503,7 +503,7 @@ export function LicensesDataGrid({
       page: 1,
       limit: table.getState().pagination.pageSize,
       sortBy: (activeSort?.id as string) || "startsAt",
-      sortOrder: activeSort?.desc ? "desc" : "asc",
+      sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : "desc") as "asc" | "desc",
       search: undefined,
       searchField: 'dba',
       status: undefined,

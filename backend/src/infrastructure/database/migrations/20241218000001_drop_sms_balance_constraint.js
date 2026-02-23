@@ -8,11 +8,8 @@ export async function up(knex) {
   `);
 }
 
-export async function down(knex) {
-  // Re-add the constraint if rolling back
-  await knex.raw(`
-    ALTER TABLE external_licenses
-    ADD CONSTRAINT chk_external_licenses_sms_balance_non_negative
-    CHECK (sms_balance >= 0);
-  `);
+export async function down(_knex) {
+  // No-op: do not re-add the constraint. The external API returns negative sms_balance
+  // values, so re-adding CHECK (sms_balance >= 0) would fail on existing data.
+  // Rollback succeeds; the constraint remains dropped.
 }

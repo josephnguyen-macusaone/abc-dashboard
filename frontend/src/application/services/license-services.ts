@@ -2,7 +2,7 @@ import type { CreateLicenseProps } from '@/domain/entities/license-entity';
 import { ILicenseRepository, LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { LicenseDomainService } from '@/domain/services/license-domain-service';
 import { LicenseRecord, PaginatedResponse } from '@/types';
-import { httpClient } from '@/infrastructure/api/client';
+import { httpClient } from '@/infrastructure/api/core/client';
 import {
   type GetLicensesUseCase,
   type CreateLicenseUseCase,

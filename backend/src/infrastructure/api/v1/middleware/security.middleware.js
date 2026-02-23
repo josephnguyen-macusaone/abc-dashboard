@@ -232,7 +232,7 @@ export const injectionProtection = (req, res, next) => {
 };
 
 // Rate limiting with different tiers
-export const createRateLimit = (windowMs, maxRequests, message) => {
+export const createRateLimit = (windowMs, maxRequests, _message) => {
   const requests = new Map();
 
   return (req, res, next) => {

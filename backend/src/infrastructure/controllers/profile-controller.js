@@ -52,9 +52,15 @@ export class ProfileController extends BaseController {
 
       // Check if there are any updates
       if (!updateRequest.hasUpdates()) {
-        return sendErrorResponse(res, 'VALIDATION_FAILED', {
-          details: [{ field: 'body', message: 'No valid fields provided for update' }]
-        });
+        return sendErrorResponse(
+          res,
+          'VALIDATION_FAILED',
+          {},
+          {
+            customMessage: 'No valid fields provided for update',
+            details: [{ field: 'body', message: 'No valid fields provided for update' }],
+          }
+        );
       }
 
       // Use the auth update profile use case which handles all profile fields

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User, UserRole } from '@/domain/entities/user-entity';
 import { userApi } from '@/infrastructure/api/users';
-import { getErrorMessage } from '@/infrastructure/api/errors';
+import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { SortBy, SortOrder } from '@/types';
 

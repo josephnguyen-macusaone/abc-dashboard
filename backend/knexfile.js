@@ -39,7 +39,9 @@ const config = {
       port: parseInt(process.env.POSTGRES_PORT) || 5432,
       database: process.env.POSTGRES_DB,
       user: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD ? resolveDbPassword(process.env.POSTGRES_PASSWORD) : undefined,
+      password: process.env.POSTGRES_PASSWORD
+        ? resolveDbPassword(process.env.POSTGRES_PASSWORD)
+        : undefined,
     },
     pool: {
       min: 2,
@@ -56,8 +58,9 @@ const config = {
 
   production: {
     client: 'pg',
-    connection: process.env.DATABASE_URL
-      || `postgresql://${process.env.POSTGRES_USER}:${encodeURIComponent(process.env.POSTGRES_PASSWORD ? resolveDbPassword(process.env.POSTGRES_PASSWORD) : '')}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`,
+    connection:
+      process.env.DATABASE_URL ||
+      `postgresql://${process.env.POSTGRES_USER}:${encodeURIComponent(process.env.POSTGRES_PASSWORD ? resolveDbPassword(process.env.POSTGRES_PASSWORD) : '')}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`,
     pool: {
       min: 2,
       max: 30, // Increased from 20 for sync operations

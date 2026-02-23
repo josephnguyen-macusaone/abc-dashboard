@@ -150,7 +150,8 @@ export class License {
     private _product?: string,
     private _cancelDate?: Date,
     private _createdAt?: Date,
-    private _updatedAt?: Date
+    private _updatedAt?: Date,
+    private readonly _smsBalanceStored?: number
   ) {
     this.validateBusinessRules();
   }
@@ -169,7 +170,14 @@ export class License {
   public get lastActive(): Date { return this._lastActive; }
   public get smsPurchased(): number { return this._smsPurchased; }
   public get smsSent(): number { return this._smsSent; }
-  public get smsBalance(): number { return this._smsPurchased - this._smsSent; }
+  /** Use stored smsBalance from API when valid; else compute from smsPurchased - smsSent */
+  public get smsBalance(): number {
+    const stored = this._smsBalanceStored;
+    if (stored !== undefined && stored !== null && !Number.isNaN(Number(stored))) {
+      return Number(stored);
+    }
+    return this._smsPurchased - this._smsSent;
+  }
   public get agents(): number { return this._agents; }
   public get agentsName(): string { return this._agentsName; }
   public get agentsCost(): Money { return this._agentsCost; }
@@ -480,7 +488,8 @@ export class License {
       props.product,
       props.cancelDate ? new Date(props.cancelDate) : undefined,
       props.createdAt ? new Date(props.createdAt) : undefined,
-      props.updatedAt ? new Date(props.updatedAt) : undefined
+      props.updatedAt ? new Date(props.updatedAt) : undefined,
+      props.smsBalance
     );
   }
 
@@ -551,6 +560,7 @@ export interface PersistenceLicenseProps {
   lastActive: string;
   smsPurchased?: number;
   smsSent?: number;
+  smsBalance?: number;
   agents?: number;
   agentsName?: string;
   agentsCost?: number;

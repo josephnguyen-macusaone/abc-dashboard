@@ -178,7 +178,7 @@ export const cacheInvalidationMiddleware = (req, res, next) => {
 /**
  * Invalidate cache entries based on the endpoint that was modified
  */
-async function invalidateCacheForEndpoint(path, method) {
+async function invalidateCacheForEndpoint(path, _method) {
   const patterns = [];
 
   // User-related endpoints

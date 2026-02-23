@@ -25,7 +25,9 @@ export class RequestPasswordResetWithGeneratedPasswordUseCase {
 
       // Always return success message for security (don't reveal if email exists)
       if (!user) {
-        logger.info('Password reset with generated password requested for non-existent email', { email });
+        logger.info('Password reset with generated password requested for non-existent email', {
+          email,
+        });
         return {
           success: true,
           message: 'Password reset email sent if account exists',

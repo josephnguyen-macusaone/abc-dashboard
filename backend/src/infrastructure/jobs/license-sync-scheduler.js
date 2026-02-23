@@ -118,11 +118,10 @@ export class LicenseSyncScheduler {
     }
 
     this.syncInProgress = true;
+    const startTime = Date.now();
 
     try {
       logger.info('Running scheduled license sync');
-
-      const startTime = Date.now();
       this.syncStats.totalRuns += 1;
 
       const syncResult = await this.syncExternalLicensesUseCase.execute({

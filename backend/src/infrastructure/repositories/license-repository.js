@@ -942,7 +942,8 @@ export class LicenseRepository extends ILicenseRepository {
       lastPayment: parseFloat(licenseRow.last_payment) || 0,
       smsPurchased: licenseRow.sms_purchased,
       smsSent: licenseRow.sms_sent,
-      smsBalance: licenseRow.sms_balance,
+      smsBalance:
+        licenseRow.sms_balance != null ? parseFloat(licenseRow.sms_balance) || 0 : undefined,
       agents: licenseRow.agents,
       agentsName: this._normalizeAgentsName(licenseRow.agents_name),
       agentsCost: parseFloat(licenseRow.agents_cost) || 0,

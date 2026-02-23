@@ -1,5 +1,5 @@
 import type { LicenseRecord } from '@/types';
-import type { DashboardMetrics } from '@/infrastructure/api/types';
+import type { DashboardMetrics } from '@/infrastructure/api/licenses/types';
 import type { ILicenseRepository } from '@/domain/repositories/i-license-repository';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 

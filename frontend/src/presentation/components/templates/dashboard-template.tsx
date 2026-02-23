@@ -4,11 +4,17 @@ import { LoadingOverlay } from '@/presentation/components/atoms';
 import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { ReactNode, useMemo, useCallback, useTransition } from 'react';
+import { ReactNode, useMemo, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useToast } from '@/presentation/contexts';
 import { PermissionUtils, getNavigationItems } from '@/shared/constants';
-import { useSidebarStore, useAuthStore } from '@/infrastructure/stores';
+import { useSidebarStore, useAuthStore, useLicenseStore, useDataTableStore } from '@/infrastructure/stores';
 import { useRealtimeSync } from '@/presentation/hooks/use-realtime-sync';
+
+/** Routes that display license data; avoid resetting when navigating between these. */
+const LICENSE_ROUTES = ['/dashboard', '/licenses'];
+
+/** Table ID used by LicensesDataTable on dashboard; clear its search/filters when leaving license routes. */
+const LICENSES_TABLE_ID = 'licenses-data-table';
 
 interface DashboardTemplateProps {
   children: ReactNode;
@@ -21,6 +27,22 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const resetLicenseDataForRouteChange = useLicenseStore(state => state.resetLicenseDataForRouteChange);
+  const clearTableFilters = useDataTableStore(state => state.clearTableFilters);
+  const prevPathRef = useRef<string | null>(null);
+
+  // Reset license store and data table search/filters when navigating away from license pages
+  // to prevent stale data and searchbar persisting when returning
+  useEffect(() => {
+    const isLicenseRoute = LICENSE_ROUTES.some(r => pathname === r || pathname.startsWith(`${r}/`));
+    const wasLicenseRoute = prevPathRef.current !== null && LICENSE_ROUTES.some(r => prevPathRef.current === r || prevPathRef.current?.startsWith(`${r}/`));
+
+    if (wasLicenseRoute && !isLicenseRoute) {
+      resetLicenseDataForRouteChange();
+      clearTableFilters(LICENSES_TABLE_ID);
+    }
+    prevPathRef.current = pathname;
+  }, [pathname, resetLicenseDataForRouteChange, clearTableFilters]);
 
   // Use global sidebar store
   const { isMobile, isCollapsed, toggleCollapsed } = useSidebarStore();

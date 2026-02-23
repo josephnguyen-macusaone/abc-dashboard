@@ -1,6 +1,6 @@
 import { LicenseValidator } from '../../application/validators/license-validator.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
-import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import { sendErrorResponse, formatCanonicalError } from '../../shared/http/error-responses.js';
 import logger from '../config/logger.js';
 
 export class LicenseController {
@@ -75,7 +75,8 @@ export class LicenseController {
     if (hasFilters && total === 2836) {
       violations.push({
         type: 'known_external_total_with_filters',
-        description: 'Filtered query total (2836) matches external API total — likely unfiltered count',
+        description:
+          'Filtered query total (2836) matches external API total — likely unfiltered count',
         severity: 'critical',
       });
     }
@@ -171,7 +172,7 @@ export class LicenseController {
     try {
       const license = await this.licenseService.getLicenseById(req.params.id);
       if (!license) {
-        return sendErrorResponse(res, 'NOT_FOUND');
+        return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
       }
 
       return res.success({ license }, 'License retrieved successfully');
@@ -213,7 +214,7 @@ export class LicenseController {
 
       const updated = await this.licenseService.updateLicense(req.params.id, req.body, context);
       if (!updated) {
-        return sendErrorResponse(res, 'NOT_FOUND');
+        return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
       }
 
       return res.success({ license: updated }, 'License updated successfully');
@@ -380,13 +381,14 @@ export class LicenseController {
           errors.length > 0
             ? `License creation failed: ${errors[0].error}`
             : 'No licenses were created. Check validation or server logs.';
-        return res.status(400).json({
-          success: false,
-          message,
-          data: [],
-          errors: errors.length > 0 ? errors : [{ index: 0, key: 'unknown', error: message }],
-          timestamp: new Date().toISOString(),
+        const payload = formatCanonicalError('VALIDATION_FAILED', {
+          customMessage: message,
+          details: {
+            data: [],
+            errors: errors.length > 0 ? errors : [{ index: 0, key: 'unknown', error: message }],
+          },
         });
+        return res.status(payload.error.statusCode).json(payload);
       }
 
       return res.created(createdLicenses, 'Licenses created successfully');
@@ -455,7 +457,7 @@ export class LicenseController {
 
       const removed = await this.licenseService.deleteLicense(req.params.id, context);
       if (!removed) {
-        return sendErrorResponse(res, 'NOT_FOUND');
+        return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
       }
 
       return res.success(null, 'License deleted successfully');

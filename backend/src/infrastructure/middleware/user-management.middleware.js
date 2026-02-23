@@ -52,7 +52,7 @@ export function canAccessUser(currentUser, targetUser) {
  * @param {string} newManagerId - The new manager ID
  * @return {boolean} - Whether reassignment is allowed
  */
-export function canReassignStaff(currentUser, staffUser, newManagerId) {
+export function canReassignStaff(currentUser, staffUser, _newManagerId) {
   // Only admin can reassign staff
   if (currentUser.role !== ROLES.ADMIN) {
     return false;
@@ -231,7 +231,7 @@ export function getAvailableRolesForCreation(userRole) {
  * @param {Object} queryParams - Original query parameters
  * @return {Object} - Filtered query parameters
  */
-export function getUserQueryFilters(currentUser, queryParams = {}) {
+export function getUserQueryFilters(currentUser, _queryParams = {}) {
   const filters = {};
 
   // Admin sees all users - no additional permission filters needed

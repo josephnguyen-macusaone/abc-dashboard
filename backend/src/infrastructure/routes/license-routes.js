@@ -1,12 +1,11 @@
 import express from 'express';
+import logger from '../config/logger.js';
 import { awilixContainer } from '../../shared/kernel/container.js';
 import { validateRequest } from '../middleware/validation-middleware.js';
 import { licenseSchemas } from '../api/v1/schemas/license.schemas.js';
 import {
   checkLicenseCreationPermission,
   checkLicenseAccessPermission,
-  checkLicenseAssignmentPermission,
-  checkLicenseRevocationPermission,
   checkLicenseBulkOperationPermission,
 } from '../middleware/license-management.middleware.js';
 
@@ -223,10 +222,10 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
    *                       type: string
    *                       description: Timestamp of last violation
    */
-  router.get('/data-integrity', checkLicenseAccessPermission('monitor'), (req, res) => {
+  router.get('/data-integrity', checkLicenseAccessPermission('monitor'), (req, res) =>
     // This would integrate with a metrics service in production
     // For now, return mock data structure
-    return res.success(
+    res.success(
       {
         totalQueries: 0, // Would be populated from metrics store
         integrityViolations: 0,
@@ -236,8 +235,8 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
         message: 'Data integrity monitoring active',
       },
       'Data integrity metrics retrieved successfully'
-    );
-  });
+    )
+  );
 
   /**
    * @swagger

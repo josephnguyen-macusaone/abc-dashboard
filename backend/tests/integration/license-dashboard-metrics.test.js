@@ -59,13 +59,17 @@ describe('GET /api/v1/licenses/dashboard/metrics (integration)', () => {
 
   describe('authentication', () => {
     it('returns 401 when no Authorization header', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const res = await request(server).get('/api/v1/licenses/dashboard/metrics').expect(401);
       expect(res.body?.success).toBe(false);
     });
 
     it('returns 401 when Authorization is invalid', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const res = await request(server)
         .get('/api/v1/licenses/dashboard/metrics')
         .set('Authorization', 'Bearer invalid-token')
@@ -80,7 +84,9 @@ describe('GET /api/v1/licenses/dashboard/metrics (integration)', () => {
     const hasToken = () => !!getAccessToken();
 
     it('returns 200 and metric structure when authorized', async () => {
-      if (!dbOk || !hasToken()) return;
+      if (!dbOk || !hasToken()) {
+        return;
+      }
       const res = await request(server)
         .get('/api/v1/licenses/dashboard/metrics')
         .set('Authorization', `Bearer ${getAccessToken()}`)
@@ -104,7 +110,9 @@ describe('GET /api/v1/licenses/dashboard/metrics (integration)', () => {
     }, 15000);
 
     it('returns 200 and period in metadata when query has startsAtFrom and startsAtTo', async () => {
-      if (!dbOk || !hasToken()) return;
+      if (!dbOk || !hasToken()) {
+        return;
+      }
       const res = await request(server)
         .get('/api/v1/licenses/dashboard/metrics')
         .query({ startsAtFrom: '2025-02-01', startsAtTo: '2025-02-28' })

@@ -19,18 +19,19 @@ export class DomainException extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 
+  /** Returns canonical error shape: { success: false, error: { code, message, category, statusCode, details } } */
   toResponse() {
     return {
       success: false,
-      message: this.message,
       error: {
-        code: this.statusCode,
+        code: this.errorKey,
         message: this.message,
         category: this.category,
-        ...(this.additionalData &&
-          Object.keys(this.additionalData).length > 0 && {
-            details: this.additionalData,
-          }),
+        statusCode: this.statusCode,
+        details:
+          this.additionalData && Object.keys(this.additionalData).length > 0
+            ? this.additionalData
+            : {},
       },
     };
   }
@@ -79,8 +80,8 @@ export class InvalidRefreshTokenException extends DomainException {
  * Authorization Exceptions
  */
 export class InsufficientPermissionsException extends DomainException {
-  constructor(requiredRole) {
-    super('INSUFFICIENT_PERMISSIONS', { requiredRole });
+  constructor(message = 'You do not have permission to perform this action') {
+    super('INSUFFICIENT_PERMISSIONS', {}, { customMessage: message });
   }
 }
 

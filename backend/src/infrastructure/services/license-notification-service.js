@@ -345,7 +345,7 @@ export class LicenseNotificationService {
    * This is a placeholder - in real implementation, this would
    * look up contact info from users or license metadata
    */
-  getLicenseContact(license) {
+  getLicenseContact(_license) {
     // Try to get contact from license data
     // This is a simplified implementation
 

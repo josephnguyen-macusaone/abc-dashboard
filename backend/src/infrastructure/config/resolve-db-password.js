@@ -40,7 +40,9 @@ function decryptFromHex(hexData) {
  * @returns {string} Plain password for DB connection
  */
 export function resolveDbPassword(raw) {
-  if (!raw) return '';
+  if (!raw) {
+    return '';
+  }
   if (raw.startsWith('enc:')) {
     return decryptFromHex(raw.slice(4));
   }

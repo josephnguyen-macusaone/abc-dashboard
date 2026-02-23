@@ -11,7 +11,7 @@ import logger from '../../../infrastructure/config/logger.js';
 const ENCRYPTION_CONFIG = {
   algorithm: 'aes-256-gcm',
   keyLength: 32, // 256 bits
-  ivLength: 16,  // 128 bits for GCM
+  ivLength: 16, // 128 bits for GCM
   tagLength: 16, // 128 bits authentication tag
 };
 
@@ -29,7 +29,9 @@ if (!encryptionKey) {
   // Convert hex string to buffer
   encryptionKey = Buffer.from(encryptionKey, 'hex');
   if (encryptionKey.length !== ENCRYPTION_CONFIG.keyLength) {
-    throw new Error(`ENCRYPTION_KEY must be ${ENCRYPTION_CONFIG.keyLength} bytes (${ENCRYPTION_CONFIG.keyLength * 2} hex characters)`);
+    throw new Error(
+      `ENCRYPTION_KEY must be ${ENCRYPTION_CONFIG.keyLength} bytes (${ENCRYPTION_CONFIG.keyLength * 2} hex characters)`
+    );
   }
 }
 
@@ -40,7 +42,9 @@ if (!encryptionKey) {
  * @returns {string} Encrypted data as base64 string with IV and auth tag
  */
 export function encrypt(plaintext, context = '') {
-  if (!plaintext) return null;
+  if (!plaintext) {
+    return null;
+  }
 
   try {
     // Generate random IV
@@ -58,18 +62,14 @@ export function encrypt(plaintext, context = '') {
     const authTag = cipher.getAuthTag();
 
     // Combine IV + auth tag + encrypted data
-    const combined = Buffer.concat([
-      iv,
-      authTag,
-      Buffer.from(encrypted, 'base64')
-    ]);
+    const combined = Buffer.concat([iv, authTag, Buffer.from(encrypted, 'base64')]);
 
     return combined.toString('base64');
   } catch (error) {
     logger.error('Encryption failed', {
       error: error.message,
       context,
-      dataLength: plaintext.length
+      dataLength: plaintext.length,
     });
     throw new Error('Encryption failed');
   }
@@ -82,23 +82,17 @@ export function encrypt(plaintext, context = '') {
  * @returns {string} Encrypted data as hex string (IV + auth tag + ciphertext)
  */
 export function encryptToHex(plaintext, context = '') {
-  if (!plaintext) return null;
+  if (!plaintext) {
+    return null;
+  }
   try {
     const iv = crypto.randomBytes(ENCRYPTION_CONFIG.ivLength);
-    const cipher = crypto.createCipheriv(
-      ENCRYPTION_CONFIG.algorithm,
-      encryptionKey,
-      iv
-    );
+    const cipher = crypto.createCipheriv(ENCRYPTION_CONFIG.algorithm, encryptionKey, iv);
     cipher.setAAD(Buffer.from(context));
     let encrypted = cipher.update(plaintext, 'utf8', 'base64');
     encrypted += cipher.final('base64');
     const authTag = cipher.getAuthTag();
-    const combined = Buffer.concat([
-      iv,
-      authTag,
-      Buffer.from(encrypted, 'base64')
-    ]);
+    const combined = Buffer.concat([iv, authTag, Buffer.from(encrypted, 'base64')]);
     return combined.toString('hex');
   } catch (error) {
     logger.error('Encrypt to hex failed', { error: error.message, context });
@@ -113,7 +107,9 @@ export function encryptToHex(plaintext, context = '') {
  * @returns {string} Decrypted plaintext
  */
 export function decryptFromHex(hexData, context = '') {
-  if (!hexData) return null;
+  if (!hexData) {
+    return null;
+  }
   try {
     const combined = Buffer.from(hexData, 'hex');
     const iv = combined.subarray(0, ENCRYPTION_CONFIG.ivLength);
@@ -121,14 +117,8 @@ export function decryptFromHex(hexData, context = '') {
       ENCRYPTION_CONFIG.ivLength,
       ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength
     );
-    const encrypted = combined.subarray(
-      ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength
-    );
-    const decipher = crypto.createDecipheriv(
-      ENCRYPTION_CONFIG.algorithm,
-      encryptionKey,
-      iv
-    );
+    const encrypted = combined.subarray(ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength);
+    const decipher = crypto.createDecipheriv(ENCRYPTION_CONFIG.algorithm, encryptionKey, iv);
     decipher.setAAD(Buffer.from(context));
     decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted);
@@ -138,7 +128,7 @@ export function decryptFromHex(hexData, context = '') {
     logger.error('Decrypt from hex failed', {
       error: error.message,
       context,
-      dataLength: hexData.length
+      dataLength: hexData.length,
     });
     throw new Error('Decryption failed');
   }
@@ -151,15 +141,20 @@ export function decryptFromHex(hexData, context = '') {
  * @returns {string} Decrypted plaintext
  */
 export function decrypt(encryptedData, context = '') {
-  if (!encryptedData) return null;
+  if (!encryptedData) {
+    return null;
+  }
 
   try {
     // Decode the combined data
     const combined = Buffer.from(encryptedData, 'base64');
 
     // Extract components (IV + auth tag + encrypted data)
-    const iv = combined.subarray(0, ENCRYPTION_CONFIG.ivLength);
-    const authTag = combined.subarray(ENCRYPTION_CONFIG.ivLength, ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength);
+    const _iv = combined.subarray(0, ENCRYPTION_CONFIG.ivLength);
+    const authTag = combined.subarray(
+      ENCRYPTION_CONFIG.ivLength,
+      ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength
+    );
     const encrypted = combined.subarray(ENCRYPTION_CONFIG.ivLength + ENCRYPTION_CONFIG.tagLength);
 
     // Create decipher
@@ -172,12 +167,11 @@ export function decrypt(encryptedData, context = '') {
     decrypted += decipher.final('utf8');
 
     return decrypted;
-
   } catch (error) {
     logger.error('Decryption failed', {
       error: error.message,
       context,
-      dataLength: encryptedData.length
+      dataLength: encryptedData.length,
     });
     throw new Error('Decryption failed');
   }
@@ -190,15 +184,16 @@ export function decrypt(encryptedData, context = '') {
  * @returns {string} Hashed data as hex string
  */
 export function hash(data, salt = null) {
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
   try {
     const saltBuffer = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(16);
     const hash = crypto.pbkdf2Sync(data, saltBuffer, 100000, 64, 'sha512');
 
     // Return salt + hash
-    return saltBuffer.toString('hex') + ':' + hash.toString('hex');
-
+    return `${saltBuffer.toString('hex')}:${hash.toString('hex')}`;
   } catch (error) {
     logger.error('Hashing failed', { error: error.message });
     throw new Error('Hashing failed');
@@ -212,11 +207,15 @@ export function hash(data, salt = null) {
  * @returns {boolean} Whether the data matches the hash
  */
 export function verifyHash(data, hashedData) {
-  if (!data || !hashedData) return false;
+  if (!data || !hashedData) {
+    return false;
+  }
 
   try {
     const [saltHex, hashHex] = hashedData.split(':');
-    if (!saltHex || !hashHex) return false;
+    if (!saltHex || !hashHex) {
+      return false;
+    }
 
     const salt = Buffer.from(saltHex, 'hex');
     const hash = Buffer.from(hashHex, 'hex');
@@ -224,7 +223,6 @@ export function verifyHash(data, hashedData) {
     const computedHash = crypto.pbkdf2Sync(data, salt, 100000, 64, 'sha512');
 
     return crypto.timingSafeEqual(hash, computedHash);
-
   } catch (error) {
     logger.error('Hash verification failed', { error: error.message });
     return false;
@@ -253,7 +251,7 @@ export function maskSensitiveData(data, visibleChars = 4) {
 
   const start = data.substring(0, visibleChars);
   const end = data.substring(data.length - visibleChars);
-  const maskLength = data.length - (visibleChars * 2);
+  const maskLength = data.length - visibleChars * 2;
 
   return `${start}${'*'.repeat(maskLength)}${end}`;
 }
@@ -268,7 +266,9 @@ export const licenseSecurity = {
    * @returns {Object} License data with sensitive fields encrypted
    */
   encryptSensitiveFields(licenseData) {
-    if (!licenseData) return licenseData;
+    if (!licenseData) {
+      return licenseData;
+    }
 
     const encrypted = { ...licenseData };
 
@@ -282,7 +282,7 @@ export const licenseSecurity = {
         } catch (error) {
           logger.warn(`Failed to encrypt ${field}, keeping original`, {
             error: error.message,
-            field
+            field,
           });
         }
       }
@@ -297,7 +297,9 @@ export const licenseSecurity = {
    * @returns {Object} License data with sensitive fields decrypted
    */
   decryptSensitiveFields(licenseData) {
-    if (!licenseData) return licenseData;
+    if (!licenseData) {
+      return licenseData;
+    }
 
     const decrypted = { ...licenseData };
 
@@ -311,7 +313,7 @@ export const licenseSecurity = {
         } catch (error) {
           logger.warn(`Failed to decrypt ${field}, keeping encrypted`, {
             error: error.message,
-            field
+            field,
           });
         }
       }
@@ -326,7 +328,9 @@ export const licenseSecurity = {
    * @returns {Object} Sanitized license data safe for logging
    */
   sanitizeForLogging(licenseData) {
-    if (!licenseData) return licenseData;
+    if (!licenseData) {
+      return licenseData;
+    }
 
     const sanitized = { ...licenseData };
 

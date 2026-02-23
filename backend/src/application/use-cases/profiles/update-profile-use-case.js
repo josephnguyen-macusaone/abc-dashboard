@@ -2,7 +2,7 @@
  * Update Profile Use Case
  * Handles updating user profile information (bio)
  */
-import { ProfileDto, UpdateProfileRequestDto } from '../../dto/profile/index.js';
+import { ProfileDto } from '../../dto/profile/index.js';
 
 export class UpdateProfileUseCase {
   constructor(userProfileRepository) {

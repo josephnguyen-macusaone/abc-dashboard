@@ -19,6 +19,34 @@ import {
   DataIntegrityViolationException,
 } from '../../domain/exceptions/domain.exception.js';
 
+const DOMAIN_EXCEPTION_HANDLERS = [
+  [ValidationException, '_handleValidationError'],
+  [ResourceNotFoundException, '_handleResourceNotFoundError'],
+  [InsufficientPermissionsException, '_handlePermissionError'],
+  [InvalidCredentialsException, '_handleAuthError'],
+  [AccountDeactivatedException, '_handleAccountError'],
+  [NetworkTimeoutException, '_handleNetworkTimeoutError'],
+  [ExternalServiceUnavailableException, '_handleExternalServiceUnavailableError'],
+  [ConcurrentModificationException, '_handleConcurrentModificationError'],
+  [SecurityViolationException, '_handleSecurityViolationError'],
+  [RateLimitExceededException, '_handleRateLimitError'],
+  [DataIntegrityViolationException, '_handleDataIntegrityError'],
+];
+
+const DOMAIN_EXCEPTION_CLASSES = new Set([
+  ValidationException,
+  ResourceNotFoundException,
+  InsufficientPermissionsException,
+  InvalidCredentialsException,
+  AccountDeactivatedException,
+  NetworkTimeoutException,
+  ExternalServiceUnavailableException,
+  ConcurrentModificationException,
+  SecurityViolationException,
+  RateLimitExceededException,
+  DataIntegrityViolationException,
+]);
+
 export class BaseController {
   /**
    * Handle errors in a standardized way
@@ -69,48 +97,10 @@ export class BaseController {
     });
 
     // Handle Domain Exceptions (business logic errors)
-    if (error instanceof ValidationException) {
-      return this._handleValidationError(error, res);
-    }
-
-    if (error instanceof ResourceNotFoundException) {
-      return this._handleResourceNotFoundError(error, res);
-    }
-
-    if (error instanceof InsufficientPermissionsException) {
-      return this._handlePermissionError(error, res);
-    }
-
-    if (error instanceof InvalidCredentialsException) {
-      return this._handleAuthError(error, res);
-    }
-
-    if (error instanceof AccountDeactivatedException) {
-      return this._handleAccountError(error, res);
-    }
-
-    if (error instanceof NetworkTimeoutException) {
-      return this._handleNetworkTimeoutError(error, res);
-    }
-
-    if (error instanceof ExternalServiceUnavailableException) {
-      return this._handleExternalServiceUnavailableError(error, res);
-    }
-
-    if (error instanceof ConcurrentModificationException) {
-      return this._handleConcurrentModificationError(error, res);
-    }
-
-    if (error instanceof SecurityViolationException) {
-      return this._handleSecurityViolationError(error, res);
-    }
-
-    if (error instanceof RateLimitExceededException) {
-      return this._handleRateLimitError(error, res);
-    }
-
-    if (error instanceof DataIntegrityViolationException) {
-      return this._handleDataIntegrityError(error, res);
+    for (const [ExceptionClass, handlerName] of DOMAIN_EXCEPTION_HANDLERS) {
+      if (error instanceof ExceptionClass) {
+        return this[handlerName](error, res);
+      }
     }
 
     // Handle Infrastructure Errors (database, network, external services)
@@ -164,11 +154,11 @@ export class BaseController {
   // Private error handling methods for different error types
 
   _handleValidationError(error, res) {
-    return sendErrorResponse(res, 'VALIDATION_FAILED', { details: error.message });
+    return sendErrorResponse(res, 'VALIDATION_FAILED', {}, { customMessage: error.message });
   }
 
   _handleResourceNotFoundError(error, res) {
-    return sendErrorResponse(res, 'USER_NOT_FOUND', { details: error.message });
+    return sendErrorResponse(res, 'RESOURCE_NOT_FOUND', {}, { customMessage: error.message });
   }
 
   _handlePermissionError(error, res) {
@@ -202,7 +192,7 @@ export class BaseController {
   _handleRateLimitError(error, res) {
     const retryAfter = error.additionalData?.retryAfter || 60;
     res.set('Retry-After', retryAfter);
-    return sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', { retryAfter });
+    return sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', {}, { retryAfter });
   }
 
   _handleDataIntegrityError(error, res) {
@@ -214,12 +204,15 @@ export class BaseController {
       errorName: error.name,
       errorCode: error.code,
       errorCodeName: error.codeName,
-      collection: error.collection,
     });
 
-    if (error.code === 11000) {
-      // Duplicate key error - map to existing EMAIL_ALREADY_EXISTS or create a new generic one
-      return sendErrorResponse(res, 'EMAIL_ALREADY_EXISTS');
+    // PostgreSQL unique constraint violation (23505)
+    if (error.code === '23505') {
+      return sendErrorResponse(res, 'RESOURCE_ALREADY_EXISTS');
+    }
+    // PostgreSQL foreign key / not null / check violations
+    if (['23503', '23502', '23514', '22P02'].includes(error.code)) {
+      return sendErrorResponse(res, 'INVALID_INPUT');
     }
 
     return sendErrorResponse(res, 'DATABASE_ERROR');
@@ -237,19 +230,15 @@ export class BaseController {
     return sendErrorResponse(res, 'NETWORK_TIMEOUT', { operation: 'Request' });
   }
 
-  _handleGenericError(error, res, correlationId, operation) {
+  _handleGenericError(error, res, _correlationId, _operation) {
     return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
   }
 
   // Error type detection methods
 
   _isDatabaseError(error) {
-    return (
-      error.name === 'MongoError' ||
-      error.name === 'MongoServerError' ||
-      error.name === 'ValidationError' ||
-      error.code === 11000
-    );
+    const pgErrorCodes = ['23505', '23503', '23502', '23514', '22P02'];
+    return pgErrorCodes.includes(error.code) || (error.name === 'ValidationError' && error.errors);
   }
 
   _isNetworkError(error) {
@@ -301,27 +290,10 @@ export class BaseController {
    */
   async executeUseCase(useCase, params, context = {}) {
     try {
-      // Handle both single object and array of parameters
-      if (Array.isArray(params)) {
-        return await useCase.execute(...params);
-      } else {
-        return await useCase.execute(params);
-      }
+      const args = Array.isArray(params) ? params : [params];
+      return await useCase.execute(...args);
     } catch (error) {
-      // Re-throw domain exceptions as-is, wrap others
-      if (
-        error instanceof ValidationException ||
-        error instanceof ResourceNotFoundException ||
-        error instanceof InsufficientPermissionsException ||
-        error instanceof InvalidCredentialsException ||
-        error instanceof AccountDeactivatedException ||
-        error instanceof NetworkTimeoutException ||
-        error instanceof ExternalServiceUnavailableException ||
-        error instanceof ConcurrentModificationException ||
-        error instanceof SecurityViolationException ||
-        error instanceof RateLimitExceededException ||
-        error instanceof DataIntegrityViolationException
-      ) {
+      if (DOMAIN_EXCEPTION_CLASSES.has(error.constructor)) {
         throw error;
       }
       throw new Error(`${context.operation || 'Use case'} failed: ${error.message}`);

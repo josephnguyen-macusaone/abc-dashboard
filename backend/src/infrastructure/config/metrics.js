@@ -174,8 +174,7 @@ class DatabaseMetrics {
         connected: true,
         name: dbInfo.rows[0]?.database_name,
         user: dbInfo.rows[0]?.current_user,
-        version:
-          dbInfo.rows[0]?.version?.split(' ')[0] + ' ' + dbInfo.rows[0]?.version?.split(' ')[1],
+        version: `${dbInfo.rows[0]?.version?.split(' ')[0]} ${dbInfo.rows[0]?.version?.split(' ')[1]}`,
         pool: poolMetrics.pool,
         performance: poolMetrics.performance,
         databaseStats: {

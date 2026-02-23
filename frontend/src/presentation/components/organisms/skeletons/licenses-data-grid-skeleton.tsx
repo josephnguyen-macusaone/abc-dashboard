@@ -23,9 +23,9 @@ export function LicensesDataGridSkeleton({
 }: LicensesDataGridSkeletonProps) {
   // Column definitions matching license-grid-columns.tsx
   const columns = [
-    { id: 'dba', width: 150, header: 'DBA' },
+    { id: 'dba', width: 120, header: 'DBA' },
     { id: 'zip', width: 100, header: 'Zip Code' },
-    { id: 'startsAt', width: 120, header: 'Start Date' },
+    { id: 'startsAt', width: 120, header: 'Activate Date' },
     { id: 'status', width: 120, header: 'Status' },
     { id: 'plan', width: 120, header: 'Plan' },
     { id: 'term', width: 110, header: 'Term' },

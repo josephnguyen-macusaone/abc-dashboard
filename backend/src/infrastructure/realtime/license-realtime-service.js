@@ -22,7 +22,9 @@ export class LicenseRealtimeService {
    * @param {Object} payload - { timestamp, duration, created, updated, failed, success }
    */
   emitSyncComplete(payload) {
-    if (!this.io || !this.io.emit) return;
+    if (!this.io || !this.io.emit) {
+      return;
+    }
 
     try {
       this.io.emit('license:sync_complete', {
@@ -48,7 +50,9 @@ export class LicenseRealtimeService {
    * @param {Object} payload - { source: 'bulk_update'|'bulk_create'|'bulk_delete'|'single_update', ids?: string[] }
    */
   emitDataChanged(payload) {
-    if (!this.io || !this.io.emit) return;
+    if (!this.io || !this.io.emit) {
+      return;
+    }
 
     try {
       this.io.emit('license:data_changed', {

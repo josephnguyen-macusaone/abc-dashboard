@@ -30,7 +30,7 @@ Based on the provided mockup, the table contains the following columns:
 | 1 | No. | `id` | number | Row identifier |
 | 2 | DB A | `dbA` | string | Database A reference |
 | 3 | Zip | `zip` | string | ZIP code |
-| 4 | Start Date | `startsAt` | date | Subscription start date |
+| 4 | Activate Date | `startsAt` | date | License activation date (maps to ActivateDate from API) |
 | 5 | Status | `status` | enum | Current status (Active/Cancel/Pending) |
 | 6 | Plan | `plan` | string | Subscription plan type |
 | 7 | Term | `term` | enum | Monthly/Yearly term |

@@ -29,9 +29,13 @@ export const initRedis = async () => {
       enableOfflineQueue: true,
       lazyConnect: false,
       retryStrategy(times) {
-        if (times > 3) return null;
+        if (times > 3) {
+          return null;
+        }
         const delay = Math.min(times * 50, 2000);
-        if (times <= 2) logger.warn(`Redis retry attempt ${times}`, { delay });
+        if (times <= 2) {
+          logger.warn(`Redis retry attempt ${times}`, { delay });
+        }
         return delay;
       },
       reconnectOnError(err) {
@@ -181,7 +185,9 @@ class OptimizedInMemoryCache {
 
   async exists(key) {
     const item = this.cache.get(key);
-    if (!item) return false;
+    if (!item) {
+      return false;
+    }
     if (Date.now() > item.expires) {
       await this.del(key);
       return false;
@@ -233,7 +239,9 @@ class OptimizedInMemoryCache {
   async mdel(keys) {
     let count = 0;
     for (const key of keys) {
-      if (await this.del(key)) count++;
+      if (await this.del(key)) {
+        count++;
+      }
     }
     return count;
   }
@@ -325,10 +333,14 @@ const inMemoryCache = new OptimizedInMemoryCache({
 
 function parseRedisInfo(str) {
   const result = {};
-  if (!str) return result;
+  if (!str) {
+    return result;
+  }
   str.split('\r\n').forEach((line) => {
     const [key, value] = line.split(':');
-    if (key && value && !key.startsWith('#')) result[key] = value;
+    if (key && value && !key.startsWith('#')) {
+      result[key] = value;
+    }
   });
   return result;
 }
@@ -362,7 +374,9 @@ export const cache = {
     try {
       if (isRedisEnabled && redisClient) {
         const value = await redisClient.get(key);
-        if (value === null) return null;
+        if (value === null) {
+          return null;
+        }
 
         try {
           return JSON.parse(value);

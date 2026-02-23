@@ -37,9 +37,9 @@ export const createRoutes = async () => {
 
   const isProduction = process.env.NODE_ENV === 'production';
   if (!isProduction) {
-    router.get('/debug-test-bypass', (req, res) => {
-      return res.json({ success: true, message: 'Bypass route works' });
-    });
+    router.get('/debug-test-bypass', (req, res) =>
+      res.json({ success: true, message: 'Bypass route works' })
+    );
 
     router.get('/debug-external-licenses', async (req, res) => {
       try {

@@ -27,13 +27,14 @@ End-to-End Tests (E2E)
 
 ### Where tests live
 
-- **Location:** Next to the code under `src/**/__tests__/`.
-- **Pattern:** `src/<layer>/<module>/__tests__/<module>.test.ts` or `<name>.spec.ts`.
+- **Location:** Dedicated `tests/` folder (see `docs/TEST_COVERAGE_IMPROVEMENT_PLAN.md`).
+- **Structure:** `tests/unit/<domain>/` and `tests/integration/<domain>/`
 - **Examples:**
-  - `src/domain/entities/__tests__/license-entity.test.ts` – domain entities
-  - `src/application/use-cases/license/__tests__/get-licenses-usecase.test.ts` – use-cases
+  - `tests/unit/domain/license-entity.test.ts` – domain entities
+  - `tests/unit/application/license/get-licenses-usecase.test.ts` – use-cases
+  - `tests/integration/hooks/use-realtime-sync.test.tsx` – hooks
 
-Jest discovers tests via `testMatch`: `<rootDir>/src/**/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)`.
+Jest discovers tests via `testMatch`: `<rootDir>/tests/**/*.(test|spec).(ts|tsx)`.
 
 ### What to mock
 
@@ -153,6 +154,16 @@ Coverage thresholds are in `jest.config.js`; new code should not lower overall c
 1. **Testing** (above) – Conventions and how to add tests
 2. **[Performance](./performance.md)** – Optimization techniques
 3. **[Conventions](./conventions.md)** – Coding standards
+
+## API Types & Codegen
+
+When backend API changes, regenerate frontend types:
+
+```bash
+cd frontend && npm run codegen
+```
+
+This exports the Swagger spec from the backend and generates `src/infrastructure/api/generated-types.d.ts`. CI verifies that generated types are committed.
 
 ## 🔗 Related Documentation
 

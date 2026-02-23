@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useUser } from '@/presentation/contexts/user-context';
+import { updateUserSchema, type UpdateUserFormData } from '@/shared/schemas';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
@@ -17,33 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
 import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Typography } from '@/presentation/components/atoms';
-import { isValidPhoneNumber } from 'react-phone-number-input';
 
 import { Edit, X, Check } from 'lucide-react';
-
-// Validation schema for updates (all fields optional)
-const updateUserSchema = z.object({
-  displayName: z.string()
-    .min(1, 'Display name cannot be empty')
-    .max(100, 'Display name cannot exceed 100 characters')
-    .optional(),
-  phone: z.string()
-    .optional()
-    .refine((val) => !val || isValidPhoneNumber(val), {
-      message: 'Phone number must be in valid format'
-    }),
-  role: z.enum([USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF]).optional(),
-  isActive: z.boolean().optional(),
-}).refine((data) => {
-  // At least one field must be provided
-  return Object.values(data).some(value =>
-    value !== undefined && value !== null && value !== ''
-  );
-}, {
-  message: 'At least one field must be updated'
-});
-
-type UpdateUserFormData = z.infer<typeof updateUserSchema>;
 
 interface UserEditFormProps {
   user: User;

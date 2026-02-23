@@ -22,6 +22,8 @@ export interface LicenseRecord {
   /** Package object for API round-trip (basic, print_check, staff_performance, sms_package_6000) */
   Package?: Record<string, unknown>;
   term: LicenseTerm;
+  /** Due date for Term Yearly (from coming_expired / renewal_due_date) */
+  dueDate?: string;
   seatsTotal?: number; // Total number of seats
   seatsUsed?: number; // Number of seats used
   lastPayment: number;

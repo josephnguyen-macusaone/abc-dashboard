@@ -6,7 +6,9 @@ const PLAN_VALUES = ['Basic', 'Premium', 'Print Check', 'Staff Performance', 'Un
 const TERM_VALUES = ['monthly', 'yearly'];
 
 function ensureString(value, field, maxLength) {
-  if (value === undefined) return;
+  if (value === undefined) {
+    return;
+  }
   if (typeof value !== 'string') {
     throw new ValidationException(`${field} must be a string`);
   }
@@ -16,7 +18,9 @@ function ensureString(value, field, maxLength) {
 }
 
 function ensureNumber(value, field) {
-  if (value === undefined) return;
+  if (value === undefined) {
+    return;
+  }
   if (typeof value !== 'number' || Number.isNaN(value)) {
     throw new ValidationException(`${field} must be a number`);
   }
@@ -90,7 +94,10 @@ export class LicenseValidator {
       // Handle comma-separated plan values (e.g., "Basic,Premium" or "Basic,Staff+Performance")
       const rawValues = Array.isArray(query.plan)
         ? query.plan
-        : query.plan.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
+        : query.plan
+            .split(',')
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0);
       // Decode URL-encoded values (e.g. Staff+Performance or Staff%20Performance -> Staff Performance)
       const planValues = rawValues.map((p) => {
         try {
@@ -312,11 +319,11 @@ export class LicenseValidator {
           key: input.key || 'unknown',
           expiresAt: input.expiresAt,
         });
-      } else if (expiresAt <= startsAt) {
+      } else if (expiresAt <= startDateObj) {
         logger.warn('License has expiresAt before startsAt', {
           key: input.key || 'unknown',
           expiresAt: input.expiresAt,
-          startsAt: input.startsAt,
+          startsAt: input.startsAt || input.startDay,
         });
       }
     }

@@ -1935,7 +1935,7 @@ function useDataGrid<TData>({
         page: (pg?.pageIndex ?? 0) + 1,
         limit: pg?.pageSize ?? 10,
         sortBy: activeSort?.id,
-        sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
+        sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : "desc") as "asc" | "desc",
         filters: filterMap,
         search: searchValue,
       };

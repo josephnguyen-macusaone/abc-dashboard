@@ -28,6 +28,8 @@ export class ExternalLicenseController {
         syncToInternalOnly: req.query.syncToInternalOnly === 'true',
         bidirectional: req.query.bidirectional === 'true',
         comprehensive: req.query.comprehensive !== 'false', // Default to true for comprehensive approach
+        limit: req.query.limit ? parseInt(req.query.limit) : undefined, // e.g. limit=20 for test sync
+        maxPages: req.query.maxPages ? parseInt(req.query.maxPages) : undefined, // e.g. maxPages=10 for test sync
       };
 
       logger.info('Starting external license sync via API', {
@@ -145,19 +147,41 @@ export class ExternalLicenseController {
   // ========================================================================
 
   /**
-   * Get licenses with pagination and filtering
+   * Get licenses with pagination and filtering.
+   * When syncFirst=true, syncs from external API first so total reflects the external source of truth.
    */
   getLicenses = async (req, res) => {
+    let db;
     try {
+      const syncFirst = req.query.syncFirst === 'true';
+
+      if (syncFirst) {
+        logger.info('External licenses getLicenses: syncing from external API first', {
+          correlationId: req.correlationId,
+          userId: req.user?.id,
+        });
+        try {
+          await this.syncExternalLicensesUseCase.execute({
+            syncToInternalOnly: false,
+            comprehensive: true,
+          });
+        } catch (syncError) {
+          logger.warn('Sync before getLicenses failed, returning existing DB data', {
+            correlationId: req.correlationId,
+            error: syncError.message,
+          });
+          // Continue to return list from DB (may have stale total)
+        }
+      }
+
       logger.debug('External licenses getLicenses called');
 
-      // Direct approach - import and use repository directly
       const { ExternalLicenseRepository } =
         await import('../repositories/external-license-repository.js');
       const knex = (await import('knex')).default;
       const { getKnexConfig } = await import('../config/database.js');
 
-      const db = knex(getKnexConfig());
+      db = knex(getKnexConfig());
       const repo = new ExternalLicenseRepository(db);
 
       const options = {
@@ -171,27 +195,33 @@ export class ExternalLicenseController {
       const result = await repo.findLicenses(options);
       logger.debug('External licenses repository call completed', { hasResult: !!result });
 
-      // Close the database connection
       await db.destroy();
+
+      const total = result.total || 0;
+      const totalPages = Math.ceil(total / options.limit);
 
       return res.json({
         success: true,
         message: 'External licenses retrieved successfully',
         data: result.licenses || [],
         meta: {
-          pagination: {
-            page: options.page,
-            limit: options.limit,
-            total: result.total || 0,
-            totalPages: Math.ceil((result.total || 0) / options.limit),
-          },
+          page: options.page,
+          limit: options.limit,
+          total,
+          totalPages,
+          hasNext: options.page < totalPages,
+          hasPrev: options.page > 1,
         },
       });
     } catch (error) {
       // Make sure to close DB connection on error too
-      try {
-        await db.destroy();
-      } catch (e) {}
+      if (db) {
+        try {
+          await db.destroy();
+        } catch (_e) {
+          // Ignore destroy errors
+        }
+      }
 
       logger.error('Failed to get external licenses via API', {
         correlationId: req.correlationId,

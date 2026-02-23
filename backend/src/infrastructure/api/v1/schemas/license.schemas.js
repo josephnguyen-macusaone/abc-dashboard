@@ -57,10 +57,19 @@ export const licenseSchemas = {
     plan: Joi.alternatives()
       .try(
         Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'),
-        Joi.array().items(Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'))
+        Joi.array().items(
+          Joi.string().valid(
+            'Basic',
+            'Premium',
+            'Print Check',
+            'Staff Performance',
+            'Unlimited SMS'
+          )
+        )
       )
       .messages({
-        'any.only': 'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
+        'any.only':
+          'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
       }),
 
     term: Joi.alternatives()
@@ -154,9 +163,12 @@ export const licenseSchemas = {
       'any.only': 'Status must be one of: active, cancel',
     }),
 
-    plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS').messages({
-      'any.only': 'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
-    }),
+    plan: Joi.string()
+      .valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS')
+      .messages({
+        'any.only':
+          'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
+      }),
 
     term: Joi.string().valid('monthly', 'yearly').messages({
       'any.only': 'Term must be one of: monthly, yearly',
@@ -223,9 +235,12 @@ export const licenseSchemas = {
       'any.only': 'Status must be one of: active, cancel',
     }),
 
-    plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS').messages({
-      'any.only': 'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
-    }),
+    plan: Joi.string()
+      .valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS')
+      .messages({
+        'any.only':
+          'Plan must be one of: Basic, Premium, Print Check, Staff Performance, Unlimited SMS',
+      }),
 
     term: Joi.string().valid('monthly', 'yearly').messages({
       'any.only': 'Term must be one of: monthly, yearly',
@@ -345,7 +360,13 @@ export const licenseSchemas = {
               startsAt: Joi.string().optional(), // Frontend uses startsAt
               startDay: Joi.string().optional(), // Alternative field name
               status: Joi.string().valid('active', 'cancel').default('active'),
-              plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'),
+              plan: Joi.string().valid(
+                'Basic',
+                'Premium',
+                'Print Check',
+                'Staff Performance',
+                'Unlimited SMS'
+              ),
               term: Joi.string().valid('monthly', 'yearly'),
               seatsTotal: Joi.number().min(1).integer().default(1),
               cancelDate: Joi.when('status', {
@@ -387,7 +408,9 @@ export const licenseSchemas = {
             startsAt: Joi.string().optional(), // Frontend uses startsAt, backend uses startDay
             startDay: Joi.string().optional(), // Alternative field name
             status: Joi.string().valid('active', 'cancel').optional(),
-            plan: Joi.string().valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS').optional(),
+            plan: Joi.string()
+              .valid('Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS')
+              .optional(),
             term: Joi.string().valid('monthly', 'yearly').optional(),
             seatsTotal: Joi.number().min(1).integer().optional(),
             cancelDate: Joi.when('status', {
@@ -455,6 +478,84 @@ export const licenseSchemas = {
       'string.empty': 'License ID cannot be empty',
     }),
   }),
+
+  /**
+   * Update external license schema (PUT /api/v1/external-licenses/:id)
+   * External API shape: dba, zip, status (0|1), license_type, monthlyFee, smsBalance, Note, ActivateDate, Coming_expired
+   */
+  updateExternalLicense: Joi.object({
+    dba: Joi.string().trim().allow('').max(255).messages({
+      'string.max': 'DBA cannot exceed 255 characters',
+    }),
+
+    zip: Joi.string().trim().max(10).allow('').messages({
+      'string.max': 'ZIP code cannot exceed 10 characters',
+    }),
+
+    status: Joi.number().valid(0, 1).messages({
+      'any.only': 'Status must be 0 (cancel) or 1 (active)',
+      'number.base': 'Status must be a number',
+    }),
+
+    license_type: Joi.string().trim().max(50).messages({
+      'string.max': 'License type cannot exceed 50 characters',
+    }),
+
+    monthlyFee: Joi.number().min(0).messages({
+      'number.min': 'Monthly fee must be greater than or equal to 0',
+      'number.base': 'Monthly fee must be a number',
+    }),
+
+    smsBalance: Joi.number().min(0).integer().messages({
+      'number.min': 'SMS balance must be greater than or equal to 0',
+      'number.base': 'SMS balance must be a number',
+      'number.integer': 'SMS balance must be an integer',
+    }),
+
+    Note: Joi.string().trim().allow('').messages({
+      'string.base': 'Note must be a string',
+    }),
+
+    ActivateDate: Joi.string()
+      .trim()
+      .allow('')
+      .pattern(/^$|^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})$/)
+      .messages({
+        'string.base': 'ActivateDate must be a string',
+        'string.pattern.base': 'ActivateDate must be YYYY-MM-DD or MM/DD/YYYY',
+      }),
+
+    Coming_expired: Joi.string()
+      .trim()
+      .allow('')
+      .pattern(/^$|^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})$/)
+      .messages({
+        'string.base': 'Coming_expired must be a string',
+        'string.pattern.base': 'Coming_expired must be YYYY-MM-DD or MM/DD/YYYY',
+      }),
+
+    // Alias for Coming_expired (frontend may send lowercase)
+    coming_expired: Joi.string()
+      .trim()
+      .allow('')
+      .pattern(/^$|^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})$/)
+      .messages({
+        'string.base': 'coming_expired must be a string',
+        'string.pattern.base': 'coming_expired must be YYYY-MM-DD or MM/DD/YYYY',
+      }),
+  })
+    .min(1)
+    .custom((value, _helpers) => {
+      // Normalize coming_expired -> Coming_expired for repository compatibility
+      if (value.coming_expired !== undefined && value.Coming_expired === undefined) {
+        value.Coming_expired = value.coming_expired;
+        delete value.coming_expired;
+      }
+      return value;
+    })
+    .messages({
+      'object.min': 'At least one field must be provided for update',
+    }),
 };
 
 export default licenseSchemas;

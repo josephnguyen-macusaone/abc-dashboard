@@ -43,5 +43,3 @@ export async function down(knex) {
     table.dropColumn('external_sync_error');
   });
 }
-
-

@@ -1,5 +1,3 @@
-import { config } from './config.js';
-
 /**
  * License Sync Configuration
  * Centralized configuration for external license synchronization operations
@@ -100,7 +98,10 @@ export function validateLicenseSyncConfig() {
     errors.push('LICENSE_SYNC_CONCURRENCY must be between 1 and 20');
   }
 
-  if (licenseSyncConfig.sync.maxLicensesForComprehensive < 100 || licenseSyncConfig.sync.maxLicensesForComprehensive > 50000) {
+  if (
+    licenseSyncConfig.sync.maxLicensesForComprehensive < 100 ||
+    licenseSyncConfig.sync.maxLicensesForComprehensive > 50000
+  ) {
     errors.push('LICENSE_SYNC_MAX_COMPREHENSIVE must be between 100 and 50000');
   }
 

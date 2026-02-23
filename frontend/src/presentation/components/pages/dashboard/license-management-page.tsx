@@ -4,10 +4,11 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/infrastructure/stores/auth";
+import { useInitialLicenseFilters } from "@/presentation/hooks/use-initial-license-filters";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
@@ -74,30 +75,8 @@ export function LicenseManagementPage() {
     [fetchLicenses]
   );
 
-  // Initial load: same as admin dashboard — default to current month when no date filter is set
-  const hasInitializedDateRef = useRef(false);
-  useEffect(() => {
-    const from = filters.startsAtFrom;
-    const to = filters.startsAtTo;
-
-    if (from && to) {
-      hasInitializedDateRef.current = true;
-      fetchLicenses({ page: 1, limit: 20, startsAtFrom: from, startsAtTo: to });
-      return;
-    }
-
-    if (hasInitializedDateRef.current) {
-      fetchLicenses({ page: 1, limit: 20 });
-      return;
-    }
-
-    hasInitializedDateRef.current = true;
-    const now = new Date();
-    const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-    const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
-    setFilters({ ...filters, startsAtFrom, startsAtTo });
-    fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
-  }, []);
+  // Initial load: default to current month when no date filter is set (encapsulated in hook)
+  useInitialLicenseFilters({ filters, setFilters, fetchLicenses });
 
   // Refetch when tab becomes visible to recover from stuck loading when tab was inactive
   useEffect(() => {

@@ -84,5 +84,3 @@ export async function down(knex) {
   await knex.schema.dropTableIfExists('license_assignments');
   await knex.raw('DROP TYPE IF EXISTS assignment_status');
 }
-
-

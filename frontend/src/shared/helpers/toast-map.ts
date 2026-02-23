@@ -1,6 +1,6 @@
 import { useToast } from '@/presentation/contexts/toast-context';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
-import { getErrorMessage } from '@/infrastructure/api/errors';
+import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import { getErrorStatus } from './error-normalizer';
 
 type ToastCategory = 'auth' | 'network' | 'validation' | 'generic';

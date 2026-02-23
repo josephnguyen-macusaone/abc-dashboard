@@ -115,5 +115,3 @@ export async function down(knex) {
   await knex.raw('DROP TYPE IF EXISTS license_status');
   await knex.raw('DROP TYPE IF EXISTS license_term');
 }
-
-

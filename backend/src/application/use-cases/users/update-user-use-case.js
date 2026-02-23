@@ -29,7 +29,7 @@ export class UpdateUserUseCase {
       if (targetUser.role === 'admin') {
         return {
           allowed: false,
-          reason: 'Admins cannot update other admin accounts'
+          reason: 'Admins cannot update other admin accounts',
         };
       }
       return { allowed: true };
@@ -40,13 +40,13 @@ export class UpdateUserUseCase {
       if (targetUser.role === 'admin') {
         return {
           allowed: false,
-          reason: 'Managers cannot update admin accounts'
+          reason: 'Managers cannot update admin accounts',
         };
       }
       if (targetUser.role === 'manager') {
         return {
           allowed: false,
-          reason: 'Managers cannot update other managers'
+          reason: 'Managers cannot update other managers',
         };
       }
       if (targetUser.role === 'staff') {
@@ -57,7 +57,7 @@ export class UpdateUserUseCase {
     // Staff and other roles can only update themselves (already handled above)
     return {
       allowed: false,
-      reason: 'Insufficient permissions to update users'
+      reason: 'Insufficient permissions to update users',
     };
   }
 
@@ -74,7 +74,7 @@ export class UpdateUserUseCase {
     if (updater.id === targetUser.id) {
       return {
         allowed: false,
-        reason: 'You cannot change your own account status'
+        reason: 'You cannot change your own account status',
       };
     }
 
@@ -83,7 +83,7 @@ export class UpdateUserUseCase {
       if (targetUser.role === 'admin') {
         return {
           allowed: false,
-          reason: 'Admins cannot change status of other admin accounts'
+          reason: 'Admins cannot change status of other admin accounts',
         };
       }
       return { allowed: true };
@@ -96,14 +96,14 @@ export class UpdateUserUseCase {
       }
       return {
         allowed: false,
-        reason: 'Managers can only change status of staff accounts'
+        reason: 'Managers can only change status of staff accounts',
       };
     }
 
     // Staff cannot edit status of anyone
     return {
       allowed: false,
-      reason: 'You do not have permission to change account status'
+      reason: 'You do not have permission to change account status',
     };
   }
 
@@ -146,9 +146,11 @@ export class UpdateUserUseCase {
       if (updates.isActive !== undefined) {
         const canUpdateStatus = this.canUserUpdateStatus(currentUser, user);
         if (!canUpdateStatus.allowed) {
-          throw new InsufficientPermissionsException(canUpdateStatus.reason || 'change account status');
+          throw new InsufficientPermissionsException(
+            canUpdateStatus.reason || 'change account status'
+          );
         }
-        
+
         // Log status change for audit
         logger.security('USER_STATUS_CHANGE', {
           action: updates.isActive ? 'activate' : 'deactivate',
@@ -189,9 +191,11 @@ export class UpdateUserUseCase {
       };
     } catch (error) {
       // Re-throw domain exceptions as-is for proper error handling
-      if (error instanceof ValidationException ||
-          error instanceof ResourceNotFoundException ||
-          error instanceof InsufficientPermissionsException) {
+      if (
+        error instanceof ValidationException ||
+        error instanceof ResourceNotFoundException ||
+        error instanceof InsufficientPermissionsException
+      ) {
         throw error;
       }
       // Wrap unexpected errors

@@ -364,12 +364,12 @@ async function runAllTests() {
   results.config = await testConfig();
 
   // Test health
-  console.log('\n' + '='.repeat(50));
+  console.log(`\n${'='.repeat(50)}`);
   results.health = await checkHealth();
 
   // Test sending (only if config and health passed)
   if (results.config && results.health) {
-    console.log('\n' + '='.repeat(50));
+    console.log(`\n${'='.repeat(50)}`);
     results.send = await testSending();
   } else {
     console.log('\n⚠️  Skipping email sending test due to configuration/health issues');
@@ -377,14 +377,14 @@ async function runAllTests() {
 
   // Test templates (only if config passed)
   if (results.config) {
-    console.log('\n' + '='.repeat(50));
+    console.log(`\n${'='.repeat(50)}`);
     results.templates = await testTemplates();
   } else {
     console.log('\n⚠️  Skipping template testing due to configuration issues');
   }
 
   // Summary
-  console.log('\n' + '='.repeat(50));
+  console.log(`\n${'='.repeat(50)}`);
   console.log('📊 Email Testing Suite Results:');
   Object.entries(results).forEach(([test, passed]) => {
     console.log(`   ${test.padEnd(10)}: ${passed ? '✅ PASSED' : '❌ FAILED'}`);

@@ -4,12 +4,11 @@ import {
   generalApiRateLimit,
 } from '../middleware/rate-limiting-middleware.js';
 import {
-  requireLicenseSync,
   requireExternalLicenseSync,
-  requireComprehensiveSync,
-  requireLicenseRead,
   suspiciousActivityMonitor,
 } from '../middleware/license-access-control-middleware.js';
+import { validateRequest, validateParams } from '../middleware/validation-middleware.js';
+import { licenseSchemas } from '../api/v1/schemas/license.schemas.js';
 
 /**
  * External License Routes
@@ -72,6 +71,20 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *           type: boolean
    *           default: true
    *         description: 'Use comprehensive reconciliation (external-first, internal-second, compare gaps)'
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 10000
+   *         description: 'Optional: sync only N licenses for data mapping verification'
+   *       - in: query
+   *         name: maxPages
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 500
+   *         description: 'Optional: sync only N pages (e.g. 10) for data mapping verification'
    *     responses:
    *       200:
    *         description: Sync completed successfully
@@ -332,6 +345,12 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *           enum: [asc, desc]
    *           default: desc
    *         description: Sort order
+   *       - in: query
+   *         name: syncFirst
+   *         schema:
+   *           type: boolean
+   *           default: false
+   *         description: When true, sync from external API first so total reflects the external source of truth, then return list from DB
    *     responses:
    *       200:
    *         description: Licenses retrieved successfully with flat metadata including page, limit, total, totalPages, hasNext, and hasPrev
@@ -569,6 +588,14 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                 type: string
    *               smsBalance:
    *                 type: number
+   *               Note:
+   *                 type: string
+   *               ActivateDate:
+   *                 type: string
+   *                 description: Activation/start date (external API format)
+   *               coming_expired:
+   *                 type: string
+   *                 description: Due date for Term Yearly (expiry/renewal date)
    *     responses:
    *       200:
    *         description: License updated successfully
@@ -617,7 +644,12 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *         description: License not found
    */
   router.get('/:id', controller.getLicenseById);
-  router.put('/:id', controller.updateLicense);
+  router.put(
+    '/:id',
+    validateParams(licenseSchemas.licenseId),
+    validateRequest(licenseSchemas.updateExternalLicense),
+    controller.updateLicense
+  );
   router.delete('/:id', controller.deleteLicense);
 
   /**

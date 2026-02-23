@@ -5,8 +5,8 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
-import { STATUS_OPTIONS, PLAN_MODULE_OPTIONS, TERM_OPTIONS } from "./license-table-columns";
+import type { LicenseRecord } from "@/types";
+import { STATUS_OPTIONS, TERM_OPTIONS } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
 
 export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
   return [
@@ -14,7 +14,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "dba",
       accessorKey: "dba",
       header: "DBA",
-      size: 150,
+      size: 200,
       enableColumnFilter: false,
       meta: {
         label: "DBA",
@@ -25,7 +25,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "zip",
       accessorKey: "zip",
       header: "Zip Code",
-      size: 100,
+      size: 130,
       meta: {
         label: "Zip Code",
         cell: { variant: "short-text" as const },
@@ -34,10 +34,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
     {
       id: "startsAt",
       accessorKey: "startsAt",
-      header: "Start Date",
-      size: 120,
+      header: "Activate Date",
+      size: 160,
       meta: {
-        label: "Start Date",
+        label: "Activate Date",
         cell: { variant: "date" as const },
       },
     },
@@ -45,7 +45,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "status",
       accessorKey: "status",
       header: "Status",
-      size: 120,
+      size: 130,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const status = row.getValue(id) as string;
@@ -63,7 +63,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "plan",
       accessorKey: "plan",
       header: "Plan",
-      size: 200,
+      size: 160,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
@@ -82,7 +82,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "term",
       accessorKey: "term",
       header: "Term",
-      size: 110,
+      size: 150,
       enableColumnFilter: true,
       filterFn: (row, id, value) => {
         const term = row.getValue(id) as string;
@@ -97,10 +97,20 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
     },
     {
+      id: "dueDate",
+      accessorKey: "dueDate",
+      header: "Due Date",
+      size: 150,
+      meta: {
+        label: "Due Date",
+        cell: { variant: "date" as const },
+      },
+    },
+    {
       id: "lastPayment",
       accessorKey: "lastPayment",
       header: "Monthly Fee",
-      size: 130,
+      size: 160,
       meta: {
         label: "Monthly Fee",
         cell: { variant: "number" as const, min: 0 },
@@ -110,7 +120,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "lastActive",
       accessorKey: "lastActive",
       header: "Last Active",
-      size: 120,
+      size: 160,
       meta: {
         label: "Last Active",
         cell: { variant: "date" as const },
@@ -120,7 +130,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "smsPurchased",
       accessorKey: "smsPurchased",
       header: "SMS Purchased",
-      size: 130,
+      size: 170,
       meta: {
         label: "SMS Purchased",
         cell: { variant: "number" as const, min: 0 },
@@ -130,7 +140,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "smsSent",
       accessorKey: "smsSent",
       header: "SMS Sent",
-      size: 110,
+      size: 150,
       meta: {
         label: "SMS Sent",
         cell: { variant: "number" as const, min: 0 },
@@ -140,7 +150,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "smsBalance",
       accessorKey: "smsBalance",
       header: "SMS Balance",
-      size: 120,
+      size: 160,
       meta: {
         label: "SMS Balance",
         cell: { variant: "number" as const },
@@ -150,7 +160,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "agents",
       accessorKey: "agents",
       header: "Agents",
-      size: 90,
+      size: 120,
       meta: {
         label: "Agents",
         cell: { variant: "number" as const, min: 0 },
@@ -160,7 +170,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "agentsName",
       accessorKey: "agentsName",
       header: "Agents Name",
-      size: 200,
+      size: 280,
       enableColumnFilter: false,
       meta: {
         label: "Agents Name",
@@ -171,7 +181,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "agentsCost",
       accessorKey: "agentsCost",
       header: "Agents Cost",
-      size: 120,
+      size: 160,
       meta: {
         label: "Agents Cost",
         cell: { variant: "number" as const, min: 0 },
@@ -181,7 +191,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "notes",
       accessorKey: "notes",
       header: "Notes",
-      size: 200,
+      size: 300,
       meta: {
         label: "Notes",
         cell: { variant: "short-text" as const },

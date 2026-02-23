@@ -262,5 +262,3 @@ export class ILicenseRepository {
     throw new Error('findLicensesWithLowSeats not implemented');
   }
 }
-
-

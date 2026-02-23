@@ -15,13 +15,14 @@ import { ValidationException } from '../../domain/exceptions/domain.exception.js
 import logger from '../../infrastructure/config/logger.js';
 
 export class LicenseService extends ILicenseService {
-  constructor(licenseRepository, userRepository) {
+  constructor(licenseRepository, userRepository, externalLicenseRepository = null) {
     super();
     this.licenseRepository = licenseRepository;
     this.userRepository = userRepository;
+    this.externalLicenseRepository = externalLicenseRepository;
 
-    // Initialize use cases
-    this.getLicensesUseCase = new GetLicensesUseCase(licenseRepository);
+    // Initialize use cases (inject external repo for enrichment merge)
+    this.getLicensesUseCase = new GetLicensesUseCase(licenseRepository, externalLicenseRepository);
     this.createLicenseUseCase = new CreateLicenseUseCase(licenseRepository);
     this.updateLicenseUseCase = new UpdateLicenseUseCase(licenseRepository);
     this.deleteLicenseUseCase = new DeleteLicenseUseCase(licenseRepository);
@@ -246,7 +247,7 @@ export class LicenseService extends ILicenseService {
         // Use the update use case for proper validation and audit logging
         const userId = licenseData.updatedBy;
         const updatedLicense = await this.updateLicenseUseCase.execute(existingLicense.id, data, {
-          userId
+          userId,
         });
 
         updatedLicenses.push(updatedLicense);

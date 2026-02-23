@@ -14,7 +14,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootEnv = path.resolve(__dirname, '../../.env');
 
 function loadEnv(filePath) {
-  if (!fs.existsSync(filePath)) return;
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
   const noop = () => {};
   const orig = process.stdout.write;
   process.stdout.write = noop;
@@ -22,14 +24,24 @@ function loadEnv(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
     for (const line of content.split('\n')) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
+      if (!trimmed || trimmed.startsWith('#')) {
+        continue;
+      }
       const eq = trimmed.indexOf('=');
-      if (eq === -1) continue;
+      if (eq === -1) {
+        continue;
+      }
       const key = trimmed.slice(0, eq).trim();
       let val = trimmed.slice(eq + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
         val = val.slice(1, -1).replace(/\\(.)/g, '$1');
-      if (!(key in process.env)) process.env[key] = val;
+      }
+      if (!(key in process.env)) {
+        process.env[key] = val;
+      }
     }
   } finally {
     process.stdout.write = orig;

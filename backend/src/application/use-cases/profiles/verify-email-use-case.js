@@ -18,7 +18,7 @@ export class VerifyEmailUseCase {
       return {
         success: true,
         message: 'Email verified successfully',
-        profile: updatedProfile.getProfile()
+        profile: updatedProfile.getProfile(),
       };
     } catch (error) {
       throw new Error(`Failed to verify email: ${error.message}`);

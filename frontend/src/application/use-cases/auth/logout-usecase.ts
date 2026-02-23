@@ -1,7 +1,7 @@
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
-import { httpClient } from '@/infrastructure/api/client';
+import { httpClient } from '@/infrastructure/api/core/client';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface LogoutUseCaseContract {
