@@ -202,19 +202,31 @@ export class LicenseSyncScheduler {
   }
 
   /**
-   * Manually trigger a sync
+   * Manually trigger a sync.
+   * Sets syncInProgress so frontend can show banner and disable Sync button.
+   * Skips if a sync is already in progress (scheduled or manual).
    */
   async runManualSync(options = {}) {
+    if (this.syncInProgress) {
+      logger.warn('Skipping manual sync: sync already in progress');
+      return {
+        success: false,
+        skipped: true,
+        message: 'Sync already in progress',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
     const overrideConfig = {
       ...this.config,
       ...options,
     };
 
     logger.info('Manually triggering license sync', { overrideConfig });
+    this.syncInProgress = true;
+    const startTime = Date.now();
 
     try {
-      const startTime = Date.now();
-
       const syncResult = await this.syncExternalLicensesUseCase.execute({
         comprehensive: overrideConfig.comprehensive,
         batchSize: overrideConfig.batchSize,
@@ -223,6 +235,11 @@ export class LicenseSyncScheduler {
       });
 
       const duration = Date.now() - startTime;
+      this.lastSyncResult = {
+        ...syncResult,
+        duration,
+        timestamp: new Date().toISOString(),
+      };
 
       logger.info('Manual license sync completed', {
         duration,
@@ -233,10 +250,21 @@ export class LicenseSyncScheduler {
         failed: syncResult.failed,
       });
 
+      if (this.licenseRealtimeService?.emitSyncComplete) {
+        this.licenseRealtimeService.emitSyncComplete({
+          timestamp: this.lastSyncResult.timestamp,
+          duration: this.lastSyncResult.duration,
+          created: syncResult.created ?? 0,
+          updated: syncResult.updated ?? 0,
+          failed: syncResult.failed ?? 0,
+          success: syncResult.success ?? false,
+        });
+      }
+
       return {
         ...syncResult,
         duration,
-        timestamp: new Date().toISOString(),
+        timestamp: this.lastSyncResult.timestamp,
       };
     } catch (error) {
       logger.error('Manual license sync failed', {
@@ -244,6 +272,8 @@ export class LicenseSyncScheduler {
         stack: error.stack,
       });
       throw error;
+    } finally {
+      this.syncInProgress = false;
     }
   }
 

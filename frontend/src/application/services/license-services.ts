@@ -206,6 +206,13 @@ export class LicenseManagementService {
   }
 
   /**
+   * Trigger manual license sync (user-initiated; sync external data then enter data to avoid conflicts)
+   */
+  async triggerManualSync(): Promise<void> {
+    return this.licenseRepository.triggerManualSync();
+  }
+
+  /**
    * Get dashboard metrics (overview, utilization, alerts - shape depends on backend)
    */
   async getDashboardMetrics(params?: { startsAtFrom?: string; startsAtTo?: string; search?: string; status?: string; dba?: string }): Promise<unknown> {

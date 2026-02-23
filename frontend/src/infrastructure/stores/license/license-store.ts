@@ -93,6 +93,8 @@ interface LicenseState {
   syncStatusError: boolean;
   /** Last known sync timestamp; used to detect new sync and trigger refetch */
   lastKnownSyncTimestamp: string | null;
+  /** True while manual sync trigger request is in flight */
+  triggerManualSyncLoading: boolean;
   /** Dashboard metrics (overview, utilization, alerts - shape depends on backend) */
   dashboardMetrics: unknown | null;
   dashboardMetricsLoading: boolean;
@@ -111,6 +113,8 @@ interface LicenseState {
 
   // Actions
   fetchSyncStatus: () => Promise<void>;
+  /** Trigger manual license sync (sync data first, then enter data to avoid conflicts) */
+  triggerManualSync: () => Promise<void>;
   fetchDashboardMetrics: (params?: { startsAtFrom?: string; startsAtTo?: string; search?: string; status?: string; dba?: string }) => Promise<void>;
   fetchLicensesRequiringAttention: (options?: Record<string, unknown>) => Promise<{ expiringSoon: unknown[]; expired: unknown[]; suspended: unknown[]; total: number }>;
   bulkUpdateByIdentifiers: (identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }, updates: Record<string, unknown>) => Promise<{ updated: number }>;
@@ -158,6 +162,7 @@ export const useLicenseStore = create<LicenseState>()(
         syncStatusLoading: false,
         syncStatusError: false,
         lastKnownSyncTimestamp: null,
+        triggerManualSyncLoading: false,
         dashboardMetrics: null,
         dashboardMetricsLoading: false,
         dashboardMetricsError: null,
@@ -191,6 +196,21 @@ export const useLicenseStore = create<LicenseState>()(
             }
           } catch {
             set({ syncStatus: null, syncStatusLoading: false, syncStatusError: true });
+          }
+        },
+
+        triggerManualSync: async () => {
+          const { syncStatus, triggerManualSyncLoading } = get();
+          if (syncStatus?.syncInProgress || triggerManualSyncLoading) return;
+          set({ triggerManualSyncLoading: true });
+          try {
+            await container.licenseManagementService.triggerManualSync();
+            toast.success('Sync started. Please wait for it to complete before entering data.');
+            await get().fetchSyncStatus();
+          } catch (err) {
+            toast.error(getErrorMessage(err) || 'Failed to start sync');
+          } finally {
+            set({ triggerManualSyncLoading: false });
           }
         },
 
@@ -1006,6 +1026,7 @@ export const useLicenseStore = create<LicenseState>()(
             syncStatusLoading: false,
             syncStatusError: false,
             lastKnownSyncTimestamp: null,
+            triggerManualSyncLoading: false,
             dashboardMetrics: null,
             dashboardMetricsLoading: false,
             dashboardMetricsError: null,
@@ -1036,6 +1057,7 @@ export const selectLicenseLastFetchedAt = (state: LicenseState) => state.lastFet
 export const selectSyncStatus = (state: LicenseState) => state.syncStatus;
 export const selectSyncStatusLoading = (state: LicenseState) => state.syncStatusLoading;
 export const selectSyncStatusError = (state: LicenseState) => state.syncStatusError;
+export const selectTriggerManualSyncLoading = (state: LicenseState) => state.triggerManualSyncLoading;
 export const selectDashboardMetrics = (state: LicenseState) => state.dashboardMetrics;
 export const selectDashboardMetricsLoading = (state: LicenseState) => state.dashboardMetricsLoading;
 export const selectDashboardMetricsError = (state: LicenseState) => state.dashboardMetricsError;

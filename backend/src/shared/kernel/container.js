@@ -279,7 +279,9 @@ class Container {
       const syncUseCase = await this.getSyncExternalLicensesUseCase();
       const realtimeService = this.getLicenseRealtimeService();
       const config = {
-        syncSchedule: process.env.LICENSE_SYNC_SCHEDULE || '*/30 * * * *',
+        // Default: 2am and 3am daily (night sync to reduce conflict with data entry)
+        syncSchedule: process.env.LICENSE_SYNC_SCHEDULE || '0 2,3 * * *',
+        timezone: process.env.LICENSE_SYNC_TIMEZONE || 'America/Chicago',
       };
       this.instances.set(
         'licenseSyncScheduler',
@@ -463,11 +465,11 @@ class Container {
   async getLicenseController() {
     if (!this.instances.has('licenseController')) {
       const licenseService = await this.getLicenseService();
-      const syncExternalLicensesUseCase = await this.getSyncExternalLicensesUseCase();
+      const licenseSyncScheduler = await this.getLicenseSyncScheduler();
       const realtimeService = this.getLicenseRealtimeService();
       this.instances.set(
         'licenseController',
-        new LicenseController(licenseService, syncExternalLicensesUseCase, realtimeService)
+        new LicenseController(licenseService, licenseSyncScheduler, realtimeService)
       );
     }
     return this.instances.get('licenseController');

@@ -104,6 +104,10 @@ export class LicenseApiClient implements ILicenseApiClient {
     return body?.data ?? (response as LicenseSyncStatusResponse);
   }
 
+  async triggerSync(): Promise<void> {
+    await this.client.post<{ message?: string }>('/licenses/sync');
+  }
+
   async getDashboardMetrics(params?: Record<string, unknown>): Promise<unknown> {
     const qs = params ? buildQueryString(params) : '';
     return this.client.get(`/licenses/dashboard/metrics${qs}`);
