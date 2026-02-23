@@ -63,7 +63,6 @@ export class ExpireLicenseUseCase {
       });
 
       return expiredLicense;
-
     } catch (error) {
       logger.error('License expiration use case failed', {
         licenseId,
@@ -144,8 +143,8 @@ export class ExpireLicenseUseCase {
    * Suspend a license due to expiration
    */
   async suspendLicense(license, expirationOptions, context) {
-    const suspensionReason = expirationOptions.reason ||
-      'Suspended due to expiration and grace period end';
+    const suspensionReason =
+      expirationOptions.reason || 'Suspended due to expiration and grace period end';
 
     // Update license status
     const updatedLicense = await this.licenseRepository.update(license.id, {
@@ -260,7 +259,6 @@ export class ExpireLicenseUseCase {
       });
 
       return results;
-
     } catch (error) {
       logger.error('Bulk license expiration failed', {
         licenseIds,
@@ -307,10 +305,10 @@ export class ExpireLicenseUseCase {
         });
 
         // Filter out duplicates
-        const existingIds = new Set(expiredLicenses.map(l => l.id));
+        const existingIds = new Set(expiredLicenses.map((l) => l.id));
         expiredLicenses = [
           ...expiredLicenses,
-          ...graceExpiredLicenses.filter(l => !existingIds.has(l.id))
+          ...graceExpiredLicenses.filter((l) => !existingIds.has(l.id)),
         ];
       }
 
@@ -319,7 +317,7 @@ export class ExpireLicenseUseCase {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysPastExpiration);
 
-        expiredLicenses = expiredLicenses.filter(license => {
+        expiredLicenses = expiredLicenses.filter((license) => {
           const expiryDate = new Date(license.expiresAt);
           return expiryDate < cutoffDate;
         });
@@ -333,7 +331,6 @@ export class ExpireLicenseUseCase {
       });
 
       return expiredLicenses;
-
     } catch (error) {
       logger.error('Failed to get licenses to expire', {
         error: error.message,
@@ -369,7 +366,6 @@ export class ExpireLicenseUseCase {
         willChangeStatus: action === 'suspend' || action === 'mark_expired',
         newStatus: action === 'suspend' ? 'expired' : license.status,
       };
-
     } catch (error) {
       logger.error('Failed to preview license expiration', {
         licenseId,

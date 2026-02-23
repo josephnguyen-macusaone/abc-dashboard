@@ -548,99 +548,41 @@ export class UserController {
       const currentUser = req.user;
       const { format = 'csv', columns = [], includeFilters = true } = req.body;
 
-      // Validate format
-      const validFormats = ['csv', 'excel', 'json', 'pdf'];
-      if (!validFormats.includes(format)) {
-        throw new ValidationException(`Invalid format. Must be one of: ${validFormats.join(', ')}`);
-      }
-
-      // Check permission
+      validateExportFormat(format);
       if (!hasPermission(currentUser.role, PERMISSIONS.READ_USER)) {
         throw new InsufficientPermissionsException('You do not have permission to export users');
       }
 
-      // Use the same query logic as getUsers but without pagination
       const sanitizedQuery = UserValidator.validateListQuery(req.query);
       const permissionFilters = getUserQueryFilters(currentUser, req.query);
-
       const options = {
         ...sanitizedQuery,
-        filters: {
-          ...permissionFilters,
-          search: req.query.search,
-          email: req.query.email,
-          username: req.query.username,
-          displayName: req.query.displayName,
-        },
+        filters: includeFilters
+          ? {
+              ...permissionFilters,
+              search: req.query.search,
+              email: req.query.email,
+              username: req.query.username,
+              displayName: req.query.displayName,
+            }
+          : { ...permissionFilters },
         page: 1,
-        limit: 10000, // Export up to 10,000 records
+        limit: 10000,
       };
 
-      // If includeFilters is false, remove all filters
-      if (!includeFilters) {
-        options.filters = { ...permissionFilters };
-      }
-
       const result = await this.getUsersUseCase.execute(options);
-      const users = result.users;
-
-      // Filter columns if specified
-      let exportData = users;
-      if (columns && columns.length > 0) {
-        exportData = users.map((user) => {
-          const filtered = {};
-          columns.forEach((col) => {
-            if (user[col] !== undefined) {
-              filtered[col] = user[col];
-            }
-          });
-          return filtered;
-        });
-      }
+      const exportData = filterUsersByColumns(result.users, columns);
 
       logger.info('User export', {
         format,
-        recordCount: users.length,
+        recordCount: result.users.length,
         includeFilters,
         columnsCount: columns.length,
         performedBy: currentUser.id,
         correlationId: req.correlationId,
       });
 
-      // Export based on format
-      switch (format) {
-        case 'json':
-          res.setHeader('Content-Type', 'application/json');
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="users-${new Date().toISOString().split('T')[0]}.json"`
-          );
-          return res.send(JSON.stringify(exportData, null, 2));
-
-        case 'csv':
-          const csv = convertToCSV(exportData);
-          res.setHeader('Content-Type', 'text/csv');
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="users-${new Date().toISOString().split('T')[0]}.csv"`
-          );
-          return res.send(csv);
-
-        case 'excel':
-        case 'pdf':
-          // For now, return CSV as placeholder
-          // In production, you'd use libraries like xlsx or pdfkit
-          const placeholder = convertToCSV(exportData);
-          res.setHeader('Content-Type', 'text/csv');
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="users-${new Date().toISOString().split('T')[0]}.csv"`
-          );
-          return res.send(placeholder);
-
-        default:
-          throw new ValidationException('Unsupported format');
-      }
+      return sendExportResponse(res, format, exportData);
     } catch (error) {
       if (
         error instanceof ValidationException ||
@@ -660,6 +602,61 @@ export class UserController {
   }
 }
 
+const VALID_EXPORT_FORMATS = ['csv', 'excel', 'json', 'pdf'];
+
+function validateExportFormat(format) {
+  if (!VALID_EXPORT_FORMATS.includes(format)) {
+    throw new ValidationException(
+      `Invalid format. Must be one of: ${VALID_EXPORT_FORMATS.join(', ')}`
+    );
+  }
+}
+
+function filterUsersByColumns(users, columns) {
+  if (!columns?.length) {
+    return users;
+  }
+  return users.map((user) => {
+    const filtered = {};
+    columns.forEach((col) => {
+      if (user[col] !== undefined) {
+        filtered[col] = user[col];
+      }
+    });
+    return filtered;
+  });
+}
+
+function sendExportResponse(res, format, exportData) {
+  const dateStr = new Date().toISOString().split('T')[0];
+  const filename = `users-${dateStr}`;
+
+  switch (format) {
+    case 'json':
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+      return res.send(JSON.stringify(exportData, null, 2));
+
+    case 'csv': {
+      const csv = convertToCSV(exportData);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      return res.send(csv);
+    }
+
+    case 'excel':
+    case 'pdf': {
+      const placeholder = convertToCSV(exportData);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      return res.send(placeholder);
+    }
+
+    default:
+      throw new ValidationException('Unsupported format');
+  }
+}
+
 /**
  * Helper function to convert JSON to CSV
  */
@@ -673,8 +670,8 @@ function convertToCSV(data) {
   const csvHeaders = headers.join(',');
 
   // Convert each object to CSV row
-  const csvRows = data.map((obj) => {
-    return headers
+  const csvRows = data.map((obj) =>
+    headers
       .map((header) => {
         const value = obj[header];
         // Handle null/undefined
@@ -695,8 +692,8 @@ function convertToCSV(data) {
         }
         return value;
       })
-      .join(',');
-  });
+      .join(',')
+  );
 
   return [csvHeaders, ...csvRows].join('\n');
 }

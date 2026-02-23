@@ -157,7 +157,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     if (!preset) throw new Error(`Unknown date range preset: ${presetName}`);
     const from = new Date();
     const to = new Date();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const first = from.getDate() - from.getDay();
 
     switch (preset.name) {

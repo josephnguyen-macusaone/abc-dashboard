@@ -365,29 +365,12 @@ export class License {
   // ========================================================================
 
   /**
-   * Check if license is expired
-   */
-  isExpired() {
-    if (!this.expiresAt) return false;
-    return new Date() > new Date(this.expiresAt);
-  }
-
-  /**
-   * Check if license is expiring soon (within 30 days)
-   */
-  isExpiringSoon(daysThreshold = 30) {
-    if (!this.expiresAt || this.isExpired()) return false;
-    const now = new Date();
-    const expiryDate = new Date(this.expiresAt);
-    const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-    return daysUntilExpiry <= daysThreshold && daysUntilExpiry > 0;
-  }
-
-  /**
    * Check if license is in grace period
    */
   isInGracePeriod() {
-    if (!this.isExpired() || !this.gracePeriodEnd) return false;
+    if (!this.isExpired() || !this.gracePeriodEnd) {
+      return false;
+    }
     return new Date() <= new Date(this.gracePeriodEnd);
   }
 
@@ -395,9 +378,15 @@ export class License {
    * Check if license should be suspended
    */
   shouldBeSuspended() {
-    if (!this.autoSuspendEnabled) return false;
-    if (!this.isExpired()) return false;
-    if (this.isInGracePeriod()) return false;
+    if (!this.autoSuspendEnabled) {
+      return false;
+    }
+    if (!this.isExpired()) {
+      return false;
+    }
+    if (this.isInGracePeriod()) {
+      return false;
+    }
     return this.status !== 'revoked' && this.status !== 'cancel';
   }
 
@@ -405,8 +394,12 @@ export class License {
    * Check if renewal reminder should be sent
    */
   shouldSendRenewalReminder(reminderType) {
-    if (this.isExpired()) return false;
-    if (!this.expiresAt) return false;
+    if (this.isExpired()) {
+      return false;
+    }
+    if (!this.expiresAt) {
+      return false;
+    }
 
     const now = new Date();
     const expiryDate = new Date(this.expiresAt);
@@ -445,7 +438,9 @@ export class License {
    * Calculate grace period end date
    */
   calculateGracePeriodEnd() {
-    if (!this.expiresAt) return null;
+    if (!this.expiresAt) {
+      return null;
+    }
     const expiryDate = new Date(this.expiresAt);
     const graceEnd = new Date(expiryDate);
     graceEnd.setDate(expiryDate.getDate() + this.gracePeriodDays);
@@ -456,7 +451,9 @@ export class License {
    * Calculate renewal due date (typically 30 days before expiry)
    */
   calculateRenewalDueDate() {
-    if (!this.expiresAt) return null;
+    if (!this.expiresAt) {
+      return null;
+    }
     const expiryDate = new Date(this.expiresAt);
     const renewalDue = new Date(expiryDate);
     renewalDue.setDate(expiryDate.getDate() - 30); // 30 days before expiry
@@ -467,7 +464,9 @@ export class License {
    * Get days until expiration
    */
   getDaysUntilExpiration() {
-    if (!this.expiresAt) return null;
+    if (!this.expiresAt) {
+      return null;
+    }
     const now = new Date();
     const expiryDate = new Date(this.expiresAt);
     return Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
@@ -477,7 +476,9 @@ export class License {
    * Get days until grace period ends
    */
   getDaysUntilGracePeriodEnd() {
-    if (!this.gracePeriodEnd) return null;
+    if (!this.gracePeriodEnd) {
+      return null;
+    }
     const now = new Date();
     const graceEnd = new Date(this.gracePeriodEnd);
     return Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24));
@@ -589,7 +590,7 @@ export class License {
   /**
    * Validate transition to expired status
    */
-  validateTransitionToExpired(context) {
+  validateTransitionToExpired(_context) {
     const errors = [];
 
     // Must have expiration date to expire
@@ -627,7 +628,7 @@ export class License {
   /**
    * Validate transition to cancelled status (warnings only)
    */
-  validateTransitionToCancelled(context) {
+  validateTransitionToCancelled(_context) {
     const warnings = [];
 
     // Warning for cancelling active licenses
@@ -698,6 +699,25 @@ export class License {
   }
 
   /**
+   * Format startsAt as ActivateDate (MM/DD/YYYY) for external API compatibility
+   * @param {string|Date} value - startsAt value
+   * @returns {string|null} Formatted date or null
+   */
+  _formatActivateDate(value) {
+    if (!value) {
+      return null;
+    }
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) {
+      return null;
+    }
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${month}/${day}/${year}`;
+  }
+
+  /**
    * Sanitize license for API response (remove sensitive data)
    */
   toJSON() {
@@ -722,7 +742,13 @@ export class License {
       lastPayment: this.lastPayment,
       smsPurchased: this.smsPurchased,
       smsSent: this.smsSent,
-      smsBalance: this.getSmsBalance(),
+      // Use stored smsBalance when available (external API); else compute from smsPurchased - smsSent
+      smsBalance:
+        this.smsBalance !== undefined &&
+        this.smsBalance !== null &&
+        !Number.isNaN(Number(this.smsBalance))
+          ? Number(this.smsBalance)
+          : this.getSmsBalance(),
       agentsCost: this.agentsCost,
 
       // Location
@@ -731,6 +757,8 @@ export class License {
 
       // Dates & Timeline
       startsAt: this.startsAt,
+      // ActivateDate: external API field alias for startsAt (MM/DD/YYYY format)
+      ActivateDate: this._formatActivateDate(this.startsAt),
       expiresAt: this.expiresAt,
       cancelDate: this.cancelDate,
       lastActive: this.lastActive,

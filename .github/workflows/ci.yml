@@ -1,0 +1,70 @@
+# CI: Run tests and verify codegen on PRs
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install backend deps
+        run: cd backend && npm ci
+
+      - name: Run backend tests
+        run: cd backend && npm run test
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install frontend deps
+        run: cd frontend && npm ci
+
+      - name: Run frontend tests
+        run: cd frontend && npm run test
+
+  codegen-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      - name: Export Swagger and generate types
+        run: cd frontend && npm run codegen
+
+      - name: Check for uncommitted codegen changes
+        run: |
+          if [ -n "$(git status --porcelain frontend/src/infrastructure/api/generated-types.d.ts)" ]; then
+            echo "::error::generated-types.d.ts has uncommitted changes. Run 'npm run codegen' in frontend and commit."
+            git diff frontend/src/infrastructure/api/generated-types.d.ts
+            exit 1
+          fi

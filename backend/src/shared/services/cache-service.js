@@ -115,7 +115,7 @@ class CacheService {
     return {
       ...this.stats,
       size: this.cache.size,
-      hitRate: hitRate.toFixed(2) + '%',
+      hitRate: `${hitRate.toFixed(2)}%`,
     };
   }
 

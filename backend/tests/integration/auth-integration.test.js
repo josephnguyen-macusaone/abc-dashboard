@@ -36,9 +36,13 @@ describe('Authentication Integration Tests', () => {
   }, 10000);
 
   beforeEach(async () => {
-    if (!dbOk) return;
+    if (!dbOk) {
+      return;
+    }
     const db = global.testDb.getDb();
-    if (!db) return;
+    if (!db) {
+      return;
+    }
     await db('user_profiles').del();
     await db('users').del();
 
@@ -62,7 +66,9 @@ describe('Authentication Integration Tests', () => {
 
   describe('POST /api/v1/auth/login', () => {
     it('should login successfully with correct credentials', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).post('/api/v1/auth/login').send({
         email: testUserEmail,
         password: testPassword,
@@ -79,7 +85,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return 401 for invalid credentials', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).post('/api/v1/auth/login').send({
         email: testUserEmail,
         password: 'wrongpassword',
@@ -90,7 +98,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return 401 for non-existent user', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).post('/api/v1/auth/login').send({
         email: 'nonexistent@example.com',
         password: testPassword,
@@ -101,7 +111,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return 400 for missing fields', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).post('/api/v1/auth/login').send({
         email: testUserEmail,
       });
@@ -115,7 +127,9 @@ describe('Authentication Integration Tests', () => {
     let refreshToken;
 
     beforeEach(async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const loginResponse = await request(server).post('/api/v1/auth/login').send({
         email: testUserEmail,
         password: testPassword,
@@ -124,7 +138,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should refresh tokens successfully', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).post('/api/v1/auth/refresh').send({
         refreshToken,
       });
@@ -137,7 +153,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return 401 for invalid refresh token', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).post('/api/v1/auth/refresh').send({
         refreshToken: 'invalid-token',
       });
@@ -151,7 +169,9 @@ describe('Authentication Integration Tests', () => {
     let accessToken;
 
     beforeEach(async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const loginResponse = await request(server).post('/api/v1/auth/login').send({
         email: testUserEmail,
         password: testPassword,
@@ -160,7 +180,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return authenticated user profile', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server)
         .get('/api/v1/auth/profile')
         .set('Authorization', `Bearer ${accessToken}`);
@@ -173,7 +195,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return unauthenticated status without token', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server).get('/api/v1/auth/profile');
 
       expect(response.status).toBe(200);
@@ -183,7 +207,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should return unauthenticated status with invalid token', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server)
         .get('/api/v1/auth/profile')
         .set('Authorization', 'Bearer invalid-token');
@@ -199,7 +225,9 @@ describe('Authentication Integration Tests', () => {
     let accessToken;
 
     beforeEach(async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const loginResponse = await request(server).post('/api/v1/auth/login').send({
         email: testUserEmail,
         password: testPassword,
@@ -208,7 +236,9 @@ describe('Authentication Integration Tests', () => {
     });
 
     it('should logout successfully', async () => {
-      if (!dbOk) return;
+      if (!dbOk) {
+        return;
+      }
       const response = await request(server)
         .post('/api/v1/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`);

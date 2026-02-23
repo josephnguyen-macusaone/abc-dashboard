@@ -1,4 +1,3 @@
-import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import { licenseSyncConfig } from '../../../infrastructure/config/license-sync-config.js';
 import logger from '../../../infrastructure/config/logger.js';
 
@@ -16,13 +15,13 @@ export class ExternalLicenseValidator {
         countid: {
           type: 'number',
           minimum: 1,
-          description: 'Unique count identifier'
+          description: 'Unique count identifier',
         },
         appid: {
           type: ['string', 'null'],
           minLength: 1,
           maxLength: licenseSyncConfig.validation.maxFieldLength,
-          description: 'Application identifier (optional)'
+          description: 'Application identifier (optional)',
         },
 
         // Contact information
@@ -30,89 +29,89 @@ export class ExternalLicenseValidator {
           type: ['string', 'null'],
           minLength: 1,
           maxLength: licenseSyncConfig.validation.maxFieldLength,
-          description: 'Doing Business As name'
+          description: 'Doing Business As name',
         },
         zip: {
           type: ['string', 'null'],
           pattern: '^\\d{5}(-\\d{4})?$',
-          description: 'ZIP code in 12345 or 12345-6789 format'
+          description: 'ZIP code in 12345 or 12345-6789 format',
         },
         emailLicense: {
           type: ['string', 'null'],
           format: 'email',
           maxLength: licenseSyncConfig.validation.maxFieldLength,
-          description: 'License email address'
+          description: 'License email address',
         },
 
         // License details
         license_type: {
           type: 'string',
           enum: licenseSyncConfig.validation.allowedLicenseTypes,
-          description: 'License type (demo or product)'
+          description: 'License type (demo or product)',
         },
         status: {
           type: 'number',
           enum: [0, 1],
-          description: 'License status (0=inactive, 1=active)'
+          description: 'License status (0=inactive, 1=active)',
         },
 
         // Financial data
         monthlyFee: {
           type: ['number', 'null'],
           minimum: 0,
-          description: 'Monthly fee amount'
+          description: 'Monthly fee amount',
         },
         smsBalance: {
           type: ['number', 'null'],
           minimum: 0,
-          description: 'SMS balance count'
+          description: 'SMS balance count',
         },
         smsPurchased: {
           type: ['number', 'null'],
           minimum: 0,
-          description: 'SMS purchased count'
+          description: 'SMS purchased count',
         },
 
         // Dates
         activateDate: {
           type: ['string', 'null'],
           format: 'date',
-          description: 'License activation date'
+          description: 'License activation date',
         },
         comingExpired: {
           type: ['string', 'null'],
           format: 'date',
-          description: 'License expiration date'
+          description: 'License expiration date',
         },
         lastActive: {
           type: ['string', 'null'],
           format: 'date-time',
-          description: 'Last activity timestamp'
+          description: 'Last activity timestamp',
         },
 
         // Additional metadata
         mid: {
           type: ['string', 'null'],
           maxLength: licenseSyncConfig.validation.maxFieldLength,
-          description: 'Merchant ID'
+          description: 'Merchant ID',
         },
         note: {
           type: ['string', 'null'],
           maxLength: licenseSyncConfig.validation.maxFieldLength * 2, // Allow longer notes
-          description: 'License notes'
+          description: 'License notes',
         },
         sendbatWorkspace: {
           type: ['string', 'null'],
           maxLength: licenseSyncConfig.validation.maxFieldLength,
-          description: 'Sendbat workspace identifier'
+          description: 'Sendbat workspace identifier',
         },
 
         // Package data (flexible structure)
         package: {
           type: ['object', 'array', 'null'],
-          description: 'Package configuration data'
-        }
-      }
+          description: 'Package configuration data',
+        },
+      },
     };
   }
 
@@ -122,6 +121,21 @@ export class ExternalLicenseValidator {
    * @param {Object} options - Validation options
    * @returns {Object} Validation result
    */
+  /**
+   * Normalize API response keys to schema format (external API uses mixed casing)
+   */
+  _normalizeApiKeys(licenseData) {
+    return {
+      ...licenseData,
+      emailLicense: licenseData.emailLicense ?? licenseData.Email_license,
+      activateDate: licenseData.activateDate ?? licenseData.ActivateDate,
+      comingExpired: licenseData.comingExpired ?? licenseData.Coming_expired,
+      sendbatWorkspace: licenseData.sendbatWorkspace ?? licenseData.Sendbat_workspace,
+      note: licenseData.note ?? licenseData.Note,
+      smsBalance: licenseData.smsBalance ?? licenseData.sms_balance ?? licenseData.SmsBalance,
+    };
+  }
+
   validateLicense(licenseData, options = {}) {
     const { strictMode = licenseSyncConfig.validation.strictMode } = options;
     const errors = [];
@@ -134,13 +148,20 @@ export class ExternalLicenseValidator {
         return { isValid: false, errors, warnings, sanitizedData: null };
       }
 
+      const normalized = this._normalizeApiKeys(licenseData);
+
       // Required field validation
-      if (!licenseData.countid || typeof licenseData.countid !== 'number') {
+      if (!normalized.countid || typeof normalized.countid !== 'number') {
         errors.push('countid is required and must be a number');
       }
 
       // Field-by-field validation
-      const sanitizedData = this._sanitizeAndValidateFields(licenseData, errors, warnings, strictMode);
+      const sanitizedData = this._sanitizeAndValidateFields(
+        normalized,
+        errors,
+        warnings,
+        strictMode
+      );
 
       // Business rule validation
       this._validateBusinessRules(sanitizedData, errors, warnings);
@@ -160,9 +181,8 @@ export class ExternalLicenseValidator {
         isValid,
         errors,
         warnings,
-        sanitizedData: isValid ? sanitizedData : null
+        sanitizedData: isValid ? sanitizedData : null,
       };
-
     } catch (error) {
       logger.error('License validation error', {
         countid: licenseData?.countid,
@@ -172,7 +192,7 @@ export class ExternalLicenseValidator {
         isValid: false,
         errors: [`Validation error: ${error.message}`],
         warnings,
-        sanitizedData: null
+        sanitizedData: null,
       };
     }
   }
@@ -192,12 +212,12 @@ export class ExternalLicenseValidator {
       errors: [],
       warnings: [],
       validLicenses: [],
-      invalidLicenses: []
+      invalidLicenses: [],
     };
 
     logger.info('Starting bulk license validation', {
       totalLicenses: licensesData.length,
-      continueOnError
+      continueOnError,
     });
 
     for (let i = 0; i < licensesData.length; i++) {
@@ -214,18 +234,17 @@ export class ExternalLicenseValidator {
           results.invalidLicenses.push({
             index: i,
             data: licenseData,
-            errors: validation.errors
+            errors: validation.errors,
           });
-          results.errors.push(...validation.errors.map(err => `License ${i}: ${err}`));
+          results.errors.push(...validation.errors.map((err) => `License ${i}: ${err}`));
         }
 
-        results.warnings.push(...validation.warnings.map(warn => `License ${i}: ${warn}`));
+        results.warnings.push(...validation.warnings.map((warn) => `License ${i}: ${warn}`));
 
         // Stop on first error if not continuing
         if (!validation.isValid && !continueOnError) {
           break;
         }
-
       } catch (error) {
         results.invalid++;
         const errorMsg = `License ${i} validation failed: ${error.message}`;
@@ -233,7 +252,7 @@ export class ExternalLicenseValidator {
         results.invalidLicenses.push({
           index: i,
           data: licenseData,
-          errors: [error.message]
+          errors: [error.message],
         });
 
         if (!continueOnError) {
@@ -246,7 +265,7 @@ export class ExternalLicenseValidator {
       total: results.total,
       valid: results.valid,
       invalid: results.invalid,
-      successRate: results.total > 0 ? Math.round((results.valid / results.total) * 100) : 0
+      successRate: results.total > 0 ? Math.round((results.valid / results.total) * 100) : 0,
     });
 
     return results;
@@ -260,7 +279,7 @@ export class ExternalLicenseValidator {
     const sanitized = { ...licenseData };
 
     // Sanitize and validate each field
-    Object.keys(this.validationSchema.properties).forEach(fieldName => {
+    Object.keys(this.validationSchema.properties).forEach((fieldName) => {
       const fieldSchema = this.validationSchema.properties[fieldName];
       const value = licenseData[fieldName];
 
@@ -316,7 +335,7 @@ export class ExternalLicenseValidator {
         return value.trim();
 
       case 'number':
-      case ['number', 'null']:
+      case ['number', 'null']: {
         const numValue = typeof value === 'string' ? parseFloat(value) : value;
         if (isNaN(numValue)) {
           throw new Error(`must be a valid number, got "${value}"`);
@@ -325,6 +344,7 @@ export class ExternalLicenseValidator {
           throw new Error(`must be at least ${schema.minimum}`);
         }
         return numValue;
+      }
 
       case 'object':
       case 'array':

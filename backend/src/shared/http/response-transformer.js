@@ -3,6 +3,8 @@
  * Provides consistent response formatting across the API
  */
 
+import { formatCanonicalError } from './error-responses.js';
+
 export class ResponseTransformer {
   /**
    * Create a success response
@@ -152,33 +154,47 @@ export const responseHelpers = {
   },
 
   /**
-   * Send a not found response (404)
+   * Send a not found response (404) - canonical error shape
    * @param {string} message - Error message
    */
   notFound(message = 'Resource not found') {
-    const response = ResponseTransformer.error(message);
-    return this.status(404).json(response);
+    const payload = formatCanonicalError('RESOURCE_NOT_FOUND', { customMessage: message });
+    return this.status(payload.error.statusCode).json(payload);
   },
 
   /**
-   * Send a bad request response (400)
+   * Send a bad request response (400) - canonical error shape
    * @param {string} message - Error message
    * @param {object} errors - Optional error details
    */
   badRequest(message = 'Bad request', errors = {}) {
-    const response = ResponseTransformer.error(message, errors);
-    return this.status(400).json(response);
+    const payload = formatCanonicalError('INVALID_INPUT', {
+      customMessage: message,
+      details: Object.keys(errors).length > 0 ? errors : {},
+    });
+    return this.status(payload.error.statusCode).json(payload);
   },
 
   /**
-   * Send an error response
+   * Send an error response - canonical error shape
    * @param {string} message - Error message
    * @param {number} statusCode - HTTP status code (default: 500)
    * @param {object} errors - Optional error details
    */
   error(message = 'An error occurred', statusCode = 500, errors = {}) {
-    const response = ResponseTransformer.error(message, errors);
-    return this.status(statusCode).json(response);
+    const errorKey =
+      statusCode === 401
+        ? 'TOKEN_MISSING'
+        : statusCode === 403
+          ? 'INSUFFICIENT_PERMISSIONS'
+          : statusCode === 400
+            ? 'INVALID_INPUT'
+            : 'INTERNAL_SERVER_ERROR';
+    const payload = formatCanonicalError(errorKey, {
+      customMessage: message,
+      details: Object.keys(errors).length > 0 ? errors : {},
+    });
+    return this.status(statusCode).json(payload);
   },
 };
 

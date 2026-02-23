@@ -16,20 +16,41 @@ router.use(requireLicenseMonitor);
 router.use(monitoringRateLimit);
 
 // Health check endpoint (can be used by load balancers)
-router.get('/health', licenseSyncMonitoringController.getHealth.bind(licenseSyncMonitoringController));
+router.get(
+  '/health',
+  licenseSyncMonitoringController.getHealth.bind(licenseSyncMonitoringController)
+);
 
 // Comprehensive statistics endpoint
-router.get('/stats', licenseSyncMonitoringController.getStats.bind(licenseSyncMonitoringController));
+router.get(
+  '/stats',
+  licenseSyncMonitoringController.getStats.bind(licenseSyncMonitoringController)
+);
 
 // Detailed metrics endpoint
-router.get('/metrics', licenseSyncMonitoringController.getMetrics.bind(licenseSyncMonitoringController));
+router.get(
+  '/metrics',
+  licenseSyncMonitoringController.getMetrics.bind(licenseSyncMonitoringController)
+);
 
 // Alerts management
-router.get('/alerts', licenseSyncMonitoringController.getAlerts.bind(licenseSyncMonitoringController));
-router.post('/alerts/:alertId/acknowledge', licenseSyncMonitoringController.acknowledgeAlert.bind(licenseSyncMonitoringController));
+router.get(
+  '/alerts',
+  licenseSyncMonitoringController.getAlerts.bind(licenseSyncMonitoringController)
+);
+router.post(
+  '/alerts/:alertId/acknowledge',
+  licenseSyncMonitoringController.acknowledgeAlert.bind(licenseSyncMonitoringController)
+);
 
 // Administrative endpoints (require additional authorization in production)
-router.post('/health/check', licenseSyncMonitoringController.forceHealthCheck.bind(licenseSyncMonitoringController));
-router.post('/metrics/reset', licenseSyncMonitoringController.resetMetrics.bind(licenseSyncMonitoringController));
+router.post(
+  '/health/check',
+  licenseSyncMonitoringController.forceHealthCheck.bind(licenseSyncMonitoringController)
+);
+router.post(
+  '/metrics/reset',
+  licenseSyncMonitoringController.resetMetrics.bind(licenseSyncMonitoringController)
+);
 
 export default router;

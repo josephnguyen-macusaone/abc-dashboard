@@ -53,7 +53,7 @@ class Container {
   async getUserRepository() {
     if (!this.instances.has('userRepository')) {
       try {
-        let db = getDB();
+        const db = getDB();
         this.instances.set('userRepository', new UserRepository(db));
       } catch (error) {
         if (error.message === 'Database not initialized. Call connectDB first.') {
@@ -123,7 +123,7 @@ class Container {
   async getUserProfileRepository() {
     if (!this.instances.has('userProfileRepository')) {
       try {
-        let db = getDB();
+        const db = getDB();
         this.instances.set('userProfileRepository', new UserProfileRepository(db));
       } catch (error) {
         if (error.message === 'Database not initialized. Call connectDB first.') {
@@ -142,7 +142,7 @@ class Container {
   async getLicenseRepository() {
     if (!this.instances.has('licenseRepository')) {
       try {
-        let db = getDB();
+        const db = getDB();
         this.instances.set('licenseRepository', new LicenseRepository(db));
       } catch (error) {
         if (error.message === 'Database not initialized. Call connectDB first.') {
@@ -161,7 +161,7 @@ class Container {
   async getExternalLicenseRepository() {
     if (!this.instances.has('externalLicenseRepository')) {
       try {
-        let db = getDB();
+        const db = getDB();
         this.instances.set('externalLicenseRepository', new ExternalLicenseRepository(db));
       } catch (error) {
         if (error.message === 'Database not initialized. Call connectDB first.') {
@@ -227,7 +227,11 @@ class Container {
     if (!this.instances.has('licenseService')) {
       const licenseRepository = await this.getLicenseRepository();
       const userRepository = await this.getUserRepository();
-      this.instances.set('licenseService', new LicenseService(licenseRepository, userRepository));
+      const externalLicenseRepository = await this.getExternalLicenseRepository();
+      this.instances.set(
+        'licenseService',
+        new LicenseService(licenseRepository, userRepository, externalLicenseRepository)
+      );
     }
     return this.instances.get('licenseService');
   }

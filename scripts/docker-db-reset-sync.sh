@@ -2,9 +2,10 @@
 # Run database reset (optional drop), migrate, seed; optionally run license sync.
 #
 # Usage:
-#   ./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
+#   ./scripts/docker-db-reset-sync.sh                # migrate:fresh + seed
 #   ./scripts/docker-db-reset-sync.sh --drop        # drop DB, create, migrate + seed
-#   ./scripts/docker-db-reset-sync.sh --drop --sync # same as --drop + license sync
+#   ./scripts/docker-db-reset-sync.sh --sync        # migrate:fresh + seed + full license sync
+#   ./scripts/docker-db-reset-sync.sh --sync=10     # migrate:fresh + seed + sync 10 pages only
 #
 # Flow: checks backend container is up → (--drop: terminate connections, drop DB, create, migrate) or migrate:fresh
 #       → seed → (--sync: npm run sync:start). All commands run inside containers via docker compose exec.
@@ -22,10 +23,13 @@ cd "$ROOT_DIR"
 
 DO_DROP=0
 DO_SYNC=0
+SYNC_LIMIT=""
+SYNC_MAX_PAGES=""
 for arg in "$@"; do
   case "$arg" in
     --drop) DO_DROP=1 ;;
     --sync) DO_SYNC=1 ;;
+    --sync=*) DO_SYNC=1; SYNC_MAX_PAGES="${arg#--sync=}" ;;
   esac
 done
 
@@ -60,8 +64,16 @@ echo "Running seeds..."
 docker compose exec backend npm run seed
 
 if [ "$DO_SYNC" = "1" ]; then
-  echo "Starting license sync (may take several minutes)..."
-  docker compose exec backend npm run sync:start
+  if [ -n "$SYNC_MAX_PAGES" ]; then
+    echo "Starting license sync (maxPages=$SYNC_MAX_PAGES)..."
+    docker compose exec -e SYNC_MAX_PAGES="$SYNC_MAX_PAGES" backend npm run sync:start
+  elif [ -n "$SYNC_LIMIT" ]; then
+    echo "Starting license sync (limit=$SYNC_LIMIT licenses)..."
+    docker compose exec -e SYNC_LIMIT="$SYNC_LIMIT" backend npm run sync:start
+  else
+    echo "Starting license sync (may take several minutes)..."
+    docker compose exec backend npm run sync:start
+  fi
 fi
 
 echo "Done."

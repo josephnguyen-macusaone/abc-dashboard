@@ -12,7 +12,7 @@ import { useAuthStore } from '@/infrastructure/stores';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
-import { getErrorMessage } from '@/infrastructure/api/errors';
+import { getErrorMessage } from '@/infrastructure/api/core/errors';
 
 export interface AuthPorts {
   login: LoginUseCaseContract;

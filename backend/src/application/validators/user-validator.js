@@ -298,8 +298,12 @@ export class UserValidator {
           const booleans = parts
             .map((v) => {
               const lower = v.trim().toLowerCase();
-              if (lower === 'true') return true;
-              if (lower === 'false') return false;
+              if (lower === 'true') {
+                return true;
+              }
+              if (lower === 'false') {
+                return false;
+              }
               return null; // invalid
             })
             .filter((v) => v !== null);

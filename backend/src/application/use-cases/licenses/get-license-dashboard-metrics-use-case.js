@@ -219,12 +219,18 @@ export class GetLicenseDashboardMetricsUseCase {
 
     // License Income This Period (sum of lastPayment for licenses started in target period)
     const licenseIncomeThisPeriod = targetPeriodLicenses.reduce((sum, license) => {
-      const payment = license.lastPayment != null ? parseFloat(license.lastPayment) : 0;
+      const payment =
+        license.lastPayment !== null && license.lastPayment !== undefined
+          ? parseFloat(license.lastPayment)
+          : 0;
       return sum + (isNaN(payment) ? 0 : payment);
     }, 0);
 
     const licenseIncomeComparisonPeriod = comparisonPeriodLicenses.reduce((sum, license) => {
-      const payment = license.lastPayment != null ? parseFloat(license.lastPayment) : 0;
+      const payment =
+        license.lastPayment !== null && license.lastPayment !== undefined
+          ? parseFloat(license.lastPayment)
+          : 0;
       return sum + (isNaN(payment) ? 0 : payment);
     }, 0);
 

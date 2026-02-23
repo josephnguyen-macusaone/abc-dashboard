@@ -293,7 +293,9 @@ export class LicenseSyncMonitor {
 
     try {
       for (const [key, metric] of this.metrics.entries()) {
-        if (!metric) continue;
+        if (!metric) {
+          continue;
+        }
 
         metrics[key] = {
           type: metric.type,
@@ -403,7 +405,9 @@ export class LicenseSyncMonitor {
     }
 
     const metric = this.metrics.get(name);
-    if (!metric || metric.type !== 'counter') return;
+    if (!metric || metric.type !== 'counter') {
+      return;
+    }
 
     metric.value += value;
 
@@ -425,10 +429,14 @@ export class LicenseSyncMonitor {
   }
 
   recordHistogram(name, value) {
-    if (!this.metrics || !(this.metrics instanceof Map)) return;
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      return;
+    }
 
     const metric = this.metrics.get(name);
-    if (!metric || metric.type !== 'histogram') return;
+    if (!metric || metric.type !== 'histogram') {
+      return;
+    }
 
     metric.value.push(value);
 
@@ -439,44 +447,68 @@ export class LicenseSyncMonitor {
   }
 
   setGauge(name, value) {
-    if (!this.metrics || !(this.metrics instanceof Map)) return;
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      return;
+    }
 
     const metric = this.metrics.get(name);
-    if (!metric || metric.type !== 'gauge') return;
+    if (!metric || metric.type !== 'gauge') {
+      return;
+    }
 
     metric.value = value;
   }
 
   incrementGauge(name, delta) {
-    if (!this.metrics || !(this.metrics instanceof Map)) return;
+    if (!this.metrics || !(this.metrics instanceof Map)) {
+      return;
+    }
 
     const metric = this.metrics.get(name);
-    if (!metric || metric.type !== 'gauge') return;
+    if (!metric || metric.type !== 'gauge') {
+      return;
+    }
 
     metric.value += delta;
   }
 
   _calculateAverage(values) {
-    if (values.length === 0) return 0;
+    if (values.length === 0) {
+      return 0;
+    }
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
   _classifyError(error) {
-    if (!error || !error.message) return 'unknown';
+    if (!error || !error.message) {
+      return 'unknown';
+    }
 
     const message = error.message.toLowerCase();
 
-    if (message.includes('timeout')) return 'timeout';
-    if (message.includes('network') || message.includes('fetch')) return 'network';
-    if (message.includes('401') || message.includes('403')) return 'authentication';
-    if (message.includes('429')) return 'rate_limit';
-    if (message.includes('5')) return 'server_error';
-    if (message.includes('4')) return 'client_error';
+    if (message.includes('timeout')) {
+      return 'timeout';
+    }
+    if (message.includes('network') || message.includes('fetch')) {
+      return 'network';
+    }
+    if (message.includes('401') || message.includes('403')) {
+      return 'authentication';
+    }
+    if (message.includes('429')) {
+      return 'rate_limit';
+    }
+    if (message.includes('5')) {
+      return 'server_error';
+    }
+    if (message.includes('4')) {
+      return 'client_error';
+    }
 
     return 'unknown';
   }
 
-  _checkPerformanceAlerts(operationType, duration, result) {
+  _checkPerformanceAlerts(operationType, duration, _result) {
     // Alert on very slow sync operations (10 min threshold for large datasets, ~150 pages)
     if (duration > 600000) {
       this.createAlert('warning', 'VERY_SLOW_SYNC_OPERATION', {

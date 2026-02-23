@@ -441,7 +441,7 @@ export class LicenseLifecycleController {
 
       const license = await this.licenseRepository.findById(id);
       if (!license) {
-        return sendErrorResponse(res, 'NOT_FOUND');
+        return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
       }
 
       const status = {

@@ -31,4 +31,4 @@ if (!process.env.ENCRYPTION_KEY) {
 const plainPassword = process.argv[2] || 'abc_password';
 const { encryptToHex } = await import('../src/shared/utils/security/encryption.js');
 const hex = encryptToHex(plainPassword, 'db_password');
-console.log('enc:' + hex);
+console.log(`enc:${hex}`);

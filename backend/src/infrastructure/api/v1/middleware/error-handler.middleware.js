@@ -1,5 +1,8 @@
 import logger from '../../../config/logger.js';
-import { sendErrorResponse } from '../../../../shared/http/error-responses.js';
+import {
+  sendErrorResponse,
+  formatCanonicalError,
+} from '../../../../shared/http/error-responses.js';
 
 // Custom error class
 export class AppError extends Error {
@@ -14,24 +17,41 @@ export class AppError extends Error {
   }
 }
 
-// Handle MongoDB Cast Errors
-const handleCastErrorDB = (err) => {
-  const message = `Invalid ${err.path}: ${err.value}`;
+// PostgreSQL error codes (see https://www.postgresql.org/docs/current/errcodes-appendix.html)
+const PG_UNIQUE_VIOLATION = '23505';
+const PG_FOREIGN_KEY_VIOLATION = '23503';
+const PG_NOT_NULL_VIOLATION = '23502';
+const PG_CHECK_VIOLATION = '23514';
+const PG_INVALID_TEXT_REPRESENTATION = '22P02';
+
+// Handle PostgreSQL invalid input (e.g. invalid UUID, invalid type conversion)
+const handleInvalidInputPG = (err) => {
+  const message = err.detail ? `Invalid input: ${err.detail}` : err.message || 'Invalid input data';
   return new AppError(message, 400);
 };
 
-// Handle MongoDB Duplicate Field Errors
-const handleDuplicateFieldsDB = (err) => {
-  const field = Object.keys(err.keyValue)[0];
-  const value = err.keyValue[field];
-  const message = `Duplicate field value: ${field} - '${value}'. Please use another value!`;
+// Handle PostgreSQL unique constraint violation (409 Conflict)
+const handleUniqueViolationPG = (err) => {
+  const field = err.column || err.constraint || 'field';
+  const message = err.detail
+    ? `Duplicate value: ${err.detail}`
+    : `Duplicate field value: ${field}. Please use another value!`;
+  return new AppError(message, 409);
+};
+
+// Handle PostgreSQL foreign key violation
+const handleForeignKeyViolationPG = (err) => {
+  const message = err.detail
+    ? `Referenced record not found: ${err.detail}`
+    : 'Referenced record not found';
   return new AppError(message, 400);
 };
 
-// Handle MongoDB Validation Errors
-const handleValidationErrorDB = (err) => {
-  const errors = Object.values(err.errors).map((val) => val.message);
-  const message = `Invalid input data. ${errors.join('. ')}`;
+// Handle PostgreSQL not null / check violations
+const handleConstraintViolationPG = (err) => {
+  const message = err.detail
+    ? `Constraint violation: ${err.detail}`
+    : err.message || 'Invalid input data';
   return new AppError(message, 400);
 };
 
@@ -78,17 +98,18 @@ const sendErrorProd = (err, req, res) => {
       userId: req.user ? req.user._id : null,
     });
 
-    // Map operational errors to centralized error system
+    // Map operational errors to centralized error system (canonical shape)
     let errorKey = 'INTERNAL_SERVER_ERROR';
     if (err.statusCode === 401) {
-      errorKey = 'INVALID_TOKEN';
+      errorKey = err.message?.includes('expired') ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
     } else if (err.statusCode === 400) {
       errorKey = 'INVALID_INPUT';
     } else if (err.statusCode === 409) {
-      errorKey = 'EMAIL_ALREADY_EXISTS'; // For duplicate key errors
+      errorKey = 'RESOURCE_ALREADY_EXISTS';
     }
 
-    return sendErrorResponse(res, errorKey);
+    const payload = formatCanonicalError(errorKey, { customMessage: err.message });
+    return res.status(payload.error.statusCode).json(payload);
   } else {
     // Programming or other unknown error: don't leak error details
     logger.error('Programming Error Response', {
@@ -124,24 +145,28 @@ export const errorHandler = (err, req, res, _next) => {
     error.message = err.message;
     error.correlationId = req.correlationId;
 
-    // MongoDB CastError
-    if (err.name === 'CastError') {
-      error = handleCastErrorDB(error);
+    // PostgreSQL unique constraint violation
+    if (err.code === PG_UNIQUE_VIOLATION) {
+      error = handleUniqueViolationPG(err);
     }
-    // MongoDB Duplicate Key Error
-    if (err.code === 11000) {
-      error = handleDuplicateFieldsDB(error);
+    // PostgreSQL invalid text representation (e.g. invalid UUID)
+    else if (err.code === PG_INVALID_TEXT_REPRESENTATION) {
+      error = handleInvalidInputPG(err);
     }
-    // MongoDB Validation Error
-    if (err.name === 'ValidationError') {
-      error = handleValidationErrorDB(error);
+    // PostgreSQL foreign key violation
+    else if (err.code === PG_FOREIGN_KEY_VIOLATION) {
+      error = handleForeignKeyViolationPG(err);
+    }
+    // PostgreSQL not null / check violations
+    else if (err.code === PG_NOT_NULL_VIOLATION || err.code === PG_CHECK_VIOLATION) {
+      error = handleConstraintViolationPG(err);
     }
     // JWT Error
-    if (err.name === 'JsonWebTokenError') {
+    else if (err.name === 'JsonWebTokenError') {
       error = handleJWTError();
     }
     // JWT Expired Error
-    if (err.name === 'TokenExpiredError') {
+    else if (err.name === 'TokenExpiredError') {
       error = handleJWTExpiredError();
     }
 

@@ -2,6 +2,14 @@ import type { LicenseRecord } from '@/types';
 import type { LicenseApiRow } from './types';
 
 /**
+ * Extract notes as a simple string from API response.
+ */
+export function extractNotes(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  return typeof value === 'string' ? value : String(value);
+}
+
+/**
  * Transform backend license data to frontend LicenseRecord.
  * Handles both external (ActivateDate, monthlyFee, license_type, status as number)
  * and internal (startDay, lastPayment, plan, status as string) API shapes.
@@ -52,8 +60,13 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     return dateTimeStr;
   };
 
-  // startsAt: external uses ActivateDate; internal uses startDay
-  const startsAtRaw = String(apiLicense.ActivateDate ?? apiLicense.startDay ?? apiLicense.startsAt ?? '');
+  // startsAt: Prefer ActivateDate (external API) when present; fallback to startDay/startsAt (internal)
+  const activateDate =
+    (apiLicense as { ActivateDate?: string; activateDate?: string }).ActivateDate ??
+    (apiLicense as { activateDate?: string }).activateDate;
+  const startsAtRaw = String(
+    activateDate ?? apiLicense.startDay ?? apiLicense.startsAt ?? ''
+  );
   const startsAt = startsAtRaw.includes('/') ? convertDate(startsAtRaw) : (startsAtRaw || '');
 
   // plan: derive from Package or package_data (basic, print_check, staff_performance, sms_package_6000) - empty when nothing
@@ -74,6 +87,10 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
   const lastActiveVal = apiLicense.lastActive != null ? String(apiLicense.lastActive) : '';
   const lastActive = lastActiveVal.includes('/') ? convertDateTime(lastActiveVal) : lastActiveVal;
 
+  // dueDate: external uses coming_expired; internal may use renewal_due_date or similar
+  const dueDateRaw = String((apiLicense as { coming_expired?: string; Coming_expired?: string; renewalDueDate?: string }).coming_expired ?? (apiLicense as { Coming_expired?: string }).Coming_expired ?? (apiLicense as { renewalDueDate?: string }).renewalDueDate ?? '');
+  const dueDate = dueDateRaw.includes('/') ? convertDate(dueDateRaw) : (dueDateRaw || '');
+
   return {
     id: (apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`) as LicenseRecord['id'],
     key: String(apiLicense.appid ?? apiLicense.key ?? ''),
@@ -85,6 +102,7 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     plan,
     Package: pkg && typeof pkg === 'object' ? pkg : undefined,
     term: (apiLicense.term ?? 'monthly') as LicenseRecord['term'],
+    dueDate: dueDate || undefined,
     cancelDate: String(apiLicense.cancelDate ?? ''),
     lastPayment: Number(apiLicense.monthlyFee ?? apiLicense.lastPayment ?? 0),
     lastActive,
@@ -96,7 +114,7 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     agents: Number(apiLicense.agents ?? 0),
     agentsName: typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '',
     agentsCost: Number(apiLicense.agentsCost ?? 0),
-    notes: String(apiLicense.Note ?? apiLicense.notes ?? ''),
+    notes: extractNotes(apiLicense.notes ?? apiLicense.Note),
   };
 }
 
@@ -111,6 +129,8 @@ export interface ExternalLicensePayload {
   Note?: string;
   emailLicense?: string;
   pass?: string;
+  ActivateDate?: string;
+  Coming_expired?: string;
   [key: string]: unknown;
 }
 
@@ -177,19 +197,14 @@ export function transformRecordToApiLicense(license: Partial<LicenseRecord>): Ex
     apiLicense.Note = license.notes; // External API uses Note
   }
 
-  // Package from plan (comma-separated) or license.Package
-  const planStr = license.plan;
-  const pkg = license.Package as Record<string, unknown> | undefined;
-  if (pkg && typeof pkg === 'object') {
-    apiLicense.Package = pkg;
-  } else if (typeof planStr === 'string' && planStr.trim()) {
-    const labels = planStr.split(',').map((s) => s.trim()).filter(Boolean);
-    apiLicense.Package = {
-      basic: labels.includes('Basic'),
-      print_check: labels.includes('Print Check'),
-      staff_performance: labels.includes('Staff Performance'),
-      sms_package_6000: labels.includes('Unlimited SMS'),
-    };
+  // ActivateDate: external API field for activation/start date
+  if (shouldInclude(license.startsAt)) {
+    apiLicense.ActivateDate = license.startsAt;
+  }
+
+  // Coming_expired: external API field for due date (Term Yearly) - backend expects capital C
+  if (shouldInclude(license.dueDate)) {
+    apiLicense.Coming_expired = license.dueDate;
   }
 
   return apiLicense;

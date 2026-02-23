@@ -4,7 +4,7 @@ import { SortOrder } from './enum';
 /**
  * Generic API Response wrapper
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -120,6 +120,7 @@ export type {
   ErrorLike,
   UserId,
   LicenseId,
+  ExternalLicenseId,
   TokenId,
   ApiResponseData,
   FormData,
@@ -129,9 +130,11 @@ export type {
 export {
   isUserId,
   isLicenseId,
+  isExternalLicenseId,
   isTokenId,
   createUserId,
   createLicenseId,
+  createExternalLicenseId,
   createTokenId,
 } from './common';
 

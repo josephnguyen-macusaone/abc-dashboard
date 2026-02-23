@@ -31,40 +31,46 @@ export type ErrorLike = {
 } & Record<string, unknown>;
 
 /**
- * Branded types for IDs to prevent mixing different ID types
+ * Branded types for IDs to prevent mixing different ID types.
+ * Use createXxxId() or `as XxxId` when receiving from API.
  */
 export type UserId = string & { readonly __brand: 'UserId' };
 export type LicenseId = string & { readonly __brand: 'LicenseId' };
+export type ExternalLicenseId = string & { readonly __brand: 'ExternalLicenseId' };
 export type TokenId = string & { readonly __brand: 'TokenId' };
 
 /**
  * Type guards for branded types
  */
-export const isUserId = (value: string): value is UserId => typeof value === 'string' && value.length > 0;
-export const isLicenseId = (value: string): value is LicenseId => typeof value === 'string' && value.length > 0;
-export const isTokenId = (value: string): value is TokenId => typeof value === 'string' && value.length > 0;
+export const isUserId = (value: string): value is UserId =>
+  typeof value === 'string' && value.length > 0;
+export const isLicenseId = (value: string): value is LicenseId =>
+  typeof value === 'string' && value.length > 0;
+export const isExternalLicenseId = (value: string): value is ExternalLicenseId =>
+  typeof value === 'string' && value.length > 0;
+export const isTokenId = (value: string): value is TokenId =>
+  typeof value === 'string' && value.length > 0;
 
 /**
  * Factory functions for branded types
  */
 export const createUserId = (id: string): UserId => {
-  if (!isUserId(id)) {
-    throw new Error('Invalid UserId format');
-  }
+  if (!isUserId(id)) throw new Error('Invalid UserId format');
   return id as UserId;
 };
 
 export const createLicenseId = (id: string): LicenseId => {
-  if (!isLicenseId(id)) {
-    throw new Error('Invalid LicenseId format');
-  }
+  if (!isLicenseId(id)) throw new Error('Invalid LicenseId format');
   return id as LicenseId;
 };
 
+export const createExternalLicenseId = (id: string): ExternalLicenseId => {
+  if (!isExternalLicenseId(id)) throw new Error('Invalid ExternalLicenseId format');
+  return id as ExternalLicenseId;
+};
+
 export const createTokenId = (id: string): TokenId => {
-  if (!isTokenId(id)) {
-    throw new Error('Invalid TokenId format');
-  }
+  if (!isTokenId(id)) throw new Error('Invalid TokenId format');
   return id as TokenId;
 };
 

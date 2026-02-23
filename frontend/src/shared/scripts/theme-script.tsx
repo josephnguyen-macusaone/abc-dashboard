@@ -1,6 +1,3 @@
-import { THEMES } from '@/shared/constants';
-import type { ThemeType } from '@/presentation/contexts/theme-context';
-
 /**
  * Theme Script Component
  *

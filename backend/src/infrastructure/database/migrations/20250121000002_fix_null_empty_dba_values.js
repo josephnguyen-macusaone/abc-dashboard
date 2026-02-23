@@ -4,26 +4,26 @@ import logger from '../../config/logger.js';
  * Migration: Fix Null/Empty DBA Values
  * Updates existing licenses that have null or empty DBA values to prevent frontend validation errors
  */
-export async function up(knex) {
+export async function up(knexParam) {
   logger.info('Fixing null/empty DBA values in licenses table...');
 
-  const nullDbaCount = await knex('licenses').whereNull('dba').update({
+  const nullDbaCount = await knexParam('licenses').whereNull('dba').update({
     dba: 'Unknown Business',
-    updated_at: knex.fn.now(),
+    updated_at: knexParam.fn.now(),
   });
   logger.info('Updated licenses with null DBA values', { count: nullDbaCount });
 
-  const emptyDbaCount = await knex('licenses').where('dba', '').update({
+  const emptyDbaCount = await knexParam('licenses').where('dba', '').update({
     dba: 'Unknown Business',
-    updated_at: knex.fn.now(),
+    updated_at: knexParam.fn.now(),
   });
   logger.info('Updated licenses with empty DBA values', { count: emptyDbaCount });
 
-  const whitespaceDbaCount = await knex('licenses')
+  const whitespaceDbaCount = await knexParam('licenses')
     .whereRaw("dba ~ '^\\s*$' AND dba != ''")
     .update({
       dba: 'Unknown Business',
-      updated_at: knex.fn.now(),
+      updated_at: knexParam.fn.now(),
     });
   logger.info('Updated licenses with whitespace-only DBA values', { count: whitespaceDbaCount });
 
@@ -31,7 +31,7 @@ export async function up(knex) {
   logger.info('Fixed licenses with invalid DBA values', { total: totalFixed });
 }
 
-export async function down(knex) {
+export async function down(_knex) {
   logger.info('Rolling back DBA value fixes...');
   logger.info(
     'DBA value fixes have been rolled back. Some licenses may have empty DBA values again.'

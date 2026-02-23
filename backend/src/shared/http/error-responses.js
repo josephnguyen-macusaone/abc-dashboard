@@ -1,5 +1,74 @@
 import logger from '../../infrastructure/config/logger.js';
 
+/**
+ * Canonical error response schema (RECOMMENDATIONS_IMPLEMENTATION_PLAN R4).
+ * All API errors should use this shape for consistent frontend handling.
+ *
+ * @typedef {Object} CanonicalErrorResponse
+ * @property {boolean} success - Always false for errors
+ * @property {Object} error - Error details
+ * @property {string} error.code - Error code (e.g. INVALID_CREDENTIALS)
+ * @property {string} error.message - Human-readable message
+ * @property {string} error.category - Category (authentication, validation, etc.)
+ * @property {number} error.statusCode - HTTP status code
+ * @property {Object} [error.details] - Additional context
+ */
+
+/**
+ * Interpolate template placeholders like {{key}} with data.
+ * @param {string} template - Template string
+ * @param {Object} data - Replacement data
+ * @returns {string}
+ */
+function interpolateTemplate(template, data) {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) =>
+    data[key] !== undefined ? data[key] : match
+  );
+}
+
+/**
+ * Format error in canonical shape for API responses.
+ * Use this for all error responses; supports templates and additionalData.
+ *
+ * @param {string} errorKey - Key from ERROR_LIST
+ * @param {Object} [options] - Options
+ * @param {Object} [options.templateData] - For template messages (e.g. {{operation}})
+ * @param {Object} [options.additionalData] - For retryAfter, customMessage, etc.
+ * @param {Object} [options.details] - Additional details to merge into error.details
+ * @param {string} [options.customMessage] - Override message
+ * @returns {{ success: false, error: { code, message, category, statusCode, details } }}
+ */
+export function formatCanonicalError(errorKey, options = {}) {
+  const config = ERROR_LIST[errorKey] || ERROR_LIST.INTERNAL_SERVER_ERROR;
+  const { templateData = {}, additionalData = {}, details: extraDetails = {} } = options;
+
+  let message = options.customMessage ?? config.message;
+  if (config.template && Object.keys(templateData).length > 0) {
+    message = interpolateTemplate(message, templateData);
+  } else if (additionalData.customMessage) {
+    message = additionalData.customMessage;
+  }
+
+  const details = { ...extraDetails };
+  if (config.additionalData) {
+    const addl = config.additionalData(additionalData.retryAfter ?? additionalData);
+    Object.assign(details, addl);
+  } else if (Object.keys(additionalData).length > 0) {
+    Object.assign(details, additionalData);
+  }
+
+  return {
+    success: false,
+    error: {
+      code: errorKey,
+      message,
+      category: config.category,
+      statusCode: config.statusCode,
+      details,
+    },
+  };
+}
+
 // Error definitions - centralized error metadata
 export const ERROR_LIST = {
   // Authentication errors
@@ -54,6 +123,12 @@ export const ERROR_LIST = {
     statusCode: 404,
     message: 'User not found',
     category: 'user_management',
+  },
+
+  RESOURCE_NOT_FOUND: {
+    statusCode: 404,
+    message: 'Resource not found',
+    category: 'resource_management',
   },
 
   EMAIL_ALREADY_EXISTS: {
@@ -337,7 +412,7 @@ export class ErrorResponseTransformer {
   }
 }
 
-// Error response generator
+// Error response generator (canonical shape per R4)
 export class ErrorResponse {
   constructor(errorKey, templateData = {}, additionalData = {}) {
     const errorDefinition = ERROR_LIST[errorKey];
@@ -346,12 +421,13 @@ export class ErrorResponse {
       throw new Error(`Unknown error key: ${errorKey}`);
     }
 
+    this.errorKey = errorKey;
     this.statusCode = errorDefinition.statusCode;
     this.category = errorDefinition.category;
 
     // Handle template messages
     if (errorDefinition.template) {
-      this.message = this.interpolateTemplate(errorDefinition.message, templateData);
+      this.message = interpolateTemplate(errorDefinition.message, templateData);
     } else if (additionalData.customMessage) {
       // Use custom message if provided (for ValidationException)
       this.message = additionalData.customMessage;
@@ -368,12 +444,6 @@ export class ErrorResponse {
 
     // Log the error
     this.logError(errorKey, templateData);
-  }
-
-  interpolateTemplate(template, data) {
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) =>
-      data[key] !== undefined ? data[key] : match
-    );
   }
 
   logError(errorKey, templateData) {
@@ -395,20 +465,18 @@ export class ErrorResponse {
     }
   }
 
+  /** Returns canonical error shape: { success: false, error: { code, message, category, statusCode, details } } */
   toResponse() {
     const response = {
       success: false,
       error: {
-        code: this.statusCode,
+        code: this.errorKey,
         message: this.message,
         category: this.category,
+        statusCode: this.statusCode,
+        details: Object.keys(this.additionalData).length > 0 ? this.additionalData : {},
       },
     };
-
-    if (Object.keys(this.additionalData).length > 0) {
-      response.error.details = this.additionalData;
-    }
-
     return response;
   }
 }

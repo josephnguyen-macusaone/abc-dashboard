@@ -42,13 +42,16 @@ export class CreateUserRequestDto extends BaseDto {
     // Auto-generate username from email if not provided (since we use email for login)
     let username = body.username;
     if (!username && body.email) {
-      username = body.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+      username = body.email
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '');
     }
 
     return new CreateUserRequestDto({
-      username: username,
+      username,
       email: body.email,
-      displayName: displayName,
+      displayName,
       role: body.role,
       avatarUrl: body.avatarUrl,
       phone: body.phone,
@@ -67,7 +70,10 @@ export class CreateUserRequestDto extends BaseDto {
 
     // Username is now optional - auto-generated from email if not provided
     if (this.username && this.username.trim().length < 3) {
-      errors.push({ field: 'username', message: 'Username must be at least 3 characters if provided' });
+      errors.push({
+        field: 'username',
+        message: 'Username must be at least 3 characters if provided',
+      });
     }
 
     if (!this.email || !this.email.includes('@')) {

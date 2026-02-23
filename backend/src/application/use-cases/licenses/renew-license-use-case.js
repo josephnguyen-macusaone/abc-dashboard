@@ -54,7 +54,6 @@ export class RenewLicenseUseCase {
       });
 
       return renewedLicense;
-
     } catch (error) {
       logger.error('License renewal use case failed', {
         licenseId,
@@ -78,7 +77,8 @@ export class RenewLicenseUseCase {
       if (typeof options.extensionDays !== 'number' || options.extensionDays <= 0) {
         errors.push('Extension days must be a positive number');
       }
-      if (options.extensionDays > 365 * 2) { // Max 2 years
+      if (options.extensionDays > 365 * 2) {
+        // Max 2 years
         errors.push('Extension cannot exceed 2 years');
       }
     }
@@ -131,8 +131,8 @@ export class RenewLicenseUseCase {
     // Check renewal history for recent renewals (within last 24 hours)
     if (license.renewalHistory && license.renewalHistory.length > 0) {
       const recentRenewals = license.renewalHistory
-        .filter(entry => entry.action === 'license_renewed')
-        .filter(entry => {
+        .filter((entry) => entry.action === 'license_renewed')
+        .filter((entry) => {
           const renewalDate = new Date(entry.timestamp);
           const oneDayAgo = new Date();
           oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -152,7 +152,7 @@ export class RenewLicenseUseCase {
   /**
    * Calculate renewal pricing (placeholder for future implementation)
    */
-  calculateRenewalPricing(license, renewalOptions) {
+  calculateRenewalPricing(license, _renewalOptions) {
     // This would integrate with pricing service
     // For now, return basic pricing info
 
@@ -174,9 +174,9 @@ export class RenewLicenseUseCase {
   getBasePrice(license) {
     // This would come from a pricing configuration
     const priceMap = {
-      'Basic': 29.99,
-      'Premium': 59.99,
-      'Enterprise': 149.99,
+      Basic: 29.99,
+      Premium: 59.99,
+      Enterprise: 149.99,
     };
 
     return priceMap[license.plan] || 29.99;
@@ -199,8 +199,8 @@ export class RenewLicenseUseCase {
       if (renewalOptions.newExpirationDate) {
         newExpirationDate = new Date(renewalOptions.newExpirationDate);
       } else {
-        const extensionDays = renewalOptions.extensionDays ||
-          (license.term === 'yearly' ? 365 : 30);
+        const extensionDays =
+          renewalOptions.extensionDays || (license.term === 'yearly' ? 365 : 30);
         newExpirationDate = new Date(currentExpiration);
         newExpirationDate.setDate(currentExpiration.getDate() + extensionDays);
       }
@@ -218,7 +218,6 @@ export class RenewLicenseUseCase {
         plan: license.plan,
         term: license.term,
       };
-
     } catch (error) {
       logger.error('Failed to get renewal preview', {
         licenseId,

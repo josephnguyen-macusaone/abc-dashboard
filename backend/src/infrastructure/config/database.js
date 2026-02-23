@@ -85,14 +85,21 @@ const connectDB = async (retryCount = 0) => {
         let operation = 'query';
         let table = 'unknown';
 
-        if (sql.includes('select')) operation = 'SELECT';
-        else if (sql.includes('insert')) operation = 'INSERT';
-        else if (sql.includes('update')) operation = 'UPDATE';
-        else if (sql.includes('delete')) operation = 'DELETE';
+        if (sql.includes('select')) {
+          operation = 'SELECT';
+        } else if (sql.includes('insert')) {
+          operation = 'INSERT';
+        } else if (sql.includes('update')) {
+          operation = 'UPDATE';
+        } else if (sql.includes('delete')) {
+          operation = 'DELETE';
+        }
 
         // Extract table name from FROM clause
         const fromMatch = sql.match(/from\s+(\w+)/);
-        if (fromMatch) table = fromMatch[1];
+        if (fromMatch) {
+          table = fromMatch[1];
+        }
 
         // Log slow queries (>100ms)
         if (duration > 100) {

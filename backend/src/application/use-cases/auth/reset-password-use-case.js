@@ -77,13 +77,10 @@ export class ResetPasswordUseCase {
       // Send confirmation email
       try {
         if (this.emailService) {
-          await this.emailService.sendPasswordResetConfirmationEmail(
-            user.email,
-            {
-              displayName: user.displayName,
-              loginUrl: `${config.CLIENT_URL}/login`
-            }
-          );
+          await this.emailService.sendPasswordResetConfirmationEmail(user.email, {
+            displayName: user.displayName,
+            loginUrl: `${config.CLIENT_URL}/login`,
+          });
         }
 
         logger.info('Password reset successful', {

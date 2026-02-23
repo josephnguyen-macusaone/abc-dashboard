@@ -10,6 +10,7 @@ import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import expressSanitizer from 'express-sanitizer';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import connectDB from './src/infrastructure/config/database.js';
@@ -132,6 +133,9 @@ app.use(responseHelpersMiddleware);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Input sanitization (req.body, req.query, req.params) - must run after body parsing
+app.use(expressSanitizer());
 
 // API Documentation with balanced CSP for Swagger UI functionality
 app.use('/api-docs', (req, res, next) => {

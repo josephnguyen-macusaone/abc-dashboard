@@ -1,5 +1,6 @@
 import logger from '../config/logger.js';
 import { licenseSyncMonitor } from '../monitoring/license-sync-monitor.js';
+import { formatCanonicalError } from '../../shared/http/error-responses.js';
 
 /**
  * License Access Control Middleware
@@ -49,17 +50,12 @@ export const LICENSE_ROLES = {
 
   USER: {
     name: 'User',
-    permissions: [
-      LICENSE_PERMISSIONS.LICENSE_READ_OWN,
-      LICENSE_PERMISSIONS.LICENSE_UPDATE_OWN,
-    ],
+    permissions: [LICENSE_PERMISSIONS.LICENSE_READ_OWN, LICENSE_PERMISSIONS.LICENSE_UPDATE_OWN],
   },
 
   VIEWER: {
     name: 'Viewer',
-    permissions: [
-      LICENSE_PERMISSIONS.LICENSE_READ,
-    ],
+    permissions: [LICENSE_PERMISSIONS.LICENSE_READ],
   },
 };
 
@@ -70,7 +66,9 @@ export const LICENSE_ROLES = {
  * @returns {boolean} Whether user has permission
  */
 export function hasPermission(user, permission) {
-  if (!user || !permission) return false;
+  if (!user || !permission) {
+    return false;
+  }
 
   // Check direct permissions first
   if (user.permissions && user.permissions.includes(permission)) {
@@ -100,7 +98,9 @@ export function hasPermission(user, permission) {
  * @returns {boolean} Whether user owns the resource
  */
 export function ownsResource(user, resource) {
-  if (!user || !resource) return false;
+  if (!user || !resource) {
+    return false;
+  }
 
   // Check various ownership fields
   return (
@@ -109,6 +109,35 @@ export function ownsResource(user, resource) {
     resource.ownerId === user.id ||
     resource.assignedTo === user.id
   );
+}
+
+/**
+ * Check if user has access via ownership (for :own permissions)
+ * @param {Object} user - User object
+ * @param {string} permission - Permission string (e.g. license:read:own)
+ * @param {Function} resourceLoader - Async function to load resource
+ * @param {Object} req - Express request
+ * @returns {Promise<boolean>}
+ */
+async function checkOwnershipAccess(user, permission, resourceLoader, req) {
+  const ownPermission = permission.replace(':own', '');
+  if (!hasPermission(user, ownPermission)) {
+    return false;
+  }
+  if (!resourceLoader) {
+    return true;
+  }
+  try {
+    const resource = await resourceLoader(req);
+    return ownsResource(user, resource);
+  } catch (error) {
+    logger.warn('Failed to load resource for ownership check', {
+      error: error.message,
+      permission,
+      userId: user.id,
+    });
+    return false;
+  }
 }
 
 /**
@@ -127,10 +156,8 @@ export const createLicenseAccessMiddleware = (requiredPermissions, options = {})
     try {
       const user = req.user;
       if (!user) {
-        return res.status(401).json({
-          error: 'Authentication required',
-          message: 'You must be authenticated to access this resource',
-        });
+        const payload = formatCanonicalError('TOKEN_MISSING');
+        return res.status(payload.error.statusCode).json(payload);
       }
 
       // Normalize permissions to array
@@ -142,25 +169,8 @@ export const createLicenseAccessMiddleware = (requiredPermissions, options = {})
       for (const permission of permissions) {
         let hasAccess = hasPermission(user, permission);
 
-        // If not allowed by direct permission, check ownership if allowOwn is enabled
         if (!hasAccess && allowOwn && permission.endsWith(':own')) {
-          const ownPermission = permission.replace(':own', '');
-          hasAccess = hasPermission(user, ownPermission);
-
-          // If user has the base permission, check ownership
-          if (hasAccess && resourceLoader) {
-            try {
-              const resource = await resourceLoader(req);
-              hasAccess = ownsResource(user, resource);
-            } catch (error) {
-              logger.warn('Failed to load resource for ownership check', {
-                error: error.message,
-                permission,
-                userId: user.id,
-              });
-              hasAccess = false;
-            }
-          }
+          hasAccess = await checkOwnershipAccess(user, permission, resourceLoader, req);
         }
 
         if (!hasAccess) {
@@ -182,24 +192,21 @@ export const createLicenseAccessMiddleware = (requiredPermissions, options = {})
             });
           }
 
-          return res.status(403).json({
-            error: 'Insufficient permissions',
-            message: `You don't have permission to perform this action: ${permission}`,
-            requiredPermission: permission,
-            userRole: user.role,
+          const payload = formatCanonicalError('INSUFFICIENT_PERMISSIONS', {
+            details: { requiredPermission: permission, userRole: user.role },
           });
+          return res.status(payload.error.statusCode).json(payload);
         }
       }
 
       // Access granted
       logger.debug('Access control passed', {
         userId: user.id,
-        permissions: permissions,
+        permissions,
         endpoint: `${req.method} ${req.path}`,
       });
 
       next();
-
     } catch (error) {
       logger.error('Access control middleware error', {
         error: error.message,
@@ -207,10 +214,10 @@ export const createLicenseAccessMiddleware = (requiredPermissions, options = {})
         endpoint: `${req.method} ${req.path}`,
       });
 
-      res.status(500).json({
-        error: 'Access control error',
-        message: 'An error occurred while checking permissions',
+      const payload = formatCanonicalError('INTERNAL_SERVER_ERROR', {
+        details: { context: 'Access control check' },
       });
+      res.status(payload.error.statusCode).json(payload);
     }
   };
 };
@@ -226,13 +233,19 @@ export const requireLicenseAdmin = createLicenseAccessMiddleware(LICENSE_PERMISS
 export const requireLicenseSync = createLicenseAccessMiddleware(LICENSE_PERMISSIONS.LICENSE_SYNC);
 
 // External sync operations
-export const requireExternalLicenseSync = createLicenseAccessMiddleware(LICENSE_PERMISSIONS.LICENSE_SYNC_EXTERNAL);
+export const requireExternalLicenseSync = createLicenseAccessMiddleware(
+  LICENSE_PERMISSIONS.LICENSE_SYNC_EXTERNAL
+);
 
 // Comprehensive sync (more restrictive)
-export const requireComprehensiveSync = createLicenseAccessMiddleware(LICENSE_PERMISSIONS.LICENSE_SYNC_COMPREHENSIVE);
+export const requireComprehensiveSync = createLicenseAccessMiddleware(
+  LICENSE_PERMISSIONS.LICENSE_SYNC_COMPREHENSIVE
+);
 
 // Monitoring access
-export const requireLicenseMonitor = createLicenseAccessMiddleware(LICENSE_PERMISSIONS.LICENSE_MONITOR);
+export const requireLicenseMonitor = createLicenseAccessMiddleware(
+  LICENSE_PERMISSIONS.LICENSE_MONITOR
+);
 
 // Basic license read (allows own licenses if configured)
 export const requireLicenseRead = createLicenseAccessMiddleware(
@@ -242,7 +255,9 @@ export const requireLicenseRead = createLicenseAccessMiddleware(
     resourceLoader: async (req) => {
       // Load license resource for ownership check
       const licenseId = req.params.id;
-      if (!licenseId) return null;
+      if (!licenseId) {
+        return null;
+      }
 
       // This would typically call a service/repository to load the license
       // For now, return a mock - in real implementation, inject the service
@@ -275,9 +290,10 @@ export const suspiciousActivityMonitor = (req, res, next) => {
   const recentRequests = req.user?.recentRequests || [];
 
   // Filter requests in last 10 seconds
-  const recentWindow = recentRequests.filter(timestamp => now - timestamp < 10000);
+  const recentWindow = recentRequests.filter((timestamp) => now - timestamp < 10000);
 
-  if (recentWindow.length > 10) { // More than 10 requests in 10 seconds
+  if (recentWindow.length > 10) {
+    // More than 10 requests in 10 seconds
     licenseSyncMonitor.createAlert('error', 'SUSPICIOUS_ACTIVITY_DETECTED', {
       userId: user?.id,
       clientIp,

@@ -4,19 +4,15 @@
 
 "use client";
 
-import * as React from "react";
 import { FileText } from "lucide-react";
 
-import {
-  DataTable,
-  DataTableToolbar,
-} from "@/presentation/components/molecules/data/data-table";
+import { DataTable, DataTableToolbar } from "@/presentation/components/molecules/data/data-table";
 import { LicenseDataTableSkeleton } from "@/presentation/components/organisms/skeletons/license-data-table-skeleton";
 import { useDataTable } from "@/presentation/hooks";
 import { Typography } from "@/presentation/components/atoms";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { SearchBar } from "@/presentation/components/molecules";
-import { getLicenseTableColumns } from "./license-table-columns";
+import { getLicenseTableColumns } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
 import type { LicenseRecord } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useDataTableStore } from "@/infrastructure/stores/user";

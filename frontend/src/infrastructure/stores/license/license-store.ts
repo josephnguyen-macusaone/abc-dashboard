@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
 import { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
-import { getErrorMessage } from '@/infrastructure/api/errors';
+import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
@@ -132,6 +132,8 @@ interface LicenseState {
   changePageSize: (limit: number) => Promise<void>;
   setSelectedLicenses: (licenseIds: (number | string)[]) => void;
   clearError: () => void;
+  /** Reset license list when navigating away from license pages to prevent stale data flash. */
+  resetLicenseDataForRouteChange: () => void;
   reset: () => void;
 }
 
@@ -971,6 +973,23 @@ export const useLicenseStore = create<LicenseState>()(
 
         clearError: () => {
           set({ error: null });
+        },
+
+        /**
+         * Reset license list data and search/filters when navigating away from license-related pages.
+         * Prevents stale data flash and searchbar persisting when returning to dashboard/licenses.
+         */
+        resetLicenseDataForRouteChange: () => {
+          const current = get();
+          const { search: _s, searchField: _sf, ...restFilters } = current.filters;
+          set({
+            licenses: [],
+            loading: false,
+            error: null,
+            pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+            lastFetchedAt: null,
+            filters: restFilters as LicenseFilters,
+          });
         },
 
         reset: () => {

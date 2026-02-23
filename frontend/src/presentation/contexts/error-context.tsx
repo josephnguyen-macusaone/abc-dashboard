@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode, useCallback, useEffect, useState } from 'react';
 import { useToast } from './toast-context';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
-import { handleApiError as processApiError } from '@/infrastructure/api/errors';
+import { handleApiError as processApiError } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { RetryUtils } from '@/shared/helpers/retry';
 import { ErrorLike } from '@/shared/types';

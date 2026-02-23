@@ -193,11 +193,12 @@ function DataGridRowImpl<TData>({
             data-highlighted={isCellFocused ? "" : undefined}
             data-slot="grid-cell"
             tabIndex={-1}
-            className={cn("min-w-0", {
+            className={cn("shrink-0", {
               grow: stretchColumns && columnId !== "select",
             })}
             style={{
               width: `calc(var(--col-${columnId}-size) * 1px)`,
+              minWidth: `calc(var(--col-${columnId}-size) * 1px)`,
             }}
           >
             {typeof cell.column.columnDef.header === "function" ? (

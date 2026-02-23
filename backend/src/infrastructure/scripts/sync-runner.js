@@ -22,12 +22,19 @@ async function runSync() {
     // Run comprehensive sync with duplicate detection
     logger.info('Running comprehensive sync with duplicate detection...');
 
+    const limit = process.env.SYNC_LIMIT ? parseInt(process.env.SYNC_LIMIT, 10) : undefined;
+    const maxPages = process.env.SYNC_MAX_PAGES
+      ? parseInt(process.env.SYNC_MAX_PAGES, 10)
+      : undefined;
+
     const result = await syncUseCase.execute({
       comprehensive: true, // Use new robust paginated approach
       bidirectional: false, // Disable bidirectional to avoid errors
       detectDuplicates: true,
       forceFullSync: false,
       batchSize: 15, // Reduced from 25 to avoid pool exhaustion
+      ...(limit != null && limit > 0 && { limit }),
+      ...(maxPages != null && maxPages > 0 && { maxPages }),
     });
 
     logger.info('Sync completed successfully', {

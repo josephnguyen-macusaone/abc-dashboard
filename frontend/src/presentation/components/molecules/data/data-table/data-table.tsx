@@ -39,8 +39,16 @@ export function DataTable<TData>({
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <div className="overflow-hidden rounded-md border">
-          <Table>
+        <div className="overflow-x-auto rounded-md border">
+          <Table
+            style={(() => {
+              const total = table.getHeaderGroups()[0]?.headers.reduce(
+                (sum, h) => sum + h.getSize(),
+                0
+              );
+              return total ? { width: total } : undefined;
+            })()}
+          >
             <TableHeader className="bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>

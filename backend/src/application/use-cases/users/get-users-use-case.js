@@ -28,7 +28,7 @@ export class GetUsersUseCase {
         users: result.users.map((user) => UserResponseDto.fromEntity(user)),
         pagination: new PaginationDto({
           page: result.page,
-          limit: limit,
+          limit,
           totalPages: result.totalPages || totalPages,
         }),
         stats: result.stats,

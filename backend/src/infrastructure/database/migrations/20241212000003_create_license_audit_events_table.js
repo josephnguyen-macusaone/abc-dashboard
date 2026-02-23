@@ -81,5 +81,3 @@ export async function down(knex) {
   await knex.raw('DROP VIEW IF EXISTS license_audit_trail');
   await knex.schema.dropTableIfExists('license_audit_events');
 }
-
-

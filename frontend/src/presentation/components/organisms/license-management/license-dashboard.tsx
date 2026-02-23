@@ -432,7 +432,11 @@ export const LicenseDashboard: React.FC = () => {
                           </TableCell>
                           <TableCell>{license.plan}</TableCell>
                           <TableCell>
-                            {license.startsAt ? new Date(license.startsAt).toLocaleDateString() : 'N/A'}
+                            {license.term === 'yearly' && license.dueDate ? (
+                              new Date(license.dueDate).toLocaleDateString()
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {license.seatsUsed}/{license.seatsTotal}

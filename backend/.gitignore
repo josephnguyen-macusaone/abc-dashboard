@@ -41,6 +41,9 @@ build/
 coverage/
 .nyc_output
 
+# Generated OpenAPI spec (for frontend codegen)
+swagger-spec.json
+
 # Optional: Uncomment if you don't want to commit lock file
 # package-lock.json
 

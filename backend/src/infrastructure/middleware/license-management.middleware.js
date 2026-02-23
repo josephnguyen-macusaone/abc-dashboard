@@ -6,6 +6,7 @@
 import { InsufficientPermissionsException } from '../../domain/exceptions/domain.exception.js';
 import logger from '../config/logger.js';
 import { ROLES } from '../../shared/constants/roles.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 /**
  * Check if user can create licenses
@@ -104,23 +105,14 @@ export function checkLicenseCreationPermission() {
       next();
     } catch (error) {
       if (error instanceof InsufficientPermissionsException) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 403,
-            message: error.message,
-            category: 'authorization',
-          },
-        });
+        return sendErrorResponse(
+          res,
+          'INSUFFICIENT_PERMISSIONS',
+          {},
+          { customMessage: error.message }
+        );
       }
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 500,
-          message: 'Internal server error',
-          category: 'server',
-        },
-      });
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
 }
@@ -176,14 +168,12 @@ export function checkLicenseAccessPermission(operation) {
       next();
     } catch (error) {
       if (error instanceof InsufficientPermissionsException) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 403,
-            message: error.message,
-            category: 'authorization',
-          },
-        });
+        return sendErrorResponse(
+          res,
+          'INSUFFICIENT_PERMISSIONS',
+          {},
+          { customMessage: error.message }
+        );
       }
       throw error;
     }
@@ -222,23 +212,14 @@ export function checkLicenseAssignmentPermission() {
       next();
     } catch (error) {
       if (error instanceof InsufficientPermissionsException) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 403,
-            message: error.message,
-            category: 'authorization',
-          },
-        });
+        return sendErrorResponse(
+          res,
+          'INSUFFICIENT_PERMISSIONS',
+          {},
+          { customMessage: error.message }
+        );
       }
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 500,
-          message: 'Internal server error',
-          category: 'server',
-        },
-      });
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
 }
@@ -275,23 +256,14 @@ export function checkLicenseRevocationPermission() {
       next();
     } catch (error) {
       if (error instanceof InsufficientPermissionsException) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 403,
-            message: error.message,
-            category: 'authorization',
-          },
-        });
+        return sendErrorResponse(
+          res,
+          'INSUFFICIENT_PERMISSIONS',
+          {},
+          { customMessage: error.message }
+        );
       }
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 500,
-          message: 'Internal server error',
-          category: 'server',
-        },
-      });
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
 }
@@ -329,23 +301,14 @@ export function checkLicenseBulkOperationPermission() {
       next();
     } catch (error) {
       if (error instanceof InsufficientPermissionsException) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 403,
-            message: error.message,
-            category: 'authorization',
-          },
-        });
+        return sendErrorResponse(
+          res,
+          'INSUFFICIENT_PERMISSIONS',
+          {},
+          { customMessage: error.message }
+        );
       }
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 500,
-          message: 'Internal server error',
-          category: 'server',
-        },
-      });
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
 }

@@ -19,8 +19,8 @@ export class LicenseSyncMonitoringController {
     try {
       const healthStatus = this.monitor.getHealthStatus();
 
-      const statusCode = healthStatus.overall === 'healthy' ? 200 :
-                        healthStatus.overall === 'warning' ? 200 : 503;
+      const statusCode =
+        healthStatus.overall === 'healthy' ? 200 : healthStatus.overall === 'warning' ? 200 : 503;
 
       res.status(statusCode).json({
         status: healthStatus.overall,
@@ -72,9 +72,15 @@ export class LicenseSyncMonitoringController {
       const { severity, acknowledged, limit } = req.query;
 
       const options = {};
-      if (severity) options.severity = severity;
-      if (acknowledged !== undefined) options.acknowledged = acknowledged === 'true';
-      if (limit) options.limit = parseInt(limit);
+      if (severity) {
+        options.severity = severity;
+      }
+      if (acknowledged !== undefined) {
+        options.acknowledged = acknowledged === 'true';
+      }
+      if (limit) {
+        options.limit = parseInt(limit);
+      }
 
       const alerts = this.monitor.getAlerts(options);
 
@@ -111,7 +117,7 @@ export class LicenseSyncMonitoringController {
     } catch (error) {
       logger.error('Alert acknowledgement failed', {
         alertId: req.params.alertId,
-        error: error.message
+        error: error.message,
       });
       res.status(500).json({
         error: 'Alert acknowledgement failed',
@@ -131,7 +137,7 @@ export class LicenseSyncMonitoringController {
       const healthStatus = this.monitor.getHealthStatus();
 
       // Get recent alerts (last 24 hours)
-      const recentAlerts = alerts.filter(alert => {
+      const recentAlerts = alerts.filter((alert) => {
         const alertTime = new Date(alert.timestamp);
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         return alertTime > oneDayAgo;
@@ -144,12 +150,12 @@ export class LicenseSyncMonitoringController {
         alerts: {
           active: alerts.length,
           recent: recentAlerts.length,
-          critical: alerts.filter(a => a.severity === 'critical').length,
+          critical: alerts.filter((a) => a.severity === 'critical').length,
           bySeverity: {
-            info: alerts.filter(a => a.severity === 'info').length,
-            warning: alerts.filter(a => a.severity === 'warning').length,
-            error: alerts.filter(a => a.severity === 'error').length,
-            critical: alerts.filter(a => a.severity === 'critical').length,
+            info: alerts.filter((a) => a.severity === 'info').length,
+            warning: alerts.filter((a) => a.severity === 'warning').length,
+            error: alerts.filter((a) => a.severity === 'error').length,
+            critical: alerts.filter((a) => a.severity === 'critical').length,
           },
         },
         configuration: {

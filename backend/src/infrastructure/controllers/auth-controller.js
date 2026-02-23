@@ -14,6 +14,46 @@ import {
 } from '../../domain/exceptions/domain.exception.js';
 import { trackFailedLogin, resetFailedAttempts } from '../api/v1/middleware/security.middleware.js';
 
+function setNoCacheHeaders(res) {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    Pragma: 'no-cache',
+    Expires: '0',
+  });
+}
+
+function buildProfileResponseData(user, profile) {
+  const userId = user.id || user._id?.toString();
+  return {
+    user: {
+      id: userId,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+      avatarUrl: user.avatarUrl || null,
+      bio: profile?.bio || null,
+      phone: user.phone || null,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+    isAuthenticated: true,
+  };
+}
+
+async function fetchUserProfile(userProfileRepository, user) {
+  if (!userProfileRepository) {
+    return null;
+  }
+  try {
+    const userId = user.id || user._id?.toString();
+    return await userProfileRepository.findByUserId(userId);
+  } catch {
+    return null;
+  }
+}
+
 export class AuthController extends BaseController {
   constructor(
     loginUseCase,
@@ -72,12 +112,7 @@ export class AuthController extends BaseController {
 
   async getProfile(req, res) {
     try {
-      // Prevent caching - always return fresh data
-      res.set({
-        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-        Pragma: 'no-cache',
-        Expires: '0',
-      });
+      setNoCacheHeaders(res);
 
       logger.debug('Get profile request', {
         correlationId: req.correlationId,
@@ -87,32 +122,12 @@ export class AuthController extends BaseController {
         userEmail: req.user?.email,
       });
 
-      // Check if user is authenticated (user attached by optional auth middleware)
       if (!req.user) {
-        // Not authenticated - return status only
-        logger.warn('Get profile - no user attached', {
-          correlationId: req.correlationId,
-        });
-        return res.success(
-          {
-            user: null,
-            isAuthenticated: false,
-          },
-          'Not authenticated'
-        );
+        logger.warn('Get profile - no user attached', { correlationId: req.correlationId });
+        return res.success({ user: null, isAuthenticated: false }, 'Not authenticated');
       }
 
-      // User is authenticated - return full profile
       const user = req.user;
-
-      logger.debug('Auth controller getProfile - authenticated user', {
-        correlationId: req.correlationId,
-        userId: user?.id || user?._id,
-        userRole: user?.role,
-        userEmail: user?.email,
-      });
-
-      // Validate user object
       if (!user.id && !user._id) {
         logger.warn('Auth controller getProfile - invalid user object', {
           correlationId: req.correlationId,
@@ -122,36 +137,12 @@ export class AuthController extends BaseController {
         return sendErrorResponse(res, 'INVALID_TOKEN');
       }
 
-      // Get user profile for additional data
-      let profile = null;
-      try {
-        if (!this.userProfileRepository) {
-          return sendErrorResponse(res, 'SERVICE_UNAVAILABLE');
-        }
-
-        const userId = user.id || user._id?.toString();
-        profile = await this.userProfileRepository.findByUserId(userId);
-      } catch (profileError) {
-        // Continue without profile - it's optional
-        profile = null;
+      if (!this.userProfileRepository) {
+        return sendErrorResponse(res, 'SERVICE_UNAVAILABLE');
       }
 
-      const responseData = {
-        user: {
-          id: user.id || user._id?.toString(),
-          username: user.username,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-          avatarUrl: user.avatarUrl || null,
-          bio: profile?.bio || null,
-          phone: user.phone || null,
-          isActive: user.isActive,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        },
-        isAuthenticated: true,
-      };
+      const profile = await fetchUserProfile(this.userProfileRepository, user);
+      const responseData = buildProfileResponseData(user, profile);
 
       logger.debug('Sending profile response', {
         correlationId: req.correlationId,

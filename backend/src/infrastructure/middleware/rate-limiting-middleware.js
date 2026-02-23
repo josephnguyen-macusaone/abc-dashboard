@@ -1,5 +1,6 @@
 import logger from '../config/logger.js';
 import { licenseSyncMonitor } from '../monitoring/license-sync-monitor.js';
+import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
 /**
  * Rate Limiting Middleware
@@ -20,10 +21,10 @@ export class RateLimiter {
    */
   check(clientId, options = {}) {
     const {
-      maxRequests = 100,      // Max requests per window
+      maxRequests = 100, // Max requests per window
       windowMs = 15 * 60 * 1000, // 15 minutes window
-      skipSuccessfulRequests = false,
-      skipFailedRequests = false,
+      skipSuccessfulRequests: _skipSuccessfulRequests = false,
+      skipFailedRequests: _skipFailedRequests = false,
     } = options;
 
     const now = Date.now();
@@ -37,7 +38,7 @@ export class RateLimiter {
     }
 
     // Remove old requests outside the window
-    clientRequests = clientRequests.filter(timestamp => timestamp > windowStart);
+    clientRequests = clientRequests.filter((timestamp) => timestamp > windowStart);
     this.requests.set(clientId, clientRequests);
 
     // Check if limit exceeded
@@ -56,7 +57,7 @@ export class RateLimiter {
    * @param {string} clientId - Unique identifier for the client
    * @param {boolean} successful - Whether the request was successful
    */
-  recordRequest(clientId, successful = true) {
+  recordRequest(clientId, _successful = true) {
     const clientRequests = this.requests.get(clientId) || [];
     clientRequests.push(Date.now());
     this.requests.set(clientId, clientRequests);
@@ -72,7 +73,7 @@ export class RateLimiter {
     const cutoff = now - maxAge;
 
     for (const [clientId, requests] of this.requests.entries()) {
-      const filtered = requests.filter(timestamp => timestamp > cutoff);
+      const filtered = requests.filter((timestamp) => timestamp > cutoff);
       if (filtered.length === 0) {
         this.requests.delete(clientId);
       } else {
@@ -103,7 +104,7 @@ export class RateLimiter {
     // Calculate statistics
     const clientStats = [];
     for (const [clientId, requests] of this.requests.entries()) {
-      const recentRequests = requests.filter(ts => ts > lastMinute).length;
+      const recentRequests = requests.filter((ts) => ts > lastMinute).length;
       const totalRequests = requests.length;
 
       stats.totalRequests += totalRequests;
@@ -117,9 +118,7 @@ export class RateLimiter {
     }
 
     // Get top 10 clients by request count
-    stats.topClients = clientStats
-      .sort((a, b) => b.totalRequests - a.totalRequests)
-      .slice(0, 10);
+    stats.topClients = clientStats.sort((a, b) => b.totalRequests - a.totalRequests).slice(0, 10);
 
     return stats;
   }
@@ -136,10 +135,10 @@ export const createRateLimitMiddleware = (options = {}) => {
   const {
     maxRequests = 100,
     windowMs = 15 * 60 * 1000, // 15 minutes
-    skipSuccessfulRequests = false,
-    skipFailedRequests = false,
-    keyGenerator = (req) => req.ip, // Default to IP-based limiting
-    skip = (req) => false, // Function to skip rate limiting for certain requests
+    skipSuccessfulRequests: _skipSuccessfulRequests = false,
+    skipFailedRequests: _skipFailedRequests = false,
+    keyGenerator = (_req) => _req.ip, // Default to IP-based limiting
+    skip = (_req) => false, // Function to skip rate limiting for certain requests
     handler = null, // Custom handler for rate limited requests
   } = options;
 
@@ -181,19 +180,23 @@ export const createRateLimitMiddleware = (options = {}) => {
         return handler(req, res, next);
       }
 
-      return res.status(429).json({
-        error: 'Too many requests',
-        message: 'Rate limit exceeded. Please try again later.',
-        retryAfter: Math.ceil((checkResult.resetTime - new Date()) / 1000),
-        limit: maxRequests,
-        remaining: checkResult.remainingRequests,
-        reset: checkResult.resetTime,
-      });
+      const retryAfter = Math.ceil((checkResult.resetTime - new Date()) / 1000);
+      return sendErrorResponse(
+        res,
+        'RATE_LIMIT_EXCEEDED',
+        {},
+        {
+          retryAfter,
+          limit: maxRequests,
+          remaining: checkResult.remainingRequests,
+          reset: checkResult.resetTime,
+        }
+      );
     }
 
     // Add response hook to record the request after it's processed
     const originalSend = res.send;
-    res.send = function(data) {
+    res.send = function (data) {
       // Record the request (success/failure will be determined by status code)
       const successful = res.statusCode >= 200 && res.statusCode < 400;
       rateLimiter.recordRequest(clientId, successful);
@@ -224,11 +227,7 @@ export const syncOperationRateLimit = createRateLimitMiddleware({
   windowMs: 60 * 60 * 1000, // 1 hour window
   keyGenerator: (req) => req.user?.id || req.ip,
   handler: (req, res) => {
-    res.status(429).json({
-      error: 'Sync operation rate limit exceeded',
-      message: 'Too many sync operations. Please wait before attempting another sync.',
-      retryAfter: 3600, // 1 hour
-    });
+    sendErrorResponse(res, 'RATE_LIMIT_EXCEEDED', {}, { retryAfter: 3600 });
   },
 });
 

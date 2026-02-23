@@ -1,9 +1,7 @@
 import { resolveDbPassword } from './resolve-db-password.js';
 
 // Resolve DB password once (supports plain or enc:<hex> from encryptToHex with context 'db_password')
-const resolvedDbPassword = resolveDbPassword(
-  process.env.POSTGRES_PASSWORD || 'abc_password'
-);
+const resolvedDbPassword = resolveDbPassword(process.env.POSTGRES_PASSWORD || 'abc_password');
 
 // Environment configuration
 export const config = {

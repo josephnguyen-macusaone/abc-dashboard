@@ -27,7 +27,7 @@ async function main() {
     logger.info('Connected to PostgreSQL database');
 
     switch (command) {
-      case 'fresh':
+      case 'fresh': {
         logger.info('Resetting database to clean state...');
 
         // Rollback all migrations to get to a clean state
@@ -66,9 +66,11 @@ async function main() {
         }
         logger.info('Fresh migration completed successfully');
         break;
+      }
 
       case 'migrate':
-      case undefined: // Default to migrate
+      case undefined: {
+        // Default to migrate
         logger.info('Running migrations...');
         const [batchNo2, migrations2] = await db.migrate.latest();
         if (migrations2.length === 0) {
@@ -82,6 +84,7 @@ async function main() {
         }
         logger.info('Migrations completed successfully');
         break;
+      }
 
       case 'rollback': {
         const steps = argument ? parseInt(argument) : 1;
@@ -102,7 +105,7 @@ async function main() {
         break;
       }
 
-      case 'fresh-seed':
+      case 'fresh-seed': {
         logger.info('Fresh migration + seeding...');
 
         // First rollback all migrations
@@ -146,6 +149,7 @@ async function main() {
         await db.seed.run();
         logger.info('Fresh migration + seeding completed successfully');
         break;
+      }
 
       case 'seed':
         if (argument) {
@@ -174,7 +178,7 @@ async function main() {
           });
         }
 
-        const [completedList, pendingList] = completed;
+        const [_completedList, pendingList] = completed;
         if (pendingList && pendingList.length > 0) {
           logger.info('Pending migrations:');
           pendingList.forEach((m) => {

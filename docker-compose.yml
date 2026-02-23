@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --loglevel warning
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Host 6380 to avoid conflict with local Redis on 6379
     networks:
       - abc-license-network
     volumes:

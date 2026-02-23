@@ -15,9 +15,7 @@ export class ManageExternalLicensesUseCase {
    */
   async getLicenses(options = {}) {
     return withTimeout(
-      async () => {
-        return await this.externalLicenseRepository.findLicenses(options);
-      },
+      async () => await this.externalLicenseRepository.findLicenses(options),
       TimeoutPresets.DATABASE,
       'get_external_licenses',
       {
@@ -439,7 +437,8 @@ export class ManageExternalLicensesUseCase {
       async () => {
         // This would typically call the external API
         // For now, return mock data or call external API service
-        const { externalLicenseApiService } = await import('../../../shared/services/external-license-api-service.js');
+        const { externalLicenseApiService } =
+          await import('../../../shared/services/external-license-api-service.js');
 
         return await externalLicenseApiService.getSmsPayments(options);
       },
@@ -463,7 +462,8 @@ export class ManageExternalLicensesUseCase {
     return withTimeout(
       async () => {
         // This would typically call the external API
-        const { externalLicenseApiService } = await import('../../../shared/services/external-license-api-service.js');
+        const { externalLicenseApiService } =
+          await import('../../../shared/services/external-license-api-service.js');
 
         return await externalLicenseApiService.addSmsPayment(paymentData);
       },
@@ -487,7 +487,8 @@ export class ManageExternalLicensesUseCase {
     return withTimeout(
       async () => {
         // This would typically call the external API
-        const { externalLicenseApiService } = await import('../../../shared/services/external-license-api-service.js');
+        const { externalLicenseApiService } =
+          await import('../../../shared/services/external-license-api-service.js');
 
         return await externalLicenseApiService.getLicenseAnalytics(options);
       },

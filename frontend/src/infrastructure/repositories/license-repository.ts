@@ -16,7 +16,9 @@ import {
   type SmsPaymentsResult,
   type AddSmsPaymentData,
 } from '@/domain/repositories/i-license-repository';
-import { licenseApi } from '@/infrastructure/api/licenses';
+import type { ILicenseApiClient } from '@/infrastructure/api/interfaces/i-license-api-client';
+import { createLicenseApiClient } from '@/infrastructure/api/licenses/api-client';
+import { extractNotes } from '@/infrastructure/api/licenses/transforms';
 import type { InternalLicenseRow } from '@/infrastructure/api/licenses/types';
 import type { LicenseRecord } from '@/types';
 import logger from '@/shared/helpers/logger';
@@ -29,6 +31,12 @@ type LicenseLike = InternalLicenseRow | LicenseRecord | (Record<string, unknown>
  * Concrete implementation of ILicenseRepository for license management operations
  */
 export class LicenseRepository implements ILicenseRepository {
+  private readonly apiClient: ILicenseApiClient;
+
+  constructor(apiClient?: ILicenseApiClient) {
+    this.apiClient = apiClient ?? createLicenseApiClient();
+  }
+
   private readonly logger = {
     ...logger.createChild({ component: 'LicenseRepository' }),
     debug: () => {}, // Silent debug logging for license operations
@@ -130,10 +138,11 @@ export class LicenseRepository implements ILicenseRepository {
         lastActive: (apiLicense.lastActive as string) || new Date().toISOString(),
         smsPurchased: (apiLicense.smsPurchased as number) || 0,
         smsSent: (apiLicense.smsSent as number) || 0,
+        smsBalance: (apiLicense.smsBalance as number) ?? undefined,
         agents: (apiLicense.agents as number) || 0,
         agentsName: (typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '') as string,
         agentsCost: (apiLicense.agentsCost as number) || 0,
-        notes: (apiLicense.notes as string) || '',
+        notes: extractNotes(apiLicense.notes ?? (apiLicense as Record<string, unknown>).Note),
         createdAt,
         updatedAt
       });
@@ -195,7 +204,7 @@ export class LicenseRepository implements ILicenseRepository {
     }
 
     try {
-      const response = await licenseApi.getLicense(id.toString());
+      const response = await this.apiClient.getLicense(id.toString());
       if (!response) return null;
       const data = response && typeof response === 'object' && 'data' in response ? (response as { data?: { license?: LicenseLike } | LicenseLike }).data : undefined;
       const apiLicense: LicenseLike | null = data && typeof data === 'object' && data !== null && 'license' in data
@@ -218,7 +227,7 @@ export class LicenseRepository implements ILicenseRepository {
 
   async findByDba(dba: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ dba });
+      const response = await this.apiClient.getLicenses({ dba });
       return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by DBA', {
@@ -231,7 +240,7 @@ export class LicenseRepository implements ILicenseRepository {
 
   async findByStatus(status: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ status });
+      const response = await this.apiClient.getLicenses({ status });
       return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by status', {
@@ -248,7 +257,7 @@ export class LicenseRepository implements ILicenseRepository {
       const futureDate = new Date(today);
       futureDate.setDate(today.getDate() + days);
 
-      const response = await licenseApi.getLicenses({
+      const response = await this.apiClient.getLicenses({
         endDate: futureDate.toISOString().split('T')[0]
       });
 
@@ -270,7 +279,7 @@ export class LicenseRepository implements ILicenseRepository {
 
   async findByPlan(plan: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({ license_type: plan });
+      const response = await this.apiClient.getLicenses({ license_type: plan });
       return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to find licenses by plan', {
@@ -283,7 +292,7 @@ export class LicenseRepository implements ILicenseRepository {
 
   async search(query: string): Promise<License[]> {
     try {
-      const response = await licenseApi.getLicenses({});
+      const response = await this.apiClient.getLicenses({});
       return response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
     } catch (error) {
       this.logger.error('Failed to search licenses', {
@@ -336,7 +345,7 @@ export class LicenseRepository implements ILicenseRepository {
         queryParams.limit = limit;
       }
 
-      const response = await licenseApi.getLicenses(queryParams);
+      const response = await this.apiClient.getLicenses(queryParams);
       const licenses = response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
 
       const result = {
@@ -369,7 +378,7 @@ export class LicenseRepository implements ILicenseRepository {
   async save(license: License): Promise<void> {
     try {
       const apiData = this.mapDomainToApiLicense(license);
-      await licenseApi.updateLicense(license.id.toString(), apiData);
+      await this.apiClient.updateLicense(license.id.toString(), apiData);
 
       // Clear cache for this license
       this.clearLicenseCache(license.id.toString());
@@ -429,7 +438,7 @@ export class LicenseRepository implements ILicenseRepository {
 
     // Get a sample of licenses for statistics calculation
     // Use a reasonable limit instead of fetching all
-    const response = await licenseApi.getLicenses({ limit: 1000 });
+    const response = await this.apiClient.getLicenses({ limit: 1000 });
     const licenses = response.licenses.map((apiLicense: LicenseRecord) => this.mapApiLicenseToDomain(apiLicense));
 
     // Calculate statistics from fetched licenses (API no longer provides stats breakdown)
@@ -497,7 +506,7 @@ export class LicenseRepository implements ILicenseRepository {
   async bulkCreate(licenses: CreateLicenseProps[]): Promise<License[]> {
     try {
       const apiLicenses = licenses.map(props => this.mapCreatePropsToApi(props));
-      const response = await licenseApi.bulkCreateLicenses(apiLicenses);
+      const response = await this.apiClient.bulkCreateLicenses(apiLicenses);
 
       // Map back to domain entities
       const domainLicenses = (response.data.results as LicenseLike[]).map((apiLicense) => this.mapApiLicenseToDomain(apiLicense));
@@ -524,16 +533,17 @@ export class LicenseRepository implements ILicenseRepository {
       }));
 
       // Call the bulk API
-      const updatedRecords = await licenseApi.bulkUpdateInternalLicenses(apiUpdates);
+      const updatedRecords = await this.apiClient.bulkUpdateInternalLicenses(apiUpdates);
 
       // Convert back to domain entities and clear cache
       const updatedLicenses: License[] = [];
       for (const record of updatedRecords) {
+        const r = record as LicenseLike;
         // Clear cache for updated license
-        this.clearLicenseCache(record.id.toString());
+        this.clearLicenseCache(String(r.id ?? ''));
 
         // Convert record back to domain entity
-        const domainLicense = this.mapApiLicenseToDomain(record);
+        const domainLicense = this.mapApiLicenseToDomain(r);
         updatedLicenses.push(domainLicense);
       }
 
@@ -547,7 +557,7 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async getSyncStatus(): Promise<LicenseSyncStatus> {
-    const response = await licenseApi.getLicenseSyncStatus();
+    const response = await this.apiClient.getLicenseSyncStatus();
     return {
       syncInProgress: response.syncInProgress,
       lastSyncResult: response.lastSyncResult
@@ -565,7 +575,7 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async getDashboardMetrics(params?: DashboardMetricsParams): Promise<unknown> {
-    const response = await licenseApi.getDashboardMetrics(params);
+    const response = await this.apiClient.getDashboardMetrics(params as Record<string, unknown> | undefined);
     const data = typeof response === 'object' && response !== null && 'data' in response
       ? (response as { data: unknown }).data
       : response;
@@ -574,7 +584,7 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async getLicensesRequiringAttention(options?: Record<string, unknown>): Promise<LicensesRequiringAttentionResult> {
-    const response = await licenseApi.getLicensesRequiringAttention(options ?? {});
+    const response = await this.apiClient.getLicensesRequiringAttention(options ?? {});
     const data = typeof response === 'object' && response !== null && 'data' in response
       ? (response as { data: unknown }).data
       : response;
@@ -588,7 +598,7 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async bulkUpdateByIdentifiers(identifiers: BulkIdentifiers, updates: Record<string, unknown>): Promise<{ updated: number }> {
-    const response = await licenseApi.bulkUpdateLicenses({ identifiers, updates });
+    const response = await this.apiClient.bulkUpdateLicenses({ identifiers, updates });
     const data = typeof response === 'object' && response !== null && 'data' in response
       ? (response as { data: { updated?: number } }).data
       : { updated: 0 };
@@ -596,7 +606,7 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async getSmsPayments(params?: SmsPaymentsParams): Promise<SmsPaymentsResult> {
-    const response = await licenseApi.getSmsPayments(params ?? {});
+    const response = await this.apiClient.getSmsPayments((params ?? {}) as Record<string, unknown>);
     const data = typeof response === 'object' && response !== null && 'data' in response
       ? (response as { data: { payments?: unknown[]; totals?: unknown; pagination?: unknown } }).data
       : { payments: [], totals: null, pagination: null };
@@ -608,18 +618,18 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async addSmsPayment(paymentData: AddSmsPaymentData): Promise<unknown> {
-    const response = await licenseApi.addSmsPayment(paymentData);
+    const response = await this.apiClient.addSmsPayment(paymentData as unknown as Record<string, unknown>);
     return typeof response === 'object' && response !== null && 'data' in response
       ? (response as { data: unknown }).data
       : response;
   }
 
   async bulkCreateLicensesRaw(licenses: unknown[]): Promise<{ success?: boolean; data?: { results?: unknown[] }; message?: string }> {
-    const response = await licenseApi.bulkCreateLicenses(licenses as never[]);
+    const response = await this.apiClient.bulkCreateLicenses(licenses as never[]);
     return response as { success?: boolean; data?: { results?: unknown[] }; message?: string };
   }
 
   async bulkUpdateInternalLicensesRaw(updates: unknown[]): Promise<unknown> {
-    return await (licenseApi as { bulkUpdateInternalLicenses: (u: unknown[]) => Promise<unknown> }).bulkUpdateInternalLicenses(updates as never[]);
+    return await this.apiClient.bulkUpdateInternalLicenses(updates as Array<{ id: string; [key: string]: unknown }>);
   }
 }

@@ -3,7 +3,9 @@ import { config as appConfig } from '../config/config.js';
 import logger from '../config/logger.js';
 
 function coerceBoolean(value) {
-  if (value === true || value === false) return value;
+  if (value === true || value === false) {
+    return value;
+  }
   if (typeof value === 'string') {
     return value.toLowerCase() === 'true';
   }

@@ -29,11 +29,3 @@ export {
   CreateLicenseRequestDto,
   LicenseAssignmentResponseDto,
 } from './license/index.js';
-
-// License DTOs
-export {
-  LicenseResponseDto,
-  LicenseListResponseDto,
-  CreateLicenseRequestDto,
-  LicenseAssignmentResponseDto,
-} from './license/index.js';

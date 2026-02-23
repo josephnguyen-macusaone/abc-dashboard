@@ -16,7 +16,7 @@ export const tableCellClass =
 export const tableFooterClass =
     "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({ className, style, ...props }: React.ComponentProps<"table">) {
     return (
         <div
             data-slot="table-container"
@@ -25,7 +25,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
             <table
                 data-slot="table"
                 className="w-full caption-bottom text-sm table-fixed"
-                style={{ tableLayout: 'fixed' }}
+                style={{ tableLayout: "fixed", ...style }}
                 {...props}
             />
         </div>
