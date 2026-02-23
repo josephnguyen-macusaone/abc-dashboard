@@ -489,11 +489,13 @@ export class ExternalLicenseApiService {
       return { error: 'Failed to fetch first page - invalid response structure' };
     }
 
+    // Always derive totalPages from meta.total (authoritative) so we use our batchSize.
+    // meta.totalPages depends on the request limit; meta.total is the source of truth.
     let totalPages = 1;
-    if (firstResponse.meta?.totalPages) {
-      totalPages = firstResponse.meta.totalPages;
-    } else if (firstResponse.meta?.total) {
+    if (firstResponse.meta?.total !== null && firstResponse.meta.total > 0) {
       totalPages = Math.ceil(firstResponse.meta.total / options.batchSize);
+    } else if (firstResponse.meta?.totalPages) {
+      totalPages = firstResponse.meta.totalPages;
     } else {
       totalPages = 1000; // Safety limit
     }
