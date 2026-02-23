@@ -228,8 +228,9 @@ export function UserManagement({
         />
       </div>
 
-      {/* Users Table */}
-      <UsersDataTable
+      {/* Users Table - w-full ensures table stretches to fill container */}
+      <div className="w-full min-w-0">
+        <UsersDataTable
         data={users}
         currentUser={currentUser}
         canEdit={canEditUser}
@@ -242,6 +243,7 @@ export function UserManagement({
         pageCount={pageCount}
         totalCount={totalCount}
       />
+      </div>
     </div>
   );
 }

@@ -49,19 +49,29 @@ export function DataTable<TData>({
           <Table
             style={
               stretch
-                ? { width: "100%", minWidth: "max-content" }
+                ? { width: "100%" }
                 : totalSize
                   ? { width: totalSize }
                   : undefined
             }
           >
+            {stretch && totalSize > 0 && (
+              <colgroup>
+                {headerGroup?.headers.map((header) => (
+                  <col
+                    key={header.id}
+                    style={{ width: `${(header.getSize() / totalSize) * 100}%` }}
+                  />
+                ))}
+              </colgroup>
+            )}
             <TableHeader className="bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     const size = header.getSize();
                     const widthStyle = stretch && totalSize > 0
-                      ? { width: `${(size / totalSize) * 100}%`, minWidth: `${size}px` }
+                      ? undefined
                       : { width: `${size}px` };
                     return (
                     <TableHead
@@ -92,7 +102,7 @@ export function DataTable<TData>({
                     {row.getVisibleCells().map((cell) => {
                       const cellSize = cell.column.getSize();
                       const cellWidthStyle = stretch && totalSize > 0
-                        ? { width: `${(cellSize / totalSize) * 100}%`, minWidth: `${cellSize}px` }
+                        ? undefined
                         : { width: `${cellSize}px` };
                       return (
                       <TableCell
