@@ -30,9 +30,6 @@ export function Logo({
             desktop: width,
           })}
           priority
-          quality={95}
-          placeholder="blur"
-          blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjY0IiB2aWV3Qm94PSIwIDAgMTYwIDY0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmM2Y0ZjYiLz48L3N2Zz4K"
           style={{ height: 'auto' }}
           suppressHydrationWarning
         />
