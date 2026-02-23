@@ -9,10 +9,13 @@ import logger from '@/shared/helpers/logger';
 
 const log = logger.createChild({ component: 'useRealtimeSync' });
 
+const WEBSOCKET_ENABLED = process.env.NEXT_PUBLIC_WEBSOCKET_ENABLED !== 'false';
+
 /**
  * Connects to Socket.IO when authenticated and subscribes to license:sync_complete
  * and license:data_changed. Triggers store refetch on events.
  * Falls back to Phase 1 polling (SyncStatusIcon) when WebSocket is unavailable.
+ * Set NEXT_PUBLIC_WEBSOCKET_ENABLED=false to skip WebSocket (e.g. when proxy doesn't support it).
  */
 export function useRealtimeSync() {
   const token = useAuthStore((s) => s.token);
@@ -38,7 +41,7 @@ export function useRealtimeSync() {
   }, [fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention, fetchSyncStatus]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !isAuthenticated || !token) return;
+    if (typeof window === 'undefined' || !isAuthenticated || !token || !WEBSOCKET_ENABLED) return;
 
     const url = resolveRealtimeSocketUrl();
     if (!url) return;
@@ -58,7 +61,7 @@ export function useRealtimeSync() {
     });
 
     socket.on('connect_error', (err) => {
-      log.warn('Realtime socket connect error', { error: err.message });
+      log.debug('Realtime socket connect error (fallback to polling)', { error: err.message });
     });
 
     socket.on('license:sync_complete', () => {

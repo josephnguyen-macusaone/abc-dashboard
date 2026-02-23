@@ -366,6 +366,17 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 
 ---
 
+## License Sync (Automatic vs Manual)
+
+**Default:** Automatic sync is **disabled** in production. Sync runs only when the user clicks the **Sync** button in License Management.
+
+- **`LICENSE_SYNC_ENABLED=false`** – Sync only via Sync button (no overlay "jumping" while viewing)
+- **`LICENSE_SYNC_ENABLED=true`** – Scheduled sync runs (e.g. 2am, 3am Chicago); overlay appears when sync runs
+
+To re-enable automatic sync, add `LICENSE_SYNC_ENABLED=true` to the server `.env` and restart: `docker compose up -d`.
+
+---
+
 ## WebSocket (Real-time Sync)
 
 When using OpenLiteSpeed as a reverse proxy, configure a WebSocket proxy for real-time license sync:
@@ -375,7 +386,9 @@ When using OpenLiteSpeed as a reverse proxy, configure a WebSocket proxy for rea
 3. **Address:** `127.0.0.1:5000` (or the host:port where the backend container listens)
 4. Save and graceful restart
 
-See [docs/WEBSOCKET_REALTIME_SYNC_PLAN.md](WEBSOCKET_REALTIME_SYNC_PLAN.md) for full details.
+**If WebSocket proxy cannot be configured:** Set `NEXT_PUBLIC_WEBSOCKET_ENABLED=false` before building the frontend. The app will fall back to polling (SyncStatusIcon) and sync will still work.
+
+See [docs/WEBSOCKET-CONNECTION-FIX-PLAN.md](WEBSOCKET-CONNECTION-FIX-PLAN.md) for troubleshooting.
 
 ---
 
