@@ -279,6 +279,8 @@ class Container {
       const syncUseCase = await this.getSyncExternalLicensesUseCase();
       const realtimeService = this.getLicenseRealtimeService();
       const config = {
+        // Set LICENSE_SYNC_ENABLED=false to disable automatic sync (manual sync only)
+        enabled: process.env.LICENSE_SYNC_ENABLED !== 'false',
         // Default: 2am and 3am daily (night sync to reduce conflict with data entry)
         syncSchedule: process.env.LICENSE_SYNC_SCHEDULE || '0 2,3 * * *',
         timezone: process.env.LICENSE_SYNC_TIMEZONE || 'America/Chicago',
