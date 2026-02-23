@@ -17,18 +17,24 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   actionBar?: React.ReactNode;
   /** Custom content when table has no rows (toolbar remains visible). */
   emptyState?: React.ReactNode;
+  /** When true, table stretches to fill container width (e.g. user management). Default false. */
+  stretch?: boolean;
 }
 
 export function DataTable<TData>({
   table,
   actionBar,
   emptyState,
+  stretch = false,
   children,
   className,
   ...props
 }: DataTableProps<TData>) {
   const hasRows = (table.getPaginationRowModel().rows?.length ?? 0) > 0;
   const showEmptyBlock = !hasRows && emptyState != null;
+
+  const headerGroup = table.getHeaderGroups()[0];
+  const totalSize = headerGroup?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
 
   return (
     <div
@@ -39,24 +45,29 @@ export function DataTable<TData>({
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <div className="overflow-x-auto rounded-md border">
+        <div className={cn("overflow-x-auto rounded-md border", stretch && "w-full")}>
           <Table
-            style={(() => {
-              const total = table.getHeaderGroups()[0]?.headers.reduce(
-                (sum, h) => sum + h.getSize(),
-                0
-              );
-              return total ? { width: total } : undefined;
-            })()}
+            style={
+              stretch
+                ? { width: "100%", minWidth: "max-content" }
+                : totalSize
+                  ? { width: totalSize }
+                  : undefined
+            }
           >
             <TableHeader className="bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
+                  {headerGroup.headers.map((header) => {
+                    const size = header.getSize();
+                    const widthStyle = stretch && totalSize > 0
+                      ? { width: `${(size / totalSize) * 100}%`, minWidth: `${size}px` }
+                      : { width: `${size}px` };
+                    return (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      style={{ width: `${header.getSize()}px` }}
+                      style={widthStyle}
                     >
                       {header.isPlaceholder
                         ? null
@@ -65,7 +76,8 @@ export function DataTable<TData>({
                           header.getContext(),
                         )}
                     </TableHead>
-                  ))}
+                  );
+                  })}
                 </TableRow>
               ))}
             </TableHeader>
@@ -77,10 +89,15 @@ export function DataTable<TData>({
                     data-state={row.getIsSelected() && "selected"}
                     className="even:bg-muted/20"
                   >
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getVisibleCells().map((cell) => {
+                      const cellSize = cell.column.getSize();
+                      const cellWidthStyle = stretch && totalSize > 0
+                        ? { width: `${(cellSize / totalSize) * 100}%`, minWidth: `${cellSize}px` }
+                        : { width: `${cellSize}px` };
+                      return (
                       <TableCell
                         key={cell.id}
-                        style={{ width: `${cell.column.getSize()}px` }}
+                        style={cellWidthStyle}
                         className="min-w-0 truncate"
                       >
                         {flexRender(
@@ -88,7 +105,8 @@ export function DataTable<TData>({
                           cell.getContext(),
                         )}
                       </TableCell>
-                    ))}
+                    );
+                    })}
                   </TableRow>
                 ))
               ) : (
