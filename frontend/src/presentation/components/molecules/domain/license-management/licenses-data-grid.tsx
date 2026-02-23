@@ -578,36 +578,38 @@ export function LicensesDataGrid({
                 <span className="hidden sm:inline">Reset</span>
               </Button>
             )}
+          </div>
+          {/* View and action buttons - right side */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-auto">
+            {hasChanges && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReset}
+                  disabled={isSaving}
+                  className="gap-1.5 sm:gap-2"
+                  aria-label="Discard changes"
+                >
+                  <RotateCcw className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">Discard</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={!onSave || isSaving}
+                  className="gap-1.5 sm:gap-2"
+                  aria-label={isSaving ? "Saving changes" : "Save changes"}
+                >
+                  <Save className="h-4 w-4 shrink-0" />
+                  <span className="hidden md:inline">
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </span>
+                </Button>
+              </>
+            )}
             <DataGridViewMenu table={table} />
           </div>
-          {/* Action buttons */}
-          {hasChanges && (
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-auto md:ml-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                disabled={isSaving}
-                className="gap-1.5 sm:gap-2"
-                aria-label="Discard changes"
-              >
-                <RotateCcw className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline">Discard</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={!onSave || isSaving}
-                className="gap-1.5 sm:gap-2"
-                aria-label={isSaving ? "Saving changes" : "Save changes"}
-              >
-                <Save className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline">
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </span>
-              </Button>
-            </div>
-          )}
         </div>
         {isEmpty ? (
           <div className="p-12 text-center border rounded-md">

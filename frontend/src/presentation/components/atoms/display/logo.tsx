@@ -1,4 +1,4 @@
-import { cn, getResponsiveSizes } from '@/shared/helpers';
+import { cn } from '@/shared/helpers';
 import Image from 'next/image';
 import LogoDark from '@assets/svgs/common/logo_dark.svg';
 import LogoLight from '@assets/svgs/common/logo_light.svg';
@@ -16,24 +16,20 @@ export function Logo({
   width = 160,
   className,
 }: LogoProps) {
-    const logoSrc = variant === 'dark' ? LogoDark : LogoLight;
+  const logoSrc = variant === 'dark' ? LogoDark : LogoLight;
 
-    return (
-      <div className={cn('flex justify-center', className)}>
-        <Image
-          src={logoSrc}
-          alt="ABC Logo"
-          width={width}
-          sizes={getResponsiveSizes({
-            mobile: Math.min(width, 120),
-            tablet: Math.min(width, 140),
-            desktop: width,
-          })}
-          priority
-          style={{ height: 'auto' }}
-          suppressHydrationWarning
-        />
-      </div>
-    );
+  return (
+    <div className={cn('flex justify-center', className)}>
+      <Image
+        src={logoSrc}
+        alt="ABC Logo"
+        width={width}
+        height={Math.round((width * 112) / 264)}
+        priority
+        unoptimized
+        style={{ height: 'auto' }}
+      />
+    </div>
+  );
 }
 
