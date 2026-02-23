@@ -61,38 +61,42 @@ export function DataTableToolbar<TData>({
       )}
       {...props}
     >
-      {/* Left: search + filters. Right: View button. */}
-      <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0">
-        {searchBar && (
-          <div className="flex w-full sm:w-auto items-center">
-            {searchBar}
-          </div>
-        )}
-        {columns.map((column) => (
-          <DataTableToolbarFilter
-            key={column.id}
-            column={column}
-            table={table}
-            onManualFilterChange={onManualFilterChange}
-            initialFilterValues={initialFilterValues}
-          />
-        ))}
-        {hasActiveFilters && (
-          <Button
-            aria-label="Reset filters"
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
-            onClick={onReset}
-          >
-            <X className="size-4" />
-            <span className="hidden sm:inline">Reset</span>
-          </Button>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0 sm:ml-auto">
-        {children}
-        <DataTableViewOptions table={table} align="end" />
+      {/* Search bar: full width on mobile, auto on desktop */}
+      {searchBar && (
+        <div className="flex w-full sm:w-auto items-center">
+          {searchBar}
+        </div>
+      )}
+
+      {/* Mobile: one row with filter badges left, view options right. Desktop: inline. */}
+      <div className="flex w-full sm:contents items-center gap-2 min-w-0">
+        <div className="flex flex-1 flex-nowrap sm:flex-wrap items-center gap-2 min-w-0 overflow-x-auto">
+          {columns.map((column) => (
+            <DataTableToolbarFilter
+              key={column.id}
+              column={column}
+              table={table}
+              onManualFilterChange={onManualFilterChange}
+              initialFilterValues={initialFilterValues}
+            />
+          ))}
+          {hasActiveFilters && (
+            <Button
+              aria-label="Reset filters"
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+              onClick={onReset}
+            >
+              <X className="size-4" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {children}
+          <DataTableViewOptions table={table} align="end" />
+        </div>
       </div>
     </div>
   );
