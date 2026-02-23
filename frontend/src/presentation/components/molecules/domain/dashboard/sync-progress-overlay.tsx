@@ -31,7 +31,7 @@ export function SyncProgressOverlay() {
   const subtext = hasProgress
     ? `${processed.toLocaleString()} / ${total.toLocaleString()} processed. Do not refresh the page.`
     : 'Do not refresh the page.';
-  const mainText = `Syncing license data (${Math.round(percent)}%). Please wait.`;
+  const mainText = `Syncing license data (${Math.round(percent)}%). Please wait!`;
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress) return;
@@ -57,6 +57,7 @@ export function SyncProgressOverlay() {
     <LoadingOverlay
       text={mainText}
       progress={syncStatus?.syncInProgress ? percent : undefined}
+      hidePercentLabel
       subtext={subtext}
     />
   );

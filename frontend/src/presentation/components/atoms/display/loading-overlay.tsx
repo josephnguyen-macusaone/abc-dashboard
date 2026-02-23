@@ -6,8 +6,10 @@ interface LoadingOverlayProps {
   className?: string;
   text?: string;
   fullScreen?: boolean;
-  /** Progress 0-100; when set, shows progress bar and percent */
+  /** Progress 0-100; when set, shows progress bar and percent (unless hidePercentLabel) */
   progress?: number;
+  /** When true, hide the percent label below the progress bar (percent only in text) */
+  hidePercentLabel?: boolean;
   /** Subtext below main text (e.g. "1,234 / 5,000 processed") */
   subtext?: string;
 }
@@ -17,6 +19,7 @@ export function LoadingOverlay({
   text = 'Loading...',
   fullScreen = true,
   progress,
+  hidePercentLabel = false,
   subtext,
 }: LoadingOverlayProps) {
   const showProgress = progress !== undefined && progress !== null;
@@ -45,9 +48,11 @@ export function LoadingOverlay({
                   style={{ width: `${percent}%` }}
                 />
               </div>
-              <Typography variant="body-s" className="text-muted-foreground">
-                {percent}%
-              </Typography>
+              {!hidePercentLabel && (
+                <Typography variant="body-s" className="text-muted-foreground">
+                  {percent}%
+                </Typography>
+              )}
             </>
           )}
           {subtext && (
