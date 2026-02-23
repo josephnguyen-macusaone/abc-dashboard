@@ -8,6 +8,7 @@ import { ReactNode, useMemo, useCallback, useTransition, useEffect, useRef, useS
 import { useToast } from '@/presentation/contexts';
 import { PermissionUtils, getNavigationItems } from '@/shared/constants';
 import { useSidebarStore, useAuthStore, useLicenseStore, useDataTableStore } from '@/infrastructure/stores';
+import { SyncInProgressBanner } from '@/presentation/components/molecules/domain/dashboard';
 import { useRealtimeSync } from '@/presentation/hooks/use-realtime-sync';
 
 /** Routes that display license data; avoid resetting when navigating between these. */
@@ -168,6 +169,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
         {/* Page content - only vertical scrolling, horizontal scrolling happens inside tables */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <main className="p-4 lg:p-6 min-w-0">
+            <SyncInProgressBanner />
             <SectionErrorBoundary
               variant="dashboard"
               fallbackTitle="Dashboard Error"

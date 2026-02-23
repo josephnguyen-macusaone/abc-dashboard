@@ -574,6 +574,10 @@ export class LicenseRepository implements ILicenseRepository {
     };
   }
 
+  async triggerManualSync(): Promise<void> {
+    await this.apiClient.triggerSync();
+  }
+
   async getDashboardMetrics(params?: DashboardMetricsParams): Promise<unknown> {
     const response = await this.apiClient.getDashboardMetrics(params as Record<string, unknown> | undefined);
     const data = typeof response === 'object' && response !== null && 'data' in response

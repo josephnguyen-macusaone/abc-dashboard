@@ -4,9 +4,9 @@ import { sendErrorResponse, formatCanonicalError } from '../../shared/http/error
 import logger from '../config/logger.js';
 
 export class LicenseController {
-  constructor(licenseService, syncExternalLicensesUseCase = null, licenseRealtimeService = null) {
+  constructor(licenseService, licenseSyncScheduler = null, licenseRealtimeService = null) {
     this.licenseService = licenseService;
-    this.syncExternalLicensesUseCase = syncExternalLicensesUseCase;
+    this.licenseSyncScheduler = licenseSyncScheduler;
     this.licenseRealtimeService = licenseRealtimeService;
   }
 
@@ -120,48 +120,29 @@ export class LicenseController {
   }
 
   /**
-   * Manually trigger license sync (for admin use)
+   * Manually trigger license sync (for admin use).
+   * Routes through scheduler so syncInProgress is set and frontend can show banner/disable button.
    */
   syncLicenses = async (req, res) => {
     try {
-      if (!this.syncExternalLicensesUseCase) {
+      if (!this.licenseSyncScheduler) {
         return res.badRequest('Sync service not available');
       }
 
-      // Trigger sync
-      const syncPromise = this.syncExternalLicensesUseCase.execute({
+      // Fire-and-forget: scheduler sets syncInProgress, runs sync, emits on complete
+      const syncPromise = this.licenseSyncScheduler.runManualSync({
         comprehensive: false,
         batchSize: 20,
         syncToInternalOnly: false,
         forceFullSync: false,
       });
 
-      // Return immediately with sync status
+      // Return immediately
       res.success({ message: 'Sync started in background' }, 'Sync initiated successfully');
 
-      // Wait for sync to complete, log result, and emit real-time event
-      syncPromise
-        .then((result) => {
-          logger.info('Manual sync completed', {
-            success: result?.success,
-            totalFetched: result?.totalFetched,
-            created: result?.created,
-            updated: result?.updated,
-          });
-          if (this.licenseRealtimeService?.emitSyncComplete) {
-            this.licenseRealtimeService.emitSyncComplete({
-              timestamp: new Date().toISOString(),
-              duration: 0,
-              created: result?.created ?? 0,
-              updated: result?.updated ?? 0,
-              failed: result?.failed ?? 0,
-              success: result?.success ?? false,
-            });
-          }
-        })
-        .catch((error) => {
-          logger.error('Manual sync failed', { error: error.message });
-        });
+      syncPromise.catch((error) => {
+        logger.error('Manual sync failed', { error: error.message });
+      });
     } catch (error) {
       logger.error('Failed to initiate manual sync', { error: error.message });
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');

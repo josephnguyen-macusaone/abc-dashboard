@@ -108,6 +108,11 @@ export interface ILicenseRepository {
   getSyncStatus(): Promise<LicenseSyncStatus>;
 
   /**
+   * Trigger manual license sync (sync external data to internal DB)
+   */
+  triggerManualSync(): Promise<void>;
+
+  /**
    * Get dashboard metrics (overview, utilization, alerts - shape depends on backend)
    */
   getDashboardMetrics(params?: DashboardMetricsParams): Promise<unknown>;

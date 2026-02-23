@@ -37,6 +37,7 @@ export interface ILicenseApiClient {
   bulkUpdateInternalLicenses(updates: Array<{ id: string; [key: string]: unknown }>): Promise<unknown[]>;
   bulkDeleteLicenses(identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }): Promise<BulkDeleteResponse>;
   getLicenseSyncStatus(): Promise<LicenseSyncStatusResponse>;
+  triggerSync(): Promise<void>;
   getDashboardMetrics(params?: Record<string, unknown>): Promise<unknown>;
   getLicensesRequiringAttention(options?: Record<string, unknown>): Promise<{ data: LicensesRequiringAttentionResponse }>;
   getSmsPayments(params?: Record<string, unknown>): Promise<unknown>;

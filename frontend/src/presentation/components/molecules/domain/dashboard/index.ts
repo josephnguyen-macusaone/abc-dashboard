@@ -17,3 +17,6 @@ export {
   SyncStatusIcon,
   type SyncStatusIconProps
 } from './sync-status-icon';
+
+export { SyncInProgressBanner } from './sync-in-progress-banner';
+export { SyncButton } from './sync-button';
