@@ -20,10 +20,16 @@ export function SyncProgressOverlay() {
   const processed = syncProgress?.processed ?? 0;
   const total = syncProgress?.total ?? 0;
   const hasProgress = total > 0;
-  const subtext = hasProgress ? `${processed.toLocaleString()} / ${total.toLocaleString()} processed` : undefined;
+  const subtext = hasProgress
+    ? `${processed.toLocaleString()} / ${total.toLocaleString()} processed. Do not refresh the page.`
+    : 'Do not refresh the page.';
+  const mainText = hasProgress
+    ? `Syncing license data (${percent}%). Please wait before entering data.`
+    : 'Syncing license data. Please wait before entering data.';
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress) return;
+    fetchSyncStatus(); // Fetch immediately on mount
     const id = setInterval(() => {
       fetchSyncStatus();
     }, SYNC_POLL_INTERVAL_MS);
@@ -32,8 +38,8 @@ export function SyncProgressOverlay() {
 
   return (
     <LoadingOverlay
-      text="Syncing license data. Please wait before entering data."
-      progress={hasProgress ? percent : undefined}
+      text={mainText}
+      progress={syncStatus?.syncInProgress ? percent : undefined}
       subtext={subtext}
     />
   );
