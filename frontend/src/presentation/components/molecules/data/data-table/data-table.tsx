@@ -39,26 +39,24 @@ export function DataTable<TData>({
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <div className="overflow-x-auto rounded-md border w-full">
+        <div className="overflow-x-auto rounded-md border">
           <Table
-            style={{ width: '100%', minWidth: 'max-content' }}
+            style={(() => {
+              const total = table.getHeaderGroups()[0]?.headers.reduce(
+                (sum, h) => sum + h.getSize(),
+                0
+              );
+              return total ? { width: total } : undefined;
+            })()}
           >
             <TableHeader className="bg-muted">
-              {table.getHeaderGroups().map((headerGroup) => {
-                const total = headerGroup.headers.reduce(
-                  (sum, h) => sum + h.getSize(),
-                  0
-                );
-                return (
+              {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const size = header.getSize();
-                    const widthPct = total > 0 ? `${(size / total) * 100}%` : undefined;
-                    return (
+                  {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      style={widthPct ? { width: widthPct, minWidth: `${size}px` } : undefined}
+                      style={{ width: `${header.getSize()}px` }}
                     >
                       {header.isPlaceholder
                         ? null
@@ -67,11 +65,9 @@ export function DataTable<TData>({
                           header.getContext(),
                         )}
                     </TableHead>
-                  );
-                  })}
+                  ))}
                 </TableRow>
-              );
-              })}
+              ))}
             </TableHeader>
             <TableBody>
               {hasRows ? (
@@ -81,17 +77,10 @@ export function DataTable<TData>({
                     data-state={row.getIsSelected() && "selected"}
                     className="even:bg-muted/20"
                   >
-                    {row.getVisibleCells().map((cell) => {
-                      const total = table.getHeaderGroups()[0]?.headers.reduce(
-                        (sum, h) => sum + h.getSize(),
-                        0
-                      );
-                      const size = cell.column.getSize();
-                      const widthPct = total ? `${(size / total) * 100}%` : undefined;
-                      return (
+                    {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        style={widthPct ? { width: widthPct, minWidth: `${size}px` } : undefined}
+                        style={{ width: `${cell.column.getSize()}px` }}
                         className="min-w-0 truncate"
                       >
                         {flexRender(
@@ -99,8 +88,7 @@ export function DataTable<TData>({
                           cell.getContext(),
                         )}
                       </TableCell>
-                    );
-                    })}
+                    ))}
                   </TableRow>
                 ))
               ) : (
