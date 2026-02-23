@@ -25,6 +25,9 @@ fi
 
 SSH_OPTS=(-o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new)
 [ -n "$SSH_KEY" ] && SSH_OPTS=(-i "$SSH_KEY" "${SSH_OPTS[@]}")
+# Use sshpass for password auth when SSHPASS is set (e.g. SSHPASS='...' ./scripts/server-db-reset-sync.sh)
+SSH_CMD=(ssh)
+[ -n "$SSHPASS" ] && SSH_CMD=(sshpass -e ssh)
 
 APP_DIR="/root/abc-dashboard"
 
@@ -35,20 +38,31 @@ echo "Server: $SERVER_USER@$SERVER_HOST"
 echo "App dir: $APP_DIR"
 echo ""
 
-echo "[1/4] Stopping stack and removing Postgres volume..."
-ssh "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "cd $APP_DIR && docker compose down -v"
+echo "[1/5] Stopping stack and removing Postgres volume..."
+"${SSH_CMD[@]}" "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "cd $APP_DIR && docker compose down -v"
 echo ""
 
-echo "[2/4] Starting stack (with decrypted DB password when using enc:)..."
-ssh "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "cd $APP_DIR && ./scripts/load-and-run.sh --start-only up -d"
+echo "[2/5] Starting stack (with decrypted DB password when using enc:)..."
+"${SSH_CMD[@]}" "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "cd $APP_DIR && ./scripts/load-and-run.sh --start-only up -d"
 echo ""
 
-echo "[3/4] Waiting for backend to be healthy..."
+echo "[3/5] Waiting for backend to be healthy..."
 sleep 20
 echo ""
 
-echo "[4/4] Running migrate + seed + license sync (this may take several minutes)..."
-ssh "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "cd $APP_DIR && ./scripts/docker-db-reset-sync.sh --drop --sync"
+echo "[4/5] Copying docker-db-reset-sync.sh to server..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"${SSH_CMD[@]}" "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "mkdir -p $APP_DIR/scripts"
+SCP_CMD=(scp)
+[ -n "$SSHPASS" ] && SCP_CMD=(sshpass -e scp)
+"${SCP_CMD[@]}" -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
+  ${SSH_KEY:+-i "$SSH_KEY"} \
+  "$SCRIPT_DIR/docker-db-reset-sync.sh" \
+  "$SERVER_USER@$SERVER_HOST:$APP_DIR/scripts/"
+echo ""
+
+echo "[5/5] Running migrate + seed + license sync (this may take several minutes)..."
+"${SSH_CMD[@]}" "${SSH_OPTS[@]}" "$SERVER_USER@$SERVER_HOST" "cd $APP_DIR && ./scripts/docker-db-reset-sync.sh --drop --sync"
 echo ""
 
 echo "=========================================="
