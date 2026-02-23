@@ -4,7 +4,7 @@ import { LoadingOverlay } from '@/presentation/components/atoms';
 import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { ReactNode, useMemo, useCallback, useTransition, useEffect, useRef } from 'react';
+import { ReactNode, useMemo, useCallback, useTransition, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/presentation/contexts';
 import { PermissionUtils, getNavigationItems } from '@/shared/constants';
 import { useSidebarStore, useAuthStore, useLicenseStore, useDataTableStore } from '@/infrastructure/stores';
@@ -117,6 +117,20 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
     // If single word, use first two characters
     return displayText.slice(0, 2).toUpperCase();
   }, [user]);
+
+  // Safety: redirect to login if stuck on loading for too long (e.g. auth init hang, socket/proxy issues)
+  const LOADING_TIMEOUT_MS = 15_000;
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) return;
+    const t = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [isLoading, isAuthenticated]);
+
+  useEffect(() => {
+    if (!loadingTimedOut || (isLoading === false && isAuthenticated)) return;
+    router.replace('/login');
+  }, [loadingTimedOut, isLoading, isAuthenticated, router]);
 
   if (isLoading || !isAuthenticated) {
     return <LoadingOverlay text="Loading dashboard..." />;
