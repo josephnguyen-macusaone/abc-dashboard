@@ -80,8 +80,8 @@ jobs:
         # Scheduled Jobs
         SCHEDULED_JOBS_ENABLED=true
         LICENSE_STATUS_JOB_RUN_ON_STARTUP=true
-        LICENSE_SYNC_SCHEDULE=*/10 * * * *
-        LICENSE_SYNC_ENABLED=true
+        LICENSE_SYNC_SCHEDULE=0 2,3 * * *
+        LICENSE_SYNC_ENABLED=false
         EOF
 
     - name: Build Docker images
@@ -155,6 +155,14 @@ jobs:
           echo ""
           echo "🔍 Verifying images..."
           docker images | grep abc-license | head -5
+
+          echo ""
+          echo "📝 Ensuring LICENSE_SYNC_ENABLED=false (sync only via Sync button)..."
+          if grep -q '^LICENSE_SYNC_ENABLED=' .env 2>/dev/null; then
+            sed -i.bak 's/^LICENSE_SYNC_ENABLED=.*/LICENSE_SYNC_ENABLED=false/' .env
+          else
+            echo "LICENSE_SYNC_ENABLED=false" >> .env
+          fi
 
           echo ""
           echo "🚀 Starting services..."
