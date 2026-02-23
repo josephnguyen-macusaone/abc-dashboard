@@ -115,6 +115,25 @@ export const useAuthStore = create<AuthState>()(
                 set({ user: storedUser });
               }
 
+              // If we have token but no user (e.g. user cookie expired), fetch profile
+              if (storedToken && !storedUser) {
+                try {
+                  const profileData = await authApi.getProfile();
+                  const user = User.fromObject(profileData as unknown as Record<string, unknown>);
+                  set({ user });
+                  CookieService.setUser(user);
+                  LocalStorageService.setUser(user);
+                } catch (profileError) {
+                  storeLogger.warn('Could not restore user from token, clearing auth', {
+                    error: profileError instanceof Error ? profileError.message : String(profileError)
+                  });
+                  set({ token: null, user: null });
+                  httpClient.setAuthToken(null);
+                  CookieService.clearAuthCookies();
+                  LocalStorageService.clearAuthData();
+                }
+              }
+
               set({ isAuthenticated: !!(get().user && get().token) });
             } catch (error) {
               storeLogger.error('Error initializing auth', { error: error instanceof Error ? error.message : String(error) });

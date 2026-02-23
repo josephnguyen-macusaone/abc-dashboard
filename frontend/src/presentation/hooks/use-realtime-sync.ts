@@ -24,22 +24,18 @@ export function useRealtimeSync() {
   const fetchLicensesRequiringAttention = useLicenseStore((s) => s.fetchLicensesRequiringAttention);
   const fetchSyncStatus = useLicenseStore((s) => s.fetchSyncStatus);
 
-  const onDataChangedRef = useRef(() => {
-    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-      fetchLicenses();
-      fetchDashboardMetrics();
-      fetchLicensesRequiringAttention();
-      fetchSyncStatus();
-    }
-  });
-  onDataChangedRef.current = () => {
-    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-      fetchLicenses();
-      fetchDashboardMetrics();
-      fetchLicensesRequiringAttention();
-      fetchSyncStatus();
-    }
-  };
+  const onDataChangedRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    onDataChangedRef.current = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchLicenses();
+        fetchDashboardMetrics();
+        fetchLicensesRequiringAttention();
+        fetchSyncStatus();
+      }
+    };
+  }, [fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention, fetchSyncStatus]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !isAuthenticated || !token) return;
@@ -51,6 +47,8 @@ export function useRealtimeSync() {
       path: '/socket.io',
       auth: { token },
       transports: ['polling', 'websocket'],
+      timeout: 10_000,
+      reconnectionAttempts: 3,
     });
 
     socketRef.current = socket;
