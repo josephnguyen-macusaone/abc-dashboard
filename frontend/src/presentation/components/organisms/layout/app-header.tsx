@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { Button } from '@/presentation/components/atoms';
 import { Breadcrumb, ThemeSwitcher } from '@/presentation/components/molecules';
 import { SyncStatusIcon, SyncButton } from '@/presentation/components/molecules/domain/dashboard';
@@ -7,6 +8,9 @@ import { CollapseButton } from '@/presentation/components/molecules/layout/sideb
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 import { useSidebarStore } from '@/infrastructure/stores';
+
+/** Routes where Sync button is shown (dashboard and license management only) */
+const SYNC_BUTTON_ROUTES = ['/dashboard', '/licenses'];
 
 export interface AppHeaderProps {
   sidebarOpen: boolean;
@@ -22,6 +26,10 @@ export function AppHeader({
   className,
 }: AppHeaderProps) {
   const { isCollapsed } = useSidebarStore();
+  const pathname = usePathname();
+  const showSyncButton = SYNC_BUTTON_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(`${r}/`)
+  );
 
   return (
     <header
@@ -61,7 +69,7 @@ export function AppHeader({
       </div>
 
       <div className="flex items-center gap-2">
-        <SyncButton />
+        {showSyncButton && <SyncButton />}
         <SyncStatusIcon refreshIntervalMs={60_000} />
         <ThemeSwitcher />
       </div>
