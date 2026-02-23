@@ -560,6 +560,7 @@ export class LicenseRepository implements ILicenseRepository {
     const response = await this.apiClient.getLicenseSyncStatus();
     return {
       syncInProgress: response.syncInProgress,
+      syncProgress: response.syncProgress,
       lastSyncResult: response.lastSyncResult
         ? {
             timestamp: response.lastSyncResult.timestamp,

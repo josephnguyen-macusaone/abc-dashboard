@@ -209,8 +209,16 @@ export interface AddSmsPaymentData {
 /**
  * License sync status (read-only, for dashboard/UI)
  */
+export interface LicenseSyncProgress {
+  processed?: number;
+  total?: number;
+  percent?: number;
+  phase?: string;
+}
+
 export interface LicenseSyncStatus {
   syncInProgress?: boolean;
+  syncProgress?: LicenseSyncProgress;
   lastSyncResult?: {
     timestamp?: string;
     success?: boolean;

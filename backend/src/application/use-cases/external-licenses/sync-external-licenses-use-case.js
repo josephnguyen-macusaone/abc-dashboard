@@ -182,6 +182,14 @@ export class SyncExternalLicensesUseCase {
           });
         }
       }
+
+      // Report progress: processed = created + updated + failed; total = totalFetched
+      const total = syncResults.totalFetched || externalData.data.length;
+      const processed = syncResults.created + syncResults.updated + syncResults.failed;
+      const percent = total > 0 ? Math.min(95, Math.round((processed / total) * 100)) : 0;
+      if (syncResults.onProgress && typeof syncResults.onProgress === 'function') {
+        syncResults.onProgress({ processed, total, percent, phase: 'processing' });
+      }
     }
 
     logger.info('Bulk upsert completed', {
@@ -360,6 +368,10 @@ export class SyncExternalLicensesUseCase {
       if (fetchResult.earlyReturn) {
         return fetchResult.syncResults;
       }
+      const total = syncResults.totalFetched || fetchResult.externalData?.data?.length || 0;
+      if (syncResults.onProgress && total > 0) {
+        syncResults.onProgress({ processed: 0, total, percent: 0, phase: 'processing' });
+      }
       const syncTimestamp = new Date();
       await this._processExternalBatches(
         fetchResult.externalData,
@@ -423,6 +435,7 @@ export class SyncExternalLicensesUseCase {
       syncToInternalOnly = false,
       bidirectional: _bidirectional = licenseSyncConfig.features.enableBidirectionalSync,
       comprehensive = licenseSyncConfig.features.enableComprehensiveSync,
+      onProgress,
     } = options;
 
     const operationContext = licenseSyncMonitor.recordSyncStart('external_licenses_sync', {
@@ -443,6 +456,7 @@ export class SyncExternalLicensesUseCase {
       errors: [],
       duration: 0,
       timestamp: new Date(),
+      onProgress: typeof onProgress === 'function' ? onProgress : undefined,
     };
 
     try {

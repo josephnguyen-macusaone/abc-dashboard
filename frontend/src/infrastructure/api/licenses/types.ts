@@ -97,10 +97,18 @@ export interface LicenseGetResponse {
 // Sync status
 // =============================================================================
 
+export interface LicenseSyncProgress {
+  processed?: number;
+  total?: number;
+  percent?: number;
+  phase?: string;
+}
+
 export interface LicenseSyncStatusResponse {
   enabled?: boolean;
   running?: boolean;
   syncInProgress?: boolean;
+  syncProgress?: LicenseSyncProgress;
   timezone?: string;
   schedule?: string;
   lastSyncResult?: {

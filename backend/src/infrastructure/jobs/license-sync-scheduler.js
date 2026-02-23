@@ -25,6 +25,7 @@ export class LicenseSyncScheduler {
     this.jobs = new Map();
     this.isRunning = false;
     this.syncInProgress = false;
+    this.syncProgress = null; // { processed, total, percent, phase } during sync
     this.lastSyncResult = null;
     this.syncStats = {
       totalRuns: 0,
@@ -118,7 +119,12 @@ export class LicenseSyncScheduler {
     }
 
     this.syncInProgress = true;
+    this.syncProgress = null;
     const startTime = Date.now();
+
+    const onProgress = (p) => {
+      this.syncProgress = p;
+    };
 
     try {
       logger.info('Running scheduled license sync');
@@ -129,6 +135,7 @@ export class LicenseSyncScheduler {
         batchSize: this.config.batchSize,
         syncToInternalOnly: this.config.syncToInternalOnly,
         forceFullSync: this.config.forceFullSync,
+        onProgress,
       });
 
       const duration = Date.now() - startTime;
@@ -198,6 +205,7 @@ export class LicenseSyncScheduler {
       this.logJobError(jobName, error);
     } finally {
       this.syncInProgress = false;
+      this.syncProgress = null;
     }
   }
 
@@ -224,7 +232,12 @@ export class LicenseSyncScheduler {
 
     logger.info('Manually triggering license sync', { overrideConfig });
     this.syncInProgress = true;
+    this.syncProgress = null;
     const startTime = Date.now();
+
+    const onProgress = (p) => {
+      this.syncProgress = p;
+    };
 
     try {
       const syncResult = await this.syncExternalLicensesUseCase.execute({
@@ -232,6 +245,7 @@ export class LicenseSyncScheduler {
         batchSize: overrideConfig.batchSize,
         syncToInternalOnly: overrideConfig.syncToInternalOnly,
         forceFullSync: overrideConfig.forceFullSync,
+        onProgress,
       });
 
       const duration = Date.now() - startTime;
@@ -274,6 +288,7 @@ export class LicenseSyncScheduler {
       throw error;
     } finally {
       this.syncInProgress = false;
+      this.syncProgress = null;
     }
   }
 
@@ -304,6 +319,7 @@ export class LicenseSyncScheduler {
       enabled: this.config.enabled,
       running: this.isRunning,
       syncInProgress: this.syncInProgress,
+      syncProgress: this.syncProgress,
       timezone: this.config.timezone,
       schedule: this.config.syncSchedule,
       config: {
