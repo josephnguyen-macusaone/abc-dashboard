@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useEffect, useRef, Suspense } from 'react';
+import { useCallback, useMemo, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import type { LicenseRecord } from '@/types';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
@@ -49,6 +49,7 @@ export function AdminDashboard({
   const fetchDashboardMetrics = useLicenseStore(state => state.fetchDashboardMetrics);
   const fetchLicensesRequiringAttention = useLicenseStore(state => state.fetchLicensesRequiringAttention);
   const setFilters = useLicenseStore(state => state.setFilters);
+  const setLoading = useLicenseStore(state => state.setLoading);
 
   const setTableSearch = useDataTableStore(state => state.setTableSearch);
   const clearTableFilters = useDataTableStore(state => state.clearTableFilters);
@@ -152,10 +153,12 @@ export function AdminDashboard({
     }
   }, [fetchLicenses]);
 
-  // Initial load: use current month as default date range when none is set so picker and data match
+  // Initial load: set loading before paint so skeleton shows immediately, then fetch
   const hasInitializedDateRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (licensesProp) return;
+
+    setLoading(true);
 
     const from = filters.startsAtFrom;
     const to = filters.startsAtTo;
@@ -182,7 +185,7 @@ export function AdminDashboard({
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
     runParallelFetch({ startsAtFrom, startsAtTo });
-  }, [licensesProp, fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention, setFilters, filters.startsAtFrom, filters.startsAtTo]);
+  }, [licensesProp, fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention, setFilters, setLoading, filters.startsAtFrom, filters.startsAtTo]);
 
   // Periodic refresh; only when tab visible to avoid stuck loading when tab inactive
   useEffect(() => {

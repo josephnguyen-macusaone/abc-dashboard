@@ -19,15 +19,12 @@ import {
   selectLicensePagination,
   selectLicenseLoading,
   selectLicenseError,
-  selectLicenseFilters,
   selectDashboardMetrics,
   selectDashboardMetricsLoading,
   selectDashboardMetricsError,
   selectLicensesRequiringAttentionLoading,
   selectLicensesRequiringAttentionError,
   selectBulkUpdateByIdentifiersLoading,
-  selectSmsPayments,
-  selectSmsTotals,
   selectSmsPaymentsLoading,
 } from '@/infrastructure/stores/license';
 
@@ -83,7 +80,6 @@ export const LicenseDashboard: React.FC = () => {
   const fetchLicensesRequiringAttention = useLicenseStore((s) => s.fetchLicensesRequiringAttention);
   const bulkUpdateByIdentifiers = useLicenseStore((s) => s.bulkUpdateByIdentifiers);
   const fetchSmsPayments = useLicenseStore((s) => s.fetchSmsPayments);
-  const addSmsPayment = useLicenseStore((s) => s.addSmsPayment);
 
   const metrics = useLicenseStore(selectDashboardMetrics) as DashboardMetricsView | null | undefined;
   const metricsLoading = useLicenseStore(selectDashboardMetricsLoading);
@@ -91,8 +87,6 @@ export const LicenseDashboard: React.FC = () => {
   const lifecycleLoading = useLicenseStore(selectLicensesRequiringAttentionLoading);
   const lifecycleError = useLicenseStore(selectLicensesRequiringAttentionError);
   const bulkLoading = useLicenseStore(selectBulkUpdateByIdentifiersLoading);
-  const payments = useLicenseStore(selectSmsPayments);
-  const smsTotals = useLicenseStore(selectSmsTotals);
   const smsLoading = useLicenseStore(selectSmsPaymentsLoading);
 
   useEffect(() => {

@@ -133,6 +133,7 @@ interface LicenseState {
   bulkUpsertLicenses: (licenses: Array<Partial<LicenseRecord> & { id?: number | string }>) => Promise<LicenseRecord[]>;
   bulkDeleteLicenses: (ids: (number | string)[]) => Promise<void>;
   setFilters: (filters: LicenseFilters) => void;
+  setLoading: (loading: boolean) => void;
   setPagination: (pagination: Partial<PaginationState>) => void;
   goToPage: (page: number) => Promise<void>;
   changePageSize: (limit: number) => Promise<void>;
@@ -992,6 +993,9 @@ export const useLicenseStore = create<LicenseState>()(
 
         setFilters: (filters: LicenseFilters) => {
           set({ filters });
+        },
+        setLoading: (loading: boolean) => {
+          set({ loading });
         },
 
         setPagination: (pagination: Partial<PaginationState>) => {

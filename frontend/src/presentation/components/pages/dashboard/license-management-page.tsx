@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/infrastructure/stores/auth";
 import { useInitialLicenseFilters } from "@/presentation/hooks/use-initial-license-filters";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
+import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { DashboardTemplate } from "@/presentation/components/templates";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
 import { ApiExceptionDto } from "@/application/dto/api-dto";
@@ -33,6 +34,7 @@ export function LicenseManagementPage() {
   const filters = useLicenseStore(state => state.filters);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
   const setFilters = useLicenseStore(state => state.setFilters);
+  const setLoading = useLicenseStore(state => state.setLoading);
   const bulkCreateLicenses = useLicenseStore(state => state.bulkCreateLicenses);
   const bulkUpsertLicenses = useLicenseStore(state => state.bulkUpsertLicenses);
   const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
@@ -76,7 +78,7 @@ export function LicenseManagementPage() {
   );
 
   // Initial load: always reset to current month when License Management mounts
-  useInitialLicenseFilters({ filters, setFilters, fetchLicenses });
+  useInitialLicenseFilters({ filters, setFilters, setLoading, fetchLicenses });
 
   // Refetch when tab becomes visible to recover from stuck loading when tab was inactive
   useEffect(() => {
@@ -88,7 +90,7 @@ export function LicenseManagementPage() {
           limit: 20,
           startsAtFrom: storeFilters.startsAtFrom,
           startsAtTo: storeFilters.startsAtTo,
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -284,6 +286,18 @@ export function LicenseManagementPage() {
       <DashboardTemplate>
         <div className="text-center py-8">
           <p>Please log in to access license management.</p>
+        </div>
+      </DashboardTemplate>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardTemplate>
+        <div className="space-y-8">
+          <div className="bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6">
+            <LicensesDataGridSkeleton />
+          </div>
         </div>
       </DashboardTemplate>
     );

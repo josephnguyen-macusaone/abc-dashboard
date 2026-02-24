@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { LicenseFilters } from '@/infrastructure/stores/license';
 
 /**
@@ -17,6 +17,7 @@ export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo
 interface UseInitialLicenseFiltersOptions {
   filters: LicenseFilters;
   setFilters: (filters: LicenseFilters) => void;
+  setLoading: (loading: boolean) => void;
   fetchLicenses: (params: {
     page?: number;
     limit?: number;
@@ -34,14 +35,17 @@ interface UseInitialLicenseFiltersOptions {
 export function useInitialLicenseFilters({
   filters,
   setFilters,
+  setLoading,
   fetchLicenses,
 }: UseInitialLicenseFiltersOptions): void {
   const hasInitializedRef = useRef(false);
 
-  useEffect(() => {
+  // useLayoutEffect runs before paint so loading state is set before user sees the page
+  useLayoutEffect(() => {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
 
+    setLoading(true);
     const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
     setFilters({ ...filters, startsAtFrom, startsAtTo });
     fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
