@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/infrastructure/stores/auth";
@@ -112,8 +112,11 @@ export function LicenseManagementPage() {
     return `LIC-${timestamp}-${random}`;
   }, []);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const onSave = useCallback(
     async (data: LicenseRecord[]) => {
+      setIsSaving(true);
       try {
         // agentsName is now a string, no transformation needed
         const transformedData = data.map(license => ({
@@ -171,6 +174,8 @@ export function LicenseManagementPage() {
         if (shouldShowError(error)) {
           toast.error(error instanceof Error ? error.message : "Failed to save licenses");
         }
+      } finally {
+        setIsSaving(false);
       }
     },
     [bulkCreateLicenses, bulkUpsertLicenses, loadLicenses, generateLicenseKey],
@@ -291,7 +296,7 @@ export function LicenseManagementPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isSaving) {
     return (
       <DashboardTemplate>
         <div className="space-y-8">
