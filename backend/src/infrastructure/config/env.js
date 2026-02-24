@@ -62,11 +62,20 @@ const loadEnvironmentConfig = () => {
     process.stdout.write = originalStdoutWrite;
     _loadedFrom = standardEnvFile;
   } else {
-    startupLogger.warn(`Environment files not found: ${envFile} or ${standardEnvFile}`);
-    startupLogger.warn(
-      `Make sure you have created the environment file or set environment variables manually`
+    // In Docker, env vars are injected by docker-compose; no .env file in container
+    const inDocker =
+      process.env.POSTGRES_HOST === 'postgres' || process.env.KUBERNETES_SERVICE_HOST;
+    if (!inDocker) {
+      startupLogger.warn(`Environment files not found: ${envFile} or ${standardEnvFile}`);
+      startupLogger.warn(
+        `Make sure you have created the environment file or set environment variables manually`
+      );
+    }
+    startupLogger.startup(
+      inDocker
+        ? 'Using environment variables from Docker'
+        : 'Loading environment variables from system'
     );
-    startupLogger.startup(`Loading environment variables from system`);
     // Suppress dotenv output
     const originalStdoutWrite = process.stdout.write;
     process.stdout.write = () => {};

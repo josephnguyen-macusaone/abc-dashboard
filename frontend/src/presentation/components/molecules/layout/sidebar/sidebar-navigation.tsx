@@ -1,7 +1,7 @@
 'use client';
 
 import { ScrollArea } from '@/presentation/components/atoms';
-import { NavigationButton } from './sidebar-navigation-button';
+import { NavigationLink } from './sidebar-navigation-link';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 
@@ -26,7 +26,6 @@ export function SidebarNavigation({
   items,
   currentPath,
   isAdmin,
-  onNavigate,
   isCollapsed = false,
   className,
 }: SidebarNavigationProps) {
@@ -62,13 +61,13 @@ export function SidebarNavigation({
           const Icon = item.icon;
           const isActive = isItemActive(currentPath, item.href);
           return (
-            <NavigationButton
+            <NavigationLink
               key={item.name}
               name={item.name}
+              href={item.href}
               icon={Icon}
               isActive={isActive}
               isCollapsed={isCollapsed}
-              onClick={() => onNavigate(item.href)}
               style={{
                 animationDelay: `${index * 50}ms`,
                 transitionDelay: `${index * 50}ms`,

@@ -5,8 +5,9 @@ import { LoadingOverlay } from '@/presentation/components/atoms';
 import { useLicenseStore, selectSyncStatus } from '@/infrastructure/stores/license';
 
 const SYNC_POLL_INTERVAL_MS = 1_000;
-const INDETERMINATE_PROGRESS_INTERVAL_MS = 500;
+const INDETERMINATE_PROGRESS_INTERVAL_MS = 200;
 const INDETERMINATE_MAX_PERCENT = 15;
+const INDETERMINATE_STEP = 2;
 
 /**
  * Full-screen overlay shown when license sync is in progress.
@@ -14,7 +15,7 @@ const INDETERMINATE_MAX_PERCENT = 15;
  * When backend has no progress yet, shows indeterminate progress (0-15%) so users feel the system is working.
  * Polls sync status every 1s for frequent updates.
  */
-export function SyncProgressOverlay() {
+export function LicenseSyncProgressOverlay() {
   const syncStatus = useLicenseStore(selectSyncStatus);
   const fetchSyncStatus = useLicenseStore((state) => state.fetchSyncStatus);
 
@@ -35,7 +36,7 @@ export function SyncProgressOverlay() {
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress) return;
-    setIndeterminatePercent(0);
+    queueMicrotask(() => setIndeterminatePercent(0));
     fetchSyncStatus();
     const pollId = setInterval(() => {
       fetchSyncStatus();
@@ -45,19 +46,23 @@ export function SyncProgressOverlay() {
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress || hasBackendProgress) return;
-    const id = setInterval(() => {
+    const tick = () => {
       setIndeterminatePercent((p) =>
-        Math.min(INDETERMINATE_MAX_PERCENT, p + 1)
+        Math.min(INDETERMINATE_MAX_PERCENT, p + INDETERMINATE_STEP)
       );
-    }, INDETERMINATE_PROGRESS_INTERVAL_MS);
-    return () => clearInterval(id);
+    };
+    const immediateId = setTimeout(tick, 50);
+    const intervalId = setInterval(tick, INDETERMINATE_PROGRESS_INTERVAL_MS);
+    return () => {
+      clearTimeout(immediateId);
+      clearInterval(intervalId);
+    };
   }, [syncStatus?.syncInProgress, hasBackendProgress]);
 
   return (
     <LoadingOverlay
       text={mainText}
       progress={syncStatus?.syncInProgress ? percent : undefined}
-      hidePercentLabel
       subtext={subtext}
     />
   );

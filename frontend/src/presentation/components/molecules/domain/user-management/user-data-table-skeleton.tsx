@@ -65,7 +65,7 @@ export function UserDataTableSkeleton({
               </TableHead>
 
               {/* Email column header */}
-              <TableHead style={{ width: "280px" }}>
+              <TableHead style={{ width: "200px" }}>
                 <Skeleton className="h-4 w-10 bg-gradient-to-r from-muted-foreground/20 to-muted-foreground/10" />
               </TableHead>
 
@@ -126,7 +126,7 @@ export function UserDataTableSkeleton({
                   </TableCell>
 
                   {/* Email column - Simple text */}
-                  <TableCell style={{ width: "280px" }}>
+                  <TableCell style={{ width: "200px" }}>
                     <Skeleton className="h-4 w-40 bg-gradient-to-r from-muted-foreground/15 to-muted-foreground/10" />
                   </TableCell>
 

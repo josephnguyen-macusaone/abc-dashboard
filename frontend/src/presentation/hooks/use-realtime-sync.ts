@@ -9,13 +9,13 @@ import logger from '@/shared/helpers/logger';
 
 const log = logger.createChild({ component: 'useRealtimeSync' });
 
-const WEBSOCKET_ENABLED = process.env.NEXT_PUBLIC_WEBSOCKET_ENABLED !== 'false';
+const WEBSOCKET_ENABLED = process.env.NEXT_PUBLIC_WEBSOCKET_ENABLED === 'true';
 
 /**
  * Connects to Socket.IO when authenticated and subscribes to license:sync_complete
  * and license:data_changed. Triggers store refetch on events.
- * Falls back to Phase 1 polling (SyncStatusIcon) when WebSocket is unavailable.
- * Set NEXT_PUBLIC_WEBSOCKET_ENABLED=false to skip WebSocket (e.g. when proxy doesn't support it).
+ * Falls back to polling (LicenseSyncButton tooltip) when WebSocket is unavailable.
+ * In Docker: WEBSOCKET_ENABLED in .env (single source). For local dev: NEXT_PUBLIC_WEBSOCKET_ENABLED.
  */
 export function useRealtimeSync() {
   const token = useAuthStore((s) => s.token);

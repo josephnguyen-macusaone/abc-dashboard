@@ -42,6 +42,99 @@ export interface LicenseMetricsFilters {
 }
 
 /**
+ * Transform backend dashboard metrics to business domain format.
+ * Exported for reuse when store already has metrics (avoids duplicate API calls).
+ */
+export function transformDashboardMetricsToCards(metrics: DashboardMetrics): LicenseDashboardMetric[] {
+  const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  const numberFormatter = new Intl.NumberFormat('en-US');
+  const formatCurrency = (value: number) =>
+    currencyFormatter.format(parseFloat(value.toFixed(2)));
+  const formatNumber = (value: number) =>
+    numberFormatter.format(parseFloat(value.toFixed(2)));
+
+  return [
+    {
+      id: 'total-active-licenses',
+      label: 'Total Active Licenses',
+      value: formatNumber(metrics.totalActiveLicenses.value),
+      trend: {
+        value: metrics.totalActiveLicenses.trend.value,
+        direction: metrics.totalActiveLicenses.trend.direction,
+        label: metrics.totalActiveLicenses.trend.label,
+      },
+    },
+    {
+      id: 'new-licenses-month',
+      label: 'New Licenses this month',
+      value: formatNumber(metrics.newLicensesThisMonth.value),
+      trend: {
+        value: metrics.newLicensesThisMonth.trend.value,
+        direction: metrics.newLicensesThisMonth.trend.direction,
+        label: metrics.newLicensesThisMonth.trend.label,
+      },
+    },
+    {
+      id: 'licenses-income-month',
+      label: 'Total Licenses income this month',
+      value: formatCurrency(metrics.licenseIncomeThisMonth.value),
+      trend: {
+        value: metrics.licenseIncomeThisMonth.trend.value,
+        direction: metrics.licenseIncomeThisMonth.trend.direction,
+        label: metrics.licenseIncomeThisMonth.trend.label,
+      },
+    },
+    {
+      id: 'sms-income-month',
+      label: 'Total SMS income this month',
+      value: formatCurrency(metrics.smsIncomeThisMonth.value),
+      trend: {
+        value: metrics.smsIncomeThisMonth.trend.value,
+        direction: metrics.smsIncomeThisMonth.trend.direction,
+        label: metrics.smsIncomeThisMonth.trend.label,
+      },
+    },
+    {
+      id: 'total-inhouse-licenses',
+      label: 'Total In-house Licenses',
+      value: formatNumber(metrics.inHouseLicenses.value),
+      trend: { value: 0, direction: 'neutral' as const, label: 'vs last month' },
+    },
+    {
+      id: 'total-agent-licenses',
+      label: 'Total Agent Licenses',
+      value: formatNumber(metrics.agentHeavyLicenses.value),
+      trend: { value: 0, direction: 'neutral' as const, label: 'vs last month' },
+    },
+    {
+      id: 'high-risk-licenses',
+      label: 'Total High Risk (7 days no active)',
+      value: formatNumber(metrics.highRiskLicenses.value),
+      trend: {
+        value: metrics.highRiskLicenses.trend.value,
+        direction: metrics.highRiskLicenses.trend.direction,
+        label: metrics.highRiskLicenses.trend.label,
+      },
+    },
+    {
+      id: 'estimate-next-month',
+      label: 'Estimate next month Licenses income',
+      value: formatCurrency(metrics.estimatedNextMonthIncome.value),
+      trend: {
+        value: metrics.estimatedNextMonthIncome.trend.value,
+        direction: metrics.estimatedNextMonthIncome.trend.direction,
+        label: metrics.estimatedNextMonthIncome.trend.label,
+      },
+    },
+  ];
+}
+
+/**
  * Dashboard metrics use case contract
  */
 export interface GetLicenseStatsUseCaseContract {
@@ -172,108 +265,7 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
    * Transform backend dashboard metrics to business domain format
    */
   private transformDashboardMetricsToCards(metrics: DashboardMetrics): LicenseDashboardMetric[] {
-    const currencyFormatter = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
-
-    const numberFormatter = new Intl.NumberFormat('en-US');
-
-    const formatCurrency = (value: number) => {
-      // Round to 2 decimal places and format as currency
-      const rounded = parseFloat(value.toFixed(2));
-      return currencyFormatter.format(rounded);
-    };
-    const formatNumber = (value: number) => {
-      // Round to 2 decimal places and format as number
-      const rounded = parseFloat(value.toFixed(2));
-      return numberFormatter.format(rounded);
-    };
-
-    return [
-      {
-        id: 'total-active-licenses',
-        label: 'Total Active Licenses',
-        value: formatNumber(metrics.totalActiveLicenses.value),
-        trend: {
-          value: metrics.totalActiveLicenses.trend.value,
-          direction: metrics.totalActiveLicenses.trend.direction,
-          label: metrics.totalActiveLicenses.trend.label,
-        },
-      },
-      {
-        id: 'new-licenses-month',
-        label: 'New Licenses this month',
-        value: formatNumber(metrics.newLicensesThisMonth.value),
-        trend: {
-          value: metrics.newLicensesThisMonth.trend.value,
-          direction: metrics.newLicensesThisMonth.trend.direction,
-          label: metrics.newLicensesThisMonth.trend.label,
-        },
-      },
-      {
-        id: 'licenses-income-month',
-        label: 'Total Licenses income this month',
-        value: formatCurrency(metrics.licenseIncomeThisMonth.value),
-        trend: {
-          value: metrics.licenseIncomeThisMonth.trend.value,
-          direction: metrics.licenseIncomeThisMonth.trend.direction,
-          label: metrics.licenseIncomeThisMonth.trend.label,
-        },
-      },
-      {
-        id: 'sms-income-month',
-        label: 'Total SMS income this month',
-        value: formatCurrency(metrics.smsIncomeThisMonth.value),
-        trend: {
-          value: metrics.smsIncomeThisMonth.trend.value,
-          direction: metrics.smsIncomeThisMonth.trend.direction,
-          label: metrics.smsIncomeThisMonth.trend.label,
-        },
-      },
-      {
-        id: 'total-inhouse-licenses',
-        label: 'Total In-house Licenses',
-        value: formatNumber(metrics.inHouseLicenses.value),
-        trend: {
-          value: 0,
-          direction: 'neutral' as const,
-          label: 'vs last month',
-        },
-      },
-      {
-        id: 'total-agent-licenses',
-        label: 'Total Agent Licenses',
-        value: formatNumber(metrics.agentHeavyLicenses.value),
-        trend: {
-          value: 0,
-          direction: 'neutral' as const,
-          label: 'vs last month',
-        },
-      },
-      {
-        id: 'high-risk-licenses',
-        label: 'Total High Risk (7 days no active)',
-        value: formatNumber(metrics.highRiskLicenses.value),
-        trend: {
-          value: metrics.highRiskLicenses.trend.value,
-          direction: metrics.highRiskLicenses.trend.direction,
-          label: metrics.highRiskLicenses.trend.label,
-        },
-      },
-      {
-        id: 'estimate-next-month',
-        label: 'Estimate next month Licenses income',
-        value: formatCurrency(metrics.estimatedNextMonthIncome.value),
-        trend: {
-          value: metrics.estimatedNextMonthIncome.trend.value,
-          direction: metrics.estimatedNextMonthIncome.trend.direction,
-          label: metrics.estimatedNextMonthIncome.trend.label,
-        },
-      },
-    ];
+    return transformDashboardMetricsToCards(metrics);
   }
 
   /**

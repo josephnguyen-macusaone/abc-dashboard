@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Button } from '@/presentation/components/atoms';
 import { Breadcrumb, ThemeSwitcher } from '@/presentation/components/molecules';
-import { SyncStatusIcon, SyncButton } from '@/presentation/components/molecules/domain/dashboard';
+import { LicenseSyncButton } from '@/presentation/components/molecules/domain/dashboard';
 import { CollapseButton } from '@/presentation/components/molecules/layout/sidebar';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
@@ -69,8 +69,7 @@ export function AppHeader({
       </div>
 
       <div className="flex items-center gap-2">
-        {showSyncButton && <SyncButton />}
-        <SyncStatusIcon refreshIntervalMs={60_000} />
+        {showSyncButton && <LicenseSyncButton />}
         <ThemeSwitcher />
       </div>
     </header>

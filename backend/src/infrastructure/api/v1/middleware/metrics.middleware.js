@@ -242,14 +242,12 @@ export const responseCachingMiddleware = (req, res, next) => {
     return next();
   }
 
-  // Skip caching if user is authenticated (personalized responses)
-  if (req.user) {
-    return next();
-  }
+  // Use user-scoped cache key when userId was extracted from JWT (enables caching for authenticated GETs)
+  const userIdForCache = req.userIdForCache ?? '';
 
-  // Create cache key from method, path, and query parameters
+  // Create cache key from method, path, query, and optional userId
   const queryString = Object.keys(req.query).length > 0 ? JSON.stringify(req.query) : '';
-  const cacheKey = cacheKeys.apiResponse(req.method, req.path, queryString);
+  const cacheKey = cacheKeys.apiResponse(req.method, req.path, queryString, userIdForCache);
 
   // Check cache first
   cache

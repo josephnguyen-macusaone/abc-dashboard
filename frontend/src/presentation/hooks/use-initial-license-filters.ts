@@ -3,6 +3,9 @@
 import { useEffect, useRef } from 'react';
 import type { LicenseFilters } from '@/infrastructure/stores/license';
 
+/** Skip fetch if data was fetched within this window (e.g. Dashboard → Licenses navigation) */
+const FRESH_THRESHOLD_MS = 30_000;
+
 /**
  * Returns the default date range for the current month (YYYY-MM-DD).
  * Used when no date filter is set on initial load.
@@ -14,6 +17,19 @@ export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo
   return { startsAtFrom, startsAtTo };
 }
 
+function filtersMatch(
+  a: { startsAtFrom?: string; startsAtTo?: string; page?: number; limit?: number } | null,
+  b: { startsAtFrom?: string; startsAtTo?: string; page?: number; limit?: number }
+): boolean {
+  if (!a) return false;
+  return (
+    (a.startsAtFrom ?? '') === (b.startsAtFrom ?? '') &&
+    (a.startsAtTo ?? '') === (b.startsAtTo ?? '') &&
+    (a.page ?? 1) === (b.page ?? 1) &&
+    (a.limit ?? 20) === (b.limit ?? 20)
+  );
+}
+
 interface UseInitialLicenseFiltersOptions {
   filters: LicenseFilters;
   setFilters: (filters: LicenseFilters) => void;
@@ -23,22 +39,43 @@ interface UseInitialLicenseFiltersOptions {
     startsAtFrom?: string;
     startsAtTo?: string;
   }) => Promise<void>;
+  lastFetchedAt: number | null;
+  lastFetchFilters: { startsAtFrom?: string; startsAtTo?: string; page?: number; limit?: number } | null;
 }
 
 /**
  * One-time initialization: sets default date range (current month) when none exists,
- * then fetches licenses. Per React guidelines, this encapsulates mount-only side effect.
+ * then fetches licenses. Skips fetch when navigating Dashboard → Licenses if data
+ * was fetched within FRESH_THRESHOLD_MS and filters match.
  */
 export function useInitialLicenseFilters({
   filters,
   setFilters,
   fetchLicenses,
+  lastFetchedAt,
+  lastFetchFilters,
 }: UseInitialLicenseFiltersOptions): void {
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     const from = filters.startsAtFrom;
     const to = filters.startsAtTo;
+
+    const fetchParams = {
+      page: 1,
+      limit: 20,
+      startsAtFrom: from ?? undefined,
+      startsAtTo: to ?? undefined,
+    };
+
+    if (
+      lastFetchedAt &&
+      Date.now() - lastFetchedAt < FRESH_THRESHOLD_MS &&
+      filtersMatch(lastFetchFilters, fetchParams)
+    ) {
+      hasInitializedRef.current = true;
+      return;
+    }
 
     if (from && to) {
       hasInitializedRef.current = true;

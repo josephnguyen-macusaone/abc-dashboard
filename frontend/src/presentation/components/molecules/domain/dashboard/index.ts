@@ -14,9 +14,7 @@ export {
 } from './license-table-section';
 
 export {
-  SyncStatusIcon,
-  type SyncStatusIconProps
-} from './sync-status-icon';
-
-export { SyncButton } from './sync-button';
-export { SyncProgressOverlay } from './sync-progress-overlay';
+  LicenseSyncButton,
+  type LicenseSyncButtonProps,
+} from './license-sync-button';
+export { LicenseSyncProgressOverlay } from './license-sync-progress-overlay';
