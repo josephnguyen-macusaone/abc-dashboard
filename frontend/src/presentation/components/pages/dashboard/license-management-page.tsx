@@ -62,8 +62,8 @@ export function LicenseManagementPage() {
         await fetchLicenses({
           page: params?.page ?? 1,
           limit: params?.limit ?? 20,
-          search: params?.search,
-          searchField: params?.searchField,
+          ...(params?.search !== undefined && { search: params.search }),
+          ...(params?.searchField !== undefined && { searchField: params.searchField }),
           status: params?.status as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
           startsAtFrom: params?.startsAtFrom ?? storeFilters.startsAtFrom,
           startsAtTo: params?.startsAtTo ?? storeFilters.startsAtTo,
@@ -124,17 +124,14 @@ export function LicenseManagementPage() {
           agentsName: typeof license.agentsName === 'string' ? license.agentsName : '',
         }));
 
-        // Separate new licenses (no valid server id) from existing ones (UUID or numeric id)
-        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        // Only temp-* or empty = new; anything else = existing (UUID, appid, key, etc.)
         const isNewLicense = (license: LicenseRecord): boolean => {
           const id = license.id;
           if (id == null || id === "") return true;
-          if (typeof id === "number" && Number.isInteger(id)) return false;
           const s = String(id).trim();
           if (s === "" || s === "undefined" || s === "null") return true;
           if (s.startsWith("temp-")) return true;
-          if (UUID_REGEX.test(s)) return false;
-          return true; // other strings (e.g. key or lost temp id) -> create
+          return false; // Any other id = existing, update in place
         };
         const newLicenses = transformedData.filter(isNewLicense);
         const existingLicenses = transformedData.filter((license) => !isNewLicense(license));
@@ -143,15 +140,27 @@ export function LicenseManagementPage() {
 
         // Bulk create new licenses if any
         if (newLicenses.length > 0) {
+          const VALID_PLANS = ['Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'] as const;
           const licensesToCreate = newLicenses.map(license => {
             const licenseKey = generateLicenseKey();
             // eslint-disable-next-line @typescript-eslint/no-unused-vars -- omit id for create payload
             const { id, ...licenseData } = license;
+            const plan = licenseData.plan && VALID_PLANS.includes(licenseData.plan as (typeof VALID_PLANS)[number])
+              ? licenseData.plan
+              : 'Basic';
+            const dba = (licenseData.dba ?? '').toString().trim() || 'New License';
+            const startsAt = licenseData.startsAt && String(licenseData.startsAt).trim()
+              ? String(licenseData.startsAt).trim().slice(0, 10)
+              : new Date().toISOString().split('T')[0];
             return {
               ...licenseData,
-              key: licenseKey, // Add the license key for frontend state management (removed by API transform)
-              product: 'ABC Business Suite', // Add the required product field
-              seatsTotal: 1, // Add the required seats total (default to 1)
+              key: licenseKey,
+              product: 'ABC Business Suite',
+              seatsTotal: 1,
+              plan,
+              dba,
+              startsAt,
+              term: (licenseData.term === 'yearly' ? 'yearly' : 'monthly') as import('@/types').LicenseTerm,
             };
           });
 
@@ -296,7 +305,10 @@ export function LicenseManagementPage() {
     );
   }
 
-  if (isLoading || isSaving) {
+  // Only unmount LicenseManagement (and thus the grid) during initial load or save.
+  // During search/filter refetch, keep the grid mounted so search bar state is preserved.
+  const showFullPageSkeleton = (isLoading && licenses.length === 0) || isSaving;
+  if (showFullPageSkeleton) {
     return (
       <DashboardTemplate>
         <div className="space-y-8">
@@ -312,7 +324,7 @@ export function LicenseManagementPage() {
     <LicenseManagement
       currentUser={currentUser}
       licenses={licenses}
-      isLoading={isLoading}
+      isLoading={isLoading && licenses.length === 0}
       onLoadLicenses={loadLicenses}
       onSaveLicenses={onSave}
       onAddLicense={onAddRow}

@@ -91,9 +91,10 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
   const dueDateRaw = String((apiLicense as { coming_expired?: string; Coming_expired?: string; renewalDueDate?: string }).coming_expired ?? (apiLicense as { Coming_expired?: string }).Coming_expired ?? (apiLicense as { renewalDueDate?: string }).renewalDueDate ?? '');
   const dueDate = dueDateRaw.includes('/') ? convertDate(dueDateRaw) : (dueDateRaw || '');
 
+  // Prefer id (UUID) over appid so bulk update can find the license by UUID
   return {
-    id: (apiLicense.appid ?? apiLicense.id ?? `temp-${Date.now()}`) as LicenseRecord['id'],
-    key: String(apiLicense.appid ?? apiLicense.key ?? ''),
+    id: (apiLicense.id ?? apiLicense.appid ?? `temp-${Date.now()}`) as LicenseRecord['id'],
+    key: String(apiLicense.key ?? apiLicense.appid ?? ''),
     product: String(apiLicense.product ?? 'ABC Business Suite'),
     dba: String(apiLicense.dba ?? ''),
     zip: String(apiLicense.zip ?? ''),

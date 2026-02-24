@@ -529,7 +529,9 @@ export class LicenseManagementService {
       const bulkCreateResults = await this.licenseRepository.bulkCreateLicensesRaw(normalizedLicenses);
 
       // Extract the created licenses from the API response
-      const createdLicenses = (bulkCreateResults.data?.results || []) as LicenseRecord[];
+      // Backend returns data as array directly; some endpoints use data.results
+      const raw = bulkCreateResults.data;
+      const createdLicenses = (Array.isArray(raw) ? raw : (raw as { results?: unknown[] })?.results ?? []) as LicenseRecord[];
 
       // Convert to the expected response format
       const results: LicenseResponseDTO[] = createdLicenses.map((license: LicenseRecord) => ({
@@ -968,7 +970,33 @@ export class LicenseManagementService {
   }
 
   async bulkCreateLicenses(licenses: Array<Partial<LicenseRecord>>): Promise<LicenseRecord[]> {
-    const result = await this.licenseRepository.bulkCreateLicensesRaw(licenses) as {
+    const VALID_PLANS = ['Basic', 'Premium', 'Print Check', 'Staff Performance', 'Unlimited SMS'];
+    const generateKey = () =>
+      `LIC-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    const normalized = licenses.map((license, index) => {
+      const key = license.key && String(license.key).trim() ? license.key : generateKey();
+      const plan = license.plan && VALID_PLANS.includes(license.plan)
+        ? license.plan
+        : 'Basic';
+      const dba = (license.dba ?? '').toString().trim() || `License ${index + 1}`;
+      const startsAt = license.startsAt && String(license.startsAt).trim()
+        ? String(license.startsAt).trim().slice(0, 10)
+        : new Date().toISOString().split('T')[0];
+      const term = license.term === 'yearly' ? 'yearly' : 'monthly';
+      return {
+        ...license,
+        key,
+        plan,
+        dba,
+        startsAt,
+        term,
+        product: license.product || 'ABC Business Suite',
+        seatsTotal: license.seatsTotal ?? 1,
+      };
+    });
+
+    const result = await this.licenseRepository.bulkCreateLicensesRaw(normalized) as {
       success?: boolean;
       data?: LicenseRecord[] | { results?: LicenseRecord[] };
       results?: LicenseRecord[];
