@@ -579,23 +579,16 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                 type: string
    *               ActivateDate:
    *                 type: string
-   *                 description: Activation date (ISO or MM/DD/YYYY)
+   *                 description: Activation/start date (external API format)
    *               coming_expired:
    *                 type: string
+   *                 description: Due date for Term Yearly (expiry/renewal date)
    *               Package:
    *                 type: object
    *               Note:
    *                 type: string
    *               smsBalance:
    *                 type: number
-   *               Note:
-   *                 type: string
-   *               ActivateDate:
-   *                 type: string
-   *                 description: Activation/start date (external API format)
-   *               coming_expired:
-   *                 type: string
-   *                 description: Due date for Term Yearly (expiry/renewal date)
    *     responses:
    *       200:
    *         description: License updated successfully

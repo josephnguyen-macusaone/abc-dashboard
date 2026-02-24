@@ -774,6 +774,10 @@ function useDataGrid<TData>({
           return;
         }
 
+        // Scroll row to center when focusing (avoids offset from browser's
+        // default block: 'nearest' and matches edit-mode centering)
+        rowVirtualizerRef.current?.scrollToIndex(rowIndex, { align: "center" });
+
         cellWrapperElement.focus();
       });
     },

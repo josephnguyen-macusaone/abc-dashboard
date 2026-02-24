@@ -312,10 +312,13 @@ export const useLicenseStore = create<LicenseState>()(
               if (v !== undefined) queryParams[key as string] = v;
             });
 
-            // When caller explicitly passes undefined/null/'' for filter keys, clear them (e.g. on reset)
+            // When caller explicitly passes undefined/null/'' for filter keys, clear them (e.g. on reset).
+            // Only clear when key is in params; if omitted, preserve current filter (avoids clearing search on loadLicenses() etc).
             const filterKeysToClear: (keyof LicenseFilters)[] = ['search', 'searchField', 'status', 'plan', 'term', 'dba', 'zip'];
+            const paramsRecord = params as Record<string, unknown>;
             filterKeysToClear.forEach((key) => {
-              const p = (params as Record<string, unknown>)[key];
+              if (!(key in paramsRecord)) return;
+              const p = paramsRecord[key];
               if (p === undefined || p === null || p === '') delete queryParams[key as string];
             });
 
@@ -608,6 +611,10 @@ export const useLicenseStore = create<LicenseState>()(
             }
 
             // Merge into current list: replace updated rows (by idMapping or key), prepend created
+            // Use normalized ID comparison to avoid duplicates when id types differ (string vs number)
+            const idsMatch = (a: unknown, b: unknown) =>
+              a != null && b != null && String(a) === String(b);
+
             const currentLicenses = get().licenses;
             const safeCurrent = Array.isArray(currentLicenses) ? currentLicenses : [];
             const mergedList = safeCurrent.map((license) => {
@@ -615,7 +622,7 @@ export const useLicenseStore = create<LicenseState>()(
                   const originalId = license.id;
                   const uuid = updateIdMapping[String(originalId)] ?? (typeof originalId === 'string' ? updateIdMapping[originalId] : undefined);
                   if (uuid) {
-                    const updated = results.find((r) => r.id === uuid);
+                    const updated = results.find((r) => idsMatch(r.id, uuid));
                     if (updated) return updated;
                   }
                   // Fallback: match by key when id is key (e.g. external API)
@@ -625,9 +632,10 @@ export const useLicenseStore = create<LicenseState>()(
                   return byKey ?? license;
                 });
 
+            // Only include results that are NEW (not in current list) - prevents duplicates from updates
             const newResults = results.filter(
               (r) => !!r && typeof r === 'object' && 'id' in r && !safeCurrent.some((l) =>
-                l?.id === r.id || (l?.key != null && r.key != null && String(l.key) === String(r.key))
+                idsMatch(l?.id, r.id) || (l?.key != null && r.key != null && String(l.key) === String(r.key))
               )
             );
             set({

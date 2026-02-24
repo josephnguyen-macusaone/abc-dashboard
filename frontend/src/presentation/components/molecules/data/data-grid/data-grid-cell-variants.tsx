@@ -21,6 +21,7 @@ import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
 import { CalendarIcon, X } from "lucide-react";
 import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-wrapper";
+import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
 import type { CellVariantProps } from "@/types/data-grid";
 
@@ -142,6 +143,10 @@ export function ShortTextCell<TData>({
 
   const displayValue = !isEditing ? (value ?? "") : "";
   const fullValue = String(initialValue ?? "");
+  const contentHeight = Math.max(
+    getRowHeightValue(tableMeta?.rowHeight ?? "medium") - 24,
+    20,
+  );
 
   const contentNode = (
     <div
@@ -156,12 +161,17 @@ export function ShortTextCell<TData>({
       className={cn(
         "block min-w-0 w-full overflow-hidden outline-none text-left",
         !isEditing && "truncate",
-        isEditing && "flex min-h-full min-w-0 items-center justify-start",
+        isEditing && "w-full min-w-0",
         {
           "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden":
             isEditing,
         },
       )}
+      style={
+        isEditing
+          ? { height: contentHeight, lineHeight: `${contentHeight}px` }
+          : undefined
+      }
     >
       {displayValue}
     </div>
@@ -856,6 +866,13 @@ export function PlanModulesCell<TData>({
 
   const displayLabels = selectedModules;
 
+  const onOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (!open) tableMeta?.onCellEditingStop?.();
+    },
+    [tableMeta],
+  );
+
   return (
     <DataGridCellWrapper<TData>
       ref={containerRef}
@@ -867,41 +884,58 @@ export function PlanModulesCell<TData>({
       isFocused={isFocused}
       isSelected={isSelected}
     >
-      {isEditing && !readOnly ? (
-        <div className="flex flex-col gap-1 py-1">
-          {PLAN_MODULE_OPTIONS.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex items-center gap-2 text-xs cursor-pointer"
+      <div className="flex size-full min-w-0 overflow-hidden items-center justify-start">
+        <Popover open={isEditing && !readOnly} onOpenChange={onOpenChange}>
+          <PopoverAnchor asChild>
+            <div
+              data-slot="grid-cell-content"
+              className="inline-flex flex-wrap items-center gap-1 min-w-0"
             >
-              <Checkbox
-                checked={selectedModules.includes(opt.value)}
-                onCheckedChange={(checked) =>
-                  onToggle(opt.value, checked === true)
-                }
-                className="border-primary"
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-1 overflow-hidden">
-          {displayLabels.length > 0 ? (
-            displayLabels.map((label) => (
-              <Badge
-                key={label}
-                variant="secondary"
-                className="h-5 shrink-0 px-1.5 text-xs"
-              >
-                {label}
-              </Badge>
-            ))
-          ) : (
-            <span className="text-muted-foreground text-xs">—</span>
+              {displayLabels.length > 0 ? (
+                displayLabels.map((label) => (
+                  <Badge
+                    key={label}
+                    variant="secondary"
+                    className="h-5 shrink-0 px-1.5 text-xs"
+                  >
+                    {label}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              )}
+            </div>
+          </PopoverAnchor>
+          {isEditing && !readOnly && (
+            <PopoverContent
+              data-grid-cell-editor=""
+              align="start"
+              side="top"
+              sideOffset={4}
+              className="w-auto min-w-fit p-3"
+              collisionPadding={8}
+            >
+              <div className="flex flex-col gap-1.5">
+                {PLAN_MODULE_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex items-center gap-3 py-0.5 text-sm cursor-pointer rounded-sm hover:bg-muted/50 px-1 -mx-1"
+                  >
+                    <Checkbox
+                      checked={selectedModules.includes(opt.value)}
+                      onCheckedChange={(checked) =>
+                        onToggle(opt.value, checked === true)
+                      }
+                      className="border-primary"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
           )}
-        </div>
-      )}
+        </Popover>
+      </div>
     </DataGridCellWrapper>
   );
 }
@@ -1029,6 +1063,10 @@ export function AgentsNameCell<TData>({
 
   const displayText = !isEditing ? (editValue ?? initialText) : "";
   const fullText = initialText || "";
+  const contentHeight = Math.max(
+    getRowHeightValue(tableMeta?.rowHeight ?? "medium") - 24,
+    20,
+  );
 
   const contentNode = (
     <div
@@ -1043,12 +1081,17 @@ export function AgentsNameCell<TData>({
       className={cn(
         "block min-w-0 w-full overflow-hidden outline-none text-left",
         !isEditing && "truncate",
-        isEditing && "flex min-h-full min-w-0 items-center justify-start",
+        isEditing && "w-full min-w-0",
         {
           "whitespace-nowrap **:inline **:whitespace-nowrap [&_br]:hidden":
             isEditing,
         },
       )}
+      style={
+        isEditing
+          ? { height: contentHeight, lineHeight: `${contentHeight}px` }
+          : undefined
+      }
     >
       {displayText}
     </div>
