@@ -1,6 +1,10 @@
 import { ShapeSkeleton } from '@/presentation/components/atoms';
 import { ButtonSkeleton } from '@/presentation/components/molecules';
+import { getRowHeightValue } from '@/shared/lib/data-grid';
 import { cn } from "@/shared/helpers";
+
+/** Row height matches LicensesDataGrid (rowHeight: "medium" = 56px) */
+const ROW_HEIGHT = getRowHeightValue("medium");
 
 interface LicensesDataGridSkeletonProps {
   className?: string;
@@ -83,10 +87,10 @@ export function LicensesDataGridSkeleton({
           className="relative grid select-none overflow-auto rounded-md border focus:outline-none bg-card"
           style={{ maxHeight: `${height}px` }}
         >
-          {/* Grid Header - matching DataGrid header structure */}
+          {/* Grid Header - matching DataGrid header (tableHeadCellClass: h-12 px-4 py-2, bg-muted) */}
           <div
             role="rowgroup"
-            className="sticky top-0 z-10 grid border-b bg-background"
+            className="sticky top-0 z-10 grid border-b bg-muted [&_[role=row]]:border-b"
           >
             <div
               role="row"
@@ -102,7 +106,7 @@ export function LicensesDataGridSkeleton({
                   })}
                   style={{ width: `${column.width}px` }}
                 >
-                  <div className="size-full px-3 py-1.5">
+                  <div className="size-full h-12 px-4 py-2 flex items-center">
                     <ShapeSkeleton width="full" height="4" variant="rectangle" />
                   </div>
                 </div>
@@ -115,7 +119,7 @@ export function LicensesDataGridSkeleton({
             role="rowgroup"
             className="relative grid"
             style={{
-              height: `${rowCount * 36}px`,
+              height: `${rowCount * ROW_HEIGHT}px`,
               contain: "strict",
             }}
           >
@@ -129,8 +133,8 @@ export function LicensesDataGridSkeleton({
                   rowIndex % 2 === 0 ? "bg-background" : "bg-muted/20"
                 )}
                 style={{
-                  height: '36px',
-                  transform: `translateY(${rowIndex * 36}px)`,
+                  height: `${ROW_HEIGHT}px`,
+                  transform: `translateY(${rowIndex * ROW_HEIGHT}px)`,
                 }}
               >
                 {columns.map((column, colIndex) => (

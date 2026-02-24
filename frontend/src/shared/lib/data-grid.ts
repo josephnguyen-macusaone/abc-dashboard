@@ -1,11 +1,6 @@
 import type {  Table } from "@tanstack/react-table";
 import type * as React from "react";
-import type {
-  CellPosition,
-  Direction,
-  FileCellData,
-  RowHeightValue,
-} from "@/types/data-grid";
+import type { CellPosition, FileCellData, RowHeightValue } from "@/shared/types/data-grid";
 
 export function flexRender<TProps extends object>(
   Comp: ((props: TProps) => React.ReactNode) | string | undefined,
