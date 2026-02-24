@@ -516,8 +516,8 @@ export function LicensesDataGrid({
   const planColumn = table.getColumn("plan");
   const termColumn = table.getColumn("term");
 
-  // Loading state
-  if (isLoading) {
+  // Loading state: show skeleton during initial fetch or bulk save/update
+  if (isLoading || isSaving) {
     return (
       <div className={className}>
         <LicensesDataGridSkeleton />

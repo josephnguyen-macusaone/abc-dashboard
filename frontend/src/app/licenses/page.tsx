@@ -2,13 +2,14 @@ import nextDynamic from 'next/dynamic';
 import { ProtectedRoute } from '@/presentation/components/routes';
 import { AccessDeniedPage } from '@/presentation/components/pages';
 import { DashboardTemplate } from '@/presentation/components/templates';
+import { LicensesDataGridSkeleton } from '@/presentation/components/organisms';
 
 const LicenseManagementPage = nextDynamic(
   () =>
     import('@/presentation/components/pages/dashboard/license-management-page').then((m) => ({
       default: m.LicenseManagementPage,
     })),
-  { loading: () => <div className="flex min-h-[200px] items-center justify-center" /> }
+  { loading: () => <LicensesDataGridSkeleton /> }
 );
 
 // Force dynamic rendering for this protected route

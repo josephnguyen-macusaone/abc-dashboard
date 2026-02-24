@@ -23,54 +23,55 @@ export function LicensesDataGridSkeleton({
 }: LicensesDataGridSkeletonProps) {
   // Column definitions matching license-grid-columns.tsx
   const columns = [
-    { id: 'dba', width: 120, header: 'DBA' },
-    { id: 'zip', width: 100, header: 'Zip Code' },
-    { id: 'startsAt', width: 120, header: 'Activate Date' },
-    { id: 'status', width: 120, header: 'Status' },
-    { id: 'plan', width: 120, header: 'Plan' },
-    { id: 'term', width: 110, header: 'Term' },
-    { id: 'lastPayment', width: 130, header: 'Last Payment' },
-    { id: 'lastActive', width: 120, header: 'Last Active' },
-    { id: 'smsPurchased', width: 130, header: 'SMS Purchased' },
-    { id: 'smsSent', width: 110, header: 'SMS Sent' },
-    { id: 'smsBalance', width: 120, header: 'SMS Balance' },
-    { id: 'agents', width: 90, header: 'Agents' },
-    { id: 'agentsName', width: 200, header: 'Agents Name' },
-    { id: 'agentsCost', width: 120, header: 'Agents Cost' },
-    { id: 'notes', width: 200, header: 'Notes' },
+    { id: 'dba', width: 200 },
+    { id: 'zip', width: 130 },
+    { id: 'startsAt', width: 160 },
+    { id: 'status', width: 130 },
+    { id: 'plan', width: 160 },
+    { id: 'term', width: 150 },
+    { id: 'dueDate', width: 150 },
+    { id: 'lastPayment', width: 160 },
+    { id: 'lastActive', width: 160 },
+    { id: 'smsPurchased', width: 170 },
+    { id: 'smsSent', width: 150 },
+    { id: 'smsBalance', width: 160 },
+    { id: 'agents', width: 120 },
+    { id: 'agentsName', width: 280 },
+    { id: 'agentsCost', width: 160 },
+    { id: 'notes', width: 300 },
   ];
 
   return (
     <div className={cn("space-y-5", className)}>
-      {/* Toolbar - matches actual LicensesDataGrid toolbar */}
-      <div className="flex flex-wrap items-center gap-2 justify-between">
-        {/* Left side - Search bar with prefix (prefix 100px + input) and filter menus */}
-        <div className="flex items-center gap-2">
+      {/* Toolbar - matches actual LicensesDataGrid toolbar (View button on right) */}
+      <div className="flex flex-nowrap md:flex-wrap items-center gap-1.5 sm:gap-2 md:justify-between overflow-x-auto">
+        {/* Left side - Search bar and filter menus (Status, Plan, Term) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-40 md:w-52 lg:w-72">
             <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
             <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
           </div>
 
-          {/* DataGridFilterMenu */}
+          {/* Status filter */}
           <ButtonSkeleton variant="outline" size="sm" showText />
 
-          {/* DataGridSortMenu */}
+          {/* Plan filter */}
           <ButtonSkeleton variant="outline" size="sm" showText />
 
-          {/* DataGridRowHeightMenu */}
-          <ButtonSkeleton variant="outline" size="sm" showText />
-
-          {/* DataGridViewMenu */}
+          {/* Term filter */}
           <ButtonSkeleton variant="outline" size="sm" showText />
         </div>
 
-        {/* Right side - Conditional action buttons (when hasChanges) */}
-        <div className="flex items-center gap-2">
+        {/* Right side - Action buttons and View menu */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-auto">
           {/* Discard button */}
           <ButtonSkeleton variant="outline" size="sm" textWidth="16" />
 
           {/* Save Changes button */}
           <ButtonSkeleton variant="default" size="sm" textWidth="20" />
+
+          {/* DataGridViewMenu - View button */}
+          <ButtonSkeleton variant="outline" size="sm" showText />
         </div>
       </div>
 

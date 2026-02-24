@@ -2,13 +2,14 @@ import nextDynamic from 'next/dynamic';
 import { ProtectedRoute } from '@/presentation/components/routes';
 import { AccessDeniedPage } from '@/presentation/components/pages';
 import { DashboardTemplate } from '@/presentation/components/templates';
+import { UserDataTableSkeleton } from '@/presentation/components/molecules/domain/user-management';
 
 const UserManagementPage = nextDynamic(
   () =>
     import('@/presentation/components/pages/dashboard/user-management-page').then((m) => ({
       default: m.UserManagementPage,
     })),
-  { loading: () => <div className="flex min-h-[200px] items-center justify-center" /> }
+  { loading: () => <UserDataTableSkeleton /> }
 );
 
 // Force dynamic rendering for this protected route
