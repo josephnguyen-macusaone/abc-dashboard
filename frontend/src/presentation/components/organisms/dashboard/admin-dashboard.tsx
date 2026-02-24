@@ -174,13 +174,7 @@ export function AdminDashboard({
       return;
     }
 
-    if (hasInitializedDateRef.current) {
-      // User cleared the range; fetch with no date
-      runParallelFetch({});
-      return;
-    }
-
-    // First load with no date filter: set store and fetch to current month (same as picker default)
+    // First load with no date filter: set store and fetch to current month (first to last day)
     hasInitializedDateRef.current = true;
     const now = new Date();
     const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];

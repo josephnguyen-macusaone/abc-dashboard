@@ -11,7 +11,7 @@ import { useAuthStore } from "@/infrastructure/stores/auth";
 import { useInitialLicenseFilters } from "@/presentation/hooks/use-initial-license-filters";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { DashboardTemplate } from "@/presentation/components/templates";
-import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination, selectLicenseLastFetchedAt, selectLicenseLastFetchFilters } from "@/infrastructure/stores/license";
+import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
 import { ApiExceptionDto } from "@/application/dto/api-dto";
 import type { LicenseRecord } from "@/types";
 
@@ -33,8 +33,6 @@ export function LicenseManagementPage() {
   const filters = useLicenseStore(state => state.filters);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
   const setFilters = useLicenseStore(state => state.setFilters);
-  const lastFetchedAt = useLicenseStore(selectLicenseLastFetchedAt);
-  const lastFetchFilters = useLicenseStore(selectLicenseLastFetchFilters);
   const bulkCreateLicenses = useLicenseStore(state => state.bulkCreateLicenses);
   const bulkUpsertLicenses = useLicenseStore(state => state.bulkUpsertLicenses);
   const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
@@ -77,8 +75,8 @@ export function LicenseManagementPage() {
     [fetchLicenses]
   );
 
-  // Initial load: default to current month when no date filter is set (encapsulated in hook)
-  useInitialLicenseFilters({ filters, setFilters, fetchLicenses, lastFetchedAt, lastFetchFilters });
+  // Initial load: always reset to current month when License Management mounts
+  useInitialLicenseFilters({ filters, setFilters, fetchLicenses });
 
   // Refetch when tab becomes visible to recover from stuck loading when tab was inactive
   useEffect(() => {

@@ -32,7 +32,7 @@ export function LicenseSyncProgressOverlay() {
   const subtext = hasProgress
     ? `${processed.toLocaleString()} / ${total.toLocaleString()} processed. Do not refresh the page.`
     : 'Do not refresh the page.';
-  const mainText = `Syncing license data (${Math.round(percent)}%). Please wait!`;
+  const mainText = `Syncing license data. Please wait!`;
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress) return;
