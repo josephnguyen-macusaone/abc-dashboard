@@ -11,7 +11,8 @@ import { useAuthStore } from "@/infrastructure/stores/auth";
 import { useInitialLicenseFilters } from "@/presentation/hooks/use-initial-license-filters";
 import { LicenseManagement } from "@/presentation/components/organisms/license-management";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
-import { DashboardTemplate } from "@/presentation/components/templates";
+import { ShapeSkeleton } from "@/presentation/components/atoms";
+import { ButtonSkeleton } from "@/presentation/components/molecules";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
 import { ApiExceptionDto } from "@/application/dto/api-dto";
 import type { LicenseRecord } from "@/types";
@@ -297,11 +298,9 @@ export function LicenseManagementPage() {
 
   if (!currentUser) {
     return (
-      <DashboardTemplate>
-        <div className="text-center py-8">
-          <p>Please log in to access license management.</p>
-        </div>
-      </DashboardTemplate>
+      <div className="text-center py-8">
+        <p>Please log in to access license management.</p>
+      </div>
     );
   }
 
@@ -310,13 +309,19 @@ export function LicenseManagementPage() {
   const showFullPageSkeleton = (isLoading && licenses.length === 0) || isSaving;
   if (showFullPageSkeleton) {
     return (
-      <DashboardTemplate>
-        <div className="space-y-8">
-          <div className="bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6">
-            <LicensesDataGridSkeleton />
+      <div className="bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6">
+        {/* Header - matches LicenseManagement */}
+        <div className="flex items-center justify-between pt-4">
+          <div>
+            <ShapeSkeleton className="h-7 w-48" variant="rectangle" />
+            <ShapeSkeleton className="mt-1.5 h-4 w-64" variant="rectangle" />
           </div>
+          <ButtonSkeleton variant="outline" size="sm" showText />
         </div>
-      </DashboardTemplate>
+
+        {/* Toolbar + Grid - matches LicensesDataGrid */}
+        <LicensesDataGridSkeleton />
+      </div>
     );
   }
 
