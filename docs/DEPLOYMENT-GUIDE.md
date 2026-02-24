@@ -386,7 +386,7 @@ When using OpenLiteSpeed as a reverse proxy, configure a WebSocket proxy for rea
 3. **Address:** `127.0.0.1:5000` (or the host:port where the backend container listens)
 4. Save and graceful restart
 
-**If WebSocket proxy cannot be configured:** Set `NEXT_PUBLIC_WEBSOCKET_ENABLED=false` before building the frontend. The app will fall back to polling (SyncStatusIcon) and sync will still work.
+**If WebSocket proxy cannot be configured:** Set `WEBSOCKET_ENABLED=false` in `.env` (single source for both backend and frontend). Rebuild the frontend image. The app will fall back to polling (LicenseSyncButton) and sync will still work.
 
 See [docs/WEBSOCKET-CONNECTION-FIX-PLAN.md](WEBSOCKET-CONNECTION-FIX-PLAN.md) for troubleshooting.
 

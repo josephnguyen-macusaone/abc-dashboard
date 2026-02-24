@@ -7,7 +7,6 @@
 export { IAuthService } from './i-auth-service.js';
 export { ITokenService } from './i-token-service.js';
 export { IEmailService } from './i-email-service.js';
-export { ICacheService } from './i-cache-service.js';
 export { ILicenseService } from './i-license-service.js';
 
 // Repository Interfaces

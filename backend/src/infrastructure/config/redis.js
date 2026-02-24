@@ -570,7 +570,8 @@ export const cache = {
 export const cacheKeys = {
   user: (userId) => `user:${userId}`,
   userProfile: (userId) => `user:profile:${userId}`,
-  apiResponse: (method, url, query = '') => `api:${method}:${url}:${query}`,
+  apiResponse: (method, url, query = '', userId = '') =>
+    userId ? `api:${method}:${url}:${query}:u${userId}` : `api:${method}:${url}:${query}`,
   userStats: (userId) => `user:stats:${userId}`,
 };
 

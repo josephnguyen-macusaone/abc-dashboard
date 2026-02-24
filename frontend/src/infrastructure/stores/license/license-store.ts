@@ -87,6 +87,8 @@ interface LicenseState {
   selectedLicenses: (number | string)[];
   /** Timestamp (ms) when licenses were last successfully fetched; null before first fetch */
   lastFetchedAt: number | null;
+  /** Filters used for last successful fetch; used to skip redundant fetches when navigating Dashboard → Licenses */
+  lastFetchFilters: { startsAtFrom?: string; startsAtTo?: string; page?: number; limit?: number } | null;
   /** License sync status for dashboard (e.g. last sync result) */
   syncStatus: LicenseSyncStatus | null;
   syncStatusLoading: boolean;
@@ -158,6 +160,7 @@ export const useLicenseStore = create<LicenseState>()(
         pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
         selectedLicenses: [],
         lastFetchedAt: null,
+        lastFetchFilters: null,
         syncStatus: null,
         syncStatusLoading: false,
         syncStatusError: false,
@@ -391,6 +394,12 @@ export const useLicenseStore = create<LicenseState>()(
               },
               loading: false,
               lastFetchedAt: Date.now(),
+              lastFetchFilters: {
+                startsAtFrom: appliedFilters.startsAtFrom,
+                startsAtTo: appliedFilters.startsAtTo,
+                page: Number(apiParams.page) || 1,
+                limit: Number(apiParams.limit) || 20,
+              },
             });
               return;
             }
@@ -410,6 +419,12 @@ export const useLicenseStore = create<LicenseState>()(
                 },
                 loading: false,
                 lastFetchedAt: Date.now(),
+                lastFetchFilters: {
+                  startsAtFrom: appliedFilters.startsAtFrom,
+                  startsAtTo: appliedFilters.startsAtTo,
+                  page: Number(apiParams.page) || 1,
+                  limit: Number(apiParams.limit) || 20,
+                },
               });
               return;
             }
@@ -423,6 +438,12 @@ export const useLicenseStore = create<LicenseState>()(
               },
               loading: false,
               lastFetchedAt: Date.now(),
+              lastFetchFilters: {
+                startsAtFrom: appliedFilters.startsAtFrom,
+                startsAtTo: appliedFilters.startsAtTo,
+                page: Number(apiParams.page) || 1,
+                limit: Number(apiParams.limit) || 20,
+              },
             });
           } catch (error) {
             const errorMessage = getErrorMessage(error);
@@ -1008,6 +1029,7 @@ export const useLicenseStore = create<LicenseState>()(
             error: null,
             pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
             lastFetchedAt: null,
+            lastFetchFilters: null,
             filters: restFilters as LicenseFilters,
           });
         },
@@ -1022,6 +1044,7 @@ export const useLicenseStore = create<LicenseState>()(
             pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
             selectedLicenses: [],
             lastFetchedAt: null,
+            lastFetchFilters: null,
             syncStatus: null,
             syncStatusLoading: false,
             syncStatusError: false,
@@ -1054,6 +1077,7 @@ export const selectLicenseFilters = (state: LicenseState) => state.filters;
 export const selectLicenseError = (state: LicenseState) => state.error;
 export const selectSelectedLicenses = (state: LicenseState) => state.selectedLicenses;
 export const selectLicenseLastFetchedAt = (state: LicenseState) => state.lastFetchedAt;
+export const selectLicenseLastFetchFilters = (state: LicenseState) => state.lastFetchFilters;
 export const selectSyncStatus = (state: LicenseState) => state.syncStatus;
 export const selectSyncStatusLoading = (state: LicenseState) => state.syncStatusLoading;
 export const selectSyncStatusError = (state: LicenseState) => state.syncStatusError;

@@ -78,6 +78,7 @@ export {
 export {
   GetLicenseStatsUseCase,
   createGetLicenseStatsUseCase,
+  transformDashboardMetricsToCards,
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,

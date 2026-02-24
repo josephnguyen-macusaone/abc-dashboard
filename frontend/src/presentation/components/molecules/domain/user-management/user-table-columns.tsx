@@ -103,7 +103,7 @@ export function getUserTableColumns({
           </div>
         );
       },
-      size: 280,
+      size: 200,
       meta: {
         label: "Name",
       },
@@ -119,7 +119,7 @@ export function getUserTableColumns({
           {row.getValue("username") || "-"}
         </span>
       ),
-      size: 200,
+      size: 150,
       meta: {
         label: "Username",
       },
@@ -135,7 +135,7 @@ export function getUserTableColumns({
           {row.getValue("email")}
         </span>
       ),
-      size: 280,
+      size: 200,
       meta: {
         label: "Email",
       },
@@ -173,7 +173,7 @@ export function getUserTableColumns({
         const role = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(role) : value === role;
       },
-      size: 120,
+      size: 150,
       meta: {
         label: "Role",
         variant: "multiSelect",
@@ -199,7 +199,7 @@ export function getUserTableColumns({
         const statusValue = isActive ? "true" : "false";
         return Array.isArray(value) ? value.includes(statusValue) : value === statusValue;
       },
-      size: 120,
+      size: 100,
       meta: {
         label: "Status",
         variant: "multiSelect",

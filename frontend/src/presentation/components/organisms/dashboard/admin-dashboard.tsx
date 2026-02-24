@@ -46,6 +46,8 @@ export function AdminDashboard({
   const paginationFromStore = useLicenseStore(selectLicensePagination);
   const filters = useLicenseStore(state => state.filters);
   const fetchLicenses = useLicenseStore(state => state.fetchLicenses);
+  const fetchDashboardMetrics = useLicenseStore(state => state.fetchDashboardMetrics);
+  const fetchLicensesRequiringAttention = useLicenseStore(state => state.fetchLicensesRequiringAttention);
   const setFilters = useLicenseStore(state => state.setFilters);
 
   const setTableSearch = useDataTableStore(state => state.setTableSearch);
@@ -158,15 +160,23 @@ export function AdminDashboard({
     const from = filters.startsAtFrom;
     const to = filters.startsAtTo;
 
+    const runParallelFetch = (params: { startsAtFrom?: string; startsAtTo?: string }) => {
+      void Promise.all([
+        fetchLicenses({ page: 1, limit: 20, ...params }),
+        fetchDashboardMetrics(params),
+        fetchLicensesRequiringAttention(),
+      ]);
+    };
+
     if (from && to) {
       hasInitializedDateRef.current = true;
-      fetchLicenses({ page: 1, limit: 20, startsAtFrom: from, startsAtTo: to });
+      runParallelFetch({ startsAtFrom: from, startsAtTo: to });
       return;
     }
 
     if (hasInitializedDateRef.current) {
       // User cleared the range; fetch with no date
-      fetchLicenses({ page: 1, limit: 20 });
+      runParallelFetch({});
       return;
     }
 
@@ -177,8 +187,8 @@ export function AdminDashboard({
     const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
-    fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
-  }, [licensesProp, fetchLicenses, setFilters, filters.startsAtFrom, filters.startsAtTo]);
+    runParallelFetch({ startsAtFrom, startsAtTo });
+  }, [licensesProp, fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention, setFilters, filters.startsAtFrom, filters.startsAtTo]);
 
   // Periodic refresh; only when tab visible to avoid stuck loading when tab inactive
   useEffect(() => {

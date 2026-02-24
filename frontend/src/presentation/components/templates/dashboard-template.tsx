@@ -10,12 +10,12 @@ import { PermissionUtils, getNavigationItems } from '@/shared/constants';
 import { useSidebarStore, useAuthStore, useLicenseStore, useDataTableStore } from '@/infrastructure/stores';
 import { selectSyncStatus } from '@/infrastructure/stores/license';
 import { useRealtimeSync } from '@/presentation/hooks/use-realtime-sync';
-import { SyncProgressOverlay } from '@/presentation/components/molecules/domain/dashboard';
+import { LicenseSyncProgressOverlay } from '@/presentation/components/molecules/domain/dashboard';
 
-/** Routes that display license data; avoid resetting when navigating between these. */
+/** Routes that display license data. */
 const LICENSE_ROUTES = ['/dashboard', '/licenses'];
 
-/** Table ID used by LicensesDataTable on dashboard; clear its search/filters when leaving license routes. */
+/** Table ID used by LicensesDataTable on dashboard; clear its search/filters when navigating away. */
 const LICENSES_TABLE_ID = 'licenses-data-table';
 
 interface DashboardTemplateProps {
@@ -35,13 +35,13 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   const prevPathRef = useRef<string | null>(null);
   const syncInProgress = syncStatus?.syncInProgress === true;
 
-  // Reset license store and data table search/filters when navigating away from license pages
-  // to prevent stale data and searchbar persisting when returning
+  // Reset license store and data table search/filters when entering any license page
+  // (each route mounts its own template, so prevPathRef is null on mount - we must reset on enter)
   useEffect(() => {
     const isLicenseRoute = LICENSE_ROUTES.some(r => pathname === r || pathname.startsWith(`${r}/`));
-    const wasLicenseRoute = prevPathRef.current !== null && LICENSE_ROUTES.some(r => prevPathRef.current === r || prevPathRef.current?.startsWith(`${r}/`));
+    const justArrived = prevPathRef.current === null || prevPathRef.current !== pathname;
 
-    if (wasLicenseRoute && !isLicenseRoute) {
+    if (isLicenseRoute && justArrived) {
       resetLicenseDataForRouteChange();
       clearTableFilters(LICENSES_TABLE_ID);
     }
@@ -191,7 +191,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
 
       {/* Sync in progress overlay - blocks interaction until sync completes */}
       {syncInProgress && (
-        <SyncProgressOverlay />
+        <LicenseSyncProgressOverlay />
       )}
     </div>
   );

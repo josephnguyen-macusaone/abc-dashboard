@@ -8,6 +8,7 @@ import './src/infrastructure/config/env.js';
 
 import http from 'http';
 import express from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import expressSanitizer from 'express-sanitizer';
@@ -24,6 +25,7 @@ import {
   injectionProtection,
   createRateLimit,
 } from './src/infrastructure/api/v1/middleware/security.middleware.js';
+import { extractUserIdForCache } from './src/infrastructure/api/v1/middleware/extract-user-id-for-cache.middleware.js';
 import {
   cacheTrackingMiddleware,
   cacheInvalidationMiddleware,
@@ -97,6 +99,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Response compression (gzip) for JSON and text - typically 70–90% size reduction
+app.use(compression());
+
 // Request size and injection protection (before body parsing)
 app.use(requestSizeLimiter);
 app.use(injectionProtection);
@@ -114,6 +119,9 @@ app.use(requestLogger);
 
 // API monitoring middleware
 app.use(monitorMiddleware);
+
+// Extract userId from JWT for cache key scoping (must run before response caching)
+app.use('/api', extractUserIdForCache);
 
 // Response caching middleware (must be before auth middleware)
 app.use(responseCachingMiddleware);

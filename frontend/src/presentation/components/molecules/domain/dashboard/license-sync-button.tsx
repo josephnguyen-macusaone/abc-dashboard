@@ -3,15 +3,18 @@
 import { useEffect } from 'react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import { TooltipWrapper } from '@/presentation/components/molecules/ui/tooltip-wrapper';
-import { cn } from '@/shared/helpers';
 import {
   useLicenseStore,
   selectSyncStatus,
   selectSyncStatusLoading,
   selectSyncStatusError,
+  selectTriggerManualSyncLoading,
 } from '@/infrastructure/stores/license';
 import type { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
-import { CloudOff, CloudSync, RefreshCw } from 'lucide-react';
+import { CloudDownload, Loader2 } from 'lucide-react';
+import { cn } from '@/shared/helpers';
+
+const REFRESH_INTERVAL_MS = 60_000;
 
 function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
@@ -56,21 +59,31 @@ function getTooltipText(
     : `Last sync: ${timeStr} – Failed${failReason}${stats}`;
 }
 
-export interface SyncStatusIconProps {
+export interface LicenseSyncButtonProps {
   className?: string;
-  iconClassName?: string;
   refreshIntervalMs?: number;
 }
 
-export function SyncStatusIcon({
+/**
+ * License sync button: click to trigger manual sync, hover to see status.
+ * Shows last sync time, success/fail, and stats in tooltip.
+ * Polls sync status for accurate tooltip when visible.
+ */
+export function LicenseSyncButton({
   className,
-  iconClassName,
-  refreshIntervalMs = 60_000,
-}: SyncStatusIconProps) {
+  refreshIntervalMs = REFRESH_INTERVAL_MS,
+}: LicenseSyncButtonProps) {
   const status = useLicenseStore(selectSyncStatus);
   const loading = useLicenseStore(selectSyncStatusLoading);
   const error = useLicenseStore(selectSyncStatusError);
+  const triggerLoading = useLicenseStore(selectTriggerManualSyncLoading);
   const fetchSyncStatus = useLicenseStore((state) => state.fetchSyncStatus);
+  const triggerManualSync = useLicenseStore((state) => state.triggerManualSync);
+
+  const syncInProgress = status?.syncInProgress === true;
+  const disabled = syncInProgress || triggerLoading;
+  const statusTooltip = getTooltipText(loading, error, status);
+  const tooltipText = disabled ? statusTooltip : `${statusTooltip} Click to sync.`;
 
   useEffect(() => {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -80,83 +93,38 @@ export function SyncStatusIcon({
 
   useEffect(() => {
     if (refreshIntervalMs <= 0) return;
-
     const runWhenVisible = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchSyncStatus();
       }
     };
-
     const id = setInterval(runWhenVisible, refreshIntervalMs);
-
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchSyncStatus();
-      }
+      if (document.visibilityState === 'visible') fetchSyncStatus();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-
     return () => {
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [fetchSyncStatus, refreshIntervalMs]);
 
-  const tooltipText = getTooltipText(loading, error, status);
-  const last = status?.lastSyncResult;
-  const success = last?.success === true;
-  const syncInProgress = status?.syncInProgress === true;
-
-  const showLoading = loading;
-  const showSyncing = !loading && syncInProgress;
-  const showError = !loading && !showSyncing && (error || !last?.timestamp);
-  const showSynced = !loading && !showSyncing && !showError;
-
-  const showSpinner = showLoading || showSyncing;
-  const iconTransition = 'transition-all duration-300 ease-in-out';
-
-  const onRefreshClick = () => {
-    fetchSyncStatus();
-  };
-
   return (
-    <TooltipWrapper content={tooltipText} side="bottom">
+    <TooltipWrapper content={tooltipText} side="bottom" contentClassName="text-xs">
       <Button
-        variant="ghost"
-        size="icon"
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        onClick={() => triggerManualSync()}
+        className={cn('gap-1.5', className)}
         aria-label={tooltipText}
-        className={cn('relative h-9 w-9 overflow-visible', className)}
-        onClick={onRefreshClick}
       >
-        <RefreshCw
-          className={cn(
-            'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
-            iconTransition,
-            showSpinner ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-            showSpinner && 'animate-spin',
-            iconClassName
-          )}
-          aria-hidden
-        />
-        <CloudOff
-          className={cn(
-            'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
-            iconTransition,
-            showError ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-            iconClassName
-          )}
-          aria-hidden
-        />
-        <CloudSync
-          className={cn(
-            'absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2',
-            iconTransition,
-            showSynced ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
-            showSynced && (success ? 'text-green-600' : 'text-destructive'),
-            iconClassName
-          )}
-          aria-hidden
-        />
+        {triggerLoading || syncInProgress || loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        ) : (
+          <CloudDownload className="h-4 w-4" aria-hidden />
+        )}
+        <span className="hidden sm:inline">Sync</span>
       </Button>
     </TooltipWrapper>
   );
