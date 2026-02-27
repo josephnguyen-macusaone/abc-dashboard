@@ -378,9 +378,6 @@ export function LicensesDataTable({
             onClick={() => {
               setTableSearch(tableId, "");
               setSearchField('dba');
-              if (debouncedSearchRef.current) {
-                clearTimeout(debouncedSearchRef.current);
-              }
               clearTableFilters(tableId);
               table.setColumnFilters([]);
               setHasPerformedFiltering(false);
