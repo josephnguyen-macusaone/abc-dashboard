@@ -4,7 +4,7 @@
 
 "use client";
 
-import { FileText } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 
 import { DataTable, DataTableDateRangeFilter, DataTableToolbar } from "@/presentation/components/molecules/data/data-table";
 import { LicenseDataTableSkeleton } from "@/presentation/components/organisms/skeletons/license-data-table-skeleton";
@@ -431,16 +431,32 @@ export function LicensesDataTable({
           ) : undefined
         }
         searchBar={
-          <SearchBar
-            value={searchValue}
-            onValueChange={handleSearchChange}
-            onSearch={onQueryChange ? handleSearchSubmit : undefined}
-            searchField={searchField}
-            onSearchFieldChange={(v) => setSearchField(v)}
-            placeholder="Search..."
-            className="w-full min-w-[140px] sm:min-w-[200px] sm:w-72 md:w-80 max-w-full"
-            allowClear={false}
-          />
+          <div className="flex items-center gap-2 min-w-0">
+            <SearchBar
+              value={searchValue}
+              onValueChange={handleSearchChange}
+              onSearch={onQueryChange ? handleSearchSubmit : undefined}
+              searchField={searchField}
+              onSearchFieldChange={(v) => setSearchField(v)}
+              placeholder="Search..."
+              className="w-full min-w-[140px] sm:min-w-[200px] sm:w-72 md:w-80 max-w-full"
+              allowClear={false}
+              searchButtonPosition="external"
+            />
+            {onQueryChange && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 gap-1.5"
+                onClick={handleSearchSubmit}
+                aria-label="Search"
+              >
+                <Search className="h-4 w-4" />
+                <span className="hidden sm:inline">Search</span>
+              </Button>
+            )}
+          </div>
         }
         onReset={() => {
           // 1. Clear search state and prefix (default to DBA)

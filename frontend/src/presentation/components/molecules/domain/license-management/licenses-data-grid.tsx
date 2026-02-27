@@ -5,7 +5,7 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Save, RotateCcw, X } from "lucide-react";
+import { FileText, Save, RotateCcw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -547,7 +547,7 @@ export function LicensesDataGrid({
                   align="start"
                 />
               </div>
-              {/* Mobile: search row with Reset */}
+              {/* Mobile: search row with Search button + Reset */}
               <div className="flex w-full sm:hidden lg:hidden flex-nowrap items-center gap-2 min-w-0 overflow-x-auto">
                 <SearchBar
                   value={searchInput}
@@ -558,7 +558,21 @@ export function LicensesDataGrid({
                   placeholder="Search..."
                   className="w-full min-w-[120px] max-w-full"
                   allowClear={false}
+                  searchButtonPosition="external"
                 />
+                {onQueryChange && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5"
+                    onClick={handleSearchSubmit}
+                    aria-label="Search"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span className="hidden sm:inline">Search</span>
+                  </Button>
+                )}
                 {hasActiveFilters && (
                   <Button
                     variant="outline"
@@ -571,7 +585,7 @@ export function LicensesDataGrid({
                   </Button>
                 )}
               </div>
-              {/* Tablet+: date + search + Reset in one row */}
+              {/* Tablet+: date + search + Search button + Reset in one row */}
               <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
                 <DataTableDateRangeFilter
                   value={dateRange ?? null}
@@ -588,7 +602,21 @@ export function LicensesDataGrid({
                   placeholder="Search..."
                   className="w-40 md:w-52 lg:w-72 min-w-[120px] max-w-full"
                   allowClear={false}
+                  searchButtonPosition="external"
                 />
+                {onQueryChange && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5"
+                    onClick={handleSearchSubmit}
+                    aria-label="Search"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span className="hidden sm:inline">Search</span>
+                  </Button>
+                )}
                 {hasActiveFilters && (
                   <Button
                     variant="outline"
@@ -615,7 +643,21 @@ export function LicensesDataGrid({
                 placeholder="Search..."
                 className="w-full min-w-[120px] sm:w-40 md:w-52 lg:w-72 max-w-full"
                 allowClear={false}
+                searchButtonPosition="external"
               />
+              {onQueryChange && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 gap-1.5"
+                  onClick={handleSearchSubmit}
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">Search</span>
+                </Button>
+              )}
               {hasActiveFilters && (
                 <Button
                   variant="outline"

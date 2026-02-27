@@ -68,6 +68,8 @@ export interface SearchBarProps extends Omit<React.ComponentProps<'input'>, 'typ
   hidePrefix?: boolean;
   /** When set, shows a search button and triggers search only on click (not on typing). Enter key also triggers. */
   onSearch?: () => void;
+  /** When 'external', search button is not rendered inside input - parent renders it separately. Use with onSearch. */
+  searchButtonPosition?: 'inline' | 'external';
 }
 
 export function SearchBar({
@@ -85,6 +87,7 @@ export function SearchBar({
   onSearchFieldChange,
   hidePrefix = false,
   onSearch,
+  searchButtonPosition = 'inline',
 }: SearchBarProps) {
   const handleChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,13 +132,13 @@ export function SearchBar({
         disabled={disabled}
         className={cn(
           'pl-10',
-          onSearch ? 'pr-24' : 'pr-8',
+          onSearch && searchButtonPosition === 'inline' ? 'pr-24' : 'pr-8',
           showPrefix && 'h-8 rounded-none border-0 border-l-0 border-input py-2 pl-3',
           inputClassName,
         )}
       />
       <div className="absolute right-1 top-1/2 flex h-7 -translate-y-1/2 items-center gap-0.5">
-        {onSearch && (
+        {onSearch && searchButtonPosition === 'inline' && (
           <Button
             type="button"
             variant="ghost"

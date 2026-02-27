@@ -62,20 +62,22 @@ export function LicenseDataTableSkeleton({
         <div className="flex w-full sm:hidden shrink-0">
           <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
         </div>
-        {/* Mobile: search row */}
+        {/* Mobile: search row + Search button */}
         <div className="flex w-full sm:hidden lg:hidden items-center gap-2 flex-nowrap min-w-0">
           <div className="flex flex-1 items-center gap-0 overflow-hidden rounded-md border border-input min-w-[120px]">
             <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
             <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
           </div>
+          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
         </div>
-        {/* Tablet+: date + search in one row */}
+        {/* Tablet+: date + search + Search button in one row */}
         <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center gap-2 flex-nowrap min-w-0 overflow-x-auto">
           <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
           <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-72 md:w-80">
             <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
             <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
           </div>
+          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
         </div>
 
         {/* Status, Plan, Term filters + View options */}
