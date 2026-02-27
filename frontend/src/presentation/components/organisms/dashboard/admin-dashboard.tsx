@@ -90,14 +90,17 @@ export function AdminDashboard({
 
       // Refetch list and metrics so both stay in sync with date filter
       const storeFilters = useLicenseStore.getState().filters;
+      const statusParam = Array.isArray(storeFilters.status) ? storeFilters.status.join(',') : storeFilters.status;
+      const planParam = Array.isArray(storeFilters.plan) ? storeFilters.plan.join(',') : storeFilters.plan;
+      const termParam = Array.isArray(storeFilters.term) ? storeFilters.term.join(',') : storeFilters.term;
       const metricsParams = {
         search: storeFilters.search,
         searchField: storeFilters.searchField,
         startsAtFrom: hasRange ? startsAtFrom : undefined,
         startsAtTo: hasRange ? startsAtTo : undefined,
-        status: storeFilters.status,
-        plan: storeFilters.plan,
-        term: storeFilters.term,
+        status: statusParam,
+        plan: planParam,
+        term: termParam,
       };
       void Promise.all([
         fetchLicenses({
