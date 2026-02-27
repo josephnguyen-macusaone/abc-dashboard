@@ -16,6 +16,8 @@ import { useDebouncedCallback } from "@/presentation/hooks/use-debounced-callbac
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
   searchBar?: React.ReactNode;
+  /** When provided, on mobile: date range is above search bar; search row includes Reset */
+  dateRangeFilter?: React.ReactNode;
   onReset?: () => void;
   hasActiveFilters?: boolean;
   onManualFilterChange?: (columnId: string, values: string[]) => void;
@@ -26,6 +28,7 @@ export function DataTableToolbar<TData>({
   table,
   children,
   searchBar,
+  dateRangeFilter,
   onReset: customOnReset,
   hasActiveFilters: externalHasActiveFilters,
   onManualFilterChange,
@@ -56,30 +59,58 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-wrap items-center gap-2 py-2 sm:py-1 min-w-0",
+        "flex w-full flex-col gap-2 py-2 min-w-0",
+        "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1",
         className,
       )}
       {...props}
     >
-      {/* Search + date filter: same row on mobile (flex-nowrap), full width on small screens */}
-      {searchBar && (
-        <div className="flex w-full sm:w-auto sm:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
-          {searchBar}
-        </div>
+      {/* When dateRangeFilter provided: mobile = date above, search+Reset row; tablet+ = same row */}
+      {dateRangeFilter && (
+        <>
+          {/* Mobile: date range on its own row above */}
+          <div className="flex w-full sm:hidden shrink-0">
+            {dateRangeFilter}
+          </div>
+          {/* Mobile: search row with Reset */}
+          <div className="flex w-full sm:hidden lg:hidden items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
+            {searchBar}
+            {hasActiveFilters && (
+              <Button
+                aria-label="Reset filters"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 border-dashed p-0"
+                onClick={onReset}
+              >
+                <X className="size-4" />
+              </Button>
+            )}
+          </div>
+          {/* Tablet+: date + search + Reset in one row */}
+          <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
+            {dateRangeFilter}
+            {searchBar}
+            {hasActiveFilters && (
+              <Button
+                aria-label="Reset filters"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+                onClick={onReset}
+              >
+                <X className="size-4" />
+                <span className="hidden sm:inline">Reset</span>
+              </Button>
+            )}
+          </div>
+        </>
       )}
 
-      {/* Filters row: wraps on small screens instead of horizontal scroll */}
-      <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 basis-full sm:basis-auto">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          {columns.map((column) => (
-            <DataTableToolbarFilter
-              key={column.id}
-              column={column}
-              table={table}
-              onManualFilterChange={onManualFilterChange}
-              initialFilterValues={initialFilterValues}
-            />
-          ))}
+      {/* When no dateRangeFilter: original layout (searchBar may include date) */}
+      {!dateRangeFilter && (searchBar || hasActiveFilters) && (
+        <div className="flex w-full lg:w-auto lg:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
+          {searchBar}
           {hasActiveFilters && (
             <Button
               aria-label="Reset filters"
@@ -93,7 +124,20 @@ export function DataTableToolbar<TData>({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-auto order-last sm:order-none">
+      )}
+
+      {/* Right: Status, Plan, Term filters + children + View options */}
+      <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
+        {columns.map((column) => (
+          <DataTableToolbarFilter
+            key={column.id}
+            column={column}
+            table={table}
+            onManualFilterChange={onManualFilterChange}
+            initialFilterValues={initialFilterValues}
+          />
+        ))}
+        <div className="flex items-center gap-2 shrink-0">
           {children}
           <DataTableViewOptions table={table} align="end" />
         </div>

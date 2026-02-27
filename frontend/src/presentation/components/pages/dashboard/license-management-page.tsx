@@ -265,11 +265,6 @@ export function LicenseManagementPage() {
   }) => {
     try {
       const storeFilters = useLicenseStore.getState().filters;
-      // When searching, clear date range in store so UI reflects "no date filter"
-      const skipDateFilter = !!params.search?.trim();
-      if (skipDateFilter) {
-        setFilters({ ...storeFilters, startsAtFrom: undefined, startsAtTo: undefined });
-      }
 
       const statusParam = Array.isArray(params.status)
         ? params.status.join(',')
@@ -281,6 +276,7 @@ export function LicenseManagementPage() {
         ? params.term.join(',')
         : params.term;
 
+      // Always use date range from store; only cleared when user clicks X on date filter
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
@@ -291,15 +287,15 @@ export function LicenseManagementPage() {
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[] | undefined,
-        startsAtFrom: skipDateFilter ? undefined : storeFilters.startsAtFrom,
-        startsAtTo: skipDateFilter ? undefined : storeFilters.startsAtTo,
+        startsAtFrom: storeFilters.startsAtFrom,
+        startsAtTo: storeFilters.startsAtTo,
       });
     } catch (error) {
       if (shouldShowError(error)) {
         toast.error("Failed to fetch licenses");
       }
     }
-  }, [fetchLicenses, setFilters]);
+  }, [fetchLicenses]);
 
   const dataSourceKey = [filters.startsAtFrom ?? '', filters.startsAtTo ?? ''].join(',');
 

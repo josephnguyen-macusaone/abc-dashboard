@@ -176,6 +176,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       header: "Agents Name",
       size: 280,
       enableColumnFilter: false,
+      enableSorting: false,
       meta: {
         label: "Agents Name",
         cell: { variant: "agents-name" as const },
@@ -186,6 +187,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "agentsCost",
       header: "Agents Cost",
       size: 160,
+      enableSorting: false,
       meta: {
         label: "Agents Cost",
         cell: { variant: "number" as const, min: 0 },
@@ -196,6 +198,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       accessorKey: "notes",
       header: "Notes",
       size: 300,
+      enableSorting: false,
       meta: {
         label: "Notes",
         cell: { variant: "short-text" as const },

@@ -81,7 +81,10 @@ export function DataTableDateRangeFilter({
           variant="outline"
           size="sm"
           className={cn(
-            'h-8 w-8 shrink-0 border-dashed p-0 font-normal sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0',
+            'h-8 border-dashed font-normal',
+            hasRange
+              ? 'w-auto min-w-0 max-w-[200px] justify-start gap-1.5 px-2 sm:w-auto sm:min-w-0 sm:shrink-0 sm:max-w-none sm:px-3'
+              : 'w-8 shrink-0 justify-center p-0 sm:w-auto sm:min-w-0 sm:shrink-0 sm:px-3 sm:py-0',
             className,
           )}
           aria-label={title}
@@ -91,20 +94,20 @@ export function DataTableDateRangeFilter({
               role="button"
               aria-label={`Clear ${title} filter`}
               tabIndex={0}
-              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="shrink-0 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={handleClear}
             >
               <XCircle className="size-4" />
             </div>
           ) : (
-            <Calendar className="size-4" />
+            <Calendar className="size-4 shrink-0" />
           )}
           <span className="hidden sm:inline">{title}</span>
           {hasRange && labelText && (
             <Badge
               variant="secondary"
               size="sm"
-              className="ml-1 rounded-sm font-normal inline-flex max-w-[140px] sm:max-w-none truncate"
+              className="min-w-0 flex-1 rounded-sm font-normal truncate sm:flex-initial sm:max-w-none"
             >
               {labelText}
             </Badge>

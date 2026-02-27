@@ -27,6 +27,7 @@ import {
 import type { LicenseRecord } from "@/types";
 import logger from "@/shared/helpers/logger";
 import { useLicenseStore } from "@/infrastructure/stores/license";
+import { DEFAULT_LICENSE_SORT } from "@/shared/constants/license";
 
 const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
 
@@ -82,6 +83,8 @@ export function LicensesDataGrid({
 
   /** Search scope: dba = DBA only, agentsName = Agents Name only. Default DBA. */
   const [searchField, setSearchField] = React.useState<'dba' | 'agentsName' | 'zip'>('dba');
+  /** Search value that was applied (after clicking Search). Reset shows only when this is set. */
+  const [appliedSearchValue, setAppliedSearchValue] = React.useState('');
 
   // When using the license store (onQueryChange provided), sync search state from store on mount so grid matches table/store behavior
   React.useEffect(() => {
@@ -92,6 +95,7 @@ export function LicensesDataGrid({
     if (storeSearch !== "") {
       setSearchInput(storeSearch);
       setSearchQuery(storeSearch);
+      setAppliedSearchValue(storeSearch);
     }
     setSearchField(storeField);
   }, [onQueryChange]);
@@ -195,7 +199,6 @@ export function LicensesDataGrid({
   const [searchQuery, setSearchQuery] = React.useState(""); // What gets sent to API (debounced)
 
   // Ref for debounced search API call (same pattern as licenses-data-table handleSearchChange)
-  const debouncedSearchRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const tableStateGetterRef = React.useRef<() => { columnFilters: { id: string; value: unknown }[]; pagination?: { pageSize?: number }; sorting?: Array<{ id?: string; desc?: boolean }> }>(() => ({ columnFilters: [] }));
 
   // Helper: extract status, plan, term from column filters (same shape as table's manualFilterValues for license store)
@@ -233,7 +236,7 @@ export function LicensesDataGrid({
   const gridState = useDataGrid({
     data,
     columns,
-    initialState: { sorting: [{ id: "startsAt", desc: true }] },
+    initialState: { sorting: [...DEFAULT_LICENSE_SORT] },
     onDataChange: handleDataChange,
     onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
     onRowsDelete: handleRowsDelete,
@@ -361,8 +364,8 @@ export function LicensesDataGrid({
     } = {
       page: targetPage,
       limit: tablePageSize,
-      sortBy: activeSort?.id,
-      sortOrder: (activeSort?.desc ? "desc" : "asc") as "asc" | "desc",
+      sortBy: activeSort?.id ?? DEFAULT_LICENSE_SORT[0].id,
+      sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : (DEFAULT_LICENSE_SORT[0].desc ? "desc" : "asc")) as "asc" | "desc",
       search: currentSearch || undefined,
       ...(currentSearch ? { searchField } : {}),
     };
@@ -440,46 +443,37 @@ export function LicensesDataGrid({
   tableStateGetterRef.current = () => table.getState();
   const columnFilters = table.getState().columnFilters;
 
-  // Debounced search handler: call onQueryChange with search + filters (same as licenses-data-table handleSearchChange)
-  const handleSearchChange = React.useCallback(
-    (value: string) => {
-      const trimmedValue = value.trim();
-      setSearchInput(value);
-      if (debouncedSearchRef.current) clearTimeout(debouncedSearchRef.current);
-      debouncedSearchRef.current = setTimeout(() => {
-        debouncedSearchRef.current = null;
-        if (!onQueryChange) return;
-
-        const state = tableStateGetterRef.current();
-        const pageSize = state?.pagination?.pageSize ?? 20;
-        const sorting = state?.sorting;
-        const activeSort = sorting && Array.isArray(sorting) ? sorting[0] : undefined;
-        const filters = state?.columnFilters ?? [];
-        const { status: s, plan: p, term: t } = getStatusPlanTermFromFilters(filters);
-        const params = {
-          page: 1,
-          limit: pageSize,
-          sortBy: (activeSort?.id as string) ?? "startsAt",
-          sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : "desc") as "asc" | "desc",
-          search: trimmedValue || undefined,
-          searchField,
-          status: s?.length ? s : undefined,
-          plan: p?.length ? p : undefined,
-          term: t?.length ? t : undefined,
-        };
-        onQueryChange(params);
-        lastQueryRef.current = JSON.stringify(params);
-        lastSearchRef.current = trimmedValue;
-      }, 500);
-    },
-    [onQueryChange, searchField, getStatusPlanTermFromFilters],
-  );
-
-  React.useEffect(() => {
-    return () => {
-      if (debouncedSearchRef.current) clearTimeout(debouncedSearchRef.current);
-    };
+  // Update input value only (no API call on typing)
+  const handleSearchChange = React.useCallback((value: string) => {
+    setSearchInput(value);
   }, []);
+
+  // Trigger search on button click (or Enter)
+  const handleSearchSubmit = React.useCallback(() => {
+    if (!onQueryChange) return;
+    const trimmedValue = searchInput.trim();
+    setAppliedSearchValue(trimmedValue);
+    const state = tableStateGetterRef.current();
+    const pageSize = state?.pagination?.pageSize ?? 20;
+    const sorting = state?.sorting;
+    const activeSort = sorting && Array.isArray(sorting) ? sorting[0] : undefined;
+    const filters = state?.columnFilters ?? [];
+    const { status: s, plan: p, term: t } = getStatusPlanTermFromFilters(filters);
+    const params = {
+      page: 1,
+      limit: pageSize,
+      sortBy: (activeSort?.id as string) ?? DEFAULT_LICENSE_SORT[0].id,
+      sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : (DEFAULT_LICENSE_SORT[0].desc ? "desc" : "asc")) as "asc" | "desc",
+      search: trimmedValue || undefined,
+      searchField,
+      status: s?.length ? s : undefined,
+      plan: p?.length ? p : undefined,
+      term: t?.length ? t : undefined,
+    };
+    onQueryChange(params);
+    lastQueryRef.current = JSON.stringify(params);
+    lastSearchRef.current = trimmedValue;
+  }, [onQueryChange, searchField, searchInput, getStatusPlanTermFromFilters]);
   const hasColumnFilters = React.useMemo(
     () =>
       columnFilters.some((f) => {
@@ -494,13 +488,14 @@ export function LicensesDataGrid({
       }),
     [columnFilters],
   );
-  const hasSearch = searchInput.trim() !== "";
+  const hasSearch = appliedSearchValue.trim() !== "";
   const hasDateRange = !!(dateRange?.from || dateRange?.to);
   const hasActiveFilters = hasColumnFilters || hasSearch || hasDateRange;
 
   const onClearFilters = React.useCallback(() => {
     setSearchInput("");
     setSearchQuery("");
+    setAppliedSearchValue("");
     setSearchField('dba');
     table.setColumnFilters((prev) =>
       prev.filter((f) => !FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number])),
@@ -511,8 +506,8 @@ export function LicensesDataGrid({
     onQueryChange?.({
       page: 1,
       limit: table.getState().pagination.pageSize,
-      sortBy: (activeSort?.id as string) || "startsAt",
-      sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : "desc") as "asc" | "desc",
+      sortBy: (activeSort?.id as string) || DEFAULT_LICENSE_SORT[0].id,
+      sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : (DEFAULT_LICENSE_SORT[0].desc ? "desc" : "asc")) as "asc" | "desc",
       search: undefined,
       searchField: 'dba',
       status: undefined,
@@ -539,28 +534,104 @@ export function LicensesDataGrid({
   return (
     <div className={className}>
       <div className="space-y-5">
-        {/* Toolbar: date + search in same row on mobile (flex-nowrap), then filters wrap */}
-        <div className="flex flex-wrap items-center gap-2 w-full min-w-0 justify-between">
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <div className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
-              {onDateRangeChange && (
+        {/* Toolbar: Mobile = date above, search+Reset row; Tablet+ = date+search+Reset */}
+        <div className="flex flex-col gap-2 w-full min-w-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:justify-between">
+          {onDateRangeChange && (
+            <>
+              {/* Mobile: date range on its own row above */}
+              <div className="flex w-full sm:hidden shrink-0">
                 <DataTableDateRangeFilter
                   value={dateRange ?? null}
                   onDateRangeChange={onDateRangeChange}
                   title="Date Range"
                   align="start"
                 />
-              )}
+              </div>
+              {/* Mobile: search row with Reset */}
+              <div className="flex w-full sm:hidden lg:hidden flex-nowrap items-center gap-2 min-w-0 overflow-x-auto">
+                <SearchBar
+                  value={searchInput}
+                  onValueChange={handleSearchChange}
+                  onSearch={onQueryChange ? handleSearchSubmit : undefined}
+                  searchField={searchField}
+                  onSearchFieldChange={(v) => setSearchField(v)}
+                  placeholder="Search..."
+                  className="w-full min-w-[120px] max-w-full"
+                  allowClear={false}
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 border-dashed p-0"
+                    onClick={onClearFilters}
+                    aria-label="Reset filters"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                )}
+              </div>
+              {/* Tablet+: date + search + Reset in one row */}
+              <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
+                <DataTableDateRangeFilter
+                  value={dateRange ?? null}
+                  onDateRangeChange={onDateRangeChange}
+                  title="Date Range"
+                  align="start"
+                />
+                <SearchBar
+                  value={searchInput}
+                  onValueChange={handleSearchChange}
+                  onSearch={onQueryChange ? handleSearchSubmit : undefined}
+                  searchField={searchField}
+                  onSearchFieldChange={(v) => setSearchField(v)}
+                  placeholder="Search..."
+                  className="w-40 md:w-52 lg:w-72 min-w-[120px] max-w-full"
+                  allowClear={false}
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+                    onClick={onClearFilters}
+                    aria-label="Reset filters"
+                  >
+                    <X className="size-4" />
+                    <span className="hidden sm:inline">Reset</span>
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+          {!onDateRangeChange && (
+            <div className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
               <SearchBar
                 value={searchInput}
                 onValueChange={handleSearchChange}
+                onSearch={onQueryChange ? handleSearchSubmit : undefined}
                 searchField={searchField}
                 onSearchFieldChange={(v) => setSearchField(v)}
                 placeholder="Search..."
                 className="w-full min-w-[120px] sm:w-40 md:w-52 lg:w-72 max-w-full"
                 allowClear={false}
               />
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+                  onClick={onClearFilters}
+                  aria-label="Reset filters"
+                >
+                  <X className="size-4" />
+                  <span className="hidden sm:inline">Reset</span>
+                </Button>
+              )}
             </div>
+          )}
+          {/* Row 2 (mobile/tablet) / Right (desktop): Status, Plan, Term + action buttons + View */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start overflow-x-auto lg:justify-end lg:overflow-visible">
             {statusColumn && (
               <DataTableFacetedFilter
                 column={statusColumn}
@@ -585,21 +656,6 @@ export function LicensesDataGrid({
                 multiple
               />
             )}
-            {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 shrink-0 border-dashed p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
-                onClick={onClearFilters}
-                aria-label="Reset filters"
-              >
-                <X className="size-4" />
-                <span className="hidden sm:inline">Reset</span>
-              </Button>
-            )}
-          </div>
-          {/* View and action buttons - right side */}
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
             {hasChanges && (
               <>
                 <Button

@@ -79,10 +79,16 @@ export function LicenseMetricsSection({
   }, [filters]);
 
   // Use store metrics when available (from parallel dashboard fetch) to avoid duplicate API call
+  // Must match all filter fields that affect metrics (date, search, status, plan, term)
   useEffect(() => {
     const filtersMatch =
       filtersForApi?.startsAtFrom === filters?.startsAtFrom &&
-      filtersForApi?.startsAtTo === filters?.startsAtTo;
+      filtersForApi?.startsAtTo === filters?.startsAtTo &&
+      filtersForApi?.search === filters?.search &&
+      filtersForApi?.searchField === filters?.searchField &&
+      JSON.stringify(filtersForApi?.status ?? null) === JSON.stringify(filters?.status ?? null) &&
+      JSON.stringify(filtersForApi?.plan ?? null) === JSON.stringify(filters?.plan ?? null) &&
+      JSON.stringify(filtersForApi?.term ?? null) === JSON.stringify(filters?.term ?? null);
 
     if (useApiMetrics && storeMetrics && !storeMetricsLoading && filtersMatch) {
       try {
