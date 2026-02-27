@@ -226,7 +226,7 @@ export function LicensesDataTable({
 
     // Debounce API call
     debouncedSearchRef.current = setTimeout(() => {
-      // Trigger API call with search value
+      // Trigger API call with search value (parent's handleQueryChange will clear date range when search is present)
       const tableState = table.getState();
       const activeSort = tableState.sorting?.[0];
 
@@ -441,7 +441,7 @@ export function LicensesDataTable({
       <DataTableToolbar
         table={table}
         searchBar={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2 w-full min-w-0 overflow-x-auto">
             {onDateRangeChange && (
               <DataTableDateRangeFilter
                 value={dateRange ?? null}
@@ -452,14 +452,14 @@ export function LicensesDataTable({
               />
             )}
             <SearchBar
-            value={searchValue}
-            onValueChange={handleSearchChange}
-            searchField={searchField}
-            onSearchFieldChange={(v) => setSearchField(v)}
-            placeholder="Search..."
-            className="w-72 md:w-80"
-            allowClear={false}
-          />
+              value={searchValue}
+              onValueChange={handleSearchChange}
+              searchField={searchField}
+              onSearchFieldChange={(v) => setSearchField(v)}
+              placeholder="Search..."
+              className="w-full min-w-[140px] sm:min-w-[200px] sm:w-72 md:w-80 max-w-full"
+              allowClear={false}
+            />
           </div>
         }
         onReset={() => {

@@ -106,10 +106,12 @@ app.use(compression());
 app.use(requestSizeLimiter);
 app.use(injectionProtection);
 
-// Rate limiting with custom implementation
+// Rate limiting: configurable via env to support dashboard + sync status polling (default 2000/30min)
+const RATE_LIMIT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000', 10) || 2000;
 const generalLimiter = createRateLimit(
-  30 * 60 * 1000, // 30 minutes
-  500, // max 500 requests per window
+  RATE_LIMIT_WINDOW_MS,
+  RATE_LIMIT_MAX,
   'Too many requests from this IP, please try again later.'
 );
 app.use(generalLimiter);

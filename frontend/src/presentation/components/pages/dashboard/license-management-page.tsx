@@ -264,6 +264,13 @@ export function LicenseManagementPage() {
     term?: string | string[];
   }) => {
     try {
+      const storeFilters = useLicenseStore.getState().filters;
+      // When searching, clear date range in store so UI reflects "no date filter"
+      const skipDateFilter = !!params.search?.trim();
+      if (skipDateFilter) {
+        setFilters({ ...storeFilters, startsAtFrom: undefined, startsAtTo: undefined });
+      }
+
       const statusParam = Array.isArray(params.status)
         ? params.status.join(',')
         : params.status;
@@ -274,8 +281,6 @@ export function LicenseManagementPage() {
         ? params.term.join(',')
         : params.term;
 
-      // When searching (DBA/Agent/Zipcode), skip date filter so results show all matches
-      const skipDateFilter = !!params.search?.trim();
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
@@ -286,15 +291,15 @@ export function LicenseManagementPage() {
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[] | undefined,
-        startsAtFrom: skipDateFilter ? undefined : filters.startsAtFrom,
-        startsAtTo: skipDateFilter ? undefined : filters.startsAtTo,
+        startsAtFrom: skipDateFilter ? undefined : storeFilters.startsAtFrom,
+        startsAtTo: skipDateFilter ? undefined : storeFilters.startsAtTo,
       });
     } catch (error) {
       if (shouldShowError(error)) {
         toast.error("Failed to fetch licenses");
       }
     }
-  }, [fetchLicenses, filters.startsAtFrom, filters.startsAtTo]);
+  }, [fetchLicenses, setFilters]);
 
   const dataSourceKey = [filters.startsAtFrom ?? '', filters.startsAtTo ?? ''].join(',');
 

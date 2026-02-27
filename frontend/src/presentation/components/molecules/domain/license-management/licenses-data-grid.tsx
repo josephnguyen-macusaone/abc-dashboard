@@ -449,6 +449,7 @@ export function LicensesDataGrid({
       debouncedSearchRef.current = setTimeout(() => {
         debouncedSearchRef.current = null;
         if (!onQueryChange) return;
+
         const state = tableStateGetterRef.current();
         const pageSize = state?.pagination?.pageSize ?? 20;
         const sorting = state?.sorting;
@@ -538,26 +539,28 @@ export function LicensesDataGrid({
   return (
     <div className={className}>
       <div className="space-y-5">
-        {/* Toolbar: always shown so users can search/filter and add a license when empty */}
-        <div className="flex flex-nowrap md:flex-wrap items-center gap-1.5 sm:gap-2 md:justify-between overflow-x-auto">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            {onDateRangeChange && (
-              <DataTableDateRangeFilter
-                value={dateRange ?? null}
-                onDateRangeChange={onDateRangeChange}
-                title="Date Range"
-                align="start"
+        {/* Toolbar: date + search in same row on mobile (flex-nowrap), then filters wrap */}
+        <div className="flex flex-wrap items-center gap-2 w-full min-w-0 justify-between">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <div className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
+              {onDateRangeChange && (
+                <DataTableDateRangeFilter
+                  value={dateRange ?? null}
+                  onDateRangeChange={onDateRangeChange}
+                  title="Date Range"
+                  align="start"
+                />
+              )}
+              <SearchBar
+                value={searchInput}
+                onValueChange={handleSearchChange}
+                searchField={searchField}
+                onSearchFieldChange={(v) => setSearchField(v)}
+                placeholder="Search..."
+                className="w-full min-w-[120px] sm:w-40 md:w-52 lg:w-72 max-w-full"
+                allowClear={false}
               />
-            )}
-            <SearchBar
-              value={searchInput}
-              onValueChange={handleSearchChange}
-              searchField={searchField}
-              onSearchFieldChange={(v) => setSearchField(v)}
-              placeholder="Search..."
-              className="w-40 md:w-52 lg:w-72"
-              allowClear={false}
-            />
+            </div>
             {statusColumn && (
               <DataTableFacetedFilter
                 column={statusColumn}
@@ -596,7 +599,7 @@ export function LicensesDataGrid({
             )}
           </div>
           {/* View and action buttons - right side */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-auto">
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             {hasChanges && (
               <>
                 <Button

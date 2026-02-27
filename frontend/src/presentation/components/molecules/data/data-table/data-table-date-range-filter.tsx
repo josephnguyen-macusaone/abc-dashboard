@@ -1,6 +1,6 @@
 'use client';
 
-import { PlusCircle, XCircle } from 'lucide-react';
+import { Calendar, XCircle } from 'lucide-react';
 import * as React from 'react';
 
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
@@ -97,14 +97,14 @@ export function DataTableDateRangeFilter({
               <XCircle className="size-4" />
             </div>
           ) : (
-            <PlusCircle className="size-4" />
+            <Calendar className="size-4" />
           )}
           <span className="hidden sm:inline">{title}</span>
           {hasRange && labelText && (
             <Badge
               variant="secondary"
               size="sm"
-              className="ml-1 hidden rounded-sm font-normal sm:inline-flex"
+              className="ml-1 rounded-sm font-normal inline-flex max-w-[140px] sm:max-w-none truncate"
             >
               {labelText}
             </Badge>
@@ -116,9 +116,11 @@ export function DataTableDateRangeFilter({
           initialDateFrom={value?.from}
           initialDateTo={value?.to}
           onUpdate={handleUpdate}
+          onClose={() => setOpen(false)}
           align={align}
           locale="en-US"
           showCompare={false}
+          contentOnly
         />
       </PopoverContent>
     </Popover>

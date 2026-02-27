@@ -1,22 +1,24 @@
 # ABC Dashboard – Makefile
 # Run from repo root. Requires .env (see docs/DEPLOYMENT-GUIDE.md).
 
-.PHONY: help deploy deploy-sync up down down-volumes build db-reset db-reset-sync wait-backend logs-backend
+.PHONY: help deploy deploy-sync up down down-volumes build db-reset db-reset-sync db-reset-sync-10 sync-10 wait-backend logs-backend
 
 # Default target
 help:
 	@echo "ABC Dashboard – targets (run from repo root)"
 	@echo ""
-	@echo "  make deploy        Drop DB, (re)build images, start stack, migrate, seed"
-	@echo "  make deploy-sync   Same as deploy + full license sync"
-	@echo "  make up            Start stack (uses scripts/docker-compose-up.sh for enc: password)"
-	@echo "  make down          Stop stack"
-	@echo "  make down-volumes  Stop + remove volumes (fix enc: password mismatch)"
-	@echo "  make build         Build backend + frontend images"
-	@echo "  make db-reset      Drop DB, migrate, seed (stack must be running)"
-	@echo "  make db-reset-sync Same + license sync"
-	@echo "  make wait-backend  Wait until backend container is up (for scripts)"
-	@echo "  make logs-backend  Show backend container logs (debug startup failures)"
+	@echo "  make deploy          Drop DB, (re)build images, start stack, migrate, seed"
+	@echo "  make deploy-sync     Same as deploy + full license sync"
+	@echo "  make up              Start stack (uses scripts/docker-compose-up.sh for enc: password)"
+	@echo "  make down            Stop stack"
+	@echo "  make down-volumes    Stop + remove volumes (fix enc: password mismatch)"
+	@echo "  make build           Build backend + frontend images"
+	@echo "  make db-reset        Drop DB, migrate, seed (stack must be running)"
+	@echo "  make db-reset-sync   Same + full license sync"
+	@echo "  make db-reset-sync-10  Same + sync 10 pages only (20 rows/page ≈ 200 licenses, quick test)"
+	@echo "  make sync-10           Run license sync: 10 pages only (stack must be running, no DB reset)"
+	@echo "  make wait-backend    Wait until backend container is up (for scripts)"
+	@echo "  make logs-backend    Show backend container logs (debug startup failures)"
 	@echo ""
 	@echo "If backend is unhealthy: run 'make logs-backend'. See docs/DEPLOYMENT-GUIDE.md (Docker / DB password)."
 	@echo ""
@@ -73,6 +75,14 @@ db-reset:
 # Drop DB, migrate, seed, then full license sync
 db-reset-sync:
 	@./scripts/docker-db-reset-sync.sh --drop --sync
+
+# Drop DB, migrate, seed, then sync 10 pages only (20 rows/page ≈ 200 licenses, quick test)
+db-reset-sync-10:
+	@./scripts/docker-db-reset-sync.sh --drop --sync=10
+
+# Run license sync: 10 pages only (no DB reset; stack must be running; 20 rows/page ≈ 200 licenses)
+sync-10:
+	@docker compose exec -e SYNC_MAX_PAGES=10 backend npm run sync:start
 
 # Show backend logs (debug when backend is unhealthy)
 logs-backend:

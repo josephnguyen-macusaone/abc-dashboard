@@ -4,72 +4,60 @@ import { ROUTE_CONFIGS, AUTH_ROUTES, canAccessRoute, getDefaultRedirect, isAuthR
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
- * Content Security Policy Configuration
- * Implements comprehensive CSP to prevent XSS and other injection attacks
+ * Build connect-src value for CSP. Allows same-origin plus API origin when frontend and API
+ * run on different origins (e.g. app on :3000, API on :5001). Uses NEXT_PUBLIC_API_URL.
  */
-const CSP_HEADERS = {
-  'Content-Security-Policy': [
-    // Default restrictions - only allow same-origin
+function getConnectSrc(): string {
+  if (process.env.NEXT_PUBLIC_USE_RELATIVE_API === 'true') return "'self'";
+  const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!raw) {
+    return "'self' http://localhost:5000 http://localhost:5001";
+  }
+  try {
+    const url = raw.startsWith('http') ? raw : `https://${raw}`;
+    const origin = new URL(url).origin;
+    return `'self' ${origin}`;
+  } catch {
+    return "'self' http://localhost:5000 http://localhost:5001";
+  }
+}
+
+/**
+ * Build full Content-Security-Policy header value (includes dynamic connect-src for API).
+ */
+function buildCsp(): string {
+  return [
     "default-src 'self'",
-
-    // Scripts - allow Next.js, inline theme script, and eval (required by Next.js / some deps)
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-
-    // Styles - allow Next.js styles and inline styles
     "style-src 'self' 'unsafe-inline'",
-
-    // Images - allow same-origin and data URLs (for favicons, small images)
     "img-src 'self' data: https:",
-
-    // Fonts - allow same-origin and Google Fonts
     "font-src 'self' https://fonts.gstatic.com",
-
-    // Connect - allow same-origin and our API
-    "connect-src 'self'",
-
-    // Frame - deny all framing
+    `connect-src ${getConnectSrc()}`,
     "frame-ancestors 'none'",
-
-    // Object/embed - deny plugins
     "object-src 'none'",
-
-    // Base URI - restrict to same-origin
     "base-uri 'self'",
-
-    // Form actions - restrict to same-origin
     "form-action 'self'",
-
-    // Upgrade insecure requests to HTTPS
     "upgrade-insecure-requests",
-
-    // Report violations (in development)
     process.env.NODE_ENV === 'development' ? "report-uri /api/csp-report" : ""
-  ].filter(Boolean).join('; '),
+  ].filter(Boolean).join('; ');
+}
 
-  // Additional Security Headers
+const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': [
-    'camera=()',
-    'microphone=()',
-    'geolocation=()',
-    'interest-cohort=()'
-  ].join(', '),
-
-  // HSTS - enforce HTTPS
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
 };
 
 /**
- * Apply security headers to response
+ * Apply security headers to response (CSP with API origin in connect-src).
  */
 function applySecurityHeaders(response: NextResponse) {
-  Object.entries(CSP_HEADERS).forEach(([header, value]) => {
-    if (value) {
-      response.headers.set(header, value);
-    }
+  response.headers.set('Content-Security-Policy', buildCsp());
+  Object.entries(SECURITY_HEADERS).forEach(([header, value]) => {
+    response.headers.set(header, value);
   });
 }
 
