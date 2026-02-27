@@ -56,21 +56,21 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 py-1",
+        "flex w-full flex-wrap items-center gap-2 py-2 sm:py-1 min-w-0",
         className,
       )}
       {...props}
     >
-      {/* Search bar: full width on mobile, auto on desktop */}
+      {/* Search + date filter: same row on mobile (flex-nowrap), full width on small screens */}
       {searchBar && (
-        <div className="flex w-full sm:w-auto items-center">
+        <div className="flex w-full sm:w-auto sm:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
           {searchBar}
         </div>
       )}
 
-      {/* Mobile: one row with filter badges left, view options right. Desktop: inline. */}
-      <div className="flex w-full sm:contents items-center gap-2 min-w-0">
-        <div className="flex flex-1 flex-nowrap sm:flex-wrap items-center gap-2 min-w-0 overflow-x-auto">
+      {/* Filters row: wraps on small screens instead of horizontal scroll */}
+      <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 basis-full sm:basis-auto">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           {columns.map((column) => (
             <DataTableToolbarFilter
               key={column.id}
@@ -93,7 +93,7 @@ export function DataTableToolbar<TData>({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
+        <div className="flex items-center gap-2 shrink-0 ml-auto order-last sm:order-none">
           {children}
           <DataTableViewOptions table={table} align="end" />
         </div>

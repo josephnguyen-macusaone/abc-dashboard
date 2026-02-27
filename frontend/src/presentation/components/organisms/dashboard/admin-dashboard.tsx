@@ -8,6 +8,7 @@ import type { LicenseDateRange } from '@/application/use-cases';
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
 import { useDataTableStore } from '@/infrastructure/stores/user';
 import { logger } from '@/shared/helpers';
+import { getDefaultLicenseDateRange } from '@/presentation/hooks/use-initial-license-filters';
 
 const LICENSES_TABLE_ID = 'licenses-data-table';
 import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
@@ -114,6 +115,12 @@ export function AdminDashboard({
   }) => {
     const storeFilters = useLicenseStore.getState().filters;
     try {
+      // When searching, clear date range in store so UI reflects "no date filter" (avoids handleDateRangeChange which would clear search input)
+      const skipDateFilter = !!params.search?.trim();
+      if (skipDateFilter) {
+        setFilters({ ...storeFilters, startsAtFrom: undefined, startsAtTo: undefined });
+      }
+
       // Convert array filters to comma-separated strings for API
       const statusParam = Array.isArray(params.status)
         ? params.status.join(',')
@@ -125,8 +132,6 @@ export function AdminDashboard({
         ? params.term.join(',')
         : params.term;
 
-      // When searching (DBA/Agent/Zipcode), skip date filter so results show all matches
-      const skipDateFilter = !!params.search?.trim();
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
@@ -143,7 +148,7 @@ export function AdminDashboard({
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
     }
-  }, [fetchLicenses]);
+  }, [fetchLicenses, setFilters]);
 
   // Initial load: set loading before paint so skeleton shows immediately, then fetch.
   // Once initialized, never overwrite user's choice (e.g. if they clear date range, don't set current month again).
@@ -176,11 +181,9 @@ export function AdminDashboard({
       return;
     }
 
-    // First mount only: no date set yet, set default to current month (first to last day)
+    // First mount only: no date set yet, set default to last 12 months (matches License Management & deployment guide so post-sync users see more than current month)
     hasInitializedDateRef.current = true;
-    const now = new Date();
-    const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
     runParallelFetch({ startsAtFrom, startsAtTo });

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { LoadingOverlay } from '@/presentation/components/atoms';
 import { useLicenseStore, selectSyncStatus } from '@/infrastructure/stores/license';
 
-const SYNC_POLL_INTERVAL_MS = 500;
+const SYNC_POLL_INTERVAL_MS = 1500;
 
 /** Parse percent from backend log-style line, e.g. "Fetching pages 5 of 148 (3% complete)" */
 function parsePercentFromLogLine(line: string | null | undefined): number | undefined {
@@ -16,7 +16,7 @@ function parsePercentFromLogLine(line: string | null | undefined): number | unde
 /**
  * Full-screen overlay shown when license sync is in progress.
  * Percent is parsed from backend lastProgressLogLine (same format as server logs); fallback to syncProgress.
- * Polls sync status every 500ms so percentages (1%, 3%, …) update promptly.
+ * Polls sync status every 1.5s to avoid rate limits while still showing progress (1%, 3%, …).
  */
 export function LicenseSyncProgressOverlay() {
   const syncStatus = useLicenseStore(selectSyncStatus);
@@ -51,10 +51,7 @@ export function LicenseSyncProgressOverlay() {
         ? `Fetching pages… ${processed.toLocaleString()} / ${total.toLocaleString()}. Do not refresh the page.`
         : `${processed.toLocaleString()} / ${total.toLocaleString()} processed. Do not refresh the page.`
       : 'Do not refresh the page.';
-  const mainText =
-    typeof percent === 'number'
-      ? `Syncing license data (${Math.round(percent)}%). Please wait!`
-      : 'Syncing license data… Please wait!';
+  const mainText = 'Syncing license data… Please wait!';
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress) return;

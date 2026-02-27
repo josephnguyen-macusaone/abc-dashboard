@@ -40,7 +40,7 @@ export class CircuitBreaker {
       this.onSuccess();
       return result;
     } catch (error) {
-      this.onFailure();
+      this.onFailure(error);
       throw error;
     }
   }
@@ -57,9 +57,15 @@ export class CircuitBreaker {
   }
 
   /**
-   * Handle failed operation
+   * Handle failed operation. 429 (rate limit) is not counted so the circuit does not open
+   * and the client can retry after Retry-After.
    */
-  private onFailure(): void {
+  private onFailure(error?: unknown): void {
+    const status = error && typeof error === 'object' && 'status' in error
+      ? (error as { status: number }).status
+      : undefined;
+    if (status === 429) return;
+
     this.failures++;
     this.lastFailureTime = Date.now();
 
