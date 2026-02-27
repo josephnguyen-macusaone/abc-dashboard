@@ -65,16 +65,6 @@ export function AdminDashboard({
     };
   }, [filters.startsAtFrom, filters.startsAtTo]);
 
-  // Default range for the date picker when no filter is set (first day of month to last day)
-  const defaultRangeFromData = useMemo<LicenseDateRange>(() => {
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    from.setHours(0, 0, 0, 0);
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    to.setHours(23, 59, 59, 999);
-    return { from, to };
-  }, []);
-
   // Use store data or prop data
   const licenses = licensesProp ?? licensesFromStore;
   const isLoadingLicenses = isLoadingLicensesProp ?? isLoadingFromStore;
@@ -82,8 +72,8 @@ export function AdminDashboard({
   const totalCount = licensesProp?.length ?? paginationFromStore.total;
 
   const handleDateRangeChange = useCallback(
-    (values: { range: DateRange; rangeCompare?: DateRange }) => {
-      const nextRange = values.range;
+    (values: { range?: { from?: Date; to?: Date }; rangeCompare?: DateRange } | null) => {
+      const nextRange = values?.range;
       const hasRange = nextRange?.from || nextRange?.to;
       const startsAtFrom = nextRange?.from?.toISOString?.().split('T')[0];
       const startsAtTo = nextRange?.to?.toISOString?.().split('T')[0];
@@ -117,7 +107,7 @@ export function AdminDashboard({
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
     search?: string;
-    searchField?: 'dba' | 'agentsName';
+    searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
@@ -135,6 +125,8 @@ export function AdminDashboard({
         ? params.term.join(',')
         : params.term;
 
+      // When searching (DBA/Agent/Zipcode), skip date filter so results show all matches
+      const skipDateFilter = !!params.search?.trim();
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
@@ -145,15 +137,16 @@ export function AdminDashboard({
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[],
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[],
-        startsAtFrom: storeFilters.startsAtFrom,
-        startsAtTo: storeFilters.startsAtTo,
+        startsAtFrom: skipDateFilter ? undefined : storeFilters.startsAtFrom,
+        startsAtTo: skipDateFilter ? undefined : storeFilters.startsAtTo,
       });
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
     }
   }, [fetchLicenses]);
 
-  // Initial load: set loading before paint so skeleton shows immediately, then fetch
+  // Initial load: set loading before paint so skeleton shows immediately, then fetch.
+  // Once initialized, never overwrite user's choice (e.g. if they clear date range, don't set current month again).
   const hasInitializedDateRef = useRef(false);
   useLayoutEffect(() => {
     if (licensesProp) return;
@@ -171,13 +164,19 @@ export function AdminDashboard({
       ]);
     };
 
+    if (hasInitializedDateRef.current) {
+      // Already initialized; just refetch with current filters (user may have cleared date)
+      runParallelFetch({ startsAtFrom: from, startsAtTo: to });
+      return;
+    }
+
     if (from && to) {
       hasInitializedDateRef.current = true;
       runParallelFetch({ startsAtFrom: from, startsAtTo: to });
       return;
     }
 
-    // First load with no date filter: set store and fetch to current month (first to last day)
+    // First mount only: no date set yet, set default to current month (first to last day)
     hasInitializedDateRef.current = true;
     const now = new Date();
     const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -239,9 +238,6 @@ export function AdminDashboard({
         <LicenseMetricsSection
           licenses={licenses}
           dateRange={dateRange}
-          initialDateFrom={defaultRangeFromData.from}
-          initialDateTo={defaultRangeFromData.to}
-          onDateRangeChange={handleDateRangeChange}
           isLoading={isLoadingLicenses}
           totalCount={totalCount}
           useApiMetrics={true}
@@ -254,6 +250,8 @@ export function AdminDashboard({
           pageCount={pageCount}
           totalRows={totalCount}
           onQueryChange={licensesProp ? undefined : handleQueryChange}
+          dateRange={dateRange}
+          onDateRangeChange={range => handleDateRangeChange(range ? { range } : null)}
         />
       </Suspense>
     </div>

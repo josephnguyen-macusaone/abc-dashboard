@@ -4,13 +4,15 @@ import { useLayoutEffect, useRef } from 'react';
 import type { LicenseFilters } from '@/infrastructure/stores/license';
 
 /**
- * Returns the default date range for the current month (first to last day, YYYY-MM-DD).
+ * Returns the default date range for the last 12 months (YYYY-MM-DD).
  * Used when License Management mounts to reset filters.
+ * Expanded from current-month-only so users can see licenses from prior years (e.g. 2025).
  */
 export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo: string } {
   const now = new Date();
-  const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const fromDate = new Date(now.getFullYear(), now.getMonth() - 11, 1); // 12 months ago
+  const startsAtFrom = fromDate.toISOString().split('T')[0];
   return { startsAtFrom, startsAtTo };
 }
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { StatsCards } from '@/presentation/components/molecules/domain/user-management';
-import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard';
 import { LicenseMetricsSkeleton } from '@/presentation/components/organisms';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useLicenseStore, selectLicenseFilters, selectDashboardMetrics, selectDashboardMetricsLoading } from '@/infrastructure/stores/license';
@@ -56,9 +55,6 @@ function transformMetricsToStatsCards(metrics: LicenseDashboardMetric[]): StatsC
 interface LicenseMetricsSectionProps {
   licenses: LicenseRecord[];
   dateRange?: LicenseDateRange;
-  initialDateFrom?: Date | string;
-  initialDateTo?: Date | string;
-  onDateRangeChange?: (values: { range: DateRange; rangeCompare?: DateRange }) => void;
   isLoading?: boolean;
   totalCount?: number;
   useApiMetrics?: boolean; // New prop to toggle between API and client-side calculation
@@ -67,9 +63,6 @@ interface LicenseMetricsSectionProps {
 export function LicenseMetricsSection({
   licenses,
   dateRange,
-  initialDateFrom,
-  initialDateTo,
-  onDateRangeChange,
   isLoading = false,
   useApiMetrics = true, // Default to using API metrics
 }: LicenseMetricsSectionProps) {
@@ -177,12 +170,6 @@ export function LicenseMetricsSection({
 
   return (
     <div className="space-y-6">
-      <DateRangeFilterCard
-        initialDateFrom={initialDateFrom}
-        initialDateTo={initialDateTo}
-        onUpdate={onDateRangeChange}
-        showCompare={false}
-      />
       <StatsCards stats={stats} isLoading={effectiveLoading} columns={4} />
     </div>
   );

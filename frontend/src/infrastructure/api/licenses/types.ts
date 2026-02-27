@@ -109,6 +109,8 @@ export interface LicenseSyncStatusResponse {
   running?: boolean;
   syncInProgress?: boolean;
   syncProgress?: LicenseSyncProgress;
+  /** Last progress line (log-style) to parse percent from, e.g. "Fetching pages 5 of 148 (3% complete)" */
+  lastProgressLogLine?: string | null;
   timezone?: string;
   schedule?: string;
   lastSyncResult?: {

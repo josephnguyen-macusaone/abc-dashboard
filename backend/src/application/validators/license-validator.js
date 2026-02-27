@@ -48,7 +48,7 @@ export class LicenseValidator {
       // Search field selector (optional); agentsName searches the agents_name jsonb column
       if (
         query.searchField &&
-        ['key', 'dba', 'product', 'plan', 'agentsName'].includes(query.searchField)
+        ['key', 'dba', 'product', 'plan', 'agentsName', 'zip'].includes(query.searchField)
       ) {
         sanitized.filters.searchField = query.searchField;
       }
@@ -249,9 +249,11 @@ export class LicenseValidator {
       'utilizationPercent',
       'startsAt',
       'expiresAt',
+      'dueDate',
       'dba',
       'zip',
       'lastPayment',
+      'lastActive',
       'smsPurchased',
       'smsSent',
       'smsBalance',

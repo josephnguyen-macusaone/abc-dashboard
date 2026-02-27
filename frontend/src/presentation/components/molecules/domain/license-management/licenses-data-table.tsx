@@ -6,7 +6,7 @@
 
 import { FileText } from "lucide-react";
 
-import { DataTable, DataTableToolbar } from "@/presentation/components/molecules/data/data-table";
+import { DataTable, DataTableDateRangeFilter, DataTableToolbar } from "@/presentation/components/molecules/data/data-table";
 import { LicenseDataTableSkeleton } from "@/presentation/components/organisms/skeletons/license-data-table-skeleton";
 import { useDataTable } from "@/presentation/hooks";
 import { Typography } from "@/presentation/components/atoms";
@@ -28,11 +28,15 @@ interface LicensesDataTableProps {
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
     search?: string;
-    searchField?: 'dba' | 'agentsName';
+    searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
   }) => void;
+  /** Date range filter (like Status, Plan, Term); null = filter off */
+  dateRange?: { from?: Date; to?: Date } | null;
+  /** Callback when date range changes */
+  onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
 }
 
 export function LicensesDataTable({
@@ -41,11 +45,13 @@ export function LicensesDataTable({
   totalRows,
   isLoading = false,
   onQueryChange,
+  dateRange,
+  onDateRangeChange,
 }: LicensesDataTableProps) {
   const columns = useMemo(() => getLicenseTableColumns(), []);
 
   const [currentPageSize, setCurrentPageSize] = useState(20);
-  const [searchField, setSearchField] = useState<'dba' | 'agentsName'>('dba');
+  const [searchField, setSearchField] = useState<'dba' | 'agentsName' | 'zip'>('dba');
 
   const pageCount = useMemo(
     () => (serverPageCount >= 0 ? serverPageCount : Math.ceil(data.length / currentPageSize)),
@@ -89,7 +95,7 @@ export function LicensesDataTable({
   const lastFiltersRef = useRef<string>("");
   const lastManualFiltersRef = useRef<string>("");
   const lastSearchValueRef = useRef<string>("");
-  const lastSearchFieldRef = useRef<'dba' | 'agentsName' | undefined>(undefined);
+  const lastSearchFieldRef = useRef<'dba' | 'agentsName' | 'zip' | undefined>(undefined);
 
   // Use Zustand store for table state management
   const tableId = 'licenses-data-table';
@@ -158,8 +164,11 @@ export function LicensesDataTable({
     // Check table column filters
     const hasTableFilters = tableState.columnFilters && tableState.columnFilters.length > 0;
 
-    return hasSearchFilters || hasManualFilters || hasTableFilters;
-  }, [searchValue, manualFilterValues, table]);
+    // Check date range filter
+    const hasDateRange = !!(dateRange?.from || dateRange?.to);
+
+    return hasSearchFilters || hasManualFilters || hasTableFilters || hasDateRange;
+  }, [searchValue, manualFilterValues, table, dateRange]);
 
   // Reset button should show if there's any filter activity or when no results with filters
   const shouldShowResetButton = hasActiveFilters || (hasPerformedFiltering && data.length === 0);
@@ -305,7 +314,7 @@ export function LicensesDataTable({
       sortBy?: keyof LicenseRecord;
       sortOrder?: "asc" | "desc";
       search?: string;
-      searchField?: 'dba' | 'agentsName';
+      searchField?: 'dba' | 'agentsName' | 'zip';
       status?: string | string[];
       plan?: string | string[];
       term?: string | string[];
@@ -432,7 +441,17 @@ export function LicensesDataTable({
       <DataTableToolbar
         table={table}
         searchBar={
-          <SearchBar
+          <div className="flex items-center gap-2">
+            {onDateRangeChange && (
+              <DataTableDateRangeFilter
+                value={dateRange ?? null}
+                onDateRangeChange={onDateRangeChange}
+                title="Date Range"
+                align="start"
+                className="shrink-0"
+              />
+            )}
+            <SearchBar
             value={searchValue}
             onValueChange={handleSearchChange}
             searchField={searchField}
@@ -441,6 +460,7 @@ export function LicensesDataTable({
             className="w-72 md:w-80"
             allowClear={false}
           />
+          </div>
         }
         onReset={() => {
           // 1. Clear search state and prefix (default to DBA)
@@ -461,10 +481,13 @@ export function LicensesDataTable({
           // 4. Reset filtering tracking
           setHasPerformedFiltering(false);
 
-          // 5. Reset to first page and trigger API call with clean state
+          // 5. Clear date range filter
+          onDateRangeChange?.(null);
+
+          // 6. Reset to first page and trigger API call with clean state
           table.setPageIndex(0);
 
-          // 6. Trigger API call with clean state (explicit clears so store and API reset filters)
+          // 7. Trigger API call with clean state (explicit clears so store and API reset filters)
           setTimeout(() => {
             onQueryChange?.({
               page: 1,

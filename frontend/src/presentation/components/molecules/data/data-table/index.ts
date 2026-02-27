@@ -6,4 +6,5 @@ export { DataTableSkeleton } from "./data-table-skeleton";
 export { DataTableViewOptions } from "./data-table-view-options";
 export { DataTableFacetedFilter } from "./data-table-faceted-filter";
 export { DataTableSliderFilter } from "./data-table-slider-filter";
+export { DataTableDateRangeFilter } from "./data-table-date-range-filter";
 

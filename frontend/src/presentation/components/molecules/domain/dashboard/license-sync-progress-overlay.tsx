@@ -1,42 +1,63 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { LoadingOverlay } from '@/presentation/components/atoms';
 import { useLicenseStore, selectSyncStatus } from '@/infrastructure/stores/license';
 
-const SYNC_POLL_INTERVAL_MS = 1_000;
-const INDETERMINATE_PROGRESS_INTERVAL_MS = 200;
-const INDETERMINATE_MAX_PERCENT = 15;
-const INDETERMINATE_STEP = 2;
+const SYNC_POLL_INTERVAL_MS = 500;
+
+/** Parse percent from backend log-style line, e.g. "Fetching pages 5 of 148 (3% complete)" */
+function parsePercentFromLogLine(line: string | null | undefined): number | undefined {
+  if (!line || typeof line !== 'string') return undefined;
+  const match = line.match(/\((\d+)%\s*complete\)/);
+  return match ? Math.min(100, Math.max(0, parseInt(match[1], 10))) : undefined;
+}
 
 /**
  * Full-screen overlay shown when license sync is in progress.
- * Shows progress bar and percent when backend provides syncProgress.
- * When backend has no progress yet, shows indeterminate progress (0-15%) so users feel the system is working.
- * Polls sync status every 1s for frequent updates.
+ * Percent is parsed from backend lastProgressLogLine (same format as server logs); fallback to syncProgress.
+ * Polls sync status every 500ms so percentages (1%, 3%, …) update promptly.
  */
 export function LicenseSyncProgressOverlay() {
   const syncStatus = useLicenseStore(selectSyncStatus);
   const fetchSyncStatus = useLicenseStore((state) => state.fetchSyncStatus);
 
   const syncProgress = syncStatus?.syncProgress;
-  const backendPercent = syncProgress?.percent ?? 0;
   const processed = syncProgress?.processed ?? 0;
   const total = syncProgress?.total ?? 0;
-  const hasBackendProgress = total > 0;
+  const phase = (syncProgress as { phase?: string })?.phase;
+  const logLine = syncStatus?.lastProgressLogLine;
 
-  const [indeterminatePercent, setIndeterminatePercent] = useState(0);
+  // Prefer percent parsed from backend log line; then syncProgress.percent; then processed/total
+  const percentFromLog = parsePercentFromLogLine(logLine);
+  const percentFromSync =
+    total > 0 && typeof (syncProgress as { percent?: number })?.percent === 'number'
+      ? (syncProgress as { percent: number }).percent
+      : total > 0
+        ? Math.round((processed / total) * 100)
+        : undefined;
+  const percent =
+    typeof percentFromLog === 'number'
+      ? Math.min(100, percentFromLog)
+      : typeof percentFromSync === 'number'
+        ? Math.min(100, percentFromSync)
+        : undefined;
 
-  const percent = hasBackendProgress ? backendPercent : indeterminatePercent;
-  const hasProgress = total > 0;
-  const subtext = hasProgress
-    ? `${processed.toLocaleString()} / ${total.toLocaleString()} processed. Do not refresh the page.`
-    : 'Do not refresh the page.';
-  const mainText = `Syncing license data. Please wait!`;
+  const hasProgress = total > 0 || Boolean(logLine);
+  const subtext = logLine
+    ? `${logLine}. Do not refresh the page.`
+    : hasProgress
+      ? phase === 'fetch'
+        ? `Fetching pages… ${processed.toLocaleString()} / ${total.toLocaleString()}. Do not refresh the page.`
+        : `${processed.toLocaleString()} / ${total.toLocaleString()} processed. Do not refresh the page.`
+      : 'Do not refresh the page.';
+  const mainText =
+    typeof percent === 'number'
+      ? `Syncing license data (${Math.round(percent)}%). Please wait!`
+      : 'Syncing license data… Please wait!';
 
   useEffect(() => {
     if (!syncStatus?.syncInProgress) return;
-    queueMicrotask(() => setIndeterminatePercent(0));
     fetchSyncStatus();
     const pollId = setInterval(() => {
       fetchSyncStatus();
@@ -44,25 +65,11 @@ export function LicenseSyncProgressOverlay() {
     return () => clearInterval(pollId);
   }, [syncStatus?.syncInProgress, fetchSyncStatus]);
 
-  useEffect(() => {
-    if (!syncStatus?.syncInProgress || hasBackendProgress) return;
-    const tick = () => {
-      setIndeterminatePercent((p) =>
-        Math.min(INDETERMINATE_MAX_PERCENT, p + INDETERMINATE_STEP)
-      );
-    };
-    const immediateId = setTimeout(tick, 50);
-    const intervalId = setInterval(tick, INDETERMINATE_PROGRESS_INTERVAL_MS);
-    return () => {
-      clearTimeout(immediateId);
-      clearInterval(intervalId);
-    };
-  }, [syncStatus?.syncInProgress, hasBackendProgress]);
-
   return (
     <LoadingOverlay
       text={mainText}
       progress={syncStatus?.syncInProgress ? percent : undefined}
+      hidePercentLabel
       subtext={subtext}
     />
   );

@@ -75,6 +75,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         </span>
       ),
       enableColumnFilter: false,
+      enableSorting: false,
       size: 200,
       minSize: 80,
     },
@@ -141,6 +142,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       enableColumnFilter: true,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const status = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(status) : value === status;
@@ -175,6 +177,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         );
       },
       enableColumnFilter: true,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
         const modules = plan ? plan.split(',').map((s) => s.trim()) : [];
@@ -205,6 +208,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       size: 150,
       minSize: 80,
       enableColumnFilter: true,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const term = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(term) : value === term;

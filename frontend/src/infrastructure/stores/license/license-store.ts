@@ -3,6 +3,8 @@ import { devtools } from 'zustand/middleware';
 import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
 import { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { getErrorMessage } from '@/infrastructure/api/core/errors';
+import { ApiExceptionDto } from '@/application/dto/api-dto';
+import { handleApiError } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
@@ -16,7 +18,7 @@ export interface LicenseFilters {
   /** Search term; backend matches DBA and agent names by default when searchField is not set */
   search?: string;
   /** When set with search, limit search to one field (e.g. agentsName for agent names only) */
-  searchField?: 'key' | 'dba' | 'product' | 'plan' | 'agentsName';
+  searchField?: 'key' | 'dba' | 'product' | 'plan' | 'agentsName' | 'zip';
   status?: LicenseStatus | LicenseStatus[];
   plan?: string | string[];
   term?: LicenseTerm | LicenseTerm[];
@@ -97,6 +99,8 @@ interface LicenseState {
   lastKnownSyncTimestamp: string | null;
   /** True while manual sync trigger request is in flight */
   triggerManualSyncLoading: boolean;
+  /** When set, skip non-essential API calls until this timestamp (ms). Set on 429 from backend. */
+  rateLimitedUntil: number | null;
   /** Dashboard metrics (overview, utilization, alerts - shape depends on backend) */
   dashboardMetrics: unknown | null;
   dashboardMetricsLoading: boolean;
@@ -167,6 +171,7 @@ export const useLicenseStore = create<LicenseState>()(
         syncStatusError: false,
         lastKnownSyncTimestamp: null,
         triggerManualSyncLoading: false,
+        rateLimitedUntil: null,
         dashboardMetrics: null,
         dashboardMetricsLoading: false,
         dashboardMetricsError: null,
@@ -180,9 +185,16 @@ export const useLicenseStore = create<LicenseState>()(
         smsPaymentsError: null,
 
         fetchSyncStatus: async () => {
+          const now = Date.now();
+          const rateLimitedUntil = get().rateLimitedUntil;
+          if (rateLimitedUntil != null && now < rateLimitedUntil) {
+            set({ syncStatusLoading: false });
+            return;
+          }
           set({ syncStatusError: false, syncStatusLoading: true });
           try {
             const status = await container.licenseManagementService.getSyncStatus();
+            if (get().rateLimitedUntil != null) set({ rateLimitedUntil: null });
             const newTimestamp = status?.lastSyncResult?.timestamp ?? null;
             const prevTimestamp = get().lastKnownSyncTimestamp;
 
@@ -198,7 +210,19 @@ export const useLicenseStore = create<LicenseState>()(
                 fetchLicensesRequiringAttention(),
               ]);
             }
-          } catch {
+          } catch (err) {
+            const apiErr = err instanceof ApiExceptionDto ? err : handleApiError(err);
+            if (apiErr.status === 429) {
+              const details = apiErr.details as { retryAfter?: number; error?: { retryAfter?: number } } | undefined;
+              const retryAfterSec = typeof details?.retryAfter === 'number' ? details.retryAfter : typeof details?.error?.retryAfter === 'number' ? details.error.retryAfter : 60;
+              set({
+                syncStatus: null,
+                syncStatusLoading: false,
+                syncStatusError: true,
+                rateLimitedUntil: Date.now() + retryAfterSec * 1000,
+              });
+              return;
+            }
             set({ syncStatus: null, syncStatusLoading: false, syncStatusError: true });
           }
         },
@@ -219,11 +243,26 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         fetchDashboardMetrics: async (params) => {
+          const rateLimitedUntil = get().rateLimitedUntil;
+          if (rateLimitedUntil != null && Date.now() < rateLimitedUntil) return;
           set({ dashboardMetricsError: null, dashboardMetricsLoading: true });
           try {
             const metrics = await container.licenseManagementService.getDashboardMetrics(params);
+            if (get().rateLimitedUntil != null) set({ rateLimitedUntil: null });
             set({ dashboardMetrics: metrics, dashboardMetricsLoading: false });
           } catch (err) {
+            const apiErr = err instanceof ApiExceptionDto ? err : handleApiError(err);
+            if (apiErr.status === 429) {
+              const details = apiErr.details as { retryAfter?: number; error?: { retryAfter?: number } } | undefined;
+              const retryAfterSec = typeof details?.retryAfter === 'number' ? details.retryAfter : typeof details?.error?.retryAfter === 'number' ? details.error.retryAfter : 60;
+              set({
+                dashboardMetrics: null,
+                dashboardMetricsLoading: false,
+                dashboardMetricsError: getErrorMessage(err),
+                rateLimitedUntil: Date.now() + retryAfterSec * 1000,
+              });
+              return;
+            }
             set({
               dashboardMetrics: null,
               dashboardMetricsLoading: false,
@@ -233,12 +272,28 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         fetchLicensesRequiringAttention: async (options = {}) => {
+          const rateLimitedUntil = get().rateLimitedUntil;
+          if (rateLimitedUntil != null && Date.now() < rateLimitedUntil) {
+            return { expiringSoon: [], expired: [], suspended: [], total: 0 };
+          }
           set({ licensesRequiringAttentionError: null, licensesRequiringAttentionLoading: true });
           try {
             const result = await container.licenseManagementService.getLicensesRequiringAttention(options);
+            if (get().rateLimitedUntil != null) set({ rateLimitedUntil: null });
             set({ licensesRequiringAttentionLoading: false });
             return result;
           } catch (err) {
+            const apiErr = err instanceof ApiExceptionDto ? err : handleApiError(err);
+            if (apiErr.status === 429) {
+              const details = apiErr.details as { retryAfter?: number; error?: { retryAfter?: number } } | undefined;
+              const retryAfterSec = typeof details?.retryAfter === 'number' ? details.retryAfter : typeof details?.error?.retryAfter === 'number' ? details.error.retryAfter : 60;
+              set({
+                licensesRequiringAttentionLoading: false,
+                licensesRequiringAttentionError: getErrorMessage(err),
+                rateLimitedUntil: Date.now() + retryAfterSec * 1000,
+              });
+              return { expiringSoon: [], expired: [], suspended: [], total: 0 };
+            }
             set({
               licensesRequiringAttentionLoading: false,
               licensesRequiringAttentionError: getErrorMessage(err),
@@ -296,6 +351,8 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         fetchLicenses: async (params = {}) => {
+          const rateLimitedUntil = get().rateLimitedUntil;
+          if (rateLimitedUntil != null && Date.now() < rateLimitedUntil) return;
           try {
             const currentFilters = get().filters;
             const currentPagination = get().pagination;
@@ -437,7 +494,6 @@ export const useLicenseStore = create<LicenseState>()(
               licenses: response.data,
               pagination: {
                 ...response.pagination,
-                // Use pagination.total from service response (which comes from use case)
                 total: response.pagination?.total || response.data.length
               },
               loading: false,
@@ -448,8 +504,20 @@ export const useLicenseStore = create<LicenseState>()(
                 page: Number(apiParams.page) || 1,
                 limit: Number(apiParams.limit) || 20,
               },
+              ...(get().rateLimitedUntil != null ? { rateLimitedUntil: null } : {}),
             });
           } catch (error) {
+            const apiErr = error instanceof ApiExceptionDto ? error : handleApiError(error);
+            if (apiErr.status === 429) {
+              const details = apiErr.details as { retryAfter?: number; error?: { retryAfter?: number } } | undefined;
+              const retryAfterSec = typeof details?.retryAfter === 'number' ? details.retryAfter : typeof details?.error?.retryAfter === 'number' ? details.error.retryAfter : 60;
+              set({
+                error: getErrorMessage(error),
+                loading: false,
+                rateLimitedUntil: Date.now() + retryAfterSec * 1000,
+              });
+              return;
+            }
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
             storeLogger.error('Failed to fetch licenses', { error: errorMessage });

@@ -53,7 +53,7 @@ export function LicenseManagementPage() {
       page?: number;
       limit?: number;
       search?: string;
-      searchField?: 'dba' | 'agentsName';
+      searchField?: 'dba' | 'agentsName' | 'zip';
       status?: string;
       startsAtFrom?: string;
       startsAtTo?: string;
@@ -231,8 +231,8 @@ export function LicenseManagementPage() {
     [bulkDeleteLicenses],
   );
 
-  const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } }) => {
-    const nextRange = values.range;
+  const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } } | null) => {
+    const nextRange = values?.range;
     const hasRange = nextRange?.from || nextRange?.to;
     const startsAtFrom = nextRange?.from?.toISOString?.().split('T')[0];
     const startsAtTo = nextRange?.to?.toISOString?.().split('T')[0];
@@ -258,7 +258,7 @@ export function LicenseManagementPage() {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    searchField?: 'dba' | 'agentsName';
+    searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
@@ -274,6 +274,8 @@ export function LicenseManagementPage() {
         ? params.term.join(',')
         : params.term;
 
+      // When searching (DBA/Agent/Zipcode), skip date filter so results show all matches
+      const skipDateFilter = !!params.search?.trim();
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
@@ -284,8 +286,8 @@ export function LicenseManagementPage() {
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[] | undefined,
-        startsAtFrom: filters.startsAtFrom,
-        startsAtTo: filters.startsAtTo,
+        startsAtFrom: skipDateFilter ? undefined : filters.startsAtFrom,
+        startsAtTo: skipDateFilter ? undefined : filters.startsAtTo,
       });
     } catch (error) {
       if (shouldShowError(error)) {

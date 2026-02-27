@@ -16,6 +16,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       header: "DBA",
       size: 200,
       enableColumnFilter: false,
+      enableSorting: false,
       meta: {
         label: "DBA",
         cell: { variant: "short-text" as const },
@@ -47,6 +48,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       header: "Status",
       size: 130,
       enableColumnFilter: true,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const status = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(status) : value === status;
@@ -65,6 +67,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       header: "Plan",
       size: 160,
       enableColumnFilter: true,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
         const modules = plan ? plan.split(',').map((s) => s.trim()) : [];
@@ -84,6 +87,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       header: "Term",
       size: 150,
       enableColumnFilter: true,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const term = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(term) : value === term;
