@@ -182,7 +182,7 @@ describe('GetLicenseDashboardMetricsUseCase', () => {
     it('uses current month as target and previous month as comparison', async () => {
       const target = [license({ status: 'active' })];
       const comparison = [license({ status: 'active' }), license({ status: 'active' })];
-      // No date range: 3 calls only (allLicenses, targetPeriodLicenses, comparisonPeriodLicenses)
+      // No date range: allLicenses = filteredLicenses (no date filter), target/comparison for trends
       mockRepository.findLicenses
         .mockResolvedValueOnce(respond([...target, ...comparison]))
         .mockResolvedValueOnce(respond(target))
@@ -190,9 +190,10 @@ describe('GetLicenseDashboardMetricsUseCase', () => {
 
       const result = await useCase.execute({ filters: {} });
 
-      expect(result.totalActiveLicenses.value).toBe(1);
-      expect(result.totalActiveLicenses.trend.value).toBe(50); // 1 vs 2 → -50% → abs 50
-      expect(result.totalActiveLicenses.trend.direction).toBe('down');
+      // Total Active Licenses uses filteredLicenses (reflects table) = 3, not target period
+      expect(result.totalActiveLicenses.value).toBe(3);
+      expect(result.totalActiveLicenses.trend.value).toBe(50); // 3 vs 2 → +50% → abs 50
+      expect(result.totalActiveLicenses.trend.direction).toBe('up');
       expect(result.metadata.currentPeriod.start).toBeDefined();
       expect(result.metadata.previousPeriod.start).toBeDefined();
     });

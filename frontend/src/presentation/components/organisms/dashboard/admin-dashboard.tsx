@@ -183,10 +183,22 @@ export function AdminDashboard({
     const from = filters.startsAtFrom;
     const to = filters.startsAtTo;
 
-    const runParallelFetch = (params: { startsAtFrom?: string; startsAtTo?: string }) => {
+    const runParallelFetch = (dateParams: { startsAtFrom?: string; startsAtTo?: string }) => {
+      const storeFilters = useLicenseStore.getState().filters;
+      const statusParam = Array.isArray(storeFilters.status) ? storeFilters.status.join(',') : storeFilters.status;
+      const planParam = Array.isArray(storeFilters.plan) ? storeFilters.plan.join(',') : storeFilters.plan;
+      const termParam = Array.isArray(storeFilters.term) ? storeFilters.term.join(',') : storeFilters.term;
+      const metricsParams = {
+        search: storeFilters.search,
+        searchField: storeFilters.searchField,
+        ...dateParams,
+        status: statusParam,
+        plan: planParam,
+        term: termParam,
+      };
       void Promise.all([
-        fetchLicenses({ page: 1, limit: 20, ...params }),
-        fetchDashboardMetrics(params),
+        fetchLicenses({ page: 1, limit: 20, ...dateParams }),
+        fetchDashboardMetrics(metricsParams),
         fetchLicensesRequiringAttention(),
       ]);
     };

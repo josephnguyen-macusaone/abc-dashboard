@@ -203,9 +203,11 @@ export class GetLicenseDashboardMetricsUseCase {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Total Active Licenses: use target period (not filtered) so trend compares like-to-like.
-    // Otherwise with no date range we'd compare "all active" to "active that started last month" (huge %).
-    const totalActiveLicenses = targetPeriodLicenses.filter(
+    // Total Active Licenses: use filteredLicenses so the value reflects what the user sees in the table.
+    // When no date range, filteredLicenses = all licenses matching search/filters. When date range is set,
+    // filteredLicenses = licenses in that range. targetPeriodLicenses would show 0 when no licenses
+    // started in the current month (e.g. user searches "MILANO" but all started in Sept 2025).
+    const totalActiveLicenses = filteredLicenses.filter(
       (license) => license.status === 'active'
     ).length;
 
@@ -248,12 +250,12 @@ export class GetLicenseDashboardMetricsUseCase {
     const smsRevenuePerMessage = 0.05; // 5 cents per SMS
     const smsIncomeThisPeriod = smsSentThisPeriod * smsRevenuePerMessage;
 
-    // Agent / In-house: use target period for value so trend is like-to-like (target vs comparison period).
-    const agentHeavyLicenses = targetPeriodLicenses.filter(
+    // Agent / In-house: use filteredLicenses so values reflect the table (same fix as Total Active Licenses).
+    const agentHeavyLicenses = filteredLicenses.filter(
       (license) => (license.agents || 0) > 3
     ).length;
 
-    const inHouseLicenses = targetPeriodLicenses.length - agentHeavyLicenses;
+    const inHouseLicenses = filteredLicenses.length - agentHeavyLicenses;
 
     const comparisonAgentHeavyLicenses = comparisonPeriodLicenses.filter(
       (license) => (license.agents || 0) > 3
