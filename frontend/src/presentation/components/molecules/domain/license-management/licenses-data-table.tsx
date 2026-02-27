@@ -352,8 +352,8 @@ export function LicensesDataTable({
     }
   }, [tablePaginationPageSize, currentPageSize, startTransition]);
 
-  // Loading state
-  if (isLoading) {
+  // Only show full skeleton on initial load (no data). During search/filter refetch, keep table visible.
+  if (isLoading && data.length === 0) {
     return (
       <LicenseDataTableSkeleton showHeader={false} />
     );

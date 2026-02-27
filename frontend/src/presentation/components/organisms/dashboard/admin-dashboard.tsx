@@ -85,20 +85,31 @@ export function AdminDashboard({
         startsAtTo: hasRange ? startsAtTo : undefined,
       });
 
-      if (!hasRange) {
-        setTableSearch(LICENSES_TABLE_ID, '');
-        clearTableFilters(LICENSES_TABLE_ID);
-      }
+      // Do NOT clear search/filters when only clearing date range - preserve user's search (e.g. "milano")
+      // so they don't have to re-type after broadening the date filter.
 
-      // Refetch list so data table shows same date-filtered licenses as metrics
-      fetchLicenses({
-        page: 1,
-        limit: 20,
+      // Refetch list and metrics so both stay in sync with date filter
+      const storeFilters = useLicenseStore.getState().filters;
+      const metricsParams = {
+        search: storeFilters.search,
+        searchField: storeFilters.searchField,
         startsAtFrom: hasRange ? startsAtFrom : undefined,
         startsAtTo: hasRange ? startsAtTo : undefined,
-      });
+        status: storeFilters.status,
+        plan: storeFilters.plan,
+        term: storeFilters.term,
+      };
+      void Promise.all([
+        fetchLicenses({
+          page: 1,
+          limit: 20,
+          startsAtFrom: hasRange ? startsAtFrom : undefined,
+          startsAtTo: hasRange ? startsAtTo : undefined,
+        }),
+        fetchDashboardMetrics(metricsParams),
+      ]);
     },
-    [filters, setFilters, fetchLicenses, setTableSearch, clearTableFilters],
+    [filters, setFilters, fetchLicenses, fetchDashboardMetrics],
   );
 
   // Handle pagination and filtering changes using Zustand store (read date range from store at call time to avoid stale closure)

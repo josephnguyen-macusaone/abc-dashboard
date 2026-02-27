@@ -520,8 +520,8 @@ export function LicensesDataGrid({
   const planColumn = table.getColumn("plan");
   const termColumn = table.getColumn("term");
 
-  // Loading state: show skeleton during initial fetch or bulk save/update
-  if (isLoading || isSaving) {
+  // Only show full skeleton on initial load (no data) or during save. During search/filter refetch, keep grid visible.
+  if ((isLoading && initialData.length === 0) || isSaving) {
     return (
       <div className={className}>
         <LicensesDataGridSkeleton />
