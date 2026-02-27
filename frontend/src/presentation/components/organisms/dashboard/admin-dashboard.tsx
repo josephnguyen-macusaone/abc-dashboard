@@ -115,12 +115,6 @@ export function AdminDashboard({
   }) => {
     const storeFilters = useLicenseStore.getState().filters;
     try {
-      // When searching, clear date range in store so UI reflects "no date filter" (avoids handleDateRangeChange which would clear search input)
-      const skipDateFilter = !!params.search?.trim();
-      if (skipDateFilter) {
-        setFilters({ ...storeFilters, startsAtFrom: undefined, startsAtTo: undefined });
-      }
-
       // Convert array filters to comma-separated strings for API
       const statusParam = Array.isArray(params.status)
         ? params.status.join(',')
@@ -132,23 +126,37 @@ export function AdminDashboard({
         ? params.term.join(',')
         : params.term;
 
-      await fetchLicenses({
-        page: params.page,
-        limit: params.limit,
-        sortBy: params.sortBy,
-        sortOrder: params.sortOrder,
+      // Always use date range from store; only cleared when user clicks X on date filter
+      const metricsParams = {
         search: params.search,
         searchField: params.searchField,
-        status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[],
+        startsAtFrom: storeFilters.startsAtFrom,
+        startsAtTo: storeFilters.startsAtTo,
+        status: statusParam,
         plan: planParam,
-        term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[],
-        startsAtFrom: skipDateFilter ? undefined : storeFilters.startsAtFrom,
-        startsAtTo: skipDateFilter ? undefined : storeFilters.startsAtTo,
-      });
+        term: termParam,
+      };
+
+      await Promise.all([
+        fetchLicenses({
+          page: params.page,
+          limit: params.limit,
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+          search: params.search,
+          searchField: params.searchField,
+          status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[],
+          plan: planParam,
+          term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[],
+          startsAtFrom: storeFilters.startsAtFrom,
+          startsAtTo: storeFilters.startsAtTo,
+        }),
+        fetchDashboardMetrics(metricsParams),
+      ]);
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
     }
-  }, [fetchLicenses, setFilters]);
+  }, [fetchLicenses, fetchDashboardMetrics]);
 
   // Initial load: set loading before paint so skeleton shows immediately, then fetch.
   // Once initialized, never overwrite user's choice (e.g. if they clear date range, don't set current month again).
@@ -181,7 +189,7 @@ export function AdminDashboard({
       return;
     }
 
-    // First mount only: no date set yet, set default to last 12 months (matches License Management & deployment guide so post-sync users see more than current month)
+    // First mount only: no date set yet, set default to current month (first and last day)
     hasInitializedDateRef.current = true;
     const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
     const currentFilters = useLicenseStore.getState().filters;

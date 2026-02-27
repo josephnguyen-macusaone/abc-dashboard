@@ -47,34 +47,35 @@ export function LicensesDataGridSkeleton({
 
   return (
     <div className={cn("space-y-5", className)}>
-      {/* Toolbar - matches actual LicensesDataGrid toolbar (View button on right) */}
-      <div className="flex flex-nowrap md:flex-wrap items-center gap-1.5 sm:gap-2 md:justify-between overflow-x-auto">
-        {/* Left side - Search bar and filter menus (Status, Plan, Term) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+      {/* Toolbar - Mobile: date above, search row; Tablet+: date+search */}
+      <div className="flex flex-col gap-2 w-full min-w-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:justify-between">
+        {/* Mobile: date on own row */}
+        <div className="flex w-full sm:hidden shrink-0">
+          <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
+        </div>
+        {/* Mobile: search row */}
+        <div className="flex w-full sm:hidden lg:hidden items-center gap-2 flex-nowrap min-w-0">
+          <div className="flex flex-1 items-center gap-0 overflow-hidden rounded-md border border-input min-w-[120px]">
+            <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
+            <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
+          </div>
+        </div>
+        {/* Tablet+: date + search in one row */}
+        <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center gap-1.5 sm:gap-2 flex-nowrap min-w-0 overflow-x-auto shrink-0">
+          <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
           <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-40 md:w-52 lg:w-72">
             <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
             <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
           </div>
-
-          {/* Status filter */}
-          <ButtonSkeleton variant="outline" size="sm" showText />
-
-          {/* Plan filter */}
-          <ButtonSkeleton variant="outline" size="sm" showText />
-
-          {/* Term filter */}
-          <ButtonSkeleton variant="outline" size="sm" showText />
         </div>
 
-        {/* Right side - Action buttons and View menu */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 ml-auto">
-          {/* Discard button */}
+        {/* Status, Plan, Term + Discard + Save + View */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 overflow-x-auto lg:overflow-visible">
+          <ButtonSkeleton variant="outline" size="sm" showText textWidth="12" />
+          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
+          <ButtonSkeleton variant="outline" size="sm" showText textWidth="8" />
           <ButtonSkeleton variant="outline" size="sm" textWidth="16" />
-
-          {/* Save Changes button */}
           <ButtonSkeleton variant="default" size="sm" textWidth="20" />
-
-          {/* DataGridViewMenu - View button */}
           <ButtonSkeleton variant="outline" size="sm" showText />
         </div>
       </div>

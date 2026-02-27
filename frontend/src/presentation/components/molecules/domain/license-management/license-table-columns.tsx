@@ -392,6 +392,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       size: 280,
       minSize: 130,
       enableColumnFilter: false,
+      enableSorting: false,
       meta: {
         label: "Agents Name",
       },
@@ -409,6 +410,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       ),
       size: 160,
       minSize: 120,
+      enableSorting: false,
       meta: {
         label: "Agents Cost",
       },
@@ -426,6 +428,7 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
       ),
       size: 300,
       minSize: 100,
+      enableSorting: false,
       filterFn: (row, id, value) => {
         const notes = row.getValue(id) as string;
         return notes.toLowerCase().includes(value.toLowerCase());

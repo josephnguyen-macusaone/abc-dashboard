@@ -4,15 +4,13 @@ import { useLayoutEffect, useRef } from 'react';
 import type { LicenseFilters } from '@/infrastructure/stores/license';
 
 /**
- * Returns the default date range for the last 12 months (YYYY-MM-DD).
- * Used when License Management mounts to reset filters.
- * Expanded from current-month-only so users can see licenses from prior years (e.g. 2025).
+ * Returns the default date range for the current month (first and last day).
+ * Used when License Management or Dashboard mounts to set initial filters.
  */
 export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo: string } {
   const now = new Date();
+  const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-  const fromDate = new Date(now.getFullYear(), now.getMonth() - 11, 1); // 12 months ago
-  const startsAtFrom = fromDate.toISOString().split('T')[0];
   return { startsAtFrom, startsAtTo };
 }
 
@@ -29,10 +27,9 @@ interface UseInitialLicenseFiltersOptions {
 }
 
 /**
- * One-time initialization: always resets date range to current month (first to last day)
- * when License Management mounts, then fetches licenses. This ensures a consistent
- * view when switching from Dashboard (which may have different filters) and avoids
- * "No licenses found" from stale or mismatched date ranges.
+ * One-time initialization: resets date range to current month (first to last day)
+ * when License Management mounts, then fetches licenses. When date range is cleared,
+ * fetch uses no date filter (all data).
  */
 export function useInitialLicenseFilters({
   filters,

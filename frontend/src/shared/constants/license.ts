@@ -4,6 +4,9 @@
 
 import type { LicenseStatus } from '../types/license';
 
+/** Default sort for license data table and data grid (Activate Date, newest first) */
+export const DEFAULT_LICENSE_SORT = [{ id: 'startsAt', desc: true }] as const;
+
 /**
  * License Plan Types
  */

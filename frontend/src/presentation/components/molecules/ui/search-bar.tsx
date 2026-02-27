@@ -66,6 +66,8 @@ export interface SearchBarProps extends Omit<React.ComponentProps<'input'>, 'typ
   onSearchFieldChange?: (value: SearchPrefixValue) => void;
   /** If true, hide the prefix dropdown even when searchField/onSearchFieldChange are set */
   hidePrefix?: boolean;
+  /** When set, shows a search button and triggers search only on click (not on typing). Enter key also triggers. */
+  onSearch?: () => void;
 }
 
 export function SearchBar({
@@ -82,6 +84,7 @@ export function SearchBar({
   searchField,
   onSearchFieldChange,
   hidePrefix = false,
+  onSearch,
 }: SearchBarProps) {
   const handleChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,10 +98,11 @@ export function SearchBar({
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
         event.preventDefault();
+        if (onSearch) onSearch();
       }
       onKeyDown?.(event);
     },
-    [onKeyDown],
+    [onKeyDown, onSearch],
   );
 
   const handleClear = React.useCallback(() => {
@@ -111,12 +115,11 @@ export function SearchBar({
 
   const inputBlock = (
     <div className={cn('relative w-full', showPrefix && 'flex-1 min-w-0')}>
-      <Search
-        className={cn(
-          'absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground pointer-events-none z-10',
-          showPrefix && 'left-2',
-        )}
-      />
+      {!showPrefix && (
+        <Search
+          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground pointer-events-none z-10"
+        />
+      )}
       <Input
         type="search"
         placeholder={placeholder}
@@ -125,23 +128,38 @@ export function SearchBar({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         className={cn(
-          'pl-10 pr-8',
-          showPrefix && 'h-8 rounded-none border-0 border-l border-input py-2 pl-9',
+          'pl-10',
+          onSearch ? 'pr-24' : 'pr-8',
+          showPrefix && 'h-8 rounded-none border-0 border-l-0 border-input py-2 pl-3',
           inputClassName,
         )}
       />
-      {allowClear && value && !disabled ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 hover:bg-transparent"
-          onClick={handleClear}
-          aria-label="Clear search"
-        >
-          <X className="h-4 w-4 text-muted-foreground" />
-        </Button>
-      ) : null}
+      <div className="absolute right-1 top-1/2 flex h-7 -translate-y-1/2 items-center gap-0.5">
+        {onSearch && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 shrink-0 bg-transparent hover:opacity-70"
+            onClick={onSearch}
+            aria-label="Search"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        )}
+        {allowClear && value && !disabled ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 hover:bg-transparent shrink-0"
+            onClick={handleClear}
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -159,7 +177,7 @@ export function SearchBar({
         >
           <SelectTrigger
             className={cn(
-              'h-8 min-w-0 w-[100px] max-w-[100px] shrink-0 rounded-none border-0 border-r border-input bg-muted/30 shadow-none',
+              'h-8 min-w-0 w-[100px] max-w-[100px] shrink-0 rounded-l-md rounded-r-none border-0 border-r border-input bg-muted/30 shadow-none pl-3',
               'text-xs text-left',
               '[&>span]:text-xs [&>span]:text-left [&>span]:line-clamp-1',
               'focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
