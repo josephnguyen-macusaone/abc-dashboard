@@ -37,9 +37,9 @@ export const licenseSchemas = {
       ),
 
     searchField: Joi.string()
-      .valid('key', 'dba', 'product', 'plan', 'agentsName')
+      .valid('key', 'dba', 'product', 'plan', 'agentsName', 'zip')
       .messages({
-        'any.only': 'searchField must be one of: key, dba, product, plan, agentsName',
+        'any.only': 'searchField must be one of: key, dba, product, plan, agentsName, zip',
       })
       .description(
         'When set with search, limit search to this field only (e.g. agentsName to search by agent names only)'

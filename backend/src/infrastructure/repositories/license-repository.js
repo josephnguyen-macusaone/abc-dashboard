@@ -115,6 +115,7 @@ export class LicenseRepository extends ILicenseRepository {
       updatedAt: 'updated_at',
       startsAt: 'starts_at',
       expiresAt: 'expires_at',
+      dueDate: 'renewal_due_date',
       key: 'key',
       product: 'product',
       plan: 'plan',
@@ -317,7 +318,7 @@ export class LicenseRepository extends ILicenseRepository {
       if (filters.searchField === 'agentsName') {
         return query.whereRaw("COALESCE(agents_name::text, '') ILIKE ?", [searchTerm]);
       }
-      const fieldMap = { key: 'key', dba: 'dba', product: 'product', plan: 'plan' };
+      const fieldMap = { key: 'key', dba: 'dba', product: 'product', plan: 'plan', zip: 'zip' };
       const dbField = fieldMap[filters.searchField];
       if (dbField) {
         return query.whereRaw(`${dbField} ILIKE ?`, [searchTerm]);

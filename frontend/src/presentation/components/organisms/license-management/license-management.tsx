@@ -3,7 +3,6 @@
 import { useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Typography } from '@/presentation/components/atoms';
-import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { LicensesDataGridSkeleton } from '@/presentation/components/organisms';
 import { cn } from '@/shared/helpers';
 import type { LicenseRecord } from '@/types';
@@ -45,8 +44,8 @@ interface LicenseManagementProps {
   onDeleteLicenses?: (licenses: LicenseRecord[], indices: number[]) => Promise<void>;
   /** Current date range filter */
   dateRange?: { from?: Date; to?: Date };
-  /** Callback when date range changes */
-  onDateRangeChange?: (values: { range: { from?: Date; to?: Date } }) => void;
+  /** Callback when date range changes (null = clear filter) */
+  onDateRangeChange?: (values: { range: { from?: Date; to?: Date } } | null) => void;
   /** Pagination configuration */
   pageCount?: number;
   totalCount?: number;
@@ -58,7 +57,7 @@ interface LicenseManagementProps {
     sortOrder?: "asc" | "desc";
     search?: string;
     /** When set, search is limited to this field only (DBA or Agents Name) */
-    searchField?: 'dba' | 'agentsName';
+    searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
@@ -161,18 +160,9 @@ export function LicenseManagement({
             Manage license records and subscriptions
           </Typography>
         </div>
-        {/* Date Range Filter */}
-        {onDateRangeChange && (
-          <DateRangeFilterCard
-            initialDateFrom={dateRange?.from}
-            initialDateTo={dateRange?.to}
-            onUpdate={onDateRangeChange}
-            align="end"
-          />
-        )}
       </div>
 
-      {/* Licenses Data Grid with full CRUD functionality. key forces remount when date filter changes so table shows server-filtered data. */}
+      {/* Licenses Data Grid with full CRUD functionality. Date range filter is in toolbar (like Status, Plan, Term). */}
       <LicensesDataGrid
         key={dataSourceKey}
         data={licenses}
@@ -184,6 +174,8 @@ export function LicenseManagement({
         totalCount={totalCount}
         onQueryChange={onQueryChange}
         onLoadLicenses={handleLoadLicenses}
+        dateRange={dateRange}
+        onDateRangeChange={range => onDateRangeChange?.({ range: range ?? {} })}
       />
     </div>
   );

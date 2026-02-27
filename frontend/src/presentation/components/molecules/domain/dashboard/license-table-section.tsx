@@ -47,11 +47,15 @@ export interface LicenseTableSectionProps {
     sortBy?: keyof LicenseRecord;
     sortOrder?: "asc" | "desc";
     search?: string;
-    searchField?: 'dba' | 'agentsName';
+    searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
   }) => void;
+  /** Date range filter (null = off) */
+  dateRange?: { from?: Date; to?: Date } | null;
+  /** Callback when date range changes */
+  onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
 }
 
 export function LicenseTableSection({
@@ -63,6 +67,8 @@ export function LicenseTableSection({
   pageCount,
   totalRows,
   onQueryChange,
+  dateRange,
+  onDateRangeChange,
 }: LicenseTableSectionProps) {
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-3 px-6 pb-6', className)}>
@@ -85,6 +91,8 @@ export function LicenseTableSection({
         pageCount={pageCount}
         totalRows={totalRows}
         onQueryChange={onQueryChange}
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
       />
     </div>
   );

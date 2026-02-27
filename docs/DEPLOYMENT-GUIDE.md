@@ -362,6 +362,7 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 | Encrypted DB password, start command | [scripts/README.md](../scripts/README.md) |
 | Deploy and secrets | [1. Deployment](#1-deployment) |
 | agentsName / agents_name | [backend/docs/guides/agents-name-field.md](../backend/docs/guides/agents-name-field.md) |
+| License Management: default date range, view prior years | [License Management – Default Date Range](#license-management--default-date-range) |
 | Server: drop DB, migrate, seed, sync | [Server: Full DB reset](#server-db-reset) |
 
 ---
@@ -374,6 +375,15 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 - **`LICENSE_SYNC_ENABLED=true`** – Scheduled sync runs (e.g. 2am, 3am Chicago); overlay appears when sync runs
 
 To re-enable automatic sync, add `LICENSE_SYNC_ENABLED=true` to the server `.env` and restart: `docker compose up -d`.
+
+---
+
+## License Management – Default Date Range
+
+**Default:** The License Management table shows licenses from the **last 12 months** (from today going back 12 months).
+
+- To view licenses from prior years (e.g. 2025 or earlier): use the **Date Range** filter in the toolbar to select a wider range, or clear the date filter to load all licenses (no date restriction).
+- When searching (DBA, Agents, Zipcode), the date filter is not applied – search returns all matching licenses regardless of date.
 
 ---
 

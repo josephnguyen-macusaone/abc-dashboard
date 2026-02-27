@@ -19,5 +19,9 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$REPO_ROOT"
 export POSTGRES_PASSWORD_PLAIN
-POSTGRES_PASSWORD_PLAIN=$(cd "$REPO_ROOT/backend" && node scripts/resolve-db-password-for-docker.js 2>/dev/null || true)
+# When .env has POSTGRES_PASSWORD=enc:..., this sets POSTGRES_PASSWORD_PLAIN so Postgres gets the decrypted password.
+POSTGRES_PASSWORD_PLAIN=$(cd "$REPO_ROOT/backend" && node scripts/resolve-db-password-for-docker.js) || {
+  echo "ERROR: resolve-db-password-for-docker.js failed. With enc: password, check ENCRYPTION_KEY (64 hex chars) and enc value."
+  exit 1
+}
 exec docker compose "$@"

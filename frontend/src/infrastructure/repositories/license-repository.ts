@@ -561,6 +561,7 @@ export class LicenseRepository implements ILicenseRepository {
     return {
       syncInProgress: response.syncInProgress,
       syncProgress: response.syncProgress,
+      lastProgressLogLine: response.lastProgressLogLine ?? undefined,
       lastSyncResult: response.lastSyncResult
         ? {
             timestamp: response.lastSyncResult.timestamp,

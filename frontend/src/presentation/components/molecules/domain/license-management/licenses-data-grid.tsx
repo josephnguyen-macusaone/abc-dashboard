@@ -12,7 +12,7 @@ import {
   DataGrid,
   DataGridViewMenu,
 } from "@/presentation/components/molecules/data/data-grid";
-import { DataTableFacetedFilter } from "@/presentation/components/molecules/data/data-table";
+import { DataTableFacetedFilter, DataTableDateRangeFilter } from "@/presentation/components/molecules/data/data-table";
 import { useDataGrid } from "@/presentation/hooks/use-data-grid";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
@@ -47,11 +47,15 @@ interface LicensesDataGridProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    searchField?: 'dba' | 'agentsName';
+    searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
   }) => void;
+  /** Date range filter (like Status, Plan, Term); null = filter off */
+  dateRange?: { from?: Date; to?: Date } | null;
+  /** Callback when date range changes */
+  onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
 }
 
 export function LicensesDataGrid({
@@ -65,6 +69,8 @@ export function LicensesDataGrid({
   pageCount,
   totalCount,
   onQueryChange,
+  dateRange,
+  onDateRangeChange,
 }: LicensesDataGridProps) {
   // For license management (no onQueryChange), use data directly without complex sync
   // For admin dashboard (with onQueryChange), use complex sync to handle pagination
@@ -75,14 +81,14 @@ export function LicensesDataGrid({
   const dataVersionRef = React.useRef(0);
 
   /** Search scope: dba = DBA only, agentsName = Agents Name only. Default DBA. */
-  const [searchField, setSearchField] = React.useState<'dba' | 'agentsName'>('dba');
+  const [searchField, setSearchField] = React.useState<'dba' | 'agentsName' | 'zip'>('dba');
 
   // When using the license store (onQueryChange provided), sync search state from store on mount so grid matches table/store behavior
   React.useEffect(() => {
     if (!onQueryChange) return;
     const filters = useLicenseStore.getState().filters;
     const storeSearch = filters.search ?? "";
-    const storeField = filters.searchField === "agentsName" ? "agentsName" : "dba";
+    const storeField = filters.searchField === "agentsName" ? "agentsName" : filters.searchField === "zip" ? "zip" : "dba";
     if (storeSearch !== "") {
       setSearchInput(storeSearch);
       setSearchQuery(storeSearch);
@@ -348,7 +354,7 @@ export function LicensesDataGrid({
       sortBy?: string;
       sortOrder: "asc" | "desc";
       search?: string;
-      searchField?: 'dba' | 'agentsName';
+      searchField?: 'dba' | 'agentsName' | 'zip';
       status?: string | string[];
       plan?: string | string[];
       term?: string | string[];
@@ -488,7 +494,8 @@ export function LicensesDataGrid({
     [columnFilters],
   );
   const hasSearch = searchInput.trim() !== "";
-  const hasActiveFilters = hasColumnFilters || hasSearch;
+  const hasDateRange = !!(dateRange?.from || dateRange?.to);
+  const hasActiveFilters = hasColumnFilters || hasSearch || hasDateRange;
 
   const onClearFilters = React.useCallback(() => {
     setSearchInput("");
@@ -497,6 +504,7 @@ export function LicensesDataGrid({
     table.setColumnFilters((prev) =>
       prev.filter((f) => !FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number])),
     );
+    onDateRangeChange?.(null);
     // Notify parent so store clears filters and refetches with no search/filters
     const activeSort = table.getState().sorting?.[0];
     onQueryChange?.({
@@ -510,7 +518,7 @@ export function LicensesDataGrid({
       plan: undefined,
       term: undefined,
     });
-  }, [table, onQueryChange]);
+  }, [table, onQueryChange, onDateRangeChange]);
 
   const statusColumn = table.getColumn("status");
   const planColumn = table.getColumn("plan");
@@ -533,6 +541,14 @@ export function LicensesDataGrid({
         {/* Toolbar: always shown so users can search/filter and add a license when empty */}
         <div className="flex flex-nowrap md:flex-wrap items-center gap-1.5 sm:gap-2 md:justify-between overflow-x-auto">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {onDateRangeChange && (
+              <DataTableDateRangeFilter
+                value={dateRange ?? null}
+                onDateRangeChange={onDateRangeChange}
+                title="Date Range"
+                align="start"
+              />
+            )}
             <SearchBar
               value={searchInput}
               onValueChange={handleSearchChange}

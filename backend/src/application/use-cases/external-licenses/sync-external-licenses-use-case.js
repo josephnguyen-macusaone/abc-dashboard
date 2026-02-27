@@ -91,6 +91,10 @@ export class SyncExternalLicensesUseCase {
       concurrencyLimit: 3,
       ...(hasLimit && { maxLicenses: limit }),
       ...(hasMaxPages && { maxPages }),
+      onFetchProgress:
+        typeof syncResults.onProgress === 'function'
+          ? (p) => syncResults.onProgress(p)
+          : undefined,
     });
 
     if (!externalData.success) {
@@ -186,7 +190,7 @@ export class SyncExternalLicensesUseCase {
       // Report progress: processed = created + updated + failed; total = totalFetched
       const total = syncResults.totalFetched || externalData.data.length;
       const processed = syncResults.created + syncResults.updated + syncResults.failed;
-      const percent = total > 0 ? Math.min(95, Math.round((processed / total) * 100)) : 0;
+      const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
       if (syncResults.onProgress && typeof syncResults.onProgress === 'function') {
         syncResults.onProgress({ processed, total, percent, phase: 'processing' });
       }

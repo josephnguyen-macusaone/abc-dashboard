@@ -26,6 +26,8 @@ export class LicenseSyncScheduler {
     this.isRunning = false;
     this.syncInProgress = false;
     this.syncProgress = null; // { processed, total, percent, phase } during sync
+    /** Last progress line (log-style) for frontend to parse percent from, e.g. "Fetching pages 5 of 148 (3% complete)" */
+    this.lastProgressLogLine = null;
     this.lastSyncResult = null;
     this.syncStats = {
       totalRuns: 0,
@@ -120,10 +122,16 @@ export class LicenseSyncScheduler {
 
     this.syncInProgress = true;
     this.syncProgress = null;
+    this.lastProgressLogLine = null;
     const startTime = Date.now();
 
     const onProgress = (p) => {
       this.syncProgress = p;
+      const percent = p.percent != null ? p.percent : (p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0);
+      this.lastProgressLogLine =
+        p.phase === 'fetch'
+          ? `Fetching pages ${p.processed} of ${p.total} (${percent}% complete)`
+          : `Processing ${p.processed} / ${p.total} (${percent}% complete)`;
     };
 
     try {
@@ -206,6 +214,7 @@ export class LicenseSyncScheduler {
     } finally {
       this.syncInProgress = false;
       this.syncProgress = null;
+      this.lastProgressLogLine = null;
     }
   }
 
@@ -233,10 +242,16 @@ export class LicenseSyncScheduler {
     logger.info('Manually triggering license sync', { overrideConfig });
     this.syncInProgress = true;
     this.syncProgress = null;
+    this.lastProgressLogLine = null;
     const startTime = Date.now();
 
     const onProgress = (p) => {
       this.syncProgress = p;
+      const percent = p.percent != null ? p.percent : (p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0);
+      this.lastProgressLogLine =
+        p.phase === 'fetch'
+          ? `Fetching pages ${p.processed} of ${p.total} (${percent}% complete)`
+          : `Processing ${p.processed} / ${p.total} (${percent}% complete)`;
     };
 
     try {
@@ -289,6 +304,7 @@ export class LicenseSyncScheduler {
     } finally {
       this.syncInProgress = false;
       this.syncProgress = null;
+      this.lastProgressLogLine = null;
     }
   }
 
@@ -320,6 +336,7 @@ export class LicenseSyncScheduler {
       running: this.isRunning,
       syncInProgress: this.syncInProgress,
       syncProgress: this.syncProgress,
+      lastProgressLogLine: this.lastProgressLogLine,
       timezone: this.config.timezone,
       schedule: this.config.syncSchedule,
       config: {

@@ -29,6 +29,17 @@ docker compose up -d
 
 ## Commands
 
+### Make (recommended for full redeploy)
+
+```bash
+make help           # List all targets
+make deploy         # Drop DB, build images, start stack, migrate, seed
+make deploy-sync    # Same + full license sync
+make up             # Start stack only
+make down           # Stop stack
+make db-reset       # Drop DB + migrate + seed (stack must be running)
+```
+
 ### Development
 
 ```bash

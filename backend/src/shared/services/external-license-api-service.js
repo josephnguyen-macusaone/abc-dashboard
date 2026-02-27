@@ -622,6 +622,7 @@ export class ExternalLicenseApiService {
   async _fetchRemainingPages(options, state) {
     const { batchSize, concurrencyLimit } = options;
     const { allLicenses, pagesFetched, failedPages } = state;
+    const onFetchProgress = options.onFetchProgress;
 
     for (
       let pageBatchStart = 2;
@@ -630,6 +631,16 @@ export class ExternalLicenseApiService {
     ) {
       const pageBatchEnd = Math.min(pageBatchStart + concurrencyLimit - 1, state.totalPages);
       const pct = Math.round((pageBatchStart / state.totalPages) * 100);
+
+      if (typeof onFetchProgress === 'function') {
+        onFetchProgress({
+          phase: 'fetch',
+          processed: pageBatchStart,
+          total: state.totalPages,
+          percent: pct,
+        });
+      }
+
       logger.info(
         `Fetching pages ${pageBatchStart}-${pageBatchEnd} of ${state.totalPages} (${pct}% complete)`,
         {
@@ -792,6 +803,16 @@ export class ExternalLicenseApiService {
         state.allLicenses.push(...firstResponse.data);
       }
       state.pagesFetched = 1;
+
+      if (typeof options.onFetchProgress === 'function') {
+        const pct = totalPages > 0 ? Math.round((1 / totalPages) * 100) : 0;
+        options.onFetchProgress({
+          phase: 'fetch',
+          processed: 1,
+          total: totalPages,
+          percent: pct,
+        });
+      }
 
       logger.info('Bulk fetch info', {
         correlationId: this.correlationId,

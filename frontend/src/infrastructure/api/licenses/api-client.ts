@@ -97,8 +97,10 @@ export class LicenseApiClient implements ILicenseApiClient {
   }
 
   async getLicenseSyncStatus(): Promise<LicenseSyncStatusResponse> {
+    // Cache-bust so each poll is a fresh request (avoids HTTP client deduplication returning stale progress)
     const response = await this.client.get<{ data?: LicenseSyncStatusResponse } | LicenseSyncStatusResponse>(
-      '/licenses/sync/status'
+      '/licenses/sync/status',
+      { params: { _: Date.now() } }
     );
     const body = response as { data?: LicenseSyncStatusResponse };
     return body?.data ?? (response as LicenseSyncStatusResponse);

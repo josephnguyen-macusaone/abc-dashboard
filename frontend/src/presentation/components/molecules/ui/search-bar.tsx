@@ -13,12 +13,13 @@ import {
 import { Search, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 
-/** Prefix option for "search in" (e.g. DBA vs Agents Name). Used when prefix is shown. */
-export type SearchPrefixValue = 'dba' | 'agentsName';
+/** Prefix option for "search in" (e.g. DBA vs Agents Name vs Zipcode). Used when prefix is shown. */
+export type SearchPrefixValue = 'dba' | 'agentsName' | 'zip';
 
 const PREFIX_OPTIONS: { value: SearchPrefixValue; label: string }[] = [
   { value: 'dba', label: 'DBA' },
   { value: 'agentsName', label: 'Agents' },
+  { value: 'zip', label: 'Zipcode' },
 ];
 
 export interface SearchBarProps extends Omit<React.ComponentProps<'input'>, 'type'> {

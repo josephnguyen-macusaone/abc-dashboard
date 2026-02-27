@@ -219,6 +219,8 @@ export interface LicenseSyncProgress {
 export interface LicenseSyncStatus {
   syncInProgress?: boolean;
   syncProgress?: LicenseSyncProgress;
+  /** Last progress line (log-style) to parse percent from */
+  lastProgressLogLine?: string | null;
   lastSyncResult?: {
     timestamp?: string;
     success?: boolean;
