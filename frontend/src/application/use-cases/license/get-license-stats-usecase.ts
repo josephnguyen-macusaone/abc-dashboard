@@ -1,6 +1,7 @@
 import type { LicenseRecord } from '@/types';
 import type { DashboardMetrics } from '@/infrastructure/api/licenses/types';
 import type { ILicenseRepository } from '@/domain/repositories/i-license-repository';
+import { toLocalDateString } from '@/shared/helpers/date-utils';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
@@ -228,12 +229,12 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
     if (filters?.startsAtFrom) {
       params.startsAtFrom = filters.startsAtFrom;
     } else if (dateRange?.from) {
-      params.startsAtFrom = dateRange.from.toISOString().split('T')[0];
+      params.startsAtFrom = toLocalDateString(dateRange.from);
     }
     if (filters?.startsAtTo) {
       params.startsAtTo = filters.startsAtTo;
     } else if (dateRange?.to) {
-      params.startsAtTo = dateRange.to.toISOString().split('T')[0];
+      params.startsAtTo = toLocalDateString(dateRange.to);
     }
     if (filters?.search) {
       params.search = filters.search;

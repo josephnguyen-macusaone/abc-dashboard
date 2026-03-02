@@ -37,15 +37,19 @@ export function DataGrid<TData>({
   focusedCell,
   editingCell,
   rowHeight,
-  contextMenu: _contextMenu,
-  pasteDialog: _pasteDialog,
-  searchState: _searchState,
   onRowAdd,
   height = 600,
   stretchColumns = false,
   className,
+  // Destructured so they are not spread onto the div (not valid DOM attributes)
+  contextMenu: _contextMenu,
+  pasteDialog: _pasteDialog,
+  searchState: _searchState,
   ...props
 }: DataGridProps<TData>) {
+  void _contextMenu;
+  void _pasteDialog;
+  void _searchState;
   const rows = table.getPaginationRowModel().rows;
   const readOnly = tableMeta?.readOnly ?? false;
   const columnVisibility = table.getState().columnVisibility;

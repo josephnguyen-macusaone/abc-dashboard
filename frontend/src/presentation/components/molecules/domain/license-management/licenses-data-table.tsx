@@ -66,6 +66,7 @@ export function LicensesDataTable({
     columns,
     pageCount,
     totalRows,
+    columnVisibilityStorageKey: "licenses-data-table-column-visibility",
     initialState: {
       pagination: { pageSize: 20, pageIndex: 0 },
       sorting: [...DEFAULT_LICENSE_SORT],
@@ -115,8 +116,11 @@ export function LicensesDataTable({
   // Track filter actions to determine reset button visibility (state so React Compiler allows updates in callbacks)
   const [hasPerformedFiltering, setHasPerformedFiltering] = useState(false);
 
-  // Initialize component and prevent initial API calls
+  // Initialize from URL once on mount only. Re-running when `table` changes causes store updates → re-render → loop.
   useEffect(() => {
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get('search');
     const statusParam = urlParams.get('status');
@@ -142,11 +146,10 @@ export function LicensesDataTable({
       updateTableManualFilter(tableId, 'term', termValues);
     }
 
-    // Reset page to 1 if there are any filters on mount
     const hasFilters = !!(searchParam || statusParam || planParam || termParam);
     if (hasFilters) {
       table.setPageIndex(0);
-      setPage(1); // Reset URL query state
+      setPage(1);
     }
   }, [tableId, setTableSearch, updateTableManualFilter, table, setPage]);
 
@@ -185,11 +188,14 @@ export function LicensesDataTable({
     updateTableManualFilter(tableId, columnId, values);
   }, [updateTableManualFilter, tableId, table, setPage]);
 
-  // Ensure table always has default sorting on mount
+  // Apply default sorting once on mount; re-running when `table` changes can cause update loops.
+  const defaultSortAppliedRef = useRef(false);
   useEffect(() => {
+    if (defaultSortAppliedRef.current) return;
     const currentSorting = table.getState().sorting;
     if (!currentSorting || currentSorting.length === 0) {
       table.setSorting([...DEFAULT_LICENSE_SORT]);
+      defaultSortAppliedRef.current = true;
     }
   }, [table]);
 
@@ -416,7 +422,11 @@ export function LicensesDataTable({
     ) : undefined;
 
   return (
-    <DataTable table={table} emptyState={emptyStateContent}>
+    <DataTable
+      table={table}
+      emptyState={emptyStateContent}
+      stretch={false}
+    >
       <DataTableToolbar
         table={table}
         dateRangeFilter={

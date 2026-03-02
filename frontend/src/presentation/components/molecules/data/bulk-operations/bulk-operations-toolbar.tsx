@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useCallback } from 'react';
 import { Trash2, UserCheck, UserX, Users, Download, X } from 'lucide-react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import { Separator } from '@/presentation/components/atoms/primitives/separator';
@@ -88,12 +89,7 @@ export function BulkOperationsToolbar({
 }: BulkOperationsToolbarProps) {
   const selectedCount = selectedIds.length;
 
-  // Don't render if nothing is selected
-  if (selectedCount === 0) {
-    return null;
-  }
-
-  const handleOperation = React.useCallback(
+  const handleOperation = useCallback(
     async (operation: BulkOperation) => {
       if (operation.disabled || isExecuting) return;
 
@@ -117,6 +113,11 @@ export function BulkOperationsToolbar({
     },
     [selectedIds, selectedCount, entityName, isExecuting]
   );
+
+  // Don't render if nothing is selected
+  if (selectedCount === 0) {
+    return null;
+  }
 
   return (
     <div

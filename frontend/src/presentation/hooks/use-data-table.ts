@@ -30,6 +30,7 @@ import {
 } from "nuqs";
 import * as React from "react";
 
+import { useDataTableStore } from "@/infrastructure/stores/user/data-table-store";
 import { useDebouncedCallback } from "@/presentation/hooks/use-debounced-callback";
 import { getSortingStateParser } from "@/shared/lib/parsers";
 import type { ExtendedColumnSort, QueryKeys } from "@/types/data-table";
@@ -42,6 +43,9 @@ const JOIN_OPERATOR_KEY = "joinOperator";
 const ARRAY_SEPARATOR = ",";
 const DEBOUNCE_MS = 300;
 const THROTTLE_MS = 50;
+
+/** Stable empty object for column visibility selector; prevents useSyncExternalStore getSnapshot from returning a new reference every time (infinite loop). */
+const EMPTY_COLUMN_VISIBILITY: VisibilityState = {};
 
 interface UseDataTableProps<TData>
   extends Omit<
@@ -70,6 +74,8 @@ interface UseDataTableProps<TData>
   manualSorting?: boolean;
   manualFiltering?: boolean;
   totalRows?: number;
+  /** When set, column visibility is persisted to localStorage under this key (e.g. "user-data-table-column-visibility") */
+  columnVisibilityStorageKey?: string;
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
@@ -86,11 +92,12 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     scroll = false,
     shallow = true,
     startTransition,
-    manualPagination = false,
-    manualSorting = false,
-    manualFiltering = false,
-    totalRows,
-    ...tableProps
+  manualPagination = false,
+  manualSorting = false,
+  manualFiltering = false,
+  totalRows,
+  columnVisibilityStorageKey,
+  ...tableProps
   } = props;
   const pageKey = queryKeys?.page ?? PAGE_KEY;
   const perPageKey = queryKeys?.perPage ?? PER_PAGE_KEY;
@@ -124,8 +131,69 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
     initialState?.rowSelection ?? {},
   );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>(initialState?.columnVisibility ?? {});
+
+  const storeColumnVisibility = useDataTableStore(
+    columnVisibilityStorageKey
+      ? (s) => s.columnVisibilityByTable[columnVisibilityStorageKey] ?? EMPTY_COLUMN_VISIBILITY
+      : () => EMPTY_COLUMN_VISIBILITY,
+  );
+  const storeSetColumnVisibility = useDataTableStore((s) => s.setColumnVisibility);
+
+  const [columnVisibility, setColumnVisibilityState] =
+    React.useState<VisibilityState>(() => {
+      const fromInitial = initialState?.columnVisibility ?? {};
+      if (typeof window === "undefined" || !columnVisibilityStorageKey) return fromInitial;
+      const fromStore = useDataTableStore.getState().getColumnVisibility(columnVisibilityStorageKey);
+      if (Object.keys(fromStore).length > 0) return { ...fromInitial, ...fromStore };
+      try {
+        const saved = localStorage.getItem(columnVisibilityStorageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved) as Record<string, boolean>;
+          return { ...fromInitial, ...parsed };
+        }
+      } catch {
+        // ignore
+      }
+      return fromInitial;
+    });
+
+  React.useEffect(() => {
+    if (!columnVisibilityStorageKey || typeof window === "undefined") return;
+    const fromStore = useDataTableStore.getState().getColumnVisibility(columnVisibilityStorageKey);
+    if (Object.keys(fromStore).length > 0) return;
+    try {
+      const saved = localStorage.getItem(columnVisibilityStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>;
+        useDataTableStore.getState().setColumnVisibility(columnVisibilityStorageKey, parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, [columnVisibilityStorageKey]);
+
+  const effectiveColumnVisibility =
+    columnVisibilityStorageKey && Object.keys(storeColumnVisibility).length > 0
+      ? { ...(initialState?.columnVisibility ?? {}), ...storeColumnVisibility }
+      : columnVisibility;
+
+  const setColumnVisibility = React.useCallback<React.Dispatch<React.SetStateAction<VisibilityState>>>(
+    (updaterOrValue) => {
+      const prev = columnVisibilityStorageKey ? effectiveColumnVisibility : columnVisibility;
+      const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+      if (columnVisibilityStorageKey && typeof window !== "undefined") {
+        try {
+          localStorage.setItem(columnVisibilityStorageKey, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        storeSetColumnVisibility(columnVisibilityStorageKey, next);
+      } else {
+        setColumnVisibilityState(next);
+      }
+    },
+    [columnVisibilityStorageKey, effectiveColumnVisibility, columnVisibility, storeSetColumnVisibility],
+  );
 
   const [page, setPage] = useQueryState(
     pageKey,
@@ -284,7 +352,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     state: {
       pagination,
       sorting,
-      columnVisibility,
+      columnVisibility: effectiveColumnVisibility,
       rowSelection,
       columnFilters,
     },

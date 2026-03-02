@@ -9,7 +9,7 @@ services:
     ports:
       - "6380:6379"  # Host 6380 to avoid conflict with local Redis on 6379
     networks:
-      - abc-license-network
+      - network
     volumes:
       - abc-license-redis_data:/data
     healthcheck:
@@ -34,7 +34,7 @@ services:
     ports:
       - "5434:5432"
     networks:
-      - abc-license-network
+      - network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -92,7 +92,7 @@ services:
     volumes:
       - ./backend/logs:/app/logs
     networks:
-      - abc-license-network
+      - network
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,8 +117,9 @@ services:
         - NEXT_PUBLIC_WEBSOCKET_ENABLED=${WEBSOCKET_ENABLED:-false}
         - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
         - BUILDKIT_INLINE_CACHE=1
-      cache_from:
-        - abc-license-frontend:latest
+      # Uncomment when abc-license-frontend:latest exists (faster rebuilds); omit on first build / CI
+      # cache_from:
+      #   - abc-license-frontend:latest
       target: production
     container_name: abc-license-frontend
     restart: unless-stopped
@@ -137,7 +138,7 @@ services:
       - NEXT_PUBLIC_USE_RELATIVE_API=${NEXT_PUBLIC_USE_RELATIVE_API}
       - NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
     networks:
-      - abc-license-network
+      - network
     depends_on:
       backend:
         condition: service_healthy
@@ -155,5 +156,5 @@ volumes:
     driver: local
 
 networks:
-  abc-license-network:
+  network:
     driver: bridge

@@ -91,7 +91,7 @@ export function resolveApiBaseUrl(env: ApiEnv): string {
 /**
  * API configuration resolved from process.env at module load.
  * BASE_URL has no trailing slash; safe to use as axios baseURL with paths like '/auth/login'.
- * 
+ *
  * IMPORTANT: NEXT_PUBLIC_* vars are inlined by Next.js webpack at build time.
  * In browser, we must reference them directly, not via process.env object.
  */

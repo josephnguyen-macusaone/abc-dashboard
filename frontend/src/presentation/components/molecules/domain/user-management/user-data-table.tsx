@@ -82,31 +82,27 @@ export function UsersDataTable({
     clearTableFilters,
   } = useDataTableStore();
 
-  const [rowAction, setRowAction] =
-    useState<DataTableRowAction<User> | null>(null);
-
-  // Handle row actions
-  useEffect(() => {
-    if (rowAction) {
-      if (rowAction.variant === "update") {
-        onEdit(rowAction.row.original);
-      } else if (rowAction.variant === "delete") {
-        onDelete(rowAction.row.original);
+  const onRowAction = useCallback(
+    (action: DataTableRowAction<User>) => {
+      if (action.variant === "update") {
+        onEdit(action.row.original);
+      } else if (action.variant === "delete") {
+        onDelete(action.row.original);
       }
-      setRowAction(null);
-    }
-  }, [rowAction, onEdit, onDelete]);
+    },
+    [onEdit, onDelete],
+  );
 
   const columns = useMemo(
     () =>
       getUserTableColumns({
-        setRowAction,
+        onRowAction,
         currentUserId: currentUser.id,
         currentUserRole: currentUser.role,
         canEdit,
         canDelete,
       }),
-    [currentUser.id, currentUser.role, canEdit, canDelete],
+    [currentUser.id, currentUser.role, canEdit, canDelete, onRowAction],
   );
 
   const { table, setFilterValues, setPage } = useDataTable<User>({
@@ -120,6 +116,7 @@ export function UsersDataTable({
     shallow: false,
     clearOnDefault: true,
     queryKeys: {},
+    columnVisibilityStorageKey: "user-data-table-column-visibility",
     initialState: {
       pagination: { pageSize: 20, pageIndex: 0 },
       sorting: [{ id: "createdAt", desc: true }],
@@ -177,11 +174,9 @@ export function UsersDataTable({
     }
   }, [userStore.filters, setTableSearch, setTableManualFilters, tableId, table, setPage]);
 
-  // Track filter actions to determine reset button visibility
-  // Use a ref to track if user has performed any filtering actions
-  // Initialize based on whether we have filters in the store
-  const hasPerformedFilteringRef = useRef(
-    !!(userStore.filters.search || userStore.filters.role || userStore.filters.isActive !== undefined)
+  // Track if user has ever applied filters (for reset button visibility when filters cleared but no results)
+  const [hasPerformedFiltering, setHasPerformedFiltering] = useState(
+    () => !!(userStore.filters.search || userStore.filters.role || userStore.filters.isActive !== undefined)
   );
 
   // Calculate if filters are currently active (for reset button visibility)
@@ -200,22 +195,15 @@ export function UsersDataTable({
     // Check table column filters
     const hasTableFilters = tableState.columnFilters && tableState.columnFilters.length > 0;
 
-    // Current active state
-    const currentlyActive = hasSearchFilters || hasManualFilters || hasTableFilters;
-
-    // If we detect active filters, mark that filtering has been performed
-    if (currentlyActive) {
-      hasPerformedFilteringRef.current = true;
-    }
-
-    return currentlyActive;
+    return hasSearchFilters || hasManualFilters || hasTableFilters;
   }, [searchValue, manualFilterValues, table]);
 
   // Reset button should show if there's any filter activity or when no results with filters
-  const shouldShowResetButton = hasActiveFilters || (hasPerformedFilteringRef.current && data.length === 0);
+  const shouldShowResetButton = hasActiveFilters || (hasPerformedFiltering && data.length === 0);
 
   // Handle manual filter changes
   const handleManualFilterChange = useCallback((columnId: string, values: string[]) => {
+    setHasPerformedFiltering(true);
     // Reset page to 1 when filter changes
     // Reset both table state AND URL query state
     table.setPageIndex(0);
@@ -249,7 +237,7 @@ export function UsersDataTable({
 
     // Update input immediately for responsive UI
     setTableSearch(tableId, value);
-    hasPerformedFilteringRef.current = true;
+    setHasPerformedFiltering(true);
 
     // Reset page to 1 when search changes (immediately, before debounce)
     // Reset both table state AND URL query state
@@ -283,7 +271,7 @@ export function UsersDataTable({
         isActive: manualFilterValues.isActive || undefined,
       });
     }, 500); // 500ms debounce
-  }, [table, onQueryChange, manualFilterValues, tableId, setTableSearch]);
+  }, [table, onQueryChange, manualFilterValues, tableId, setTableSearch, setPage]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -398,7 +386,7 @@ export function UsersDataTable({
     lastFiltersRef.current = currentFiltersString;
     lastManualFiltersRef.current = currentManualFilters;
     lastSearchValueRef.current = searchValue.trim();
-  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchValue, manualFilterValues, onQueryChange, table]);
+  }, [tablePageIndex, tablePageSize, tableSorting, tableColumnFilters, searchValue, manualFilterValues, onQueryChange, table, setPage]);
 
   // Loading state
   if (isLoading) {
@@ -429,7 +417,7 @@ export function UsersDataTable({
               clearTableFilters(tableId);
               table.setColumnFilters([]);
               setFilterValues({ role: null, isActive: null });
-              hasPerformedFilteringRef.current = false;
+              setHasPerformedFiltering(false);
               table.setPageIndex(0);
               onQueryChange?.({
                 page: 1,
@@ -467,7 +455,11 @@ export function UsersDataTable({
     ) : undefined;
 
   return (
-    <DataTable table={table} emptyState={emptyStateContent} stretch>
+    <DataTable
+      table={table}
+      emptyState={emptyStateContent}
+      stretch
+    >
       <DataTableToolbar
         table={table}
         searchBar={
@@ -502,7 +494,7 @@ export function UsersDataTable({
           setFilterValues({ role: null, isActive: null });
 
           // 5. Reset filtering tracking
-          hasPerformedFilteringRef.current = false;
+          setHasPerformedFiltering(false);
 
           // 6. Reset to first page
           table.setPageIndex(0);

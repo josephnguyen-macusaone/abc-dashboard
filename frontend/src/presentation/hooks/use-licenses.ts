@@ -42,6 +42,13 @@ function normalizeStatus(
 /**
  * Hook for fetching licenses with pagination and filtering.
  * Thin wrapper over useLicenseStore.
+ *
+ * Refetch behavior: The initial fetch runs on mount and when `params.autoFetch`
+ * toggles. When the caller changes params (page, filters, date range, etc.),
+ * they must call the returned `refetch()` to load data for the new params;
+ * the effect does not re-run on params change to avoid unstable deps and
+ * duplicate fetches. Table/grid query change handlers typically call refetch
+ * or fetchLicenses from the store directly.
  */
 export const useLicenses = (params: {
   page?: number;
@@ -97,6 +104,7 @@ export const useLicenses = (params: {
     });
   }, [filters, params, setFilters, fetchLicenses]);
 
+  // Intentionally only mount + autoFetch: when params change, callers use refetch() or store fetchLicenses.
   useEffect(() => {
     if (params.autoFetch !== false) {
       applyParams();

@@ -26,6 +26,7 @@ import {
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
 import { tableHeadCellClass } from "@/presentation/components/atoms/primitives/table";
 import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-wrapper";
+import type { CellAlign } from "@/types/data-grid";
 import { cn } from "@/shared/helpers";
 
 interface DataGridColumnHeaderProps<TData, TValue>
@@ -109,13 +110,28 @@ export function DataGridColumnHeader<TData, TValue>({
     [table.options.meta, column.id, onPointerDown],
   );
 
+  const headerAlign = (column.columnDef.meta?.headerAlign ?? (column.columnDef.meta?.cell as { align?: CellAlign } | undefined)?.align) as CellAlign | undefined;
+  const triggerJustifyClass =
+    headerAlign === "end"
+      ? "justify-end"
+      : headerAlign === "center"
+        ? "justify-center"
+        : "justify-between";
+  const labelAlignClass =
+    headerAlign === "end"
+      ? "text-end"
+      : headerAlign === "center"
+        ? "text-center"
+        : "text-start";
+
   return (
     <>
       <DropdownMenu>
         <TooltipWrapper content={label} side="top" delayDuration={500}>
           <DropdownMenuTrigger
             className={cn(
-              "flex size-full items-center justify-between gap-3 text-sm",
+              "flex size-full items-center gap-3 text-sm",
+              triggerJustifyClass,
               tableHeadCellClass,
               "hover:bg-foreground/10 data-[state=open]:bg-foreground/10 [&_svg]:size-3.5",
               isAnyColumnResizing && "pointer-events-none",
@@ -125,7 +141,7 @@ export function DataGridColumnHeader<TData, TValue>({
             {...props}
           >
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span className="truncate">{label}</span>
+              <span className={cn("truncate", labelAlignClass)}>{label}</span>
             </div>
             <ChevronDownIcon className="shrink-0 text-muted-foreground" />
           </DropdownMenuTrigger>

@@ -1,10 +1,46 @@
-import { ShapeSkeleton } from '@/presentation/components/atoms';
-import { ButtonSkeleton } from '@/presentation/components/molecules';
-import { getRowHeightValue } from '@/shared/lib/data-grid';
+import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
+import { getRowHeightValue } from "@/shared/lib/data-grid";
+import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
+import type { LicenseColumnId } from "@/shared/constants/license";
 import { cn } from "@/shared/helpers";
 
 /** Row height matches LicensesDataGrid (rowHeight: "medium" = 56px) */
 const ROW_HEIGHT = getRowHeightValue("medium");
+
+/** Grid columns: same as license grid, no select */
+const GRID_COLUMN_IDS: LicenseColumnId[] = [
+  "dba",
+  "zip",
+  "startsAt",
+  "status",
+  "plan",
+  "term",
+  "dueDate",
+  "lastPayment",
+  "lastActive",
+  "smsPurchased",
+  "smsSent",
+  "smsBalance",
+  "agents",
+  "agentsName",
+  "agentsCost",
+  "notes",
+];
+
+const PILL_COLUMNS = new Set<LicenseColumnId>(["status", "plan", "term"]);
+
+function getGridCellSkeleton(columnId: LicenseColumnId) {
+  if (PILL_COLUMNS.has(columnId)) {
+    return <Skeleton className="h-5 w-14 rounded-full shrink-0" />;
+  }
+  if (columnId === "dba" || columnId === "agentsName") {
+    return <Skeleton className="h-4 w-24 rounded" />;
+  }
+  if (columnId === "notes") {
+    return <Skeleton className="h-4 w-32 rounded" />;
+  }
+  return <Skeleton className="h-4 w-16 rounded" />;
+}
 
 interface LicensesDataGridSkeletonProps {
   className?: string;
@@ -16,7 +52,7 @@ interface LicensesDataGridSkeletonProps {
 
 /**
  * Licenses Data Grid Skeleton Organism
- * Matches the exact structure and styling of the actual LicensesDataGrid component
+ * Matches user-data-table-skeleton style: Skeleton primitive, LICENSE_COLUMN_WIDTHS, pill for status/plan/term.
  */
 export function LicensesDataGridSkeleton({
   className,
@@ -25,64 +61,33 @@ export function LicensesDataGridSkeleton({
   showAddRow = true,
   showPagination = true,
 }: LicensesDataGridSkeletonProps) {
-  // Column definitions matching license-grid-columns.tsx
-  const columns = [
-    { id: 'dba', width: 200 },
-    { id: 'zip', width: 130 },
-    { id: 'startsAt', width: 160 },
-    { id: 'status', width: 130 },
-    { id: 'plan', width: 160 },
-    { id: 'term', width: 150 },
-    { id: 'dueDate', width: 150 },
-    { id: 'lastPayment', width: 160 },
-    { id: 'lastActive', width: 160 },
-    { id: 'smsPurchased', width: 170 },
-    { id: 'smsSent', width: 150 },
-    { id: 'smsBalance', width: 160 },
-    { id: 'agents', width: 120 },
-    { id: 'agentsName', width: 280 },
-    { id: 'agentsCost', width: 160 },
-    { id: 'notes', width: 300 },
-  ];
-
   return (
     <div className={cn("space-y-5", className)}>
-      {/* Toolbar - Mobile: date above, search row; Tablet+: date+search */}
+      {/* Toolbar - Skeleton placeholders aligned with user skeleton */}
       <div className="flex flex-col gap-2 w-full min-w-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:justify-between">
-        {/* Mobile: date on own row */}
         <div className="flex w-full sm:hidden shrink-0">
-          <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
+          <Skeleton className="h-8 w-32 rounded-md" />
         </div>
-        {/* Mobile: search row + Search button */}
         <div className="flex w-full sm:hidden lg:hidden items-center gap-2 flex-nowrap min-w-0">
-          <div className="flex flex-1 items-center gap-0 overflow-hidden rounded-md border border-input min-w-[120px]">
-            <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
-            <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
-          </div>
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
+          <Skeleton className="h-8 flex-1 min-w-[120px] rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
         </div>
-        {/* Tablet+: date + search + Search button in one row */}
-        <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center gap-1.5 sm:gap-2 flex-nowrap min-w-0 overflow-x-auto shrink-0">
-          <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
-          <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-40 md:w-52 lg:w-72">
-            <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
-            <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
-          </div>
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
+        <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center gap-2 flex-nowrap min-w-0 overflow-x-auto shrink-0">
+          <Skeleton className="h-8 w-28 rounded-md shrink-0" />
+          <Skeleton className="h-8 w-40 md:w-52 lg:w-72 rounded-md shrink-0" />
+          <Skeleton className="h-8 w-20 rounded-md shrink-0" />
         </div>
-
-        {/* Status, Plan, Term + Discard + Save + View */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 overflow-x-auto lg:overflow-visible">
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="12" />
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="8" />
-          <ButtonSkeleton variant="outline" size="sm" textWidth="16" />
-          <ButtonSkeleton variant="default" size="sm" textWidth="20" />
-          <ButtonSkeleton variant="outline" size="sm" showText />
+        <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-16 rounded-md" />
+          <Skeleton className="h-8 w-14 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-24 rounded-md" />
         </div>
       </div>
 
-      {/* Data Grid - matching DataGrid component structure exactly */}
+      {/* Data Grid */}
       <div className="relative flex w-full flex-col">
         <div
           role="grid"
@@ -90,34 +95,29 @@ export function LicensesDataGridSkeleton({
           className="relative grid select-none overflow-auto rounded-md border focus:outline-none bg-card"
           style={{ maxHeight: `${height}px` }}
         >
-          {/* Grid Header - matching DataGrid header (tableHeadCellClass: h-12 px-4 py-2, bg-muted) */}
+          {/* Grid Header */}
           <div
             role="rowgroup"
             className="sticky top-0 z-10 grid border-b bg-muted [&_[role=row]]:border-b"
           >
-            <div
-              role="row"
-              className="flex w-full"
-            >
-              {columns.map((column, colIndex) => (
+            <div role="row" className="flex w-full">
+              {GRID_COLUMN_IDS.map((id, colIndex) => (
                 <div
-                  key={column.id}
+                  key={id}
                   role="columnheader"
                   aria-colindex={colIndex + 1}
-                  className={cn("relative", {
-                    "border-e": column.id !== "select",
-                  })}
-                  style={{ width: `${column.width}px` }}
+                  className={cn("relative", { "border-e": colIndex < GRID_COLUMN_IDS.length - 1 })}
+                  style={{ width: `${LICENSE_COLUMN_WIDTHS[id].size}px` }}
                 >
                   <div className="size-full h-12 px-4 py-2 flex items-center">
-                    <ShapeSkeleton width="full" height="4" variant="rectangle" />
+                    <Skeleton className="h-4 w-full rounded" />
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Grid Body - matching DataGrid body structure */}
+          {/* Grid Body */}
           <div
             role="rowgroup"
             className="relative grid"
@@ -140,24 +140,16 @@ export function LicensesDataGridSkeleton({
                   transform: `translateY(${rowIndex * ROW_HEIGHT}px)`,
                 }}
               >
-                {columns.map((column, colIndex) => (
+                {GRID_COLUMN_IDS.map((id, colIndex) => (
                   <div
-                    key={column.id}
+                    key={id}
                     role="gridcell"
                     aria-colindex={colIndex + 1}
-                    className={cn("border-e")}
-                    style={{ width: `${column.width}px` }}
+                    className={cn("border-e flex size-full min-w-0 items-center")}
+                    style={{ width: `${LICENSE_COLUMN_WIDTHS[id].size}px` }}
                   >
-                    <div className="size-full px-3 py-1.5">
-                      {column.id === 'status' || column.id === 'plan' || column.id === 'term' ? (
-                        <ShapeSkeleton width="16" height="6" variant="rounded" />
-                      ) : (
-                        <ShapeSkeleton
-                          width={column.id === 'dba' ? "24" : column.id === 'agentsName' ? "32" : "16"}
-                          height="4"
-                          variant="rectangle"
-                        />
-                      )}
+                    <div className="size-full flex min-w-0 items-center px-4 py-4">
+                      {getGridCellSkeleton(id)}
                     </div>
                   </div>
                 ))}
@@ -165,23 +157,20 @@ export function LicensesDataGridSkeleton({
             ))}
           </div>
 
-          {/* Grid Footer - Add row button */}
+          {/* Grid Footer - Add row */}
           {showAddRow && (
             <div
               role="rowgroup"
               className="sticky bottom-0 z-10 grid border-t bg-background"
             >
-              <div
-                role="row"
-                className="flex w-full"
-              >
+              <div role="row" className="flex w-full">
                 <div
                   role="gridcell"
                   className="relative flex h-9 grow items-center bg-muted/30 transition-colors hover:bg-muted/50"
                 >
                   <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
-                    <ShapeSkeleton width="3.5" height="3.5" variant="rounded" />
-                    <ShapeSkeleton width="12" height="4" variant="rectangle" />
+                    <Skeleton className="size-3.5 rounded-full" />
+                    <Skeleton className="h-4 w-24 rounded" />
                   </div>
                 </div>
               </div>
@@ -189,48 +178,26 @@ export function LicensesDataGridSkeleton({
           )}
         </div>
 
-        {/* Pagination - matching TablePagination component exactly */}
+        {/* Pagination - same layout and Skeleton classes as user skeleton */}
         {showPagination && (
-          <div className="flex flex-col gap-4 mt-6">
+          <div className="flex flex-col gap-2.5 mt-6">
             <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8">
-              {/* Left side - "Showing X to Y of Z entries" */}
               <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
-                <ShapeSkeleton width="32" height="4" variant="rectangle" />
+                <Skeleton className="h-5 w-32 rounded" />
               </div>
-
-              {/* Right side - Rows per page, Page info, Navigation buttons */}
               <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-                {/* Rows per page selector */}
                 <div className="flex items-center space-x-2">
-                  <ShapeSkeleton width="20" height="4" variant="rectangle" />
-                  <div className="h-8 w-16">
-                    <ShapeSkeleton width="full" height="full" variant="rounded" />
-                  </div>
+                  <Skeleton className="h-5 w-24 rounded" />
+                  <Skeleton className="h-8 w-16 rounded-md" />
                 </div>
-
-                {/* Page info */}
                 <div className="flex items-center justify-center font-medium text-sm">
-                  <ShapeSkeleton width="16" height="4" variant="rectangle" />
+                  <Skeleton className="h-5 w-20 rounded" />
                 </div>
-
-                {/* Navigation buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* First page button (hidden on small screens) */}
-                  <div className="hidden size-8 lg:block">
-                    <ShapeSkeleton width="full" height="full" variant="rounded" />
-                  </div>
-                  {/* Previous page button */}
-                  <div className="size-8">
-                    <ShapeSkeleton width="full" height="full" variant="rounded" />
-                  </div>
-                  {/* Next page button */}
-                  <div className="size-8">
-                    <ShapeSkeleton width="full" height="full" variant="rounded" />
-                  </div>
-                  {/* Last page button (hidden on small screens) */}
-                  <div className="hidden size-8 lg:block">
-                    <ShapeSkeleton width="full" height="full" variant="rounded" />
-                  </div>
+                  <Skeleton className="hidden size-8 rounded-md lg:block" />
+                  <Skeleton className="size-8 rounded-md" />
+                  <Skeleton className="size-8 rounded-md" />
+                  <Skeleton className="hidden size-8 rounded-md lg:block" />
                 </div>
               </div>
             </div>

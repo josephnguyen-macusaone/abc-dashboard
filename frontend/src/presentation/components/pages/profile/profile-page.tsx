@@ -11,7 +11,7 @@ import { Mail, Phone, Edit3, Key } from 'lucide-react';
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 
 export function ProfilePage() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
   // Early return if user data is not available

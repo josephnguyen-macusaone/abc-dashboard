@@ -21,9 +21,11 @@ import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
 import { CalendarIcon, X } from "lucide-react";
 import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-wrapper";
+import { LicenseStatusBadge } from "@/presentation/components/molecules/domain/license-management/badges";
 import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
-import type { CellVariantProps } from "@/types/data-grid";
+import type { CellAlign, CellVariantProps } from "@/types/data-grid";
+import type { LicenseStatus } from "@/types/license";
 
 export function ShortTextCell<TData>({
   cell,
@@ -141,6 +143,15 @@ export function ShortTextCell<TData>({
     }
   }, [isEditing, value]);
 
+  const cellMeta = cell.column.columnDef.meta?.cell as { align?: CellAlign } | undefined;
+  const align = cellMeta?.align;
+  const wrapperAlignClass =
+    align === "end"
+      ? "justify-end text-end"
+      : align === "center"
+        ? "justify-center text-center"
+        : undefined;
+
   const displayValue = !isEditing ? (value ?? "") : "";
   const fullValue = String(initialValue ?? "");
   const contentHeight = Math.max(
@@ -159,7 +170,8 @@ export function ShortTextCell<TData>({
       onInput={onInput}
       suppressContentEditableWarning
       className={cn(
-        "block min-w-0 w-full overflow-hidden outline-none text-left",
+        "block min-w-0 w-full overflow-hidden outline-none",
+        align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left",
         !isEditing && "truncate",
         isEditing && "w-full min-w-0",
         {
@@ -188,6 +200,7 @@ export function ShortTextCell<TData>({
       isFocused={isFocused}
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
+      className={wrapperAlignClass}
     >
       {!isEditing && fullValue ? (
         <TooltipWrapper
@@ -298,6 +311,7 @@ export function NumberCell<TData>({
       isFocused={isFocused}
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
+      className="justify-end text-end"
     >
       {isEditing ? (
         <input
@@ -309,10 +323,10 @@ export function NumberCell<TData>({
           step={step}
           onBlur={onBlur}
           onChange={onChange}
-          className="w-full min-w-0 border-none bg-transparent p-0 text-left outline-none"
+          className="w-full min-w-0 border-none bg-transparent p-0 text-right outline-none"
         />
       ) : (
-        <span data-slot="grid-cell-content" className="text-left">{value}</span>
+        <span data-slot="grid-cell-content" className="text-right tabular-nums">{value}</span>
       )}
     </DataGridCellWrapper>
   );
@@ -459,6 +473,16 @@ export function SelectCell<TData>({
   const displayLabel =
     options.find((opt) => opt.value === value)?.label ?? (value || (options[0]?.label ?? ""));
 
+  const cellMeta = cellOpts as { align?: CellAlign } | undefined;
+  const align = cellMeta?.align;
+  const alignClass =
+    align === "end"
+      ? "justify-end text-end"
+      : align === "center"
+        ? "justify-center text-center"
+        : "justify-start text-start";
+  const textAlignClass = align === "end" ? "text-end" : align === "center" ? "text-center" : "text-start";
+
   return (
     <DataGridCellWrapper<TData>
       ref={containerRef}
@@ -470,6 +494,7 @@ export function SelectCell<TData>({
       isFocused={isFocused}
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
+      className={alignClass}
     >
       {isEditing ? (
         <Select
@@ -478,7 +503,7 @@ export function SelectCell<TData>({
           open={isEditing}
           onOpenChange={onOpenChange}
         >
-          <SelectTrigger className="size-full min-w-0 items-center justify-start border-none p-0 text-left shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden">
+          <SelectTrigger className={cn("size-full min-w-0 border-none p-0 shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden", align === "end" ? "items-center justify-end" : align === "center" ? "items-center justify-center" : "items-center justify-start", textAlignClass)}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent
@@ -496,7 +521,115 @@ export function SelectCell<TData>({
           </SelectContent>
         </Select>
       ) : (
-        <span data-slot="grid-cell-content" className="text-left">{displayLabel}</span>
+        <span data-slot="grid-cell-content" className={textAlignClass}>{displayLabel}</span>
+      )}
+    </DataGridCellWrapper>
+  );
+}
+
+/** License status cell: badge when not editing, select when editing (like data-table) */
+export function LicenseStatusCell<TData>({
+  cell,
+  tableMeta,
+  rowIndex,
+  columnId,
+  isFocused,
+  isEditing,
+  isSelected,
+  readOnly,
+}: CellVariantProps<TData>) {
+  const initialValue = cell.getValue() as LicenseStatus;
+  const [value, setValue] = React.useState(initialValue);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const cellOpts = cell.column.columnDef.meta?.cell as { variant: "license-status"; options?: { value: string; label: string }[]; align?: CellAlign } | undefined;
+  const options = cellOpts?.options ?? [];
+  const align = cellOpts?.align;
+  const alignClass = align === "end" ? "justify-end text-end" : align === "center" ? "justify-center text-center" : "justify-start text-start";
+  const triggerAlignClass = align === "end" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
+  const textAlignClass = align === "end" ? "text-end" : align === "center" ? "text-center" : "text-start";
+
+  React.useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  const onValueChange = React.useCallback(
+    (newValue: string) => {
+      if (readOnly) return;
+      setValue(newValue as LicenseStatus);
+      tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: newValue });
+      tableMeta?.onCellEditingStop?.();
+    },
+    [tableMeta, rowIndex, columnId, readOnly],
+  );
+
+  const onOpenChange = React.useCallback(
+    (isOpen: boolean) => {
+      if (isOpen && !readOnly) {
+        tableMeta?.onCellEditingStart?.(rowIndex, columnId);
+      } else {
+        tableMeta?.onCellEditingStop?.();
+      }
+    },
+    [tableMeta, rowIndex, columnId, readOnly],
+  );
+
+  const onWrapperKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (isEditing && event.key === "Escape") {
+        event.preventDefault();
+        setValue(initialValue);
+        tableMeta?.onCellEditingStop?.();
+      } else if (!isEditing && isFocused && event.key === "Tab") {
+        event.preventDefault();
+        tableMeta?.onCellEditingStop?.({
+          direction: event.shiftKey ? "left" : "right",
+        });
+      }
+    },
+    [isEditing, isFocused, initialValue, tableMeta],
+  );
+
+  return (
+    <DataGridCellWrapper<TData>
+      ref={containerRef}
+      cell={cell}
+      tableMeta={tableMeta}
+      rowIndex={rowIndex}
+      columnId={columnId}
+      isEditing={isEditing}
+      isFocused={isFocused}
+      isSelected={isSelected}
+      onKeyDown={onWrapperKeyDown}
+      className={alignClass}
+    >
+      {isEditing ? (
+        <Select
+          value={value}
+          onValueChange={onValueChange}
+          open={isEditing}
+          onOpenChange={onOpenChange}
+        >
+          <SelectTrigger className={cn("size-full min-w-0 items-center border-none p-0 shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden", triggerAlignClass, textAlignClass)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            data-grid-cell-editor=""
+            align="start"
+            alignOffset={-8}
+            sideOffset={-8}
+            className="min-w-[calc(var(--radix-select-trigger-width)+16px)]"
+          >
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className={cn("flex items-center w-full", triggerAlignClass)} data-slot="grid-cell-content">
+          <LicenseStatusBadge status={value} variant="minimal" showIcon={true} />
+        </div>
       )}
     </DataGridCellWrapper>
   );
@@ -617,6 +750,27 @@ export function DateCell<TData>({
     [isEditing, isFocused, initialValue, tableMeta],
   );
 
+  const cellMeta = cell.column.columnDef.meta?.cell as { align?: CellAlign } | undefined;
+  const align = cellMeta?.align;
+  const wrapperAlignClass =
+    align === "end"
+      ? "justify-end text-end"
+      : align === "center"
+        ? "justify-center text-center"
+        : undefined;
+  const innerJustifyClass =
+    align === "end"
+      ? "justify-end"
+      : align === "center"
+        ? "justify-center"
+        : "justify-start";
+  const textAlignClass =
+    align === "end"
+      ? "text-right"
+      : align === "center"
+        ? "text-center"
+        : "text-left";
+
   return (
     <DataGridCellWrapper<TData>
       ref={containerRef}
@@ -628,14 +782,16 @@ export function DateCell<TData>({
       isFocused={isFocused}
       isSelected={isSelected}
       onKeyDown={onWrapperKeyDown}
+      className={wrapperAlignClass}
     >
-      <div className="flex size-full min-w-0 overflow-hidden items-center justify-start">
+      <div className={cn("flex size-full min-w-0 overflow-hidden items-center", innerJustifyClass)}>
         <Popover open={isEditing} onOpenChange={onOpenChange}>
           <PopoverAnchor asChild>
             <span
               data-slot="grid-cell-content"
               className={cn(
-                "inline-flex items-center text-left",
+                "inline-flex items-center",
+                textAlignClass,
                 !value && "text-muted-foreground"
               )}
             >
@@ -773,9 +929,10 @@ export function MultiSelectCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      className="justify-center text-center"
     >
       {displayLabels.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-center gap-1 overflow-hidden">
           {displayLabels.slice(0, 3).map((label, index) => (
             <Badge
               key={selectedValues[index]}
@@ -873,6 +1030,18 @@ export function PlanModulesCell<TData>({
     [tableMeta],
   );
 
+  const displayText = displayLabels.length > 0 ? displayLabels.join(', ') : null;
+
+  const cellMeta = cell.column.columnDef.meta?.cell as { align?: CellAlign } | undefined;
+  const align = cellMeta?.align;
+  const alignClass =
+    align === "end"
+      ? "justify-end text-end"
+      : align === "center"
+        ? "justify-center text-center"
+        : "justify-start text-start";
+  const textAlignClass = align === "end" ? "text-end" : align === "center" ? "text-center" : "text-start";
+
   return (
     <DataGridCellWrapper<TData>
       ref={containerRef}
@@ -883,24 +1052,19 @@ export function PlanModulesCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      className={alignClass}
     >
-      <div className="flex size-full min-w-0 overflow-hidden items-center justify-start">
+      <div className={cn("flex size-full min-w-0 items-center overflow-hidden", align === "end" ? "justify-end" : align === "center" ? "justify-center" : "justify-start")}>
         <Popover open={isEditing && !readOnly} onOpenChange={onOpenChange}>
           <PopoverAnchor asChild>
             <div
               data-slot="grid-cell-content"
-              className="inline-flex flex-wrap items-center gap-1 min-w-0"
+              className={cn("min-w-0 py-1 text-sm", textAlignClass)}
             >
-              {displayLabels.length > 0 ? (
-                displayLabels.map((label) => (
-                  <Badge
-                    key={label}
-                    variant="secondary"
-                    className="h-5 shrink-0 px-1.5 text-xs"
-                  >
-                    {label}
-                  </Badge>
-                ))
+              {displayText !== null ? (
+                <span className={cn("truncate block", textAlignClass)} title={displayText}>
+                  {displayText}
+                </span>
               ) : (
                 <span className="text-muted-foreground text-xs">—</span>
               )}

@@ -115,9 +115,8 @@ function DataGridRowImpl<TData>({
   focusedCell,
   editingCell,
   cellSelectionKeys,
-  columnVisibility,
-  columnPinning,
-  dir,
+  columnVisibility: _columnVisibility,
+  columnPinning: _columnPinning,
   readOnly,
   stretchColumns,
   className,
@@ -125,6 +124,8 @@ function DataGridRowImpl<TData>({
   ref,
   ...props
 }: DataGridRowProps<TData>) {
+  void _columnVisibility;
+  void _columnPinning;
   const virtualRowIndex = virtualItem.index;
 
   const onRowChange = React.useCallback(
@@ -145,10 +146,7 @@ function DataGridRowImpl<TData>({
 
   const isRowSelected = row.getIsSelected();
 
-  const visibleCells = React.useMemo(
-    () => row.getVisibleCells(),
-    [row, columnVisibility, columnPinning],
-  );
+  const visibleCells = React.useMemo(() => row.getVisibleCells(), [row]);
 
   return (
     <div

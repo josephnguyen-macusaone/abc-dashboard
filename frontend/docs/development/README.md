@@ -7,8 +7,8 @@ This section covers development practices, testing strategies, performance optim
 | Document | Description | Key Topics |
 |----------|-------------|------------|
 | **Testing** (below) | Testing strategy, conventions, and how to add tests | Unit tests, use-cases, domain, mocks |
-| **[Performance](./performance.md)** | Performance optimization techniques | Bundle analysis, lazy loading, caching |
-| **[Conventions](./conventions.md)** | Code style and development standards | Naming conventions, file structure, best practices |
+| **Performance** (below) | Optimization techniques | Bundle analysis, lazy loading, caching |
+| **Standards** (below) | Code style and development standards | Naming, file structure, best practices |
 
 ## 🧪 Testing
 
@@ -152,8 +152,8 @@ Coverage thresholds are in `jest.config.js`; new code should not lower overall c
 ## 📖 Reading Order
 
 1. **Testing** (above) – Conventions and how to add tests
-2. **[Performance](./performance.md)** – Optimization techniques
-3. **[Conventions](./conventions.md)** – Coding standards
+2. **Performance** (above) – Optimization techniques
+3. **Standards** (above) – Coding standards
 
 ## API Types & Codegen
 
@@ -167,7 +167,7 @@ This exports the Swagger spec from the backend and generates `src/infrastructure
 
 ## 🔗 Related Documentation
 
-- **[Getting Started](../getting-started/)** - Initial setup
-- **[Architecture](../architecture/)** - System design
-- **[Components](../components/)** - UI development
-- **[Infrastructure](../infrastructure/)** - Deployment and integrations
+- [SETUP](../SETUP.md) – Initial setup
+- [ARCHITECTURE](../ARCHITECTURE.md) – System design
+- [DEPLOYMENT](../DEPLOYMENT.md) – Deployment and env
+- [README](../README.md) – Doc index

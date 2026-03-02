@@ -75,7 +75,7 @@ export function AdvancedFilterPanel({
 
   // Count active filters
   const activeFilterCount = React.useMemo(() => {
-    return Object.entries(values).filter(([key, value]) => {
+    return Object.entries(values).filter(([, value]) => {
       if (value === null || value === undefined || value === '') return false;
       if (Array.isArray(value) && value.length === 0) return false;
       if (typeof value === 'object' && 'from' in value && 'to' in value) {

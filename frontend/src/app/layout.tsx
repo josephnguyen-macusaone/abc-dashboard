@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
 import dynamic from 'next/dynamic';
-import { ThemeProvider } from '@/presentation/contexts/theme-context';
+import { ThemeProvider } from '@/presentation/contexts';
 import { ThemeScript } from '@/shared/scripts/theme-script';
 
 // Dynamic imports for code splitting
@@ -12,10 +12,6 @@ const NuqsAdapter = dynamic(() => import('nuqs/adapters/next/app').then(mod => (
 
 const AuthInitializer = dynamic(() => import('@/presentation/components/atoms/auth/auth-initializer').then(mod => ({ default: mod.AuthInitializer })), {
   loading: () => <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>
-});
-
-const UserProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.UserProvider })), {
-  loading: () => <div className="min-h-screen flex items-center justify-center">Loading user data...</div>
 });
 
 const ToastProvider = dynamic(() => import('@/presentation/contexts').then(mod => ({ default: mod.ToastProvider })), {
@@ -100,14 +96,12 @@ export default function RootLayout({
             <ToastProvider>
               <ErrorProvider>
                 <AuthInitializer>
-                  <UserProvider>
-                    <NuqsAdapter>
-                      <RouteSuspense message="Initializing application...">
-                        {children}
-                      </RouteSuspense>
-                      <Toaster />
-                    </NuqsAdapter>
-                  </UserProvider>
+                  <NuqsAdapter>
+                    <RouteSuspense message="Initializing application...">
+                      {children}
+                    </RouteSuspense>
+                    <Toaster />
+                  </NuqsAdapter>
                 </AuthInitializer>
               </ErrorProvider>
             </ToastProvider>

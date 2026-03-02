@@ -17,7 +17,8 @@ interface ParsedProfileData {
 
 export function EditProfilePage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const authLoading = useAuthStore((s) => s.isLoading);
   const [parsedProfileData, setParsedProfileData] = useState<ParsedProfileData | null>(null);
 
   useEffect(() => {

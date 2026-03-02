@@ -6,17 +6,23 @@ export interface DataTableFilters {
   manualFilters: Record<string, string[]>;
 }
 
-interface DataTableState {
-  // State per table
-  tableStates: Record<string, DataTableFilters>;
+/** Column visibility state: column id -> visible (true/false) */
+export type ColumnVisibilityState = Record<string, boolean>;
 
-  // Actions
+interface DataTableState {
+  tableStates: Record<string, DataTableFilters>;
+  /** Per-table column visibility (keyed by tableId / columnVisibilityStorageKey). */
+  columnVisibilityByTable: Record<string, ColumnVisibilityState>;
+
   setTableSearch: (tableId: string, search: string) => void;
   setTableManualFilters: (tableId: string, filters: Record<string, string[]>) => void;
   updateTableManualFilter: (tableId: string, key: string, values: string[]) => void;
   clearTableFilters: (tableId: string) => void;
   getTableState: (tableId: string) => DataTableFilters;
   resetTableState: (tableId: string) => void;
+
+  setColumnVisibility: (tableId: string, updater: ColumnVisibilityState | ((prev: ColumnVisibilityState) => ColumnVisibilityState)) => void;
+  getColumnVisibility: (tableId: string) => ColumnVisibilityState;
 }
 
 const initialTableState: DataTableFilters = {
@@ -27,8 +33,25 @@ const initialTableState: DataTableFilters = {
 export const useDataTableStore = create<DataTableState>()(
   devtools(
     (set, get) => ({
-      // Initial state
       tableStates: {},
+      columnVisibilityByTable: {},
+
+      setColumnVisibility: (tableId, updater) => {
+        set((state) => {
+          const prev = state.columnVisibilityByTable[tableId] ?? {};
+          const next = typeof updater === "function" ? updater(prev) : updater;
+          return {
+            columnVisibilityByTable: {
+              ...state.columnVisibilityByTable,
+              [tableId]: next,
+            },
+          };
+        });
+      },
+
+      getColumnVisibility: (tableId) => {
+        return get().columnVisibilityByTable[tableId] ?? {};
+      },
 
       // Actions
       setTableSearch: (tableId: string, search: string) => {

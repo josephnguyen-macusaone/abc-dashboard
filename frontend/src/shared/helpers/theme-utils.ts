@@ -1,5 +1,9 @@
-import { THEMES } from '@/shared/constants';
-import type { ThemeType, ResolvedTheme } from '@/presentation/contexts/theme-context';
+import { THEMES, THEME_CONFIG } from '@/shared/constants';
+
+/** User-facing theme choice (light, dark, system). */
+export type ThemeType = (typeof THEMES)[keyof typeof THEMES];
+/** Resolved theme for DOM (light or dark). */
+export type ResolvedTheme = 'light' | 'dark';
 
 /**
  * Theme utilities for consistent theme handling across SSR and client
@@ -169,4 +173,44 @@ export function createSystemThemeListener(callback: (resolvedTheme: ResolvedThem
   return () => {
     mediaQuery.removeEventListener('change', handleChange);
   };
+}
+
+export interface ApplyThemeOptions {
+  attribute?: string;
+  disableTransitionOnChange?: boolean;
+}
+
+/**
+ * Apply resolved theme to the document root (for use by store hydration or context).
+ */
+export function applyThemeToDom(
+  resolvedTheme: ResolvedTheme,
+  options: ApplyThemeOptions = {}
+): void {
+  if (typeof document === 'undefined') return;
+
+  const { attribute = THEME_CONFIG.ATTRIBUTE, disableTransitionOnChange = false } = options;
+  const root = document.documentElement;
+
+  if (disableTransitionOnChange) {
+    const css = document.createElement('style');
+    css.textContent = '*, *::before, *::after { transition: none !important; }';
+    css.setAttribute('data-theme-transition', '');
+    document.head.appendChild(css);
+  } else {
+    root.classList.add('theme-transition');
+  }
+
+  root.removeAttribute(attribute);
+  root.classList.remove('light', 'dark');
+  root.setAttribute(attribute, resolvedTheme);
+  root.classList.add(resolvedTheme);
+
+  setTimeout(() => {
+    if (disableTransitionOnChange) {
+      document.querySelector('[data-theme-transition]')?.remove();
+    } else {
+      root.classList.remove('theme-transition');
+    }
+  }, THEME_CONFIG.TRANSITION_DURATION);
 }

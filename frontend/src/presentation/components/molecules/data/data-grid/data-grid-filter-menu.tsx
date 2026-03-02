@@ -574,8 +574,9 @@ function DataGridFilterInput<TData>({
 
   const selectOptions = React.useMemo(() => {
     return cellVariant?.variant === "select" ||
-      cellVariant?.variant === "multi-select"
-      ? cellVariant.options
+      cellVariant?.variant === "multi-select" ||
+      cellVariant?.variant === "license-status"
+      ? (cellVariant as { options?: { value: string; label: string }[] }).options
       : [];
   }, [cellVariant]);
 
@@ -748,7 +749,7 @@ function DataGridFilterInput<TData>({
     );
   }
 
-  const isSelectVariant = variant === "select" || variant === "multi-select";
+  const isSelectVariant = variant === "select" || variant === "multi-select" || variant === "license-status";
   const isMultiValueOperator =
     operator === "isAnyOf" || operator === "isNoneOf";
 

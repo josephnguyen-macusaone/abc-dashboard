@@ -15,6 +15,7 @@ import {
   type TableState,
   type Updater,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
@@ -168,6 +169,8 @@ interface UseDataGridProps<TData>
   manualSorting?: boolean;
   manualFiltering?: boolean;
   totalRows?: number;
+  /** When set, column visibility is persisted to localStorage under this key */
+  columnVisibilityStorageKey?: string;
   onQueryChange?: (params: {
     page: number;
     limit: number;
@@ -190,6 +193,7 @@ function useDataGrid<TData>({
   manualSorting = false,
   manualFiltering = false,
   totalRows,
+  columnVisibilityStorageKey,
   onQueryChange,
   ...props
 }: UseDataGridProps<TData>) {
@@ -210,6 +214,41 @@ function useDataGrid<TData>({
     initialState,
   });
   const listenersRef = useLazyRef(() => new Set<() => void>());
+
+  const getInitialColumnVisibility = (): VisibilityState => {
+    const fromInitial = initialState?.columnVisibility ?? {};
+    if (typeof window === "undefined" || !columnVisibilityStorageKey) return fromInitial;
+    try {
+      const saved = localStorage.getItem(columnVisibilityStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>;
+        return { ...fromInitial, ...parsed };
+      }
+    } catch {
+      // ignore
+    }
+    return fromInitial;
+  };
+
+  const [columnVisibility, setColumnVisibilityState] =
+    React.useState<VisibilityState>(getInitialColumnVisibility);
+
+  const onColumnVisibilityChange = React.useCallback(
+    (updater: Updater<VisibilityState>) => {
+      setColumnVisibilityState((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        if (columnVisibilityStorageKey && typeof window !== "undefined") {
+          try {
+            localStorage.setItem(columnVisibilityStorageKey, JSON.stringify(next));
+          } catch {
+            // ignore
+          }
+        }
+        return next;
+      });
+    },
+    [columnVisibilityStorageKey],
+  );
 
   const stateRef = useLazyRef<DataGridState>(() => {
     return {
@@ -1788,8 +1827,9 @@ function useDataGrid<TData>({
       globalFilter,
       rowSelection,
       pagination,
+      ...(columnVisibilityStorageKey ? { columnVisibility } : {}),
     }),
-    [propsRef, sorting, columnFilters, globalFilter, rowSelection, pagination],
+    [propsRef, sorting, columnFilters, globalFilter, rowSelection, pagination, columnVisibilityStorageKey, columnVisibility],
   );
 
   const tableOptions = React.useMemo<TableOptions<TData>>(() => {
@@ -1805,6 +1845,9 @@ function useDataGrid<TData>({
       onColumnFiltersChange,
       onGlobalFilterChange,
       onPaginationChange,
+      ...(columnVisibilityStorageKey
+        ? { onColumnVisibilityChange }
+        : {}),
       columnResizeMode: "onChange",
       getCoreRowModel: getMemoizedCoreRowModel,
       getFilteredRowModel: getMemoizedFilteredRowModel,
@@ -1831,6 +1874,8 @@ function useDataGrid<TData>({
     onColumnFiltersChange,
     onGlobalFilterChange,
     onPaginationChange,
+    columnVisibilityStorageKey,
+    onColumnVisibilityChange,
     getMemoizedCoreRowModel,
     getMemoizedFilteredRowModel,
     getMemoizedSortedRowModel,
@@ -1857,7 +1902,10 @@ function useDataGrid<TData>({
       colSizes[`--col-${header.column.id}-size`] = header.column.getSize();
     }
     return colSizes;
-  }, [table.getState().columnSizingInfo, table.getState().columnSizing]);
+    // Depend on stable primitive: serialized header sizes so we only recompute when sizing actually changes
+  }, [
+    table.getFlatHeaders().map((h) => `${h.id}:${h.getSize()}`).join(","),
+  ]);
 
   const rowVirtualizer = useVirtualizer({
     count: table.getPaginationRowModel().rows.length,

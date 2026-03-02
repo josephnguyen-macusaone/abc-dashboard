@@ -202,11 +202,16 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
         from.setHours(0, 0, 0, 0);
         to.setHours(23, 59, 59, 999);
         break;
-      case 'thisMonth':
-        from.setDate(1);
+      case 'thisMonth': {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        from.setFullYear(y, m, 1);
         from.setHours(0, 0, 0, 0);
+        to.setFullYear(y, m + 1, 0);
         to.setHours(23, 59, 59, 999);
         break;
+      }
       case 'lastMonth':
         from.setMonth(from.getMonth() - 1);
         from.setDate(1);

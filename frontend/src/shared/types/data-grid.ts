@@ -11,6 +11,8 @@ export interface CellSelectOption {
   count?: number;
 }
 
+export type CellAlign = "start" | "center" | "end";
+
 export type CellOpts =
   | {
       variant: "short-text";
@@ -45,6 +47,10 @@ export type CellOpts =
       variant: "plan-modules";
     }
   | {
+      variant: "license-status";
+      options?: CellSelectOption[];
+    }
+  | {
       variant: "url";
     }
   | {
@@ -64,7 +70,8 @@ export interface UpdateCell {
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
-    cell?: CellOpts;
+    cell?: CellOpts & { align?: CellAlign };
+    headerAlign?: CellAlign;
   }
 
   interface TableMeta<TData extends RowData> {

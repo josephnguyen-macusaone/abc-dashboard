@@ -172,6 +172,26 @@ class HttpClient {
           details: errorResponse.details,
         });
 
+        // Auto-logout on network error when token is expired (e.g. CORS hides 401, so we see network error)
+        const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
+        const token = this.getAuthToken();
+        if (isNetworkError && token && this.isTokenExpired(token) && !this.authFailureHandled) {
+          this.httpLogger.warn('Network error with expired token - treating as auth failure and logging out', {
+            correlationId,
+            category: 'api-auth',
+          });
+          await this.handleAuthFailure();
+          errorResponse.authHandled = true;
+          return Promise.reject(errorResponse);
+        }
+
+        // Handle 403 (Forbidden) - treat as auth failure, no refresh attempt
+        if (error.response?.status === 403 && !this.authFailureHandled) {
+          await this.handleAuthFailure();
+          errorResponse.authHandled = true;
+          return Promise.reject(errorResponse);
+        }
+
         // Handle 401 errors with automatic token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
           // If auth failure has already been handled, skip all token refresh logic

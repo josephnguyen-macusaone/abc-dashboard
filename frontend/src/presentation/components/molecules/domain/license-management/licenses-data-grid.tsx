@@ -79,7 +79,6 @@ export function LicensesDataGrid({
   const [data, setData] = React.useState<LicenseRecord[]>(initialData);
   const [hasChanges, setHasChanges] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
-  const dataVersionRef = React.useRef(0);
 
   /** Search scope: dba = DBA only, agentsName = Agents Name only. Default DBA. */
   const [searchField, setSearchField] = React.useState<'dba' | 'agentsName' | 'zip'>('dba');
@@ -119,7 +118,6 @@ export function LicensesDataGrid({
 
     if (!useComplexSync) {
       setData(initialData);
-      dataVersionRef.current += 1;
       return;
     }
     if (hasChanges) {
@@ -146,8 +144,6 @@ export function LicensesDataGrid({
       // Add new row to the TOP of the data array for better UX
       setData((prev) => [newRow, ...prev]);
       setHasChanges(true);
-      // Force DataGrid remount to prevent virtual scroller conflicts
-      dataVersionRef.current += 1;
 
       // Return row index 0 to scroll to the newly added row at the top
       return { rowIndex: 0, columnId: "dba" };
@@ -164,8 +160,6 @@ export function LicensesDataGrid({
       }
       setData((prev) => prev.filter((_, idx) => !indices.includes(idx)));
       setHasChanges(true);
-      // Force DataGrid remount to prevent virtual scroller conflicts
-      dataVersionRef.current += 1;
     },
     [onDeleteRows],
   );
@@ -189,8 +183,6 @@ export function LicensesDataGrid({
   const handleReset = React.useCallback(() => {
     setData(initialData);
     setHasChanges(false);
-    // Force DataGrid remount to prevent virtual scroller conflicts
-    dataVersionRef.current += 1;
     toast.info("Changes discarded");
   }, [initialData]);
 
@@ -236,7 +228,19 @@ export function LicensesDataGrid({
   const gridState = useDataGrid({
     data,
     columns,
-    initialState: { sorting: [...DEFAULT_LICENSE_SORT] },
+    columnVisibilityStorageKey: "licenses-data-grid-column-visibility",
+    initialState: {
+      sorting: [...DEFAULT_LICENSE_SORT],
+      columnVisibility: {
+        select: false,
+        smsPurchased: true,
+        smsSent: true,
+        smsBalance: true,
+        agentsName: true,
+        agentsCost: true,
+        notes: true,
+      },
+    },
     onDataChange: handleDataChange,
     onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
     onRowsDelete: handleRowsDelete,
@@ -743,7 +747,6 @@ export function LicensesDataGrid({
           </div>
         ) : (
           <DataGrid
-            key={`licenses-data-grid-${dataVersionRef.current}`}
             {...gridState}
             height={height}
             stretchColumns

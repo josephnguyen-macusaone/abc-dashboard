@@ -7,6 +7,7 @@ import {
   AgentsNameCell,
   CheckboxCell,
   DateCell,
+  LicenseStatusCell,
   MultiSelectCell,
   NumberCell,
   PlanModulesCell,
@@ -76,6 +77,9 @@ function DataGridCellImpl<TData>({
       break;
     case "select":
       Comp = SelectCell;
+      break;
+    case "license-status":
+      Comp = LicenseStatusCell;
       break;
     case "multi-select":
       Comp = MultiSelectCell;

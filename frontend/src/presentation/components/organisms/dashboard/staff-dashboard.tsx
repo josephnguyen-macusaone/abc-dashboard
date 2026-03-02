@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/presentation/com
 import { useAuthStore } from '@/infrastructure/stores/auth';
 
 export function StaffDashboard() {
-    const { user } = useAuthStore();
+    const user = useAuthStore((s) => s.user);
 
     return (
         <div>

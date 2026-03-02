@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser } from '@/presentation/contexts/user-context';
+import { useUserStore } from '@/infrastructure/stores/user';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useToast } from '@/presentation/contexts/toast-context';
-import { CreateUserDTO, User } from '@/application/dto/user-dto';
+import { User } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
+import type { CreateUserRequest } from '@/infrastructure/stores/user/user-store';
 import { PermissionUtils, ROLE_DEFINITIONS, type UserRoleType } from '@/shared/constants';
 import { Typography, Button } from '@/presentation/components/atoms';
 import { InputField, FormField, PhoneField } from '@/presentation/components/molecules';
@@ -20,9 +21,11 @@ interface UserCreateFormProps {
 }
 
 export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
-  const { createUser, loading: { createUser: isCreating } } = useUser();
-  const { user: currentUser } = useAuthStore();
+  const createUser = useUserStore((s) => s.createUser);
+  const formLoading = useUserStore((s) => s.formLoading);
+  const currentUser = useAuthStore((s) => s.user);
   const { success: showSuccess } = useToast();
+  const isCreating = formLoading;
 
   // Get available roles for the current user based on role creation permissions
   // - Admin: can create admin, manager, staff
@@ -63,13 +66,13 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       return; // Error will be shown by validation
     }
 
-    const userData: CreateUserDTO = {
+    const userData: CreateUserRequest = {
       username: formData.username,
       email: formData.email,
       firstName: formData.firstName,
       lastName: formData.lastName,
-      phone: formData.phone,
       role: formData.role as UserRole,
+      ...(formData.phone && { phone: formData.phone }),
     };
 
     const user = await createUser(userData);

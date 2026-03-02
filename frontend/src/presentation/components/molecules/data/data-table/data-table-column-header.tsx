@@ -3,7 +3,6 @@
 import type { Column } from "@tanstack/react-table";
 import {
   ChevronDown,
-  ChevronsUpDown,
   ChevronUp,
   EyeOff,
   X,
@@ -18,6 +17,10 @@ import {
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
 import { cn } from "@/shared/helpers";
 
+/** Match data-grid header look without duplicating th padding (th already has tableHeadCellClass) */
+const headerTriggerBaseClass =
+  "h-12 min-h-12 text-sm font-medium text-foreground align-middle whitespace-nowrap";
+
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.ComponentProps<typeof DropdownMenuTrigger> {
   column: Column<TData, TValue>;
@@ -30,28 +33,61 @@ export function DataTableColumnHeader<TData, TValue>({
   className,
   ...props
 }: DataTableColumnHeaderProps<TData, TValue>) {
+  const headerAlign = (column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
+  const isEnd = headerAlign === "end";
+  const isCenter = headerAlign === "center";
+
+  const sharedTriggerStyles = cn(
+    "flex w-full items-center gap-3",
+    isEnd && "justify-end text-right",
+    isCenter && "justify-center text-center",
+    !isEnd && !isCenter && "justify-start",
+    headerTriggerBaseClass,
+    "hover:bg-foreground/10 focus:outline-none data-[state=open]:bg-foreground/10 [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+    className,
+  );
+
+  const showChevron = column.getCanSort() || column.getCanHide();
+  const paddedContent = (
+    <div
+      className={cn(
+        "flex w-full items-center gap-2 px-4 py-2",
+        isEnd && "justify-end",
+        isCenter && "justify-center",
+        !isEnd && !isCenter && "justify-between",
+      )}
+    >
+      <div
+        className={cn(
+          "flex min-w-0 flex-1",
+          isEnd && "justify-end text-right",
+          isCenter && "justify-center text-center",
+          !isEnd && !isCenter && "justify-start text-left",
+        )}
+      >
+        <span className="whitespace-nowrap">{label}</span>
+      </div>
+      {showChevron && (
+        <ChevronDown className="shrink-0 size-3.5 text-muted-foreground" />
+      )}
+    </div>
+  );
+
   if (!column.getCanSort() && !column.getCanHide()) {
-    return <div className={cn(className)}>{label}</div>;
+    return (
+      <div className={sharedTriggerStyles}>
+        {paddedContent}
+      </div>
+    );
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn(
-          "-ml-1.5 flex h-8 items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-foreground/10 focus:outline-none data-[state=open]:bg-foreground/10 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
-          className,
-        )}
+        className={sharedTriggerStyles}
         {...props}
       >
-        {label}
-        {column.getCanSort() &&
-          (column.getIsSorted() === "desc" ? (
-            <ChevronDown />
-          ) : column.getIsSorted() === "asc" ? (
-            <ChevronUp />
-          ) : (
-            <ChevronsUpDown />
-          ))}
+        {paddedContent}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-28">
         {column.getCanSort() && (

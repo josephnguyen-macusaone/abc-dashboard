@@ -29,7 +29,8 @@ interface ProfileFormData {
 }
 
 export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className }: ProfileUpdateFormProps) {
-  const { user, updateProfile } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
   const { handleApiError } = useErrorHandler();
   const toast = useToast();
 

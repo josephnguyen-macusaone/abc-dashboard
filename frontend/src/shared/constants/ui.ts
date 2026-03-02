@@ -2,8 +2,6 @@
  * UI/UX related constants
  */
 
-import type { ColumnDefinition } from '@/types';
-
 /**
  * Theme Options
  */

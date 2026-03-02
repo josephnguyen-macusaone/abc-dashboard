@@ -86,5 +86,8 @@ export * from './token-manager';
 // Export theme utilities
 export * from './theme-utils';
 
+// Export date utilities (local date serialization for filters/API)
+export * from './date-utils';
+
 // Export tracing utilities
 export * from './tracing';

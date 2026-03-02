@@ -1,6 +1,5 @@
 import { Typography } from "@/presentation/components/atoms";
-import { TextSkeleton, ShapeSkeleton } from '@/presentation/components/atoms';
-import { ButtonSkeleton } from '@/presentation/components/molecules';
+import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
 import {
   Table,
   TableBody,
@@ -9,164 +8,164 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
+import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
+import type { LicenseColumnId } from "@/shared/constants/license";
+import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
+
+/** Match DataTable row height (getRowHeightValue("medium") = 56px) */
+const TABLE_ROW_HEIGHT = getRowHeightValue("medium");
+
+const LICENSE_TABLE_COLUMN_IDS: LicenseColumnId[] = [
+  "select",
+  "dba",
+  "zip",
+  "startsAt",
+  "status",
+  "plan",
+  "term",
+  "dueDate",
+  "lastPayment",
+  "lastActive",
+  "smsPurchased",
+  "smsSent",
+  "smsBalance",
+  "agents",
+  "agentsName",
+  "agentsCost",
+  "notes",
+];
+
+const PILL_COLUMNS = new Set<LicenseColumnId>(["status", "plan", "term"]);
+
+function getCellSkeleton(columnId: LicenseColumnId) {
+  if (PILL_COLUMNS.has(columnId)) {
+    return <Skeleton className="h-6 w-16 rounded-full shrink-0" />;
+  }
+  if (columnId === "dba" || columnId === "agentsName") {
+    return <Skeleton className="h-4 w-28 rounded" />;
+  }
+  if (columnId === "notes") {
+    return <Skeleton className="h-4 w-40 rounded" />;
+  }
+  if (columnId === "select") {
+    return <Skeleton className="size-4 rounded shrink-0" />;
+  }
+  return <Skeleton className="h-4 w-20 rounded" />;
+}
 
 interface LicenseDataTableSkeletonProps {
   className?: string;
   title?: string;
   description?: string;
   showHeader?: boolean;
+  rowCount?: number;
 }
 
 /**
  * License Data Table Skeleton Organism
- * Matches the exact structure and styling of the LicensesDataTable component
+ * Matches user-data-table-skeleton style: Skeleton primitive, LICENSE_COLUMN_WIDTHS, pill-style for status/plan/term.
  */
 export function LicenseDataTableSkeleton({
   className,
-  title = 'License Management',
-  description = 'Manage license records and subscriptions',
+  title = "License Management",
+  description = "Manage license records and subscriptions",
   showHeader = true,
+  rowCount = 20,
 }: LicenseDataTableSkeletonProps) {
-  // Column definitions matching license-table-columns.tsx exactly
-  // Using the exact size values from the column definitions
-  const columns = [
-    { id: 'select', size: 48, header: 'Select' },
-    { id: 'dba', size: 200, header: 'DBA' },
-    { id: 'zip', size: 130, header: 'Zip Code' },
-    { id: 'startsAt', size: 160, header: 'Activate Date' },
-    { id: 'status', size: 130, header: 'Status' },
-    { id: 'plan', size: 160, header: 'Plan' },
-    { id: 'term', size: 150, header: 'Term' },
-    { id: 'dueDate', size: 150, header: 'Due Date' },
-    { id: 'lastPayment', size: 160, header: 'Monthly Fee' },
-    { id: 'lastActive', size: 160, header: 'Last Active' },
-    { id: 'smsPurchased', size: 170, header: 'SMS Purchased' },
-    { id: 'smsSent', size: 150, header: 'SMS Sent' },
-    { id: 'smsBalance', size: 160, header: 'SMS Balance' },
-    { id: 'agents', size: 120, header: 'Agents' },
-    { id: 'agentsName', size: 280, header: 'Agents Name' },
-    { id: 'agentsCost', size: 160, header: 'Agents Cost' },
-    { id: 'notes', size: 300, header: 'Notes' },
-  ];
-
   const content = (
     <div className={cn("flex w-full flex-col gap-4 overflow-auto", !showHeader && className)}>
-      {/* DataTableToolbar - Mobile: date above, search+Reset row; Tablet+: date+search+Reset */}
+      {/* Toolbar - same wrapper pattern as user skeleton; Skeleton placeholders */}
       <div
         role="toolbar"
         aria-orientation="horizontal"
-        className="flex w-full flex-col gap-2 py-2 min-w-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:justify-between"
+        className={cn(
+          "flex w-full flex-col gap-2 py-2 min-w-0",
+          "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:justify-between"
+        )}
       >
-        {/* Mobile: date on own row */}
         <div className="flex w-full sm:hidden shrink-0">
-          <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
+          <Skeleton className="h-8 w-32 rounded-md" />
         </div>
-        {/* Mobile: search row + Search button */}
         <div className="flex w-full sm:hidden lg:hidden items-center gap-2 flex-nowrap min-w-0">
-          <div className="flex flex-1 items-center gap-0 overflow-hidden rounded-md border border-input min-w-[120px]">
-            <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
-            <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
-          </div>
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
+          <Skeleton className="h-8 flex-1 min-w-[120px] rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
         </div>
-        {/* Tablet+: date + search + Search button in one row */}
         <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center gap-2 flex-nowrap min-w-0 overflow-x-auto">
-          <ShapeSkeleton className="h-8 w-8 shrink-0 rounded-md" variant="rounded" />
-          <div className="flex items-center gap-0 overflow-hidden rounded-md border border-input w-72 md:w-80">
-            <ShapeSkeleton className="h-8 w-[100px] max-w-[100px] shrink-0 rounded-none" variant="rounded" />
-            <ShapeSkeleton className="h-8 flex-1 min-w-0" variant="rounded" />
-          </div>
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
+          <Skeleton className="h-8 w-28 rounded-md shrink-0" />
+          <Skeleton className="h-8 w-44 sm:w-52 md:w-64 rounded-md shrink-0" />
+          <Skeleton className="h-8 w-20 rounded-md shrink-0" />
         </div>
-
-        {/* Status, Plan, Term filters + View options */}
-        <div className="flex items-center gap-2 flex-shrink-0 overflow-x-auto lg:overflow-visible">
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="12" />
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="10" />
-          <ButtonSkeleton variant="outline" size="sm" showText textWidth="8" />
-          <ButtonSkeleton variant="outline" size="sm" textWidth="12" />
+        <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-16 rounded-md" />
+          <Skeleton className="h-8 w-14 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
         </div>
       </div>
 
-      {/* DataTable table - matches DataTable component structure exactly */}
-      <div className="overflow-hidden rounded-md border">
+      {/* Table - same structure as user skeleton */}
+      <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
-              {columns.map((column) => (
+              {LICENSE_TABLE_COLUMN_IDS.map((id) => (
                 <TableHead
-                  key={column.id}
-                  style={{ width: `${column.size}px` }}
+                  key={id}
+                  style={{ width: `${LICENSE_COLUMN_WIDTHS[id].size}px` }}
+                  className="!p-0"
                 >
-                  {/* DataTableColumnHeader structure - matches the trigger button styling */}
-                  <div className="-ml-1.5 flex h-8 items-center gap-1.5 rounded-md px-2 py-1.5">
-                    <TextSkeleton variant="body" width="24" className="h-4" />
-                    {/* Sort icon placeholder - ChevronsUpDown icon (size-4 = 16px) */}
-                    <ShapeSkeleton width="4" height="4" variant="rounded" className="shrink-0 w-4 h-4" />
+                  <div className="flex w-full items-center">
+                    <div className="flex w-full items-center justify-between gap-2 px-4 py-2">
+                      <Skeleton className="h-4 min-w-0 flex-1 rounded" />
+                      <Skeleton className="size-3.5 shrink-0 rounded-full" />
+                    </div>
                   </div>
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from({ length: 20 }).map((_, rowIndex) => (
+            {Array.from({ length: rowCount }).map((_, rowIndex) => (
               <TableRow
                 key={rowIndex}
-                data-state={undefined}
-                className={cn(
-                  rowIndex % 2 === 0 ? "" : "even:bg-muted/20"
-                )}
+                className="hover:bg-transparent even:bg-muted/20"
+                style={{ minHeight: TABLE_ROW_HEIGHT }}
               >
-                {columns.map((column) => {
-                  return (
-                    <TableCell
-                      key={column.id}
-                      style={{ width: `${column.size}px` }}
-                    >
-                      <TextSkeleton
-                        className="h-[26px]"
-                      />
-                    </TableCell>
-                  );
-                })}
+                {LICENSE_TABLE_COLUMN_IDS.map((id) => (
+                  <TableCell
+                    key={id}
+                    style={{ width: `${LICENSE_COLUMN_WIDTHS[id].size}px` }}
+                    className="min-w-0 truncate"
+                  >
+                    {getCellSkeleton(id)}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* Pagination - matches TablePagination structure exactly */}
+      {/* Pagination - same structure as user skeleton */}
       <div className="flex flex-col gap-2.5">
         <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8">
-          {/* Left side - "Showing X to Y of Z entries" */}
           <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
-            <TextSkeleton variant="body" width="48" />
+            <Skeleton className="h-5 w-32 rounded" />
           </div>
-
-          {/* Right side - Rows per page, Page info, Navigation buttons */}
           <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-            {/* Rows per page selector - matches Select with h-8 w-16 */}
             <div className="flex items-center space-x-2">
-              <TextSkeleton variant="body" width="20" className="font-medium" />
-              <ShapeSkeleton width="16" height="8" variant="rounded" />
+              <Skeleton className="h-5 w-24 rounded" />
+              <Skeleton className="h-8 w-16 rounded-md" />
             </div>
-
-            {/* Page info - "Page X of Y" */}
             <div className="flex items-center justify-center font-medium text-sm">
-              <TextSkeleton variant="body" width="16" />
+              <Skeleton className="h-5 w-20 rounded" />
             </div>
-
-            {/* Navigation buttons - matches Button size="icon" className="size-8" */}
             <div className="flex items-center space-x-2">
-              {/* First page button (hidden on small screens) */}
-              <ShapeSkeleton width="8" height="8" variant="rounded" className="hidden lg:block" />
-              {/* Previous page button */}
-              <ShapeSkeleton width="8" height="8" variant="rounded" />
-              {/* Next page button */}
-              <ShapeSkeleton width="8" height="8" variant="rounded" />
-              {/* Last page button (hidden on small screens) */}
-              <ShapeSkeleton width="8" height="8" variant="rounded" className="hidden lg:block" />
+              <Skeleton className="hidden size-8 rounded-md lg:block" />
+              <Skeleton className="size-8 rounded-md" />
+              <Skeleton className="size-8 rounded-md" />
+              <Skeleton className="hidden size-8 rounded-md lg:block" />
             </div>
           </div>
         </div>
@@ -174,17 +173,14 @@ export function LicenseDataTableSkeleton({
     </div>
   );
 
-  // If showHeader is false, return just the DataTable content (matches LicensesDataTable structure)
   if (!showHeader) {
     return content;
   }
 
-  // If showHeader is true, wrap in the card container with title/description (matches LicenseTableSection structure)
   return (
-    <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-3 px-6 pb-6', className)}>
-      {/* Header */}
+    <div className={cn("bg-card border border-border rounded-xl shadow-sm space-y-3 px-6 pb-6", className)}>
       <div className="flex items-center justify-between pt-4">
-        <div className="">
+        <div>
           <Typography variant="title-l" className="text-foreground">
             {title}
           </Typography>

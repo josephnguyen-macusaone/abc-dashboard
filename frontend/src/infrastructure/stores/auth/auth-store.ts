@@ -52,6 +52,8 @@ interface AuthState {
   scheduleTokenRefresh: () => void;
   getTokenStats: () => any;
   handleAuthFailure: () => Promise<void>;
+  /** True if current token is expired (or missing). Used to enforce consistent logout on protected routes. */
+  isTokenExpired: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -478,6 +480,18 @@ export const useAuthStore = create<AuthState>()(
           getTokenStats: () => {
             const tokenManager = get().tokenManager;
             return tokenManager ? tokenManager.getStats() : null;
+          },
+
+          isTokenExpired: (): boolean => {
+            const token = get().token;
+            if (!token) return true;
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const now = Math.floor(Date.now() / 1000);
+              return typeof payload.exp === 'number' && payload.exp < now;
+            } catch {
+              return true;
+            }
           },
         };
       },

@@ -15,6 +15,7 @@ import { ShapeSkeleton } from "@/presentation/components/atoms";
 import { ButtonSkeleton } from "@/presentation/components/molecules";
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from "@/infrastructure/stores/license";
 import { ApiExceptionDto } from "@/application/dto/api-dto";
+import { parseLocalDateString, toLocalDateString } from "@/shared/helpers/date-utils";
 import type { LicenseRecord } from "@/types";
 
 // Helper function to check if error should be shown to user
@@ -27,7 +28,7 @@ const shouldShowError = (error: unknown): boolean => {
 };
 
 export function LicenseManagementPage() {
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
 
   const licenses = useLicenseStore(selectLicenses);
   const isLoading = useLicenseStore(selectLicenseLoading);
@@ -40,10 +41,10 @@ export function LicenseManagementPage() {
   const bulkUpsertLicenses = useLicenseStore(state => state.bulkUpsertLicenses);
   const bulkDeleteLicenses = useLicenseStore(state => state.bulkDeleteLicenses);
 
-  // Derive date range from store filters (server-side filter by license start date)
+  // Derive date range from store filters (parse as local date so display matches stored calendar date)
   const dateRange = useMemo((): { from?: Date; to?: Date } | undefined => {
-    const from = filters.startsAtFrom ? new Date(filters.startsAtFrom) : undefined;
-    const to = filters.startsAtTo ? new Date(filters.startsAtTo) : undefined;
+    const from = filters.startsAtFrom ? parseLocalDateString(filters.startsAtFrom) : undefined;
+    const to = filters.startsAtTo ? parseLocalDateString(filters.startsAtTo) : undefined;
     if (!from && !to) return undefined;
     return { from: isNaN(from?.getTime() ?? NaN) ? undefined : from, to: isNaN(to?.getTime() ?? NaN) ? undefined : to };
   }, [filters.startsAtFrom, filters.startsAtTo]);
@@ -234,8 +235,8 @@ export function LicenseManagementPage() {
   const onDateRangeChange = useCallback((values: { range: { from?: Date; to?: Date } } | null) => {
     const nextRange = values?.range;
     const hasRange = nextRange?.from || nextRange?.to;
-    const startsAtFrom = nextRange?.from?.toISOString?.().split('T')[0];
-    const startsAtTo = nextRange?.to?.toISOString?.().split('T')[0];
+    const startsAtFrom = nextRange?.from ? toLocalDateString(nextRange.from) : undefined;
+    const startsAtTo = nextRange?.to ? toLocalDateString(nextRange.to) : undefined;
     const newFilters = {
       ...filters,
       startsAtFrom: hasRange ? startsAtFrom : undefined,

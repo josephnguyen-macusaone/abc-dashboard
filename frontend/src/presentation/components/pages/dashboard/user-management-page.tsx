@@ -36,10 +36,10 @@ const shouldShowError = (error: unknown): boolean => {
  *
  * Note: CRUD operations (Create, Update, Delete) are handled directly
  * by the form components (UserCreateForm, UserEditForm, UserDeleteForm)
- * which access the UserContext directly.
+ * which use useUserStore for CRUD.
  */
 export function UserManagementPage() {
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
   const { error: showError, info: showInfo } = useToast();
 
   const userStore = useUserStore();

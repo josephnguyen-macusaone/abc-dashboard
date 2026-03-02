@@ -21,7 +21,7 @@ interface LoginFormData {
 }
 
 export function LoginForm({ onSuccess, className }: LoginFormProps) {
-  const { login } = useAuthStore();
+  const login = useAuthStore((s) => s.login);
   const toast = useToast();
   const router = useRouter();
 
