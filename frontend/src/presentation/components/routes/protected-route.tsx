@@ -19,7 +19,11 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, isLoading, canAccessProtectedRoutes } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const isTokenExpired = useAuthStore((s) => s.isTokenExpired);
+  const handleAuthFailure = useAuthStore((s) => s.handleAuthFailure);
 
   // Track if component has mounted on client to prevent hydration mismatch
   const [hasMounted, setHasMounted] = useState(false);
@@ -39,6 +43,14 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
 
     // If no route config or route doesn't require auth, no navigation needed
     if (!routeConfig || !routeConfig.requireAuth) return;
+
+    // If authenticated but token is expired, handle auth failure so user is logged out
+    // consistently on any protected route (dashboard, licenses, users) instead of only
+    // when a page happens to make an API call that returns 401
+    if (isAuthenticated && isTokenExpired()) {
+      void handleAuthFailure();
+      return;
+    }
 
     // Check if user can access this route
     const hasAccess = canAccessRoute(pathname, user?.role);
@@ -60,7 +72,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     }
 
     // Check if user needs additional verification (removed email verification)
-  }, [router, pathname, user, isAuthenticated, isLoading, canAccessProtectedRoutes, hasMounted]);
+  }, [router, pathname, user, isAuthenticated, isLoading, hasMounted, isTokenExpired, handleAuthFailure]);
 
   // During server-side rendering or initial client load, always show loading
   // This ensures server and client render the same initial state

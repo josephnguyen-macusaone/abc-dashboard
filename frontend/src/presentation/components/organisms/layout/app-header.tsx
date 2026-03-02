@@ -25,7 +25,7 @@ export function AppHeader({
   onSidebarCollapse,
   className,
 }: AppHeaderProps) {
-  const { isCollapsed } = useSidebarStore();
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const pathname = usePathname();
   const showSyncButton = SYNC_BUTTON_ROUTES.some(
     (r) => pathname === r || pathname.startsWith(`${r}/`)

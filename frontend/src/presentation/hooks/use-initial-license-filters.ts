@@ -2,16 +2,17 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import type { LicenseFilters } from '@/infrastructure/stores/license';
+import { toLocalDateString } from '@/shared/helpers/date-utils';
 
 /**
- * Returns the default date range for the current month (first and last day).
+ * Returns the default date range for the current month (first and last day) in local calendar date.
  * Used when License Management or Dashboard mounts to set initial filters.
  */
 export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo: string } {
   const now = new Date();
-  const startsAtFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const startsAtTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-  return { startsAtFrom, startsAtTo };
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { startsAtFrom: toLocalDateString(first), startsAtTo: toLocalDateString(last) };
 }
 
 interface UseInitialLicenseFiltersOptions {

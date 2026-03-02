@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useUser } from '@/presentation/contexts/user-context';
+import { useUserStore } from '@/infrastructure/stores/user';
 import { updateUserSchema, type UpdateUserFormData } from '@/shared/schemas';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
@@ -27,8 +27,10 @@ interface UserEditFormProps {
 }
 
 export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
-  const { updateUser, loading: { updateUser: isUpdating }, error: { updateUser: updateError } } = useUser();
+  const updateUser = useUserStore((s) => s.updateUser);
+  const formLoading = useUserStore((s) => s.formLoading);
   const { success: showSuccess, error: showError } = useToast();
+  const isUpdating = formLoading;
 
   const {
     register,
@@ -209,7 +211,7 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
             className="space-y-3"
           />
 
-          {/* Role */}
+          {/* Role — disabled and shown as "Admin" when editing a system administrator */}
           <FormField
             label="Role"
             error={errors.role?.message}
@@ -217,23 +219,29 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
           >
             <Select
               value={selectedRole}
-              onValueChange={(value: typeof USER_ROLES.MANAGER | typeof USER_ROLES.STAFF) => setValue('role', value)}
-              disabled={isUpdating}
+              onValueChange={(value: typeof USER_ROLES.ADMIN | typeof USER_ROLES.MANAGER | typeof USER_ROLES.STAFF) => setValue('role', value)}
+              disabled={isUpdating || user.role === USER_ROLES.ADMIN}
             >
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="staff">
+                <SelectItem value={USER_ROLES.ADMIN}>
                   <div className="flex items-center gap-2">
-                    <span>Staff</span>
-                    <Typography variant="body-xs" color="muted" as="span">Basic user access</Typography>
+                    <span>Admin</span>
+                    <Typography variant="body-xs" color="muted" as="span">System administrator</Typography>
                   </div>
                 </SelectItem>
                 <SelectItem value="manager">
                   <div className="flex items-center gap-2">
                     <span>Manager</span>
                     <Typography variant="body-xs" color="muted" as="span">Team management access</Typography>
+                  </div>
+                </SelectItem>
+                <SelectItem value="staff">
+                  <div className="flex items-center gap-2">
+                    <span>Staff</span>
+                    <Typography variant="body-xs" color="muted" as="span">Basic user access</Typography>
                   </div>
                 </SelectItem>
               </SelectContent>

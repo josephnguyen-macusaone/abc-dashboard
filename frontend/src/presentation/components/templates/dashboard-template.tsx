@@ -23,7 +23,10 @@ interface DashboardTemplateProps {
 }
 
 export function DashboardTemplate({ children }: DashboardTemplateProps) {
-  const { user, logout, isAuthenticated, isLoading } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const toast = useToast();
   const [isTransitioning, startTransition] = useTransition();
   const router = useRouter();
@@ -48,8 +51,9 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
     prevPathRef.current = pathname;
   }, [pathname, resetLicenseDataForRouteChange, clearTableFilters]);
 
-  // Use global sidebar store
-  const { isMobile, isCollapsed, toggleCollapsed } = useSidebarStore();
+  const isMobile = useSidebarStore((s) => s.isMobile);
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+  const toggleCollapsed = useSidebarStore((s) => s.toggleCollapsed);
   const sidebarOpen = !isMobile ? true : !isCollapsed;
 
   // WebSocket real-time sync (Phase 2); no-op when not authenticated

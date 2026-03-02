@@ -54,4 +54,14 @@ cd /path/to/abc-dashboard
 ./scripts/docker-db-reset-sync.sh --drop --sync # same + license sync
 ```
 
-**Backend only (local, no Docker):** Use Docker-based reset above, or from `backend/` run `npm run migrate:fresh` and `npm run seed` after dropping/recreating the DB yourself (e.g. `dropdb`/`createdb` with `POSTGRES_DB`/`POSTGRES_USER` from `.env`).
+**Backend only (local, no Docker):** Use Docker-based reset above, or from `backend/` run `npm run migrate:fresh` and `npm run seed` after dropping/recreating the DB yourself.
+
+**Create/drop the database (local PostgreSQL):** Use the same database name as in your `.env` (`POSTGRES_DB`). From a terminal (no Docker):
+
+```bash
+# Source your backend .env or set POSTGRES_DB (e.g. abc_dashboard for dev, abc_dashboard_test for tests)
+dropdb "${POSTGRES_DB:-abc_dashboard}"
+createdb "${POSTGRES_DB:-abc_dashboard}"
+```
+
+Then from `backend/`: `npm run migrate` and `npm run seed`.

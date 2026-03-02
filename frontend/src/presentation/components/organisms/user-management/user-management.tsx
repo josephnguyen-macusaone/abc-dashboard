@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Typography } from '@/presentation/components/atoms';
-import { StatsCards, UsersDataTable, UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
+import { UsersDataTable, UserStatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/dashboard/date-range-filter-card';
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
@@ -21,9 +21,8 @@ import { useUserStore } from '@/infrastructure/stores/user';
  * - Create/Edit/Delete form views
  * - Statistics cards
  *
- * Note: CRUD operations are handled directly by form components
- * which access UserContext internally. This component only manages
- * view state and passes the refresh callback.
+ * Note: CRUD operations are handled by form components via useUserStore.
+ * This component manages view state and passes the refresh callback.
  */
 interface UserManagementProps {
   /** Current authenticated user */
@@ -231,18 +230,18 @@ export function UserManagement({
       {/* Users Table - w-full ensures table stretches to fill container */}
       <div className="w-full min-w-0">
         <UsersDataTable
-        data={users}
-        currentUser={currentUser}
-        canEdit={canEditUser}
-        canDelete={canDeleteUser}
-        onEdit={handleEditUser}
-        onDelete={handleDeleteUser}
-        onCreateUser={onCreateUserHandler}
-        isLoading={isLoading}
-        onQueryChange={onQueryChange}
-        pageCount={pageCount}
-        totalCount={totalCount}
-      />
+          data={users}
+          currentUser={currentUser}
+          canEdit={canEditUser}
+          canDelete={canDeleteUser}
+          onEdit={handleEditUser}
+          onDelete={handleDeleteUser}
+          onCreateUser={onCreateUserHandler}
+          isLoading={isLoading}
+          onQueryChange={onQueryChange}
+          pageCount={pageCount}
+          totalCount={totalCount}
+        />
       </div>
     </div>
   );

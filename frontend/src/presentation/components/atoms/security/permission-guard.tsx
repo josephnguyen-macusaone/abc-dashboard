@@ -25,7 +25,7 @@ export function PermissionGuard({
   fallback = null,
   requireAll = false
 }: PermissionGuardProps) {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   // If no specific permission/role requirements, show content
   if (!permission && !userRole) {
@@ -66,7 +66,7 @@ export function AdminOnly({ children, fallback = null }: { children: ReactNode; 
  * Manager or higher access guard
  */
 export function ManagerOrHigher({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const hasAccess = PermissionUtils.isAdmin(user?.role) || PermissionUtils.isManager(user?.role);
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;

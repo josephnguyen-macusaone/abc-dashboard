@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useUser } from '@/presentation/contexts/user-context';
+import { useUserStore } from '@/infrastructure/stores/user';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { User } from '@/application/dto/user-dto';
@@ -36,35 +35,23 @@ export function UserDeleteForm({
   onOpenChange,
   onSuccess
 }: UserDeleteFormProps) {
-  const { deleteUser, loading: { deleteUser: isDeleting } } = useUser();
+  const deleteUser = useUserStore((s) => s.deleteUser);
+  const formLoading = useUserStore((s) => s.formLoading);
   const { success, error } = useToast();
-  const { user: currentUser } = useAuthStore();
-  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const currentUser = useAuthStore((s) => s.user);
+  const isDeleting = formLoading;
 
   const handleDelete = async () => {
     if (!user) return;
 
-    setIsDeletingUser(true);
-
     try {
-      // Call API
       await deleteUser(user.id);
 
-      // Close dialog
       onOpenChange(false);
-
-      // Show success toast
       success?.('User deleted successfully');
-
-      // Reset state
-      setIsDeletingUser(false);
-
-      // On success, trigger refresh
       onSuccess?.();
 
     } catch (err) {
-      // Reset loading state
-      setIsDeletingUser(false);
 
       // Extract error details more thoroughly
       let errorMessage = 'Failed to delete user';
@@ -132,7 +119,6 @@ export function UserDeleteForm({
 
   const handleClose = () => {
     onOpenChange(false);
-    setIsDeletingUser(false);
   };
 
   if (!user) return null;
@@ -252,7 +238,7 @@ export function UserDeleteForm({
           <Button
             variant="outline"
             onClick={handleClose}
-            disabled={isDeletingUser}
+            disabled={isDeleting}
             className="flex-1"
           >
             <span className="text-button-s">Cancel</span>
@@ -260,10 +246,10 @@ export function UserDeleteForm({
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={isDeletingUser}
+            disabled={isDeleting}
             className="flex-1"
           >
-            {isDeletingUser ? (
+            {isDeleting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-button-s">Deleting...</span>

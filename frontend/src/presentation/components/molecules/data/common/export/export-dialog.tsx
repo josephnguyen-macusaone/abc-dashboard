@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Download, FileText, FileSpreadsheet, FileType, Check } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, FileType } from 'lucide-react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import {
   Dialog,
@@ -58,7 +58,7 @@ export interface ExportDialogProps {
   columns: ExportColumn[];
 
   /** Current active filters */
-  activeFilters?: Record<string, any>;
+  activeFilters?: Record<string, unknown>;
 
   /** Total number of records to export */
   totalRecords?: number;

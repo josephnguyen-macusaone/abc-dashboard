@@ -6,6 +6,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LicenseRecord } from "@/types";
+import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
 import { STATUS_OPTIONS, TERM_OPTIONS } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
 
 export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
@@ -14,7 +15,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "dba",
       accessorKey: "dba",
       header: "DBA",
-      size: 200,
+      ...LICENSE_COLUMN_WIDTHS.dba,
       enableColumnFilter: false,
       enableSorting: false,
       meta: {
@@ -26,27 +27,29 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "zip",
       accessorKey: "zip",
       header: "Zip Code",
-      size: 130,
+      ...LICENSE_COLUMN_WIDTHS.zip,
       meta: {
         label: "Zip Code",
-        cell: { variant: "short-text" as const },
+        headerAlign: "end" as const,
+        cell: { variant: "short-text" as const, align: "end" as const },
       },
     },
     {
       id: "startsAt",
       accessorKey: "startsAt",
       header: "Activate Date",
-      size: 160,
+      ...LICENSE_COLUMN_WIDTHS.startsAt,
       meta: {
         label: "Activate Date",
-        cell: { variant: "date" as const },
+        headerAlign: "end" as const,
+        cell: { variant: "date" as const, align: "end" as const },
       },
     },
     {
       id: "status",
       accessorKey: "status",
       header: "Status",
-      size: 130,
+      ...LICENSE_COLUMN_WIDTHS.status,
       enableColumnFilter: true,
       enableSorting: false,
       filterFn: (row, id, value) => {
@@ -55,9 +58,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
       meta: {
         label: "Status",
+        headerAlign: "start" as const,
         cell: {
-          variant: "select" as const,
+          variant: "license-status" as const,
           options: STATUS_OPTIONS,
+          align: "start" as const,
         },
       },
     },
@@ -65,7 +70,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "plan",
       accessorKey: "plan",
       header: "Plan",
-      size: 160,
+      ...LICENSE_COLUMN_WIDTHS.plan,
       enableColumnFilter: true,
       enableSorting: false,
       filterFn: (row, id, value) => {
@@ -78,14 +83,15 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
       meta: {
         label: "Plan",
-        cell: { variant: "plan-modules" as const },
+        headerAlign: "start" as const,
+        cell: { variant: "plan-modules" as const, align: "start" as const },
       },
     },
     {
       id: "term",
       accessorKey: "term",
       header: "Term",
-      size: 150,
+      ...LICENSE_COLUMN_WIDTHS.term,
       enableColumnFilter: true,
       enableSorting: false,
       filterFn: (row, id, value) => {
@@ -94,9 +100,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
       meta: {
         label: "Term",
+        headerAlign: "start" as const,
         cell: {
           variant: "select" as const,
           options: TERM_OPTIONS,
+          align: "start" as const,
         },
       },
     },
@@ -104,19 +112,21 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "dueDate",
       accessorKey: "dueDate",
       header: "Due Date",
-      size: 150,
+      ...LICENSE_COLUMN_WIDTHS.dueDate,
       meta: {
         label: "Due Date",
-        cell: { variant: "date" as const },
+        headerAlign: "end" as const,
+        cell: { variant: "date" as const, align: "end" as const },
       },
     },
     {
       id: "lastPayment",
       accessorKey: "lastPayment",
       header: "Monthly Fee",
-      size: 160,
+      ...LICENSE_COLUMN_WIDTHS.lastPayment,
       meta: {
         label: "Monthly Fee",
+        headerAlign: "end" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -124,9 +134,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "lastActive",
       accessorKey: "lastActive",
       header: "Last Active",
-      size: 160,
+      ...LICENSE_COLUMN_WIDTHS.lastActive,
       meta: {
         label: "Last Active",
+        headerAlign: "end" as const,
         cell: { variant: "date" as const },
       },
     },
@@ -134,9 +145,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "smsPurchased",
       accessorKey: "smsPurchased",
       header: "SMS Purchased",
-      size: 170,
+      ...LICENSE_COLUMN_WIDTHS.smsPurchased,
       meta: {
         label: "SMS Purchased",
+        headerAlign: "end" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -144,9 +156,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "smsSent",
       accessorKey: "smsSent",
       header: "SMS Sent",
-      size: 150,
+      ...LICENSE_COLUMN_WIDTHS.smsSent,
       meta: {
         label: "SMS Sent",
+        headerAlign: "end" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -154,9 +167,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "smsBalance",
       accessorKey: "smsBalance",
       header: "SMS Balance",
-      size: 160,
+      ...LICENSE_COLUMN_WIDTHS.smsBalance,
       meta: {
         label: "SMS Balance",
+        headerAlign: "end" as const,
         cell: { variant: "number" as const },
       },
     },
@@ -164,9 +178,10 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "agents",
       accessorKey: "agents",
       header: "Agents",
-      size: 120,
+      ...LICENSE_COLUMN_WIDTHS.agents,
       meta: {
         label: "Agents",
+        headerAlign: "end" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -174,7 +189,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "agentsName",
       accessorKey: "agentsName",
       header: "Agents Name",
-      size: 280,
+      ...LICENSE_COLUMN_WIDTHS.agentsName,
       enableColumnFilter: false,
       enableSorting: false,
       meta: {
@@ -186,10 +201,11 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "agentsCost",
       accessorKey: "agentsCost",
       header: "Agents Cost",
-      size: 160,
+      ...LICENSE_COLUMN_WIDTHS.agentsCost,
       enableSorting: false,
       meta: {
         label: "Agents Cost",
+        headerAlign: "end" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -197,7 +213,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       id: "notes",
       accessorKey: "notes",
       header: "Notes",
-      size: 300,
+      ...LICENSE_COLUMN_WIDTHS.notes,
       enableSorting: false,
       meta: {
         label: "Notes",

@@ -59,8 +59,8 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-col gap-2 py-2 min-w-0",
-        "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1",
+        "flex w-full flex-col gap-2 py-2 min-w-0 min-h-[2.25rem]",
+        "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-10",
         className,
       )}
       {...props}
@@ -87,8 +87,8 @@ export function DataTableToolbar<TData>({
               </Button>
             )}
           </div>
-          {/* Tablet+: date + search + Reset in one row */}
-          <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
+          {/* Tablet+: date + search + Reset in one row (same row height as filter buttons) */}
+          <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center min-h-8 flex-nowrap gap-2 overflow-x-auto min-w-0">
             {dateRangeFilter}
             {searchBar}
             {hasActiveFilters && (
@@ -126,8 +126,8 @@ export function DataTableToolbar<TData>({
         </div>
       )}
 
-      {/* Right: Status, Plan, Term filters + children + View options */}
-      <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
+      {/* Right: Status, Plan, Term filters + children + View options (align with left row) */}
+      <div className="flex flex-1 flex-wrap items-center min-h-8 gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
         {columns.map((column) => (
           <DataTableToolbarFilter
             key={column.id}

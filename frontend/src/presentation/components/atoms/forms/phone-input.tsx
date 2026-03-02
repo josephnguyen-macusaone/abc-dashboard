@@ -4,6 +4,17 @@ import * as React from 'react';
 import PhoneInputWithCountry, { type Country } from 'react-phone-number-input';
 import { cn } from '@/shared/helpers';
 
+/**
+ * Normalize phone value to E.164 for react-phone-number-input (e.g. +1-555-0100 → +15550100).
+ * Avoids "[react-phone-number-input] Expected the initial `value` to be a E.164 phone number" warning.
+ */
+function normalizeToE164(value: string | undefined): string | undefined {
+  if (value == null || value === '') return undefined;
+  const digitsAndPlus = value.replace(/[^\d+]/g, '');
+  if (!digitsAndPlus) return undefined;
+  return digitsAndPlus.startsWith('+') ? digitsAndPlus : `+${digitsAndPlus}`;
+}
+
 export interface PhoneInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'ref'> {
   value?: string;
@@ -15,6 +26,7 @@ export interface PhoneInputProps
 
 const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
   ({ value, onChange, defaultCountry, className, inputClassName, disabled, ...props }, ref) => {
+    const normalizedValue = React.useMemo(() => normalizeToE164(value), [value]);
     // Only create ref callback if ref is actually provided
     // This prevents the library from trying to access a null ref
     const numberInputProps = React.useMemo(() => {
@@ -57,7 +69,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         <PhoneInputWithCountry
           international
           defaultCountry={defaultCountry || 'US'}
-          value={value}
+          value={normalizedValue}
           onChange={handlePhoneChange}
           disabled={disabled}
           className="phone-input"

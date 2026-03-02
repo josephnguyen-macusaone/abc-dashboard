@@ -43,11 +43,6 @@ export function DataGridSearch<TData>({
     }
   }, [value, isManualFiltering, searchColumn, table]);
 
-  // Check if there's an active filter
-  const hasFilters = isManualFiltering 
-    ? table.getState().globalFilter !== undefined && table.getState().globalFilter !== ""
-    : searchColumn ? searchColumn.getFilterValue() !== undefined && searchColumn.getFilterValue() !== "" : false;
-
   const handleClear = React.useCallback(() => {
     setValue("");
   }, []);

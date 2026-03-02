@@ -12,7 +12,7 @@ export const tableHeadCellClass =
 export const tableRowClass =
     "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted";
 export const tableCellClass =
-    "whitespace-nowrap p-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]";
+    "whitespace-nowrap px-4 py-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]";
 export const tableFooterClass =
     "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0";
 

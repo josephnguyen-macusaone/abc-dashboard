@@ -113,5 +113,43 @@ export const LICENSE_PLAN_COLORS: Record<LicensePlan, string> = {
   Premium: 'bg-purple-100 text-purple-800 border-purple-300',
 };
 
+/**
+ * Plan module badge color classes (Basic, Print Check, Staff Performance, Unlimited SMS).
+ * Matches LICENSE_STATUS_COLORS pattern (bg-*-100 text-*-800 border-*-300) for consistent badge UI.
+ */
+export const LICENSE_PLAN_MODULE_COLORS: Record<PlanModule, string> = {
+  'Basic': 'bg-blue-100 text-blue-800 border-blue-300',
+  'Print Check': 'bg-amber-100 text-amber-800 border-amber-300',
+  'Staff Performance': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  'Unlimited SMS': 'bg-violet-100 text-violet-800 border-violet-300',
+};
+
 // Export plan options with colors for use in filters/dropdowns
 export { LICENSE_PLAN_OPTIONS as LICENSE_PLAN_OPTIONS_WITH_COLORS };
+
+/**
+ * Single source of truth for license table/grid column widths.
+ * Used by license-table-columns (data table) and license-grid-columns (data grid).
+ * Edit this file to resize columns in both views.
+ */
+export const LICENSE_COLUMN_WIDTHS = {
+  select: { size: 48, minSize: 40 },
+  dba: { size: 200, minSize: 80 },
+  zip: { size: 130, minSize: 90 },
+  startsAt: { size: 160, minSize: 120 },
+  status: { size: 130, minSize: 80 },
+  plan: { size: 130, minSize: 80 },
+  term: { size: 150, minSize: 80 },
+  dueDate: { size: 150, minSize: 100 },
+  lastPayment: { size: 160, minSize: 110 },
+  lastActive: { size: 160, minSize: 110 },
+  smsPurchased: { size: 170, minSize: 130 },
+  smsSent: { size: 150, minSize: 100 },
+  smsBalance: { size: 160, minSize: 120 },
+  agents: { size: 120, minSize: 80 },
+  agentsName: { size: 280, minSize: 130 },
+  agentsCost: { size: 160, minSize: 120 },
+  notes: { size: 300, minSize: 100 },
+} as const;
+
+export type LicenseColumnId = keyof typeof LICENSE_COLUMN_WIDTHS;

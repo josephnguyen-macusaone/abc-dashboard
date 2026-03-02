@@ -13,7 +13,7 @@ const swaggerDefinition = {
     title: 'ABC Dashboard API',
     version: '1.0.0',
     description:
-      'A comprehensive dashboard API with authentication and user management built with Node.js, Express, and MongoDB',
+      'A comprehensive dashboard API with authentication and user management built with Node.js, Express, and PostgreSQL',
   },
   servers: [
     {
@@ -523,16 +523,10 @@ const swaggerDefinition = {
   },
 };
 
-// Swagger options with absolute paths
+// Swagger options: glob so all *-routes.js files are included (no need to edit when adding routes)
 const options = {
   swaggerDefinition,
-  apis: [
-    path.join(__dirname, '../routes/auth-routes.js'),
-    path.join(__dirname, '../routes/user-routes.js'),
-    path.join(__dirname, '../routes/profile-routes.js'),
-    path.join(__dirname, '../routes/license-routes.js'),
-    path.join(__dirname, '../routes/external-license-routes.js'),
-  ],
+  apis: [path.join(__dirname, '../routes/*-routes.js')],
 };
 
 // Initialize swagger-jsdoc

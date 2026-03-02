@@ -29,7 +29,7 @@ export function ChangePasswordForm({
   requiresCurrentPassword = true,
   isForcedChange = false
 }: ChangePasswordFormProps) {
-  const { changePassword } = useAuthStore();
+  const changePassword = useAuthStore((s) => s.changePassword);
 
   // Use Zustand store for form state management
   const {

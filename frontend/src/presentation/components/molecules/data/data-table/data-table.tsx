@@ -1,5 +1,5 @@
 import { flexRender, type Table as TanstackTable } from "@tanstack/react-table";
-import type * as React from "react";
+import * as React from "react";
 
 import { TablePagination } from "../common/table-pagination";
 import {
@@ -30,11 +30,107 @@ export function DataTable<TData>({
   className,
   ...props
 }: DataTableProps<TData>) {
-  const hasRows = (table.getPaginationRowModel().rows?.length ?? 0) > 0;
+  const rows = table.getPaginationRowModel().rows;
+  const hasRows = (rows?.length ?? 0) > 0;
   const showEmptyBlock = !hasRows && emptyState != null;
 
   const headerGroup = table.getHeaderGroups()[0];
   const totalSize = headerGroup?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
+
+  const tableContent = (
+    <Table
+      style={
+        stretch
+          ? { width: "100%" }
+          : totalSize
+            ? { width: totalSize, minWidth: totalSize, tableLayout: "auto" as const }
+            : undefined
+      }
+    >
+      {stretch && totalSize > 0 && (
+        <colgroup>
+          {headerGroup?.headers.map((header) => (
+            <col
+              key={header.id}
+              style={{ width: `${(header.getSize() / totalSize) * 100}%` }}
+            />
+          ))}
+        </colgroup>
+      )}
+      <TableHeader className="bg-muted">
+        {table.getHeaderGroups().map((headerGroup) => (
+          <TableRow key={headerGroup.id}>
+            {headerGroup.headers.map((header) => {
+              const size = header.getSize();
+              const widthStyle =
+                stretch && totalSize > 0 ? undefined : { minWidth: `${size}px`, width: `${size}px` };
+              const align = (header.column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
+              const alignClass = align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left";
+              return (
+                <TableHead
+                  key={header.id}
+                  colSpan={header.colSpan}
+                  style={widthStyle}
+                  className={cn("!p-0", alignClass)}
+                >
+                  {header.isPlaceholder ? null : (
+                    <div className="flex w-full items-center">
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                    </div>
+                  )}
+                </TableHead>
+              );
+            })}
+          </TableRow>
+        ))}
+      </TableHeader>
+      <TableBody>
+        {!hasRows ? (
+          <TableRow>
+            <TableCell
+              colSpan={table.getAllColumns().length}
+              className="h-24 text-center"
+            >
+              No results.
+            </TableCell>
+          </TableRow>
+        ) : (
+          rows.map((row) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() ? "selected" : undefined}
+              className="even:bg-muted/20"
+            >
+              {row.getVisibleCells().map((cell) => {
+                const cellSize = cell.column.getSize();
+                const cellWidthStyle =
+                  stretch && totalSize > 0
+                    ? undefined
+                    : { minWidth: `${cellSize}px` };
+                const align = (cell.column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
+                const alignClass = align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left";
+                return (
+                  <TableCell
+                    key={cell.id}
+                    style={cellWidthStyle}
+                    className={cn("whitespace-nowrap", alignClass)}
+                  >
+                    {flexRender(
+                      cell.column.columnDef.cell,
+                      cell.getContext(),
+                    )}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  );
 
   return (
     <div
@@ -45,92 +141,11 @@ export function DataTable<TData>({
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <div className={cn("overflow-x-auto rounded-md border", stretch && "w-full")}>
-          <Table
-            style={
-              stretch
-                ? { width: "100%" }
-                : totalSize
-                  ? { width: totalSize }
-                  : undefined
-            }
-          >
-            {stretch && totalSize > 0 && (
-              <colgroup>
-                {headerGroup?.headers.map((header) => (
-                  <col
-                    key={header.id}
-                    style={{ width: `${(header.getSize() / totalSize) * 100}%` }}
-                  />
-                ))}
-              </colgroup>
-            )}
-            <TableHeader className="bg-muted">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const size = header.getSize();
-                    const widthStyle = stretch && totalSize > 0
-                      ? undefined
-                      : { width: `${size}px` };
-                    return (
-                    <TableHead
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      style={widthStyle}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                    </TableHead>
-                  );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {hasRows ? (
-                table.getPaginationRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className="even:bg-muted/20"
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                      const cellSize = cell.column.getSize();
-                      const cellWidthStyle = stretch && totalSize > 0
-                        ? undefined
-                        : { width: `${cellSize}px` };
-                      return (
-                      <TableCell
-                        key={cell.id}
-                        style={cellWidthStyle}
-                        className="min-w-0 truncate"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    );
-                    })}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={table.getAllColumns().length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <div
+          className={cn("rounded-md border", stretch && "w-full")}
+          style={{ overflowX: "auto" }}
+        >
+          {tableContent}
         </div>
       )}
       <div className="flex flex-col gap-2.5">
@@ -142,4 +157,3 @@ export function DataTable<TData>({
     </div>
   );
 }
-

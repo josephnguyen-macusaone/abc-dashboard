@@ -4,7 +4,7 @@ import { cn } from '@/shared/helpers';
 import { ReactNode, useState, useEffect } from 'react';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { Logo } from '@/presentation/components/atoms';
-import { useTheme } from '@/presentation/contexts/theme-context';
+import { useTheme } from '@/presentation/contexts';
 
 interface AuthTemplateProps {
   children: ReactNode;

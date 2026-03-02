@@ -6,7 +6,7 @@ import { AdminDashboard, StaffDashboard } from '@/presentation/components/organi
 import { USER_ROLES } from '@/shared/constants';
 
 export function DashboardPage() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   // Check if user is admin or manager
   const isAdminOrManager = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.MANAGER;

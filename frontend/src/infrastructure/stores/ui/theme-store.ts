@@ -1,74 +1,71 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { THEMES } from '@/shared/constants';
-import { saveTheme } from '@/shared/helpers/theme-utils';
+import {
+  saveTheme,
+  type ThemeType,
+  type ResolvedTheme,
+  type ThemeData,
+} from '@/shared/helpers/theme-utils';
+
+export type { ThemeType, ResolvedTheme };
 
 interface ThemeState {
-  // State
-  theme: (typeof THEMES)[keyof typeof THEMES];
-  actualTheme: 'light' | 'dark'; // The resolved theme (light or dark)
+  theme: ThemeType;
+  actualTheme: ResolvedTheme;
+  isHydrated: boolean;
+  source: ThemeData['source'];
 
-  // Actions
-  setTheme: (theme: (typeof THEMES)[keyof typeof THEMES]) => void;
-  initialize: () => void;
+  setTheme: (theme: ThemeType) => void;
+  setResolvedTheme: (resolved: ResolvedTheme) => void;
+  setHydrated: (value: boolean) => void;
+  /** Sync full state from getThemeData() (used by hydration component). */
+  syncFromThemeData: (data: ThemeData) => void;
 }
 
 export const useThemeStore = create<ThemeState>()(
   devtools(
     persist(
-      (set, get) => ({
-        // Initial state - default to light theme
+      (set) => ({
         theme: THEMES.LIGHT,
         actualTheme: 'light',
+        isHydrated: false,
+        source: 'default',
 
-        // Initialize theme - persist middleware handles loading from storage
-        initialize: () => {
-          // Apply the current theme to DOM on initialization
-          const currentState = get();
-          const root = document.documentElement;
-          root.classList.remove('light', 'dark');
-
-          // Apply theme class based on current state
-          if (currentState.actualTheme === 'dark') {
-            root.classList.add('dark');
-          }
-          // Light theme uses default :root variables (no class needed)
+        setTheme: (newTheme) => {
+          const resolved: ResolvedTheme =
+            newTheme === THEMES.SYSTEM && typeof window !== 'undefined'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : newTheme === THEMES.DARK
+                ? 'dark'
+                : 'light';
+          set({ theme: newTheme, actualTheme: resolved, source: 'localStorage' });
+          saveTheme(newTheme);
         },
 
-          setTheme: (newTheme: (typeof THEMES)[keyof typeof THEMES]) => {
-          let resolvedTheme: 'light' | 'dark' = 'light'; // Default to light
+        setResolvedTheme: (resolved) => {
+          set({ actualTheme: resolved, source: 'system' });
+        },
 
-          if (newTheme === THEMES.SYSTEM) {
-            // Follow system preference when system theme is selected
-            resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          } else {
-            resolvedTheme = newTheme as 'light' | 'dark';
-          }
+        setHydrated: (value) => {
+          set({ isHydrated: value });
+        },
 
-          set({ theme: newTheme, actualTheme: resolvedTheme });
-
-          // Save theme using our utility (handles both cookies and localStorage)
-          saveTheme(newTheme);
-
-          // Apply theme to DOM
-          const root = document.documentElement;
-          root.classList.remove('light', 'dark');
-          root.setAttribute('data-theme', resolvedTheme);
-          if (resolvedTheme === 'dark') {
-            root.classList.add('dark');
-          }
-          // For light theme, rely on default :root variables (no class needed)
+        syncFromThemeData: (data) => {
+          set({
+            theme: data.theme,
+            actualTheme: data.resolvedTheme,
+            source: data.source,
+          });
         },
       }),
       {
         name: 'theme-storage',
-        partialize: (state) => ({
-          theme: state.theme,
-        }),
+        partialize: (s) => ({ theme: s.theme }),
       }
     ),
-    {
-      name: 'theme-store',
-    }
+    { name: 'theme-store' }
   )
 );

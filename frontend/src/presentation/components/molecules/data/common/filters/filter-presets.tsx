@@ -24,8 +24,7 @@ import { Label } from '@/presentation/components/atoms/forms/label';
 import { Textarea } from '@/presentation/components/atoms/forms/text-area';
 import { Typography } from '@/presentation/components/atoms/display/typography';
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
-import { cn } from '@/shared/helpers';
-import type { FilterPreset } from '@/types/data-display';
+import type { FilterPreset, FilterValue } from '@/types/data-display';
 
 // ============================================================================
 // Types
@@ -36,7 +35,7 @@ export interface FilterPresetsProps {
   presets: FilterPreset[];
 
   /** Current active filters */
-  currentFilters: Record<string, any>;
+  currentFilters: Record<string, FilterValue>;
 
   /** Callback when a preset is selected */
   onApplyPreset: (preset: FilterPreset) => void;

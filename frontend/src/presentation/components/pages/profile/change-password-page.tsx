@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/presentation/components/atoms';
 export function ChangePasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   const isForced = searchParams.get('forced') === 'true';
   const requiresCurrentPassword = !isForced && !user?.requiresPasswordChange;

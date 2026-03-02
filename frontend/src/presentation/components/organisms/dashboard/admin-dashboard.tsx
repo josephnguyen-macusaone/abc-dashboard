@@ -8,6 +8,7 @@ import type { LicenseDateRange } from '@/application/use-cases';
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
 import { useDataTableStore } from '@/infrastructure/stores/user';
 import { logger } from '@/shared/helpers';
+import { parseLocalDateString, toLocalDateString } from '@/shared/helpers/date-utils';
 import { getDefaultLicenseDateRange } from '@/presentation/hooks/use-initial-license-filters';
 
 const LICENSES_TABLE_ID = 'licenses-data-table';
@@ -55,10 +56,10 @@ export function AdminDashboard({
   const setTableSearch = useDataTableStore(state => state.setTableSearch);
   const clearTableFilters = useDataTableStore(state => state.clearTableFilters);
 
-  // Derive date range from store filters so metrics and data table use the same filter
+  // Derive date range from store filters (parse as local date so display matches stored calendar date)
   const dateRange = useMemo<LicenseDateRange>(() => {
-    const from = filters.startsAtFrom ? new Date(filters.startsAtFrom) : undefined;
-    const to = filters.startsAtTo ? new Date(filters.startsAtTo) : undefined;
+    const from = filters.startsAtFrom ? parseLocalDateString(filters.startsAtFrom) : undefined;
+    const to = filters.startsAtTo ? parseLocalDateString(filters.startsAtTo) : undefined;
     if (!from && !to) return {};
     return {
       from: from && !Number.isNaN(from.getTime()) ? from : undefined,
@@ -76,8 +77,8 @@ export function AdminDashboard({
     (values: { range?: { from?: Date; to?: Date }; rangeCompare?: DateRange } | null) => {
       const nextRange = values?.range;
       const hasRange = nextRange?.from || nextRange?.to;
-      const startsAtFrom = nextRange?.from?.toISOString?.().split('T')[0];
-      const startsAtTo = nextRange?.to?.toISOString?.().split('T')[0];
+      const startsAtFrom = nextRange?.from ? toLocalDateString(nextRange.from) : undefined;
+      const startsAtTo = nextRange?.to ? toLocalDateString(nextRange.to) : undefined;
 
       setFilters({
         ...filters,

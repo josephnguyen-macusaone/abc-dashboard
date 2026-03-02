@@ -23,7 +23,7 @@ interface ResetPasswordFormData {
 
 export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }: ResetPasswordFormProps) {
   const toast = useToast();
-  const { resetPassword } = useAuthStore();
+  const resetPassword = useAuthStore((s) => s.resetPassword);
 
   // Use Zustand store for form state management
   const {

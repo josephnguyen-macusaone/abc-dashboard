@@ -7,4 +7,5 @@ export * from './license';
 export * from './navigation';
 export * from './routes';
 export * from './ui';
+export * from './user';
 export * from './security';

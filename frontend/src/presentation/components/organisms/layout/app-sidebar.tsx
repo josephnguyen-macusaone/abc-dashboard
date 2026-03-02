@@ -40,13 +40,11 @@ export function AppSidebar({
   onLogout,
   className,
 }: AppSidebarProps) {
-  const {
-    isCollapsed,
-    isMobile,
-    toggleCollapsed,
-    setMobile,
-    getEffectiveWidth,
-  } = useSidebarStore();
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+  const isMobile = useSidebarStore((s) => s.isMobile);
+  const toggleCollapsed = useSidebarStore((s) => s.toggleCollapsed);
+  const setMobile = useSidebarStore((s) => s.setMobile);
+  const getEffectiveWidth = useSidebarStore((s) => s.getEffectiveWidth);
 
   const handleBrandClick = () => {
     onNavigate('/dashboard');

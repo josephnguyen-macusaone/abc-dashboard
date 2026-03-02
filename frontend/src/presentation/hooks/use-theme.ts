@@ -1,89 +1,79 @@
-import { useTheme as useThemeContext } from '@/presentation/contexts/theme-context';
+import { useThemeStore } from '@/infrastructure/stores/ui/theme-store';
 import { useCallback, useMemo } from 'react';
 import { THEMES } from '@/shared/constants';
-import type { ThemeType } from '@/presentation/contexts/theme-context';
 
 /**
- * Enhanced theme hook with performance optimizations and convenience methods
+ * Theme hook backed by Zustand theme-store. Selector-based to avoid broad re-renders.
  */
 export function useTheme() {
-  const context = useThemeContext();
+  const theme = useThemeStore((s) => s.theme);
+  const actualTheme = useThemeStore((s) => s.actualTheme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const isHydrated = useThemeStore((s) => s.isHydrated);
+  const source = useThemeStore((s) => s.source);
 
-  // Memoized computed values to prevent unnecessary re-renders
-  const themeState = useMemo(() => ({
-    isLight: context.resolvedTheme === 'light',
-    isDark: context.resolvedTheme === 'dark',
-    isSystem: context.theme === THEMES.SYSTEM,
-    isLightTheme: context.theme === THEMES.LIGHT,
-    isDarkTheme: context.theme === THEMES.DARK,
-  }), [context.resolvedTheme, context.theme]);
+  const themeState = useMemo(
+    () => ({
+      isLight: actualTheme === 'light',
+      isDark: actualTheme === 'dark',
+      isSystem: theme === THEMES.SYSTEM,
+      isLightTheme: theme === THEMES.LIGHT,
+      isDarkTheme: theme === THEMES.DARK,
+    }),
+    [actualTheme, theme]
+  );
 
-  // Optimized theme setters
-  const setLightTheme = useCallback(() => {
-    context.setTheme(THEMES.LIGHT);
-  }, [context.setTheme]);
-
-  const setDarkTheme = useCallback(() => {
-    context.setTheme(THEMES.DARK);
-  }, [context.setTheme]);
-
-  const setSystemTheme = useCallback(() => {
-    context.setTheme(THEMES.SYSTEM);
-  }, [context.setTheme]);
+  const setLightTheme = useCallback(() => setTheme(THEMES.LIGHT), [setTheme]);
+  const setDarkTheme = useCallback(() => setTheme(THEMES.DARK), [setTheme]);
+  const setSystemTheme = useCallback(() => setTheme(THEMES.SYSTEM), [setTheme]);
 
   const toggleTheme = useCallback(() => {
-    if (context.theme === THEMES.SYSTEM) {
-      // If system theme, toggle to opposite of resolved theme
-      context.setTheme(context.resolvedTheme === 'light' ? THEMES.DARK : THEMES.LIGHT);
+    if (theme === THEMES.SYSTEM) {
+      setTheme(actualTheme === 'light' ? THEMES.DARK : THEMES.LIGHT);
     } else {
-      // Toggle between light and dark
-      context.setTheme(context.theme === THEMES.LIGHT ? THEMES.DARK : THEMES.LIGHT);
+      setTheme(theme === THEMES.LIGHT ? THEMES.DARK : THEMES.LIGHT);
     }
-  }, [context.theme, context.resolvedTheme, context.setTheme]);
+  }, [theme, actualTheme, setTheme]);
 
   return {
-    // Original context values
-    ...context,
-
-    // Computed boolean states
+    theme,
+    resolvedTheme: actualTheme,
+    setTheme,
+    isHydrated,
+    source,
     ...themeState,
-
-    // Convenience methods
     setLightTheme,
     setDarkTheme,
     setSystemTheme,
     toggleTheme,
-
-    // Utility methods
     getThemeLabel: () => {
-      switch (context.theme) {
-        case THEMES.LIGHT: return 'Light';
-        case THEMES.DARK: return 'Dark';
-        case THEMES.SYSTEM: return 'System';
-        default: return 'Unknown';
+      switch (theme) {
+        case THEMES.LIGHT:
+          return 'Light';
+        case THEMES.DARK:
+          return 'Dark';
+        case THEMES.SYSTEM:
+          return 'System';
+        default:
+          return 'Unknown';
       }
     },
-
-    getResolvedThemeLabel: () => {
-      return context.resolvedTheme === 'dark' ? 'Dark' : 'Light';
-    },
+    getResolvedThemeLabel: () => (actualTheme === 'dark' ? 'Dark' : 'Light'),
   };
 }
 
 /**
- * Hook for theme-aware conditional rendering
- * Prevents hydration mismatches by only rendering after hydration
+ * Hook for theme-aware conditional rendering (avoids hydration mismatch).
  */
 export function useThemeAware() {
-  const { isHydrated, resolvedTheme } = useTheme();
+  const isHydrated = useThemeStore((s) => s.isHydrated);
+  const actualTheme = useThemeStore((s) => s.actualTheme);
 
   return {
     isHydrated,
-    resolvedTheme,
-    // Only render theme-dependent content after hydration
-    renderWhenHydrated: (children: React.ReactNode) => isHydrated ? children : null,
-    // Render with theme class applied
+    resolvedTheme: actualTheme,
+    renderWhenHydrated: (children: React.ReactNode) => (isHydrated ? children : null),
     withThemeClass: (className: string) =>
-      isHydrated ? `${className} theme-${resolvedTheme}` : className,
+      isHydrated ? `${className} theme-${actualTheme}` : className,
   };
 }

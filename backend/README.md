@@ -72,6 +72,18 @@ POSTGRES_PASSWORD=postgres
 PORT=5000
 ```
 
+### Recreating the database (local, no Docker)
+
+If you run the backend against a local PostgreSQL instance (no Docker), create or drop the database using the same name as `POSTGRES_DB` in your `.env`:
+
+```bash
+# Use the value from .env (e.g. abc_dashboard). Default shown if POSTGRES_DB is unset.
+dropdb "${POSTGRES_DB:-abc_dashboard}"
+createdb "${POSTGRES_DB:-abc_dashboard}"
+```
+
+Then from `backend/`: `npm run migrate` and `npm run seed`. See also **scripts/README.md** (Backend only / create-drop DB).
+
 **URLs**:
 
 - API: <http://localhost:5001>
@@ -95,6 +107,7 @@ npm run seed         # Seed test data
 npm run sync:test-connectivity   # Test connection to external license API
 npm run sync:start              # Run one-off sync from external API
 npm run sync:status             # Show sync status and DB/API health
+# Limited sync: SYNC_MAX_PAGES=10 npm run sync:start or SYNC_LIMIT=20 npm run sync:start
 
 # Email Testing Suite
 npm run test:email:suite     # Complete email testing
@@ -209,7 +222,7 @@ CLIENT_URL=http://localhost:3000
 
 ### Email Setup Guide
 
-See `docs/guides/email-setup-guide.md` for complete email configuration instructions.
+See [docs/guides/email-setup.md](docs/guides/email-setup.md) for complete email configuration instructions.
 
 Test your email configuration:
 
@@ -289,7 +302,7 @@ docker-compose logs -f backend
 - Production logging configuration
 - Security hardening
 
-See [Deployment Guide](./docs/operations/deployment-guide.md) for detailed instructions.
+See [Deployment Guide](./docs/DEPLOYMENT.md) for detailed instructions.
 
 ### Docker Compose (Production)
 

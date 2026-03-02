@@ -7,7 +7,8 @@ import { LoadingSpinner } from '@/presentation/components/atoms';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
 
   // Only redirect after authentication state is determined
   useEffect(() => {

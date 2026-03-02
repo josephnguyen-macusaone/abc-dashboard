@@ -134,7 +134,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         }
       }
     },
-    [column, multiple, manualFiltering, selectedValues],
+    [column, multiple, manualFiltering, selectedValues, setOpen, setSelectedValues],
   );
 
   const onReset = React.useCallback(
@@ -150,7 +150,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         column?.setFilterValue(undefined);
       }
     },
-    [column, manualFiltering, onFilterChange],
+    [column, manualFiltering, onFilterChange, setSelectedValues],
   );
 
   return (

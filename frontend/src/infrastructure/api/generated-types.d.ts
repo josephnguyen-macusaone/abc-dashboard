@@ -445,2283 +445,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get users with pagination, filtering, and search
-         * @description Retrieve a paginated list of users with support for:
-         *     - Multi-field search (email, displayName, username, phone)
-         *     - Date range filtering (created, updated, last login)
-         *     - Advanced filters (role, status, manager, avatar, bio)
-         *     - Sorting by multiple fields
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page number */
-                    page?: number;
-                    /** @description Number of items per page */
-                    limit?: number;
-                    /** @description Search term (searches across email, displayName, username, phone by default) */
-                    search?: string;
-                    /** @description Limit search to a specific field */
-                    searchField?: "email" | "displayName" | "username" | "phone";
-                    /** @description Filter by email (partial match) */
-                    email?: string;
-                    /** @description Filter by username (partial match) */
-                    username?: string;
-                    /** @description Filter by display name (partial match) */
-                    displayName?: string;
-                    /** @description Filter by phone number (partial match) */
-                    phone?: string;
-                    /** @description Filter users created after this date (ISO 8601 format) */
-                    createdAtFrom?: string;
-                    /** @description Filter users created before this date (ISO 8601 format) */
-                    createdAtTo?: string;
-                    /** @description Filter users updated after this date (ISO 8601 format) */
-                    updatedAtFrom?: string;
-                    /** @description Filter users updated before this date (ISO 8601 format) */
-                    updatedAtTo?: string;
-                    /** @description Filter users who logged in after this date (ISO 8601 format) */
-                    lastLoginFrom?: string;
-                    /** @description Filter users who logged in before this date (ISO 8601 format) */
-                    lastLoginTo?: string;
-                    /** @description Filter by user role */
-                    role?: "admin" | "manager" | "staff";
-                    /** @description Filter by active status */
-                    isActive?: boolean;
-                    /** @description Filter by manager ID (for staff users) */
-                    managedBy?: string;
-                    /** @description Field to sort by */
-                    sortBy?: "createdAt" | "updatedAt" | "email" | "username" | "displayName" | "role" | "isActive" | "lastLogin";
-                    /** @description Sort direction */
-                    sortOrder?: "asc" | "desc";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Users retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserListResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a new user
-         * @description Create a new user account with required username, email, firstName, and lastName.
-         *     DisplayName will be auto-generated from firstName + lastName.
-         *     Role defaults to 'staff' if not specified.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Required username
-                         * @example johndoe
-                         */
-                        username: string;
-                        /**
-                         * Format: email
-                         * @description User's email address
-                         * @example john.doe@example.com
-                         */
-                        email: string;
-                        /**
-                         * @description Required first name
-                         * @example John
-                         */
-                        firstName: string;
-                        /**
-                         * @description Required last name
-                         * @example Doe
-                         */
-                        lastName: string;
-                        /**
-                         * @description Optional display name. Auto-generated from firstName + lastName if not provided
-                         * @example John Doe
-                         */
-                        displayName?: string;
-                        /**
-                         * @description User role. Defaults to 'staff'
-                         * @default staff
-                         * @example admin
-                         * @enum {string}
-                         */
-                        role?: "admin" | "manager" | "staff";
-                        /**
-                         * Format: uri
-                         * @description Optional avatar URL
-                         */
-                        avatarUrl?: string;
-                        /** @description Optional phone number */
-                        phone?: string;
-                        /** @description Optional manager ID for staff assignments */
-                        managerId?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description User created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized - Authentication required */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden - Insufficient permissions to create users with specified role */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get user by ID */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description User retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description User not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        /** Delete user by ID */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description User deleted successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["MessageResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description User not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Update user by ID */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        firstName?: string;
-                        lastName?: string;
-                        /** @enum {string} */
-                        role?: "admin" | "manager" | "staff";
-                        isActive?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description User updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description User not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/users/{id}/reassign": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Reassign staff member to different manager */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Staff user ID to reassign */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description New manager ID to assign the staff member to */
-                        newManagerId: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Staff member reassigned successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["MessageResponse"];
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden - Admin only */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description User not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/users/bulk/activate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bulk activate users */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Array of user IDs to activate */
-                        ids: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Users activated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                activated?: number;
-                                failed?: number;
-                                details?: Record<string, never>;
-                            };
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/bulk/deactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bulk deactivate users */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Array of user IDs to deactivate */
-                        ids: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Users deactivated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/bulk/delete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bulk delete users */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Array of user IDs to delete */
-                        ids: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Users deleted successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Export users to various formats */
-        post: {
-            parameters: {
-                query?: {
-                    /** @description Search term (applied if includeFilters is true) */
-                    search?: string;
-                    /** @description Filter by role */
-                    role?: "admin" | "manager" | "staff";
-                    /** @description Filter by active status */
-                    isActive?: boolean;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @default csv
-                         * @enum {string}
-                         */
-                        format?: "csv" | "excel" | "pdf" | "json";
-                        /** @description Column names to include in export */
-                        columns?: string[];
-                        /**
-                         * @description Whether to apply current filters
-                         * @default true
-                         */
-                        includeFilters?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Export file downloaded successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/csv": string;
-                        "application/json": Record<string, never>;
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/profile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get current user profile */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Profile retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProfileResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update current user profile */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description User's display name */
-                        displayName?: string;
-                        /** @description User biography */
-                        bio?: string;
-                        /** @description User's phone number */
-                        phone?: string;
-                        /**
-                         * Format: uri
-                         * @description User's avatar URL
-                         */
-                        avatarUrl?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Profile updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["MessageResponse"];
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/licenses/attention": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get licenses requiring attention */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Include licenses expiring soon */
-                    includeExpiringSoon?: boolean;
-                    /** @description Include expired licenses */
-                    includeExpired?: boolean;
-                    /** @description Include suspended licenses */
-                    includeSuspended?: boolean;
-                    /** @description Days threshold for expiring soon */
-                    daysThreshold?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Licenses requiring attention retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/dashboard/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get dashboard metrics for licenses */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Filter licenses starting from this date */
-                    startsAtFrom?: string;
-                    /** @description Filter licenses starting up to this date */
-                    startsAtTo?: string;
-                    /**
-                     * @description Filter metrics to licenses matching this term.
-                     *     Default: searches **DBA and Agents Name** (multi-field).
-                     *     Use `searchField` to limit search to a single field.
-                     * @example salon
-                     */
-                    search?: string;
-                    /**
-                     * @description When set with `search`, limit search to this field only.
-                     *     **UI exposes:** `dba`, `agentsName`. API also supports `key`, `product`, `plan`.
-                     *     Omit for multi-field search (DBA + Agents).
-                     * @example dba
-                     */
-                    searchField?: "key" | "dba" | "product" | "plan" | "agentsName";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Dashboard metrics retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                totalActiveLicenses?: {
-                                    value?: number;
-                                    trend?: Record<string, never>;
-                                };
-                                newLicensesThisMonth?: {
-                                    value?: number;
-                                    trend?: Record<string, never>;
-                                };
-                                licenseIncomeThisMonth?: {
-                                    value?: number;
-                                    trend?: Record<string, never>;
-                                };
-                                smsIncomeThisMonth?: {
-                                    value?: number;
-                                    smsSent?: number;
-                                    trend?: Record<string, never>;
-                                };
-                                inHouseLicenses?: {
-                                    value?: number;
-                                };
-                                agentHeavyLicenses?: {
-                                    value?: number;
-                                };
-                                highRiskLicenses?: {
-                                    value?: number;
-                                    trend?: Record<string, never>;
-                                };
-                                estimatedNextMonthIncome?: {
-                                    value?: number;
-                                    trend?: Record<string, never>;
-                                };
-                            };
-                        };
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/data-integrity": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get data integrity metrics for license queries */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Data integrity metrics retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            data?: {
-                                /** @description Total license queries processed */
-                                totalQueries?: number;
-                                /** @description Number of data integrity violations detected */
-                                integrityViolations?: number;
-                                /** @description Percentage of queries with violations */
-                                violationRate?: number;
-                                /** @description Timestamp of last violation */
-                                lastViolation?: string;
-                            };
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/agents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all unique agent names from licenses */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Agent names retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                /** @description Array of unique agent names sorted alphabetically */
-                                agents?: string[];
-                            };
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get licenses with pagination and filtering */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Page number for pagination */
-                    page?: number;
-                    /** @description Number of licenses per page */
-                    limit?: number;
-                    /**
-                     * @description Search term; matches **DBA and Agents Name** by default (multi-field).
-                     *     Use `searchField` to limit search to a single field.
-                     *     Examples:
-                     *     - `?search=salon` → searches DBA and agent names containing "salon"
-                     *     - `?search=john&searchField=agentsName` → searches agent names only
-                     *     - `?search=Main&searchField=dba` → searches DBA only
-                     * @example salon
-                     */
-                    search?: string;
-                    /**
-                     * @description When set with `search`, limit search to this field only.
-                     *     **UI exposes:** `dba`, `agentsName` (and "All" which searches both)
-                     *     **API also supports:** `key`, `product`, `plan` (for programmatic access)
-                     *     - Omit or leave empty - Search both DBA and Agents (default)
-                     * @example agentsName
-                     */
-                    searchField?: "key" | "dba" | "product" | "plan" | "agentsName";
-                    /** @description Filter licenses by status (active or cancel only). */
-                    status?: "active" | "cancel";
-                    /** @description Filter licenses with start date (starts_at) on or after this date (YYYY-MM-DD or ISO). */
-                    startDate?: string;
-                    /** @description Filter licenses with start date (starts_at) on or before this date (YYYY-MM-DD or ISO). */
-                    endDate?: string;
-                    /** @description Field to sort by */
-                    sortBy?: "id" | "dba" | "zip" | "startDay" | "status" | "plan" | "term" | "lastPayment" | "lastActive" | "smsPurchased" | "smsSent" | "smsBalance" | "agents" | "agentsCost" | "createdAt" | "updatedAt";
-                    /** @description Sort order */
-                    sortOrder?: "asc" | "desc";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Licenses retrieved successfully with flat metadata including page, limit, total, totalPages, hasNext, and hasPrev */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["LicenseListResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a new license */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Doing Business As name */
-                        dba: string;
-                        /** @description ZIP code */
-                        zip?: string;
-                        /** @description Start date (ISO string) */
-                        startDay: string;
-                        /**
-                         * @description License status
-                         * @default pending
-                         * @enum {string}
-                         */
-                        status?: "active" | "cancel";
-                        /**
-                         * @description Subscription plan
-                         * @enum {string}
-                         */
-                        plan?: "Basic" | "Premium";
-                        /**
-                         * @description Billing term
-                         * @enum {string}
-                         */
-                        term?: "monthly" | "yearly";
-                        /** @description Cancellation date (required if status is cancel) */
-                        cancelDate?: string;
-                        /** @description Last payment amount */
-                        lastPayment?: number;
-                        /** @description Number of SMS purchased */
-                        smsPurchased?: number;
-                        /** @description Number of SMS sent */
-                        smsSent?: number;
-                        /** @description Number of agents */
-                        agents?: number;
-                        /** @description Cost of agents */
-                        agentsCost?: number;
-                        /** @description Names of agents */
-                        agentsName?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description License created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                license?: components["schemas"]["License"];
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get license by ID */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description License retrieved successfully (data.license is the internal license object) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["LicenseResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        /** Update an existing license */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Doing Business As name */
-                        dba?: string;
-                        /** @description ZIP code */
-                        zip?: string;
-                        /** @description Start date (ISO string) */
-                        startDay?: string;
-                        /**
-                         * @description License status
-                         * @enum {string}
-                         */
-                        status?: "active" | "cancel";
-                        /**
-                         * @description Subscription plan
-                         * @enum {string}
-                         */
-                        plan?: "Basic" | "Premium";
-                        /**
-                         * @description Billing term
-                         * @enum {string}
-                         */
-                        term?: "monthly" | "yearly";
-                        /** @description Cancellation date (required if status is cancel) */
-                        cancelDate?: string;
-                        /** @description Last payment amount */
-                        lastPayment?: number;
-                        /** @description Number of SMS purchased */
-                        smsPurchased?: number;
-                        /** @description Number of SMS sent */
-                        smsSent?: number;
-                        /** @description Number of agents */
-                        agents?: number;
-                        /** @description Cost of agents */
-                        agentsCost?: number;
-                        /** @description Names of agents */
-                        agentsName?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description License updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                license?: components["schemas"]["License"];
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Delete a license by ID */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description License deleted successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/bulk": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bulk create licenses */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        licenses: {
-                            /** @description Doing Business As name */
-                            dba: string;
-                            /** @description ZIP code */
-                            zip?: string;
-                            /** @description Start date (ISO string) */
-                            startDay: string;
-                            /**
-                             * @description License status
-                             * @default pending
-                             * @enum {string}
-                             */
-                            status?: "active" | "cancel";
-                            /**
-                             * @description Subscription plan
-                             * @enum {string}
-                             */
-                            plan?: "Basic" | "Premium";
-                            /**
-                             * @description Billing term
-                             * @enum {string}
-                             */
-                            term?: "monthly" | "yearly";
-                            /** @description Cancellation date */
-                            cancelDate?: string;
-                            /** @description Last payment amount */
-                            lastPayment?: number;
-                            /** @description Number of SMS purchased */
-                            smsPurchased?: number;
-                            /** @description Number of SMS sent */
-                            smsSent?: number;
-                            /** @description Number of agents */
-                            agents?: number;
-                            /** @description Cost of agents */
-                            agentsCost?: number;
-                            /** @description Names of agents (e.g. comma-separated or single name) */
-                            agentsName?: string;
-                        }[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Licenses created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                licenses?: components["schemas"]["License"][];
-                                /** @description Number of licenses created */
-                                created?: number;
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        /** Bulk delete licenses */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Array of license IDs to delete */
-                        ids: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Licenses deleted successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                /** @description Number of licenses deleted */
-                                deleted?: number;
-                                /** @description IDs of licenses that were not found */
-                                notFound?: string[];
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Bulk update licenses */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        updates: {
-                            /** @description License ID */
-                            id: string;
-                            /** @description Doing Business As name */
-                            dba?: string;
-                            /** @description ZIP code */
-                            zip?: string;
-                            /** @description Start date (ISO string) */
-                            startDay?: string;
-                            /**
-                             * @description License status
-                             * @enum {string}
-                             */
-                            status?: "active" | "cancel";
-                            /**
-                             * @description Subscription plan
-                             * @enum {string}
-                             */
-                            plan?: "Basic" | "Premium";
-                            /**
-                             * @description Billing term
-                             * @enum {string}
-                             */
-                            term?: "monthly" | "yearly";
-                            /** @description Cancellation date */
-                            cancelDate?: string;
-                            /** @description Last payment amount */
-                            lastPayment?: number;
-                            /** @description Number of SMS purchased */
-                            smsPurchased?: number;
-                            /** @description Number of SMS sent */
-                            smsSent?: number;
-                            /** @description Number of agents */
-                            agents?: number;
-                            /** @description Cost of agents */
-                            agentsCost?: number;
-                            /** @description Names of agents (e.g. comma-separated or single name) */
-                            agentsName?: string;
-                        }[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Licenses updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                licenses?: components["schemas"]["License"][];
-                                /** @description Number of licenses updated */
-                                updated?: number;
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/licenses/row": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Add a license row (for grid operations) */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Doing Business As name (can be empty for grid add flow) */
-                        dba?: string;
-                        /** @description ZIP code */
-                        zip?: string;
-                        /** @description Start date (ISO string, defaults to today if empty) */
-                        startDay?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description License row created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                license?: components["schemas"]["License"];
-                            };
-                        };
-                    };
-                };
-                /** @description Validation error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/lifecycle/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get license lifecycle status */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description License lifecycle status retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/renew": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Renew a license */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Specific new expiration date
-                         */
-                        newExpirationDate?: string;
-                        /** @description Days to extend (alternative to newExpirationDate) */
-                        extensionDays?: number;
-                        /** @description Reason for renewal */
-                        reason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description License renewed successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid renewal options */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/renew/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get renewal preview */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Specific new expiration date */
-                    newExpirationDate?: string;
-                    /** @description Days to extend */
-                    extensionDays?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Renewal preview retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/extend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Extend license expiration */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description New expiration date
-                         */
-                        newExpirationDate: string;
-                        /** @description Reason for extension */
-                        reason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description License expiration extended successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/expire": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Expire a license */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /** @description Reason for expiration */
-                        reason?: string;
-                        /** @description Force expiration even if not due */
-                        force?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description License expired successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid expiration request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/expire/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get expiration preview */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Force specific expiration action */
-                    action?: "suspend" | "grace_period" | "mark_expired";
-                };
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expiration preview retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/{id}/reactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reactivate an expired/suspended license */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description License ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /** @description Reason for reactivation */
-                        reason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description License reactivated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid reactivation request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description License not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/lifecycle/bulk-renew": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bulk renew licenses */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Array of license IDs to renew */
-                        licenseIds: string[];
-                        /** @description Renewal options to apply to all licenses */
-                        renewalOptions?: Record<string, never>;
-                    };
-                };
-            };
-            responses: {
-                /** @description Bulk renewal completed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/lifecycle/bulk-expire": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Bulk expire licenses */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Array of license IDs to expire */
-                        licenseIds: string[];
-                        /** @description Expiration options to apply to all licenses */
-                        expirationOptions?: Record<string, never>;
-                    };
-                };
-            };
-            responses: {
-                /** @description Bulk expiration completed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/lifecycle/process": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Trigger manual lifecycle processing */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Lifecycle operation to perform
-                         * @enum {string}
-                         */
-                        operation: "expiring_reminders" | "expire_licenses" | "update_grace_periods";
-                    };
-                };
-            };
-            responses: {
-                /** @description Lifecycle operation completed successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid operation */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Manually trigger license sync */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sync initiated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                /** @description Sync status message */
-                                message?: string;
-                            };
-                        };
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/licenses/sync/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get license sync scheduler status */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Sync scheduler status retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BaseResponse"] & {
-                            data?: {
-                                enabled?: boolean;
-                                running?: boolean;
-                                timezone?: string;
-                                schedule?: string;
-                                statistics?: Record<string, never>;
-                                lastSyncResult?: Record<string, never>;
-                            };
-                        };
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/external-licenses/sync": {
         parameters: {
             query?: never;
@@ -2745,6 +468,10 @@ export interface paths {
                     bidirectional?: boolean;
                     /** @description Use comprehensive reconciliation (external-first, internal-second, compare gaps) */
                     comprehensive?: boolean;
+                    /** @description Optional: sync only N licenses for data mapping verification */
+                    limit?: number;
+                    /** @description Optional: sync only N pages (e.g. 10) for data mapping verification */
+                    maxPages?: number;
                 };
                 header?: never;
                 path?: never;
@@ -2971,6 +698,8 @@ export interface paths {
                     sortBy?: "countid" | "appid" | "emailLicense" | "licenseType" | "dba" | "status" | "monthlyFee" | "smsBalance" | "lastSyncedAt" | "syncStatus" | "createdAt" | "updatedAt";
                     /** @description Sort order */
                     sortOrder?: "asc" | "desc";
+                    /** @description When true, sync from external API first so total reflects the external source of truth, then return list from DB */
+                    syncFirst?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -3229,17 +958,21 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        emailLicense?: string;
+                        pass?: string;
+                        monthlyFee?: number;
+                        Mid?: string;
                         dba?: string;
                         zip?: string;
                         status?: number;
                         license_type?: string;
-                        monthlyFee?: number;
-                        smsBalance?: number;
-                        Note?: string;
                         /** @description Activation/start date (external API format) */
                         ActivateDate?: string;
                         /** @description Due date for Term Yearly (expiry/renewal date) */
                         coming_expired?: string;
+                        Package?: Record<string, never>;
+                        Note?: string;
+                        smsBalance?: number;
                     };
                 };
             };
@@ -4010,6 +1743,2566 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/licenses/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get licenses requiring attention */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Include licenses expiring soon */
+                    includeExpiringSoon?: boolean;
+                    /** @description Include expired licenses */
+                    includeExpired?: boolean;
+                    /** @description Include suspended licenses */
+                    includeSuspended?: boolean;
+                    /** @description Days threshold for expiring soon */
+                    daysThreshold?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Licenses requiring attention retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/dashboard/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get dashboard metrics for licenses */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filter licenses starting from this date */
+                    startsAtFrom?: string;
+                    /** @description Filter licenses starting up to this date */
+                    startsAtTo?: string;
+                    /**
+                     * @description Filter metrics to licenses matching this term.
+                     *     Default: searches **DBA and Agents Name** (multi-field).
+                     *     Use `searchField` to limit search to a single field.
+                     * @example salon
+                     */
+                    search?: string;
+                    /**
+                     * @description When set with `search`, limit search to this field only.
+                     *     **UI exposes:** `dba`, `agentsName`. API also supports `key`, `product`, `plan`.
+                     *     Omit for multi-field search (DBA + Agents).
+                     * @example dba
+                     */
+                    searchField?: "key" | "dba" | "product" | "plan" | "agentsName";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Dashboard metrics retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                totalActiveLicenses?: {
+                                    value?: number;
+                                    trend?: Record<string, never>;
+                                };
+                                newLicensesThisMonth?: {
+                                    value?: number;
+                                    trend?: Record<string, never>;
+                                };
+                                licenseIncomeThisMonth?: {
+                                    value?: number;
+                                    trend?: Record<string, never>;
+                                };
+                                smsIncomeThisMonth?: {
+                                    value?: number;
+                                    smsSent?: number;
+                                    trend?: Record<string, never>;
+                                };
+                                inHouseLicenses?: {
+                                    value?: number;
+                                };
+                                agentHeavyLicenses?: {
+                                    value?: number;
+                                };
+                                highRiskLicenses?: {
+                                    value?: number;
+                                    trend?: Record<string, never>;
+                                };
+                                estimatedNextMonthIncome?: {
+                                    value?: number;
+                                    trend?: Record<string, never>;
+                                };
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/data-integrity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get data integrity metrics for license queries */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Data integrity metrics retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            data?: {
+                                /** @description Total license queries processed */
+                                totalQueries?: number;
+                                /** @description Number of data integrity violations detected */
+                                integrityViolations?: number;
+                                /** @description Percentage of queries with violations */
+                                violationRate?: number;
+                                /** @description Timestamp of last violation */
+                                lastViolation?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all unique agent names from licenses */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Agent names retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                /** @description Array of unique agent names sorted alphabetically */
+                                agents?: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get licenses with pagination and filtering */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Page number for pagination */
+                    page?: number;
+                    /** @description Number of licenses per page */
+                    limit?: number;
+                    /**
+                     * @description Search term; matches **DBA and Agents Name** by default (multi-field).
+                     *     Use `searchField` to limit search to a single field.
+                     *     Examples:
+                     *     - `?search=salon` → searches DBA and agent names containing "salon"
+                     *     - `?search=john&searchField=agentsName` → searches agent names only
+                     *     - `?search=Main&searchField=dba` → searches DBA only
+                     * @example salon
+                     */
+                    search?: string;
+                    /**
+                     * @description When set with `search`, limit search to this field only.
+                     *     **UI exposes:** `dba`, `agentsName` (and "All" which searches both)
+                     *     **API also supports:** `key`, `product`, `plan` (for programmatic access)
+                     *     - Omit or leave empty - Search both DBA and Agents (default)
+                     * @example agentsName
+                     */
+                    searchField?: "key" | "dba" | "product" | "plan" | "agentsName";
+                    /** @description Filter licenses by status (active or cancel only). */
+                    status?: "active" | "cancel";
+                    /** @description Filter licenses with start date (starts_at) on or after this date (YYYY-MM-DD or ISO). */
+                    startDate?: string;
+                    /** @description Filter licenses with start date (starts_at) on or before this date (YYYY-MM-DD or ISO). */
+                    endDate?: string;
+                    /** @description Field to sort by */
+                    sortBy?: "id" | "dba" | "zip" | "startDay" | "status" | "plan" | "term" | "lastPayment" | "lastActive" | "smsPurchased" | "smsSent" | "smsBalance" | "agents" | "agentsCost" | "createdAt" | "updatedAt";
+                    /** @description Sort order */
+                    sortOrder?: "asc" | "desc";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Licenses retrieved successfully with flat metadata including page, limit, total, totalPages, hasNext, and hasPrev */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LicenseListResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a new license */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Doing Business As name */
+                        dba: string;
+                        /** @description ZIP code */
+                        zip?: string;
+                        /** @description Start date (ISO string) */
+                        startDay: string;
+                        /**
+                         * @description License status
+                         * @default pending
+                         * @enum {string}
+                         */
+                        status?: "active" | "cancel";
+                        /**
+                         * @description Subscription plan
+                         * @enum {string}
+                         */
+                        plan?: "Basic" | "Premium" | "Print Check" | "Staff Performance" | "Unlimited SMS";
+                        /**
+                         * @description Billing term
+                         * @enum {string}
+                         */
+                        term?: "monthly" | "yearly";
+                        /** @description Cancellation date (required if status is cancel) */
+                        cancelDate?: string;
+                        /** @description Last payment amount */
+                        lastPayment?: number;
+                        /** @description Number of SMS purchased */
+                        smsPurchased?: number;
+                        /** @description Number of SMS sent */
+                        smsSent?: number;
+                        /** @description Number of agents */
+                        agents?: number;
+                        /** @description Cost of agents */
+                        agentsCost?: number;
+                        /** @description Names of agents */
+                        agentsName?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description License created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                license?: components["schemas"]["License"];
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get license by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description License retrieved successfully (data.license is the internal license object) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LicenseResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Update an existing license */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Doing Business As name */
+                        dba?: string;
+                        /** @description ZIP code */
+                        zip?: string;
+                        /** @description Start date (ISO string) */
+                        startDay?: string;
+                        /**
+                         * @description License status
+                         * @enum {string}
+                         */
+                        status?: "active" | "cancel";
+                        /**
+                         * @description Subscription plan
+                         * @enum {string}
+                         */
+                        plan?: "Basic" | "Premium" | "Print Check" | "Staff Performance" | "Unlimited SMS";
+                        /**
+                         * @description Billing term
+                         * @enum {string}
+                         */
+                        term?: "monthly" | "yearly";
+                        /** @description Cancellation date (required if status is cancel) */
+                        cancelDate?: string;
+                        /** @description Last payment amount */
+                        lastPayment?: number;
+                        /** @description Number of SMS purchased */
+                        smsPurchased?: number;
+                        /** @description Number of SMS sent */
+                        smsSent?: number;
+                        /** @description Number of agents */
+                        agents?: number;
+                        /** @description Cost of agents */
+                        agentsCost?: number;
+                        /** @description Names of agents */
+                        agentsName?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description License updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                license?: components["schemas"]["License"];
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a license by ID */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description License deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk create licenses */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        licenses: {
+                            /** @description Doing Business As name */
+                            dba: string;
+                            /** @description ZIP code */
+                            zip?: string;
+                            /** @description Start date (ISO string) */
+                            startDay: string;
+                            /**
+                             * @description License status
+                             * @default pending
+                             * @enum {string}
+                             */
+                            status?: "active" | "cancel";
+                            /**
+                             * @description Subscription plan
+                             * @enum {string}
+                             */
+                            plan?: "Basic" | "Premium" | "Print Check" | "Staff Performance" | "Unlimited SMS";
+                            /**
+                             * @description Billing term
+                             * @enum {string}
+                             */
+                            term?: "monthly" | "yearly";
+                            /** @description Cancellation date */
+                            cancelDate?: string;
+                            /** @description Last payment amount */
+                            lastPayment?: number;
+                            /** @description Number of SMS purchased */
+                            smsPurchased?: number;
+                            /** @description Number of SMS sent */
+                            smsSent?: number;
+                            /** @description Number of agents */
+                            agents?: number;
+                            /** @description Cost of agents */
+                            agentsCost?: number;
+                            /** @description Names of agents (e.g. comma-separated or single name) */
+                            agentsName?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Licenses created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                licenses?: components["schemas"]["License"][];
+                                /** @description Number of licenses created */
+                                created?: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /** Bulk delete licenses */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Array of license IDs to delete */
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Licenses deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                /** @description Number of licenses deleted */
+                                deleted?: number;
+                                /** @description IDs of licenses that were not found */
+                                notFound?: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Bulk update licenses */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        updates: {
+                            /** @description License ID */
+                            id: string;
+                            /** @description Doing Business As name */
+                            dba?: string;
+                            /** @description ZIP code */
+                            zip?: string;
+                            /** @description Start date (ISO string) */
+                            startDay?: string;
+                            /**
+                             * @description License status
+                             * @enum {string}
+                             */
+                            status?: "active" | "cancel";
+                            /**
+                             * @description Subscription plan
+                             * @enum {string}
+                             */
+                            plan?: "Basic" | "Premium" | "Print Check" | "Staff Performance" | "Unlimited SMS";
+                            /**
+                             * @description Billing term
+                             * @enum {string}
+                             */
+                            term?: "monthly" | "yearly";
+                            /** @description Cancellation date */
+                            cancelDate?: string;
+                            /** @description Last payment amount */
+                            lastPayment?: number;
+                            /** @description Number of SMS purchased */
+                            smsPurchased?: number;
+                            /** @description Number of SMS sent */
+                            smsSent?: number;
+                            /** @description Number of agents */
+                            agents?: number;
+                            /** @description Cost of agents */
+                            agentsCost?: number;
+                            /** @description Names of agents (e.g. comma-separated or single name) */
+                            agentsName?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Licenses updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                licenses?: components["schemas"]["License"][];
+                                /** @description Number of licenses updated */
+                                updated?: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/licenses/row": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a license row (for grid operations) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Doing Business As name (can be empty for grid add flow) */
+                        dba?: string;
+                        /** @description ZIP code */
+                        zip?: string;
+                        /** @description Start date (ISO string, defaults to today if empty) */
+                        startDay?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description License row created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                license?: components["schemas"]["License"];
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/lifecycle/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get license lifecycle status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description License lifecycle status retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Renew a license */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: date-time
+                         * @description Specific new expiration date
+                         */
+                        newExpirationDate?: string;
+                        /** @description Days to extend (alternative to newExpirationDate) */
+                        extensionDays?: number;
+                        /** @description Reason for renewal */
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description License renewed successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid renewal options */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/renew/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get renewal preview */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Specific new expiration date */
+                    newExpirationDate?: string;
+                    /** @description Days to extend */
+                    extensionDays?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Renewal preview retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Extend license expiration */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: date-time
+                         * @description New expiration date
+                         */
+                        newExpirationDate: string;
+                        /** @description Reason for extension */
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description License expiration extended successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/expire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Expire a license */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Reason for expiration */
+                        reason?: string;
+                        /** @description Force expiration even if not due */
+                        force?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description License expired successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid expiration request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/expire/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get expiration preview */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Force specific expiration action */
+                    action?: "suspend" | "grace_period" | "mark_expired";
+                };
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Expiration preview retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivate an expired/suspended license */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description License ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Reason for reactivation */
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description License reactivated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid reactivation request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description License not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/lifecycle/bulk-renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk renew licenses */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Array of license IDs to renew */
+                        licenseIds: string[];
+                        /** @description Renewal options to apply to all licenses */
+                        renewalOptions?: Record<string, never>;
+                    };
+                };
+            };
+            responses: {
+                /** @description Bulk renewal completed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/lifecycle/bulk-expire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk expire licenses */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Array of license IDs to expire */
+                        licenseIds: string[];
+                        /** @description Expiration options to apply to all licenses */
+                        expirationOptions?: Record<string, never>;
+                    };
+                };
+            };
+            responses: {
+                /** @description Bulk expiration completed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/lifecycle/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger manual lifecycle processing */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Lifecycle operation to perform
+                         * @enum {string}
+                         */
+                        operation: "expiring_reminders" | "expire_licenses" | "update_grace_periods";
+                    };
+                };
+            };
+            responses: {
+                /** @description Lifecycle operation completed successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid operation */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Manually trigger license sync */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sync initiated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                /** @description Sync status message */
+                                message?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/licenses/sync/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get license sync scheduler status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sync scheduler status retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                enabled?: boolean;
+                                running?: boolean;
+                                timezone?: string;
+                                schedule?: string;
+                                statistics?: Record<string, never>;
+                                lastSyncResult?: Record<string, never>;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * License sync health check
+         * @description Health check for license sync service (e.g. load balancers).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sync service health status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: Record<string, never>;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * License sync statistics
+         * @description Comprehensive sync statistics.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sync statistics */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: Record<string, never>;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * License sync detailed metrics
+         * @description Detailed sync metrics for observability.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sync metrics */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: Record<string, never>;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List license sync alerts
+         * @description Returns current sync alerts.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of alerts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: unknown[];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/alerts/{alertId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge an alert
+         * @description Mark a sync alert as acknowledged.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    alertId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Alert acknowledged */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/health/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Force health check (admin)
+         * @description Trigger a health check. Requires license monitor role.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Health check triggered */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/license-sync/metrics/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset metrics (admin)
+         * @description Reset sync metrics. Requires license monitor role.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Metrics reset */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current user profile */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Profile retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProfileResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update current user profile */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description User's display name */
+                        displayName?: string;
+                        /** @description User biography */
+                        bio?: string;
+                        /** @description User's phone number */
+                        phone?: string;
+                        /**
+                         * Format: uri
+                         * @description User's avatar URL
+                         */
+                        avatarUrl?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Profile updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MessageResponse"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get users with pagination, filtering, and search
+         * @description Retrieve a paginated list of users with support for:
+         *     - Multi-field search (email, displayName, username, phone)
+         *     - Date range filtering (created, updated, last login)
+         *     - Advanced filters (role, status, manager, avatar, bio)
+         *     - Sorting by multiple fields
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Page number */
+                    page?: number;
+                    /** @description Number of items per page */
+                    limit?: number;
+                    /** @description Search term (searches across email, displayName, username, phone by default) */
+                    search?: string;
+                    /** @description Limit search to a specific field */
+                    searchField?: "email" | "displayName" | "username" | "phone";
+                    /** @description Filter by email (partial match) */
+                    email?: string;
+                    /** @description Filter by username (partial match) */
+                    username?: string;
+                    /** @description Filter by display name (partial match) */
+                    displayName?: string;
+                    /** @description Filter by phone number (partial match) */
+                    phone?: string;
+                    /** @description Filter users created after this date (ISO 8601 format) */
+                    createdAtFrom?: string;
+                    /** @description Filter users created before this date (ISO 8601 format) */
+                    createdAtTo?: string;
+                    /** @description Filter users updated after this date (ISO 8601 format) */
+                    updatedAtFrom?: string;
+                    /** @description Filter users updated before this date (ISO 8601 format) */
+                    updatedAtTo?: string;
+                    /** @description Filter users who logged in after this date (ISO 8601 format) */
+                    lastLoginFrom?: string;
+                    /** @description Filter users who logged in before this date (ISO 8601 format) */
+                    lastLoginTo?: string;
+                    /** @description Filter by user role */
+                    role?: "admin" | "manager" | "staff";
+                    /** @description Filter by active status */
+                    isActive?: boolean;
+                    /** @description Filter by manager ID (for staff users) */
+                    managedBy?: string;
+                    /** @description Field to sort by */
+                    sortBy?: "createdAt" | "updatedAt" | "email" | "username" | "displayName" | "role" | "isActive" | "lastLogin";
+                    /** @description Sort direction */
+                    sortOrder?: "asc" | "desc";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Users retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserListResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a new user
+         * @description Create a new user account with required username, email, firstName, and lastName.
+         *     DisplayName will be auto-generated from firstName + lastName.
+         *     Role defaults to 'staff' if not specified.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Required username
+                         * @example johndoe
+                         */
+                        username: string;
+                        /**
+                         * Format: email
+                         * @description User's email address
+                         * @example john.doe@example.com
+                         */
+                        email: string;
+                        /**
+                         * @description Required first name
+                         * @example John
+                         */
+                        firstName: string;
+                        /**
+                         * @description Required last name
+                         * @example Doe
+                         */
+                        lastName: string;
+                        /**
+                         * @description Optional display name. Auto-generated from firstName + lastName if not provided
+                         * @example John Doe
+                         */
+                        displayName?: string;
+                        /**
+                         * @description User role. Defaults to 'staff'
+                         * @default staff
+                         * @example admin
+                         * @enum {string}
+                         */
+                        role?: "admin" | "manager" | "staff";
+                        /**
+                         * Format: uri
+                         * @description Optional avatar URL
+                         */
+                        avatarUrl?: string;
+                        /** @description Optional phone number */
+                        phone?: string;
+                        /** @description Optional manager ID for staff assignments */
+                        managerId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description User created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserResponse"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized - Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden - Insufficient permissions to create users with specified role */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get user by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description User not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete user by ID */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MessageResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description User not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update user by ID */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        firstName?: string;
+                        lastName?: string;
+                        /** @enum {string} */
+                        role?: "admin" | "manager" | "staff";
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description User updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserResponse"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description User not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/users/{id}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reassign staff member to different manager */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Staff user ID to reassign */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description New manager ID to assign the staff member to */
+                        newManagerId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Staff member reassigned successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MessageResponse"];
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden - Admin only */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description User not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/users/bulk/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk activate users */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Array of user IDs to activate */
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Users activated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BaseResponse"] & {
+                            data?: {
+                                activated?: number;
+                                failed?: number;
+                                details?: Record<string, never>;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/bulk/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk deactivate users */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Array of user IDs to deactivate */
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Users deactivated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/bulk/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk delete users */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Array of user IDs to delete */
+                        ids: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Users deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export users to various formats */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Search term (applied if includeFilters is true) */
+                    search?: string;
+                    /** @description Filter by role */
+                    role?: "admin" | "manager" | "staff";
+                    /** @description Filter by active status */
+                    isActive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @default csv
+                         * @enum {string}
+                         */
+                        format?: "csv" | "excel" | "pdf" | "json";
+                        /** @description Column names to include in export */
+                        columns?: string[];
+                        /**
+                         * @description Whether to apply current filters
+                         * @default true
+                         */
+                        includeFilters?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Export file downloaded successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv": string;
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4186,11 +4479,11 @@ export interface components {
              */
             status?: "active" | "cancel" | "pending" | "expired";
             /**
-             * @description Subscription plan
+             * @description Subscription plan (modules: Basic, Print Check, Staff Performance, Unlimited SMS)
              * @example Premium
              * @enum {string|null}
              */
-            plan?: "Basic" | "Premium" | "Enterprise" | null;
+            plan?: "Basic" | "Premium" | "Print Check" | "Staff Performance" | "Unlimited SMS" | null;
             /**
              * @description Billing term
              * @example monthly

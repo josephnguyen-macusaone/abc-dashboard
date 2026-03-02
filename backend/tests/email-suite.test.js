@@ -257,7 +257,7 @@ async function testSending() {
       console.log('4. Check firewall settings for SMTP port access');
     }
 
-    console.log('5. Review the Email Setup Guide: backend/docs/email-setup-guide.md');
+    console.log('5. Review the Email Setup Guide: backend/docs/guides/email-setup.md');
     console.log('6. Check application logs for detailed error messages');
 
     return false;

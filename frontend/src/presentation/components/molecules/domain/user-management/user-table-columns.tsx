@@ -20,6 +20,7 @@ import {
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
 import type { User } from "@/domain/entities/user-entity";
 import type { DataTableRowAction, Option } from "@/types/data-table";
+import { USER_COLUMN_WIDTHS } from "@/shared/constants/user";
 
 import { CircleDashed, CheckCircle2, XCircle, Shield, Users, UserCog } from "lucide-react";
 import { Typography } from "@/presentation/components/atoms";
@@ -39,9 +40,7 @@ export const STATUS_OPTIONS: Option[] = [
 ];
 
 interface GetUserTableColumnsProps {
-  setRowAction: React.Dispatch<
-    React.SetStateAction<DataTableRowAction<User> | null>
-  >;
+  onRowAction: (action: DataTableRowAction<User>) => void;
   currentUserId: string;
   currentUserRole: string;
   canEdit: (user: User) => boolean;
@@ -78,7 +77,7 @@ function canToggleUserStatus(currentUserId: string, currentUserRole: string, tar
 }
 
 export function getUserTableColumns({
-  setRowAction,
+  onRowAction,
   currentUserId,
   canEdit,
   canDelete,
@@ -103,7 +102,7 @@ export function getUserTableColumns({
           </div>
         );
       },
-      size: 200,
+      ...USER_COLUMN_WIDTHS.displayName,
       meta: {
         label: "Name",
       },
@@ -119,7 +118,7 @@ export function getUserTableColumns({
           {row.getValue("username") || "-"}
         </span>
       ),
-      size: 150,
+      ...USER_COLUMN_WIDTHS.username,
       meta: {
         label: "Username",
       },
@@ -135,7 +134,7 @@ export function getUserTableColumns({
           {row.getValue("email")}
         </span>
       ),
-      size: 200,
+      ...USER_COLUMN_WIDTHS.email,
       meta: {
         label: "Email",
       },
@@ -151,7 +150,7 @@ export function getUserTableColumns({
           {row.getValue("phone") || "-"}
         </span>
       ),
-      size: 140,
+      ...USER_COLUMN_WIDTHS.phone,
       meta: {
         label: "Phone",
       },
@@ -165,7 +164,9 @@ export function getUserTableColumns({
       cell: ({ row }) => {
         const role = row.getValue("role") as string;
         return (
-          <RoleBadge role={role as import('@/shared/constants/auth').UserRoleType} variant="minimal" showIcon={true} />
+          <div className="flex justify-start items-center w-full">
+            <RoleBadge role={role as import('@/shared/constants/auth').UserRoleType} variant="minimal" showIcon={true} />
+          </div>
         );
       },
       enableColumnFilter: true,
@@ -173,24 +174,27 @@ export function getUserTableColumns({
         const role = row.getValue(id) as string;
         return Array.isArray(value) ? value.includes(role) : value === role;
       },
-      size: 150,
+      ...USER_COLUMN_WIDTHS.role,
       meta: {
         label: "Role",
         variant: "multiSelect",
         options: ROLE_OPTIONS,
         icon: Shield,
+        headerAlign: "start" as const,
       },
     },
     {
       id: "isActive",
       accessorKey: "isActive",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Status" className="text-center" />
+        <DataTableColumnHeader column={column} label="Status" />
       ),
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean;
         return (
-          <StatusBadge isActive={isActive} variant="minimal" showIcon={true} />
+          <div className="flex justify-start items-center w-full">
+            <StatusBadge isActive={isActive} variant="minimal" showIcon={true} />
+          </div>
         );
       },
       enableColumnFilter: true,
@@ -199,12 +203,13 @@ export function getUserTableColumns({
         const statusValue = isActive ? "true" : "false";
         return Array.isArray(value) ? value.includes(statusValue) : value === statusValue;
       },
-      size: 100,
+      ...USER_COLUMN_WIDTHS.isActive,
       meta: {
         label: "Status",
         variant: "multiSelect",
         options: STATUS_OPTIONS,
         icon: CircleDashed,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -225,7 +230,7 @@ export function getUserTableColumns({
           </span>
         );
       },
-      size: 120,
+      ...USER_COLUMN_WIDTHS.createdAt,
       meta: {
         label: "Created At",
       },
@@ -255,7 +260,7 @@ export function getUserTableColumns({
             <DropdownMenuContent align="end" className="w-40">
               {showEdit && (
                 <DropdownMenuItem
-                  onClick={() => setRowAction({ row, variant: "update" })}
+                  onClick={() => onRowAction({ row, variant: "update" })}
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   <Typography variant="body-s" className="text-foreground">Edit</Typography>
@@ -264,21 +269,21 @@ export function getUserTableColumns({
               {showEdit && showDelete && <DropdownMenuSeparator />}
               {showDelete && (
                 <DropdownMenuItem
-                  onClick={() => setRowAction({ row, variant: "delete" })}
+                  onClick={() => onRowAction({ row, variant: "delete" })}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   <Typography variant="body-s" className="text-destructive">Delete</Typography>
                 </DropdownMenuItem>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-      size: 70,
-      enableSorting: false,
-      enableHiding: false,
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
     },
-  ];
+    ...USER_COLUMN_WIDTHS.actions,
+    enableSorting: false,
+    enableHiding: false,
+  },
+];
 }
 
