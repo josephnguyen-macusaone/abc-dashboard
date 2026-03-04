@@ -51,10 +51,12 @@ export class RefreshTokenUseCase {
         throw new InvalidCredentialsException();
       }
 
-      // Generate new access token
+      // Generate new access token (include role and isActive for middleware auth decisions)
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
         email: user.email,
+        role: user.role,
+        isActive: user.isActive,
         requiresPasswordChange: user.requiresPasswordChange,
       });
 

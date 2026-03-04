@@ -513,8 +513,7 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
   router.post(
     '/',
     checkLicenseCreationPermission(),
-    // Temporarily disable Joi validation for sync
-    // validateRequest(licenseSchemas.createLicense),
+    validateRequest(licenseSchemas.createLicense),
     controller.createLicense
   );
 

@@ -2,13 +2,14 @@
  * Extracts userId from JWT for cache key scoping.
  * Runs before responseCachingMiddleware so we can cache authenticated GET responses
  * with user-scoped keys. Does not perform full auth - only decodes valid tokens.
+ * Reads token from Authorization header or HttpOnly cookie.
  */
 import jwt from 'jsonwebtoken';
 import { config } from '../../../config/config.js';
+import { getTokenFromRequest } from '../../../../shared/http/auth-cookies.js';
 
 export const extractUserIdForCache = (req, _res, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  const token = getTokenFromRequest(req);
 
   if (!token) {
     return next();

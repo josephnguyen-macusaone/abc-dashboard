@@ -569,15 +569,23 @@ export const cache = {
 
 export const cacheKeys = {
   user: (userId) => `user:${userId}`,
+  /** Used by auth middleware to cache loaded user after JWT verify (Redis or in-memory fallback) */
+  authUser: (userId) => `auth:user:${userId}`,
   userProfile: (userId) => `user:profile:${userId}`,
   apiResponse: (method, url, query = '', userId = '') =>
     userId ? `api:${method}:${url}:${query}:u${userId}` : `api:${method}:${url}:${query}`,
   userStats: (userId) => `user:stats:${userId}`,
+  /** Dashboard metrics response cache; key = hash of normalized query (filters + date range) */
+  dashboardMetrics: (queryHash) => `licenses:dashboard:metrics:${queryHash}`,
 };
 
 export const cacheTTL = {
   userData: config.CACHE_USER_DATA_TTL,
+  /** TTL for auth middleware user cache (short to keep role/status changes responsive) */
+  authUser: parseInt(process.env.CACHE_AUTH_USER_TTL, 10) || 60, // 60 seconds
   apiResponse: config.CACHE_API_RESPONSE_TTL,
+  /** Dashboard metrics response cache (short TTL so data stays fresh) */
+  dashboardMetrics: parseInt(process.env.CACHE_DASHBOARD_METRICS_TTL, 10) || 60, // 60 seconds
 };
 
 export default {

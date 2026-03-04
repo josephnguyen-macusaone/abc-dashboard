@@ -83,6 +83,9 @@ export * from './img-opt';
 export * from './circuit-breaker';
 export * from './token-manager';
 
+// Export PII masking for safe logging
+export * from './mask-pii';
+
 // Export theme utilities
 export * from './theme-utils';
 

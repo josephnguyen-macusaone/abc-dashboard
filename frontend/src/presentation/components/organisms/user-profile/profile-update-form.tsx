@@ -8,7 +8,6 @@ import { useProfileUpdateFormStore } from '@/infrastructure/stores/user/forms';
 import { useErrorHandler } from '@/presentation/contexts/error-context';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { cn } from '@/shared/helpers';
-import { isValidPhoneNumber } from 'react-phone-number-input';
 import { Save, X, Loader2 } from 'lucide-react';
 
 interface ProfileUpdateFormProps {
@@ -115,6 +114,7 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
             disabled={isLoading}
             inputClassName="h-11"
             className="space-y-3"
+            clearable
           />
 
           <PhoneField
@@ -125,6 +125,7 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
             disabled={isLoading}
             inputClassName="h-11"
             className="space-y-3"
+            clearable
           />
         </div>
 

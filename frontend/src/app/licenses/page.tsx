@@ -1,19 +1,20 @@
+'use client';
+
 import nextDynamic from 'next/dynamic';
 import { ProtectedRoute } from '@/presentation/components/routes';
 import { AccessDeniedPage } from '@/presentation/components/pages';
-import { DashboardTemplate } from '@/presentation/components/templates';
-import { LicensesDataGridSkeleton } from '@/presentation/components/organisms';
+import { LoadingOverlay } from '@/presentation/components/atoms';
 
-const LicenseManagementPage = nextDynamic(
+const LicensesContent = nextDynamic(
   () =>
-    import('@/presentation/components/pages/dashboard/license-management-page').then((m) => ({
-      default: m.LicenseManagementPage,
+    import('@/presentation/components/pages/dashboard/licenses-page-content').then((m) => ({
+      default: m.LicensesContent,
     })),
-  { loading: () => <LicensesDataGridSkeleton /> }
+  {
+    loading: () => <LoadingOverlay text="Loading license management..." />,
+    ssr: false, // Server never loads DashboardTemplate; avoids 20–30s render
+  }
 );
-
-// Force dynamic rendering for this protected route
-export const dynamic = 'force-dynamic';
 
 export default function LicensesPage() {
   return (
@@ -22,11 +23,7 @@ export default function LicensesPage() {
         <AccessDeniedPage message="You don't have permission to access license management." />
       }
     >
-      <DashboardTemplate>
-        <div className="space-y-8">
-          <LicenseManagementPage />
-        </div>
-      </DashboardTemplate>
+      <LicensesContent />
     </ProtectedRoute>
   );
 }

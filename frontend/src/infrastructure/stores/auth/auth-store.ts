@@ -66,77 +66,64 @@ export const useAuthStore = create<AuthState>()(
         });
 
         return {
-          // Initial state
+          // Initial state — isLoading: true so children block until initialize() resolves
           user: null,
           token: null,
-          isLoading: false,
+          isLoading: true,
           isAuthenticated: false,
           isLoggingOut: false,
           passwordResetSent: false,
           passwordResetEmail: null,
           tokenManager: null,
 
-          // Initialize auth state from storage
+          // Initialize auth state (HttpOnly cookies: always verify via getProfile)
+          // Never trust persisted state without verifying the HttpOnly cookie is still valid.
           initialize: async () => {
-            // Skip if already initialized (has user/token from persistence)
-            const currentState = get();
-            if (currentState.user && currentState.token) {
-              set({ isAuthenticated: true, isLoading: false });
-              // Schedule token refresh for existing token
-              get().scheduleTokenRefresh();
-              return;
-            }
-
             try {
               set({ isLoading: true });
 
-              // Try to get stored auth data
-              const storedToken = CookieService.getToken() || LocalStorageService.getToken();
               const storedUser = CookieService.getUser() || LocalStorageService.getUser();
-
-              if (storedToken) {
-                set({ token: storedToken });
-                httpClient.setAuthToken(storedToken);
-
-                // Initialize token manager and schedule refresh
-                const tokenManager = createTokenManager(
-                  () => get().refreshToken(),
-                  {
-                    onTokenExpired: () => get().handleAuthFailure(),
-                    onTokenRefreshed: (newToken) => {
-                      set({ token: newToken });
-                      httpClient.setAuthToken(newToken);
-                    }
-                  }
-                );
-                set({ tokenManager });
-                tokenManager.scheduleTokenRefresh(storedToken);
-              }
-
               if (storedUser) {
                 set({ user: storedUser });
               }
 
-              // If we have token but no user (e.g. user cookie expired), fetch profile
-              if (storedToken && !storedUser) {
-                try {
-                  const profileData = await authApi.getProfile();
-                  const user = User.fromObject(profileData as unknown as Record<string, unknown>);
-                  set({ user });
-                  CookieService.setUser(user);
-                  LocalStorageService.setUser(user);
-                } catch (profileError) {
-                  storeLogger.warn('Could not restore user from token, clearing auth', {
-                    error: profileError instanceof Error ? profileError.message : String(profileError)
-                  });
-                  set({ token: null, user: null });
-                  httpClient.setAuthToken(null);
+              // Token is in HttpOnly cookie - verify via getProfile
+              try {
+                const profileData = await authApi.getProfile();
+                const user = User.fromObject(profileData as unknown as Record<string, unknown>);
+                set({ user, isAuthenticated: true });
+                CookieService.setUser(user);
+                LocalStorageService.setUser(user);
+
+                const tokenManager = createTokenManager(
+                  () => get().refreshToken(),
+                  {
+                    onTokenExpired: () => get().handleAuthFailure(),
+                    onTokenRefreshed: () => { /* token in cookie */ }
+                  }
+                );
+                set({ tokenManager });
+                tokenManager.schedulePeriodicRefresh(55); // Refresh ~5 min before 1h expiry
+              } catch (profileError: unknown) {
+                // Only clear auth state for auth errors (401/403 = expired/invalid credentials).
+                // Preserve state on transient failures (network timeout, backend unavailable)
+                // so the user isn't logged out just because the server is temporarily down.
+                const status = (profileError as { status?: number })?.status;
+                const isAuthError = status === 401 || status === 403;
+                if (isAuthError) {
+                  set({ user: null, isAuthenticated: false });
                   CookieService.clearAuthCookies();
                   LocalStorageService.clearAuthData();
+                } else {
+                  // Non-auth error: keep persisted user so the UI isn't blank,
+                  // but mark as unauthenticated so protected routes re-verify.
+                  set({ isAuthenticated: false });
+                  storeLogger.warn('getProfile failed with non-auth error during init, will retry on next navigation', {
+                    status,
+                    error: profileError instanceof Error ? profileError.message : String(profileError),
+                  });
                 }
               }
-
-              set({ isAuthenticated: !!(get().user && get().token) });
             } catch (error) {
               storeLogger.error('Error initializing auth', { error: error instanceof Error ? error.message : String(error) });
             } finally {
@@ -166,31 +153,18 @@ export const useAuthStore = create<AuthState>()(
                 throw new Error('Please verify your email before logging in. Check your email for the verification link.');
               }
 
-              // Store token
-              set({ token: authResult.tokens.accessToken });
-              httpClient.setAuthToken(authResult.tokens.accessToken);
+              // Token stored in HttpOnly cookie by backend - no client storage
+              set({ token: null });
 
-              // Initialize token manager and schedule refresh
               const tokenManager = createTokenManager(
                 () => get().refreshToken(),
                 {
                   onTokenExpired: () => get().handleAuthFailure(),
-                  onTokenRefreshed: (newToken) => {
-                    set({ token: newToken });
-                    httpClient.setAuthToken(newToken);
-                  }
+                  onTokenRefreshed: () => { /* token in cookie */ }
                 }
               );
               set({ tokenManager });
-              tokenManager.scheduleTokenRefresh(authResult.tokens.accessToken);
-
-              // Store tokens
-              CookieService.setToken(authResult.tokens.accessToken);
-              LocalStorageService.setToken(authResult.tokens.accessToken);
-
-              if (authResult.tokens.refreshToken) {
-                LocalStorageService.setRefreshToken(authResult.tokens.refreshToken);
-              }
+              tokenManager.schedulePeriodicRefresh(55); // Refresh ~5 min before 1h expiry
 
               // Fetch complete profile data
               try {
@@ -232,27 +206,12 @@ export const useAuthStore = create<AuthState>()(
 
           refreshToken: async (): Promise<boolean> => {
             try {
-              const refreshToken = LocalStorageService.getRefreshToken();
-              if (!refreshToken) {
-                return false;
-              }
+              await authApi.refreshToken();
 
-              const newTokens = await authApi.refreshToken();
-
-              set({ token: newTokens.tokens.accessToken });
-              httpClient.setAuthToken(newTokens.tokens.accessToken);
-
-              CookieService.setToken(newTokens.tokens.accessToken);
-              LocalStorageService.setToken(newTokens.tokens.accessToken);
-
-              if (newTokens.tokens.refreshToken) {
-                LocalStorageService.setRefreshToken(newTokens.tokens.refreshToken);
-              }
-
-              // Re-schedule token refresh with new token
+              // Re-schedule periodic refresh (token in HttpOnly cookie)
               const tokenManager = get().tokenManager;
               if (tokenManager) {
-                tokenManager.scheduleTokenRefresh(newTokens.tokens.accessToken);
+                tokenManager.schedulePeriodicRefresh(55);
               }
 
               return true;
@@ -265,7 +224,6 @@ export const useAuthStore = create<AuthState>()(
               set({ user: null, token: null, isAuthenticated: false });
               CookieService.clearAuthCookies();
               LocalStorageService.clearAuthData();
-              httpClient.setAuthToken(null);
 
               // Clean up token manager
               const tokenManager = get().tokenManager;
@@ -410,11 +368,9 @@ export const useAuthStore = create<AuthState>()(
           },
 
           // Direct setters
-          setUser: (user: User | null) => set({ user, isAuthenticated: !!(user && get().token) }),
+          setUser: (user: User | null) => set({ user, isAuthenticated: !!user }),
           setToken: (token: string | null) => {
-            set({ token });
-            httpClient.setAuthToken(token);
-            set({ isAuthenticated: !!(get().user && token) });
+            set({ token, isAuthenticated: !!(get().user && token) });
           },
           setLoading: (isLoading: boolean) => set({ isLoading }),
 
@@ -447,11 +403,10 @@ export const useAuthStore = create<AuthState>()(
               category: 'auth-expiry'
             });
 
-            // Clear authentication state
+            // Clear authentication state (backend logout clears HttpOnly cookies)
             set({ user: null, token: null, isAuthenticated: false });
             CookieService.clearAuthCookies();
             LocalStorageService.clearAuthData();
-            httpClient.setAuthToken(null);
 
             // Clean up token manager
             const tokenManager = get().tokenManager;
@@ -466,13 +421,17 @@ export const useAuthStore = create<AuthState>()(
             }
           },
 
-          // Schedule token refresh for current token
+          // Schedule token refresh (HttpOnly: use periodic; else use token-based)
           scheduleTokenRefresh: () => {
             const token = get().token;
             const tokenManager = get().tokenManager;
 
-            if (token && tokenManager) {
-              tokenManager.scheduleTokenRefresh(token);
+            if (tokenManager) {
+              if (token) {
+                tokenManager.scheduleTokenRefresh(token);
+              } else {
+                tokenManager.schedulePeriodicRefresh(55); // HttpOnly: refresh ~5 min before 1h expiry
+              }
             }
           },
 
@@ -483,14 +442,15 @@ export const useAuthStore = create<AuthState>()(
           },
 
           isTokenExpired: (): boolean => {
+            // With HttpOnly cookies we cannot read token - assume not expired
             const token = get().token;
-            if (!token) return true;
+            if (!token) return false;
             try {
               const payload = JSON.parse(atob(token.split('.')[1]));
               const now = Math.floor(Date.now() / 1000);
               return typeof payload.exp === 'number' && payload.exp < now;
             } catch {
-              return true;
+              return false;
             }
           },
         };
@@ -499,9 +459,8 @@ export const useAuthStore = create<AuthState>()(
         name: 'auth-storage',
         partialize: (state) => ({
           user: state.user,
-          token: state.token,
           isAuthenticated: state.isAuthenticated,
-          // Don't persist isLoggingOut or tokenManager as they are temporary/runtime objects
+          // Token in HttpOnly cookie - not persisted
         }),
       }
     ),

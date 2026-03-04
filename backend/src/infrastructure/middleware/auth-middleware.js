@@ -1,12 +1,24 @@
 /**
  * Authentication Middleware
- * Handles JWT token verification and user authentication
+ * Handles JWT token verification and user authentication.
+ * Uses the unified cache (Redis when CACHE_TYPE=redis, else in-memory) to reduce DB round-trips.
+ * Reads token from Authorization header or HttpOnly cookie.
  */
 
 import { ROLES, hasPermission } from '../../shared/constants/roles.js';
 import logger from '../config/logger.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import { getTokenFromRequest } from '../../shared/http/auth-cookies.js';
+import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
+
+/** In-flight user load promises by userId to avoid thundering herd (multiple parallel requests all hitting DB before cache is set). */
+const inFlightUserLoads = new Map();
+
 export class AuthMiddleware {
+  /**
+   * @param {import('../../shared/services/token-service.js').TokenService} tokenService
+   * @param {import('../../infrastructure/repositories/user-repository.js').UserRepository} userRepository
+   */
   constructor(tokenService, userRepository) {
     this.tokenService = tokenService;
     this.userRepository = userRepository;
@@ -37,14 +49,7 @@ export class AuthMiddleware {
    */
   authenticate = async (req, res, next) => {
     try {
-      // TEMPORARY: Bypass authentication for license operations testing
-      if (req.originalUrl.includes('/licenses')) {
-        req.user = { id: '550e8400-e29b-41d4-a716-446655440000', role: 'admin' };
-        return next();
-      }
-
-      const authHeader = req.headers.authorization;
-      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+      const token = getTokenFromRequest(req);
 
       if (!token) {
         return sendErrorResponse(res, 'TOKEN_MISSING');
@@ -52,9 +57,27 @@ export class AuthMiddleware {
 
       // Verify token
       const decoded = this.tokenService.verifyToken(token);
+      const userId = decoded.userId;
 
-      // Find user
-      const user = await this.userRepository.findById(decoded.userId);
+      // Find user: cache first, then single-flight DB load so parallel requests share one lookup
+      const cacheKey = cacheKeys.authUser(userId);
+      let loadPromise = inFlightUserLoads.get(userId);
+      if (!loadPromise) {
+        loadPromise = (async () => {
+          let u = await cache.get(cacheKey);
+          if (!u) {
+            u = await this.userRepository.findById(userId);
+            if (!u) return null;
+            await cache.set(cacheKey, u, cacheTTL.authUser);
+          }
+          return u;
+        })();
+        inFlightUserLoads.set(userId, loadPromise);
+        loadPromise.finally(() => {
+          inFlightUserLoads.delete(userId);
+        });
+      }
+      const user = await loadPromise;
       if (!user) {
         return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
@@ -139,12 +162,10 @@ export class AuthMiddleware {
    */
   optionalAuth = async (req, res, next) => {
     try {
-      const authHeader = req.headers.authorization || req.headers.Authorization;
-      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+      const token = getTokenFromRequest(req);
 
       logger.debug('Optional auth check', {
         correlationId: req.correlationId,
-        hasAuthHeader: !!authHeader,
         hasToken: !!token,
         tokenLength: token ? token.length : 0,
       });

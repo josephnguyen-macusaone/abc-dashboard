@@ -1,19 +1,20 @@
+'use client';
+
 import nextDynamic from 'next/dynamic';
 import { ProtectedRoute } from '@/presentation/components/routes';
 import { AccessDeniedPage } from '@/presentation/components/pages';
-import { DashboardTemplate } from '@/presentation/components/templates';
-import { UserDataTableSkeleton } from '@/presentation/components/molecules/domain/user-management';
+import { LoadingOverlay } from '@/presentation/components/atoms';
 
-const UserManagementPage = nextDynamic(
+const UsersContent = nextDynamic(
   () =>
-    import('@/presentation/components/pages/dashboard/user-management-page').then((m) => ({
-      default: m.UserManagementPage,
+    import('@/presentation/components/pages/dashboard/users-page-content').then((m) => ({
+      default: m.UsersContent,
     })),
-  { loading: () => <UserDataTableSkeleton /> }
+  {
+    loading: () => <LoadingOverlay text="Loading user management..." />,
+    ssr: false, // Server never loads DashboardTemplate; avoids 20–30s render
+  }
 );
-
-// Force dynamic rendering for this protected route
-export const dynamic = 'force-dynamic';
 
 export default function UsersPage() {
   return (
@@ -22,11 +23,7 @@ export default function UsersPage() {
         <AccessDeniedPage message="You don't have permission to access user management." />
       }
     >
-      <DashboardTemplate>
-        <div className="space-y-8">
-          <UserManagementPage />
-        </div>
-      </DashboardTemplate>
+      <UsersContent />
     </ProtectedRoute>
   );
 }

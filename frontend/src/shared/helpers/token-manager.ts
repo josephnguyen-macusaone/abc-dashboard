@@ -26,6 +26,16 @@ export class TokenManager {
   private onTokenExpired?: () => void;
   private onTokenRefreshed?: (newToken: string) => void;
 
+  /** For HttpOnly cookies: schedule refresh on fixed interval (no token read) */
+  schedulePeriodicRefresh(intervalMinutes: number): void {
+    this.clearScheduledRefresh();
+    const intervalMs = intervalMinutes * 60 * 1000;
+    this.refreshTimeoutId = setTimeout(() => {
+      this.attemptTokenRefresh();
+      this.schedulePeriodicRefresh(intervalMinutes); // Reschedule
+    }, intervalMs);
+  }
+
   constructor(
     private config: TokenManagerConfig,
     private refreshTokenFn: () => Promise<boolean>,
@@ -238,12 +248,12 @@ export class TokenManager {
   }
 
   /**
-   * Get current token from storage
+   * Get current token from storage (null when using HttpOnly cookies)
    */
   private getCurrentToken(): string | null {
     if (typeof window === 'undefined') return null;
 
-    // Try cookies first
+    // With HttpOnly cookies, token is not readable - return null
     const getCookie = (name: string) => {
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);

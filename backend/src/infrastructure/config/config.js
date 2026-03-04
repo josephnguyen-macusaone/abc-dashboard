@@ -24,6 +24,18 @@ export const config = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1h', // Access token expiration
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d', // Refresh token expiration
   JWT_ISSUER: process.env.JWT_ISSUER || 'abc-dashboard',
+
+  // HttpOnly cookie config (for token storage)
+  // Use localhost when CLIENT_URL is localhost so cookie is shared across ports (3000/5001)
+  COOKIE_DOMAIN:
+    process.env.COOKIE_DOMAIN ||
+    ((process.env.CLIENT_URL || '').includes('localhost') ? 'localhost' : undefined),
+  // Secure=true only over HTTPS; localhost uses HTTP so cookies would not be sent
+  COOKIE_SECURE:
+    process.env.COOKIE_SECURE !== undefined
+      ? process.env.COOKIE_SECURE === 'true'
+      : process.env.NODE_ENV === 'production' && (process.env.CLIENT_URL || '').startsWith('https'),
+  COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE || 'lax',
   JWT_EMAIL_VERIFICATION_EXPIRES_IN: process.env.JWT_EMAIL_VERIFICATION_EXPIRES_IN || '24h', // Email verification expiration
   JWT_PASSWORD_RESET_EXPIRES_IN: process.env.JWT_PASSWORD_RESET_EXPIRES_IN || '10m', // Password reset expiration
   CLIENT_URL:

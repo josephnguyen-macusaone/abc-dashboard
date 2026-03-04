@@ -1,3 +1,5 @@
+'use client';
+
 import nextDynamic from 'next/dynamic';
 import { ProtectedRoute } from '@/presentation/components/routes';
 import { AccessDeniedPage } from '@/presentation/components/pages';
@@ -8,11 +10,11 @@ const DashboardPage = nextDynamic(
     import('@/presentation/components/pages/dashboard/dashboard-page').then((m) => ({
       default: m.DashboardPage,
     })),
-  { loading: () => <LoadingOverlay text="Loading dashboard..." /> }
+  {
+    loading: () => <LoadingOverlay text="Loading dashboard..." />,
+    ssr: false, // Skip SSR for heavy dashboard; server sends shell, client loads content (faster first response)
+  }
 );
-
-// Force dynamic rendering for this protected route
-export const dynamic = 'force-dynamic';
 
 export default function Dashboard() {
   return (

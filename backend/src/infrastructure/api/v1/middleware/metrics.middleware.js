@@ -58,21 +58,15 @@ export const cacheTrackingMiddleware = (req, res, next) => {
 /**
  * Middleware to track user activity
  */
+import { getTokenFromRequest } from '../../../../shared/http/auth-cookies.js';
+
 export const userActivityMiddleware = (req, res, next) => {
-  // Extract user ID from JWT token if available
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  // Extract user ID from JWT token if available (header or cookie)
+  const token = getTokenFromRequest(req);
+  if (token && token.length > 10) {
     try {
-      // Note: In a real implementation, you'd decode the JWT to get user ID
-      // For now, we'll use a simplified approach
-      const token = authHeader.substring(7);
-      if (token && token.length > 10) {
-        // Basic validation
-        // In a real app, decode JWT to get user ID
-        // For demo purposes, we'll use a hash of the token as user identifier
-        const userId = Buffer.from(token.substring(0, 10)).toString('base64');
-        applicationMetrics.recordActiveUser(userId);
-      }
+      const userId = Buffer.from(token.substring(0, 10)).toString('base64');
+      applicationMetrics.recordActiveUser(userId);
     } catch (error) {
       logger.warn('Could not extract user ID from token:', error.message);
     }
@@ -184,10 +178,12 @@ async function invalidateCacheForEndpoint(path, _method) {
   // User-related endpoints
   if (path.includes('/users')) {
     patterns.push('api:GET:/api/v1/users*'); // Invalidate all user list queries
-    if (path.match(/\/users\/\d+/)) {
-      const userId = path.split('/').pop();
+    const userSegment = path.match(/\/users\/([^/]+)/);
+    if (userSegment) {
+      const userId = userSegment[1];
       patterns.push(`user:${userId}`); // Invalidate specific user cache
       patterns.push(`user:profile:${userId}`); // Invalidate user profile cache
+      patterns.push(`auth:user:${userId}`); // Invalidate auth middleware user cache
     }
   }
 
@@ -199,10 +195,11 @@ async function invalidateCacheForEndpoint(path, _method) {
     }
   }
 
-  // Auth endpoints - clear all user-related caches
+  // Auth endpoints (e.g. password change) - clear all user-related caches
   if (path.includes('/auth')) {
     patterns.push('user:*');
     patterns.push('user:profile:*');
+    patterns.push('auth:user:*');
   }
 
   // Clear cache patterns

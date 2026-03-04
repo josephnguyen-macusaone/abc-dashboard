@@ -10,6 +10,7 @@ import http from 'http';
 import express from 'express';
 import compression from 'compression';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import expressSanitizer from 'express-sanitizer';
 import path from 'path';
@@ -143,6 +144,7 @@ app.use(responseHelpersMiddleware);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Input sanitization (req.body, req.query, req.params) - must run after body parsing
 app.use(expressSanitizer());

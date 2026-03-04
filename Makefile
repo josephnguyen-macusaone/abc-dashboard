@@ -1,18 +1,19 @@
 # ABC Dashboard – Makefile
 # Run from repo root. Requires .env (see docs/DEPLOYMENT-GUIDE.md).
 
-.PHONY: help deploy deploy-sync up down down-volumes build db-reset db-reset-sync sync-10 wait-backend logs-backend
+.PHONY: help deploy deploy-sync up up-backend down down-volumes build db-reset db-reset-sync sync-10 wait-backend logs-backend
 
 # Default target
 help:
 	@echo "ABC Dashboard – targets (run from repo root)"
 	@echo ""
-	@echo "  make deploy            Drop DB, (re)build images, start stack, migrate, seed"
+	@echo "  make deploy            Drop DB, (re)build backend, start backend (+ deps), migrate, seed"
 	@echo "  make deploy-sync       Same as deploy + full license sync"
-	@echo "  make up                Start stack (uses scripts/docker-compose-up.sh for enc: password)"
+	@echo "  make up                Start full stack (uses scripts/docker-compose-up.sh for enc: password)"
+	@echo "  make up-backend        Start backend only (+ postgres, redis, etc.)"
 	@echo "  make down              Stop stack"
 	@echo "  make down-volumes      Stop + remove volumes (fix enc: password mismatch)"
-	@echo "  make build             Build backend + frontend images"
+	@echo "  make build             Build backend image only"
 	@echo "  make db-reset          Drop DB, migrate, seed (stack must be running)"
 	@echo "  make db-reset-sync     Same + license sync (full). Quick test: make db-reset-sync SYNC=10"
 	@echo "  make sync-10           Sync only, 10 pages (no DB reset; stack must be running)"
@@ -22,18 +23,22 @@ help:
 	@echo "If backend is unhealthy: run 'make logs-backend'. See docs/DEPLOYMENT-GUIDE.md (Docker / DB password)."
 	@echo ""
 
-# Full redeploy: down → build → up → wait → drop DB + migrate + seed
-deploy: down build up wait-backend db-reset
-	@echo "✅ deploy done. Backend: http://localhost:5001  Frontend: http://localhost:3001"
+# Full redeploy (backend only): down → build backend → up backend → wait → drop DB + migrate + seed
+deploy: down build up-backend wait-backend db-reset
+	@echo "✅ deploy done. Backend: http://localhost:5001"
 
 # Same as deploy + license sync
-deploy-sync: down build up wait-backend
+deploy-sync: down build up-backend wait-backend
 	@$(MAKE) db-reset-sync
-	@echo "✅ deploy-sync done. Backend: http://localhost:5001  Frontend: http://localhost:3001"
+	@echo "✅ deploy-sync done. Backend: http://localhost:5001"
 
 # Start stack (handles POSTGRES_PASSWORD=enc: via scripts)
 up:
 	@./scripts/docker-compose-up.sh up -d
+
+# Start backend only (+ deps: postgres, redis, etc.)
+up-backend:
+	@./scripts/docker-compose-up.sh up -d backend
 
 # Stop stack
 down:
@@ -43,9 +48,9 @@ down:
 down-volumes:
 	@docker compose down -v
 
-# Build backend and frontend images
+# Build backend image only
 build:
-	@docker compose build backend frontend
+	@docker compose build backend
 
 # Wait for backend to be up (needed after 'up' before db-reset)
 wait-backend:

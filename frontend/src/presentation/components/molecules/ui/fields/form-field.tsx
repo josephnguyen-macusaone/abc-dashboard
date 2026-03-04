@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Typography, Input, Label } from '@/presentation/components/atoms';
+import { Typography, Input, Label, Button } from '@/presentation/components/atoms';
 import { cn } from '@/shared/helpers';
+import { X } from 'lucide-react';
 
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
@@ -108,6 +109,8 @@ export interface InputFieldProps extends Omit<FormFieldProps, 'children'> {
   icon?: React.ReactNode;
   inputClassName?: string;
   maxLength?: number;
+  /** When true, show a clear (X) button when the field has a value */
+  clearable?: boolean;
 }
 
 export function InputField({
@@ -125,9 +128,11 @@ export function InputField({
   inputClassName,
   description,
   id,
-  maxLength
+  maxLength,
+  clearable = false,
 }: InputFieldProps) {
-
+  const hasValue = typeof value === 'string' && value.trim() !== '';
+  const onClear = () => onChange?.({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>);
 
   return (
     <FormField
@@ -154,10 +159,24 @@ export function InputField({
           maxLength={maxLength}
           className={cn(
             icon && 'pl-10',
+            clearable && hasValue && 'pr-10',
             error && 'border-destructive focus:border-destructive',
             inputClassName
           )}
         />
+        {clearable && hasValue && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={onClear}
+            disabled={disabled}
+            aria-label="Clear field"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </FormField>
   );
