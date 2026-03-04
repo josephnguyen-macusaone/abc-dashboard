@@ -7,6 +7,12 @@ import logger from '../config/logger.js';
 import { AuthValidator } from '../../application/validators/index.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import {
+  setTokenCookie,
+  setRefreshTokenCookie,
+  clearAuthCookies,
+  getRefreshTokenFromRequest,
+} from '../../shared/http/auth-cookies.js';
+import {
   InvalidCredentialsException,
   ValidationException,
   ResourceNotFoundException,
@@ -94,6 +100,10 @@ export class AuthController extends BaseController {
 
       await resetFailedAttempts(req);
 
+      // Set HttpOnly cookies for token storage (frontend uses credentials: 'include')
+      setTokenCookie(res, result.tokens.accessToken);
+      setRefreshTokenCookie(res, result.tokens.refreshToken);
+
       return res.success(result, 'Login successful');
     } catch (error) {
       if (error instanceof InvalidCredentialsException) {
@@ -169,12 +179,16 @@ export class AuthController extends BaseController {
 
   async refreshToken(req, res) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = getRefreshTokenFromRequest(req);
 
       // Use comprehensive AuthValidator for refresh token
       AuthValidator.validateRefreshToken({ refreshToken });
 
       const result = await this.refreshTokenUseCase.execute({ refreshToken });
+
+      // Set HttpOnly cookies with new tokens
+      setTokenCookie(res, result.tokens.accessToken);
+      setRefreshTokenCookie(res, result.tokens.refreshToken);
 
       return res.success(result, 'Token refreshed successfully');
     } catch (error) {
@@ -236,16 +250,15 @@ export class AuthController extends BaseController {
 
   async logout(req, res) {
     try {
-      if (!req.user) {
-        return sendErrorResponse(res, 'TOKEN_MISSING');
-      }
+      // Clear HttpOnly auth cookies (works with or without valid token)
+      clearAuthCookies(res);
 
-      // With JWT-based refresh tokens, logout is implicit through token expiration
-      // No database cleanup needed as refresh tokens are self-contained
-      logger.debug('User logout processed', {
-        correlationId: req.correlationId,
-        userId: req.user.id || req.user._id?.toString(),
-      });
+      if (req.user) {
+        logger.debug('User logout processed', {
+          correlationId: req.correlationId,
+          userId: req.user.id || req.user._id?.toString(),
+        });
+      }
 
       return res.success(null, 'Logout successful');
     } catch (error) {

@@ -1,6 +1,6 @@
 # Deployment & Operations Guide
 
-One guide for production deployment, Docker/local operations, and troubleshooting.
+Single source for production deployment, Docker/local operations, and troubleshooting. This is the main operations document for the ABC Dashboard.
 
 ---
 
@@ -354,11 +354,43 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 
 ---
 
-## 2.5 Quick reference
+## 2.5 Production / SSL
+
+### "Did Not Connect: Potential Security Issue" / SEC_ERROR_EXPIRED_CERTIFICATE
+
+**Where:** Browser when opening the production site (e.g. `https://portal.abcsalon.us`).
+
+**Cause:** The site’s SSL/TLS certificate has expired. Browsers (and HSTS, if enabled) block access until the certificate is renewed.
+
+**Fix (on the production server):**
+
+1. **SSH to the server** where the site is hosted and where HTTPS is terminated (e.g. OpenLiteSpeed, Nginx, or Caddy).
+
+2. **Renew the certificate.**  
+   - **If using Let’s Encrypt (Certbot):**
+     ```bash
+     sudo certbot renew
+     ```
+     Then reload the web server (e.g. `sudo systemctl reload openlitespeed` or `sudo systemctl reload nginx`).
+   - **If using a commercial or custom certificate:** Install the new certificate and key in the place your web server expects (see the server’s SSL docs), then reload the web server.
+
+3. **Reload the web server** so it uses the new certificate:
+   - OpenLiteSpeed: WebAdmin → Graceful Restart, or `sudo systemctl reload openlitespeed` (if applicable).
+   - Nginx: `sudo systemctl reload nginx`.
+   - Caddy: `sudo systemctl reload caddy`.
+
+4. **Optional – avoid future expiry:** If using Certbot, enable a cron job or systemd timer so renewal runs automatically (e.g. `certbot renew --quiet` twice daily).
+
+**Note:** This repo does not store or manage SSL certificates; renewal is done on the host that serves `portal.abcsalon.us` (reverse proxy / web server).
+
+---
+
+## 2.6 Quick reference
 
 | Symptom | Section / action |
 |--------|-------------------|
 | DB password auth in Docker | [2.1 Password auth](#password-authentication-failed-for-user-abc_user) |
+| Expired SSL / SEC_ERROR_EXPIRED_CERTIFICATE | [2.5 Production / SSL](#did-not-connect-potential-security-issue--sec_error_expired_certificate) |
 | Encrypted DB password, start command | [scripts/README.md](../scripts/README.md) |
 | Deploy and secrets | [1. Deployment](#1-deployment) |
 | agentsName / agents_name | [backend/docs/guides/agents-name-field.md](../backend/docs/guides/agents-name-field.md) |
@@ -397,8 +429,6 @@ When using OpenLiteSpeed as a reverse proxy, configure a WebSocket proxy for rea
 4. Save and graceful restart
 
 **If WebSocket proxy cannot be configured:** Set `WEBSOCKET_ENABLED=false` in `.env` (single source for both backend and frontend). Rebuild the frontend image. The app will fall back to polling (LicenseSyncButton) and sync will still work.
-
-See [docs/WEBSOCKET-CONNECTION-FIX-PLAN.md](WEBSOCKET-CONNECTION-FIX-PLAN.md) for troubleshooting.
 
 ---
 

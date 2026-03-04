@@ -1,7 +1,6 @@
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
-import { httpClient } from '@/infrastructure/api/core/client';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 export interface LogoutUseCaseContract {
@@ -40,11 +39,10 @@ export function createLogoutUseCase(
         // Continue with cleanup even if API call fails
       }
 
-      // Always perform local cleanup
+      // Always perform local cleanup (backend clears HttpOnly token cookie)
       try {
         CookieService.clearAuthCookies();
         LocalStorageService.clearAuthData();
-        httpClient.setAuthToken(null);
 
         // Log successful cleanup (only in development)
         if (process.env.NODE_ENV === 'development') {

@@ -60,10 +60,12 @@ export class LoginUseCase {
       const requiresPasswordChange =
         user.isFirstLogin === true || user.requiresPasswordChange === true;
 
-      // Generate tokens
+      // Generate tokens (include role and isActive for middleware auth decisions)
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
         email: user.email,
+        role: user.role,
+        isActive: user.isActive,
         requiresPasswordChange,
       });
 

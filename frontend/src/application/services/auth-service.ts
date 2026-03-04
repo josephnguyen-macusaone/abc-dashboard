@@ -12,6 +12,7 @@ import { useAuthStore } from '@/infrastructure/stores';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { maskEmail } from '@/shared/helpers/mask-pii';
 import { getErrorMessage } from '@/infrastructure/api/core/errors';
 
 export interface AuthPorts {
@@ -53,7 +54,7 @@ export class AuthService {
     } catch (error) {
       this.logger.error(`Login error`, {
         correlationId,
-        email,
+        email: maskEmail(email),
         operation: 'login_error',
         error: error instanceof Error ? error.message : String(error),
       });
@@ -121,14 +122,7 @@ export class AuthService {
     try {
       const tokens = await this.authRepository.refreshToken();
 
-      // Persist and propagate tokens
-      authStore.setToken(tokens.accessToken);
-      CookieService.setToken(tokens.accessToken);
-      LocalStorageService.setToken(tokens.accessToken);
-      if (tokens.refreshToken) {
-        LocalStorageService.setRefreshToken(tokens.refreshToken);
-      }
-
+      // Tokens in HttpOnly cookies - no client storage
       return tokens;
     } catch (error) {
       this.logger.error(`Token refresh error`, {

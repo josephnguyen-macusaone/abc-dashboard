@@ -55,19 +55,11 @@ export class AuthApiService {
 
   /**
    * Refresh authentication token
+   * Uses HttpOnly refreshToken cookie (sent automatically with credentials: 'include')
    */
   static async refreshToken(): Promise<{ tokens: AuthTokensDto }> {
     try {
-      // Get refresh token from localStorage
-      const refreshToken = localStorage.getItem('refreshToken');
-
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const response = await httpClient.post<ApiResponse<{ tokens: AuthTokensDto }>>('/auth/refresh', {
-        refreshToken
-      });
+      const response = await httpClient.post<ApiResponse<{ tokens: AuthTokensDto }>>('/auth/refresh', {});
 
       if (!response.data) {
         throw new Error('Refresh token response missing data');

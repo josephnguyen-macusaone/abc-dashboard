@@ -508,7 +508,7 @@ class Container {
     return this.instances.get('externalLicenseController');
   }
 
-  // Middleware
+  // Middleware (auth uses unified cache from infrastructure/config/redis.js: Redis or in-memory)
   async getAuthMiddleware() {
     if (!this.instances.has('authMiddleware')) {
       this.instances.set(

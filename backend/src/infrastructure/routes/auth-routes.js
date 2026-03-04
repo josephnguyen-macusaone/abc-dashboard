@@ -3,6 +3,16 @@ import { validateRequest } from '../middleware/validation-middleware.js';
 import { authSchemas } from '../api/v1/schemas/auth.schemas.js';
 import { optionalAuth, authenticate } from '../middleware/auth-middleware.js';
 import { accountLockout, createRateLimit } from '../api/v1/middleware/security.middleware.js';
+import { getRefreshTokenFromRequest } from '../../shared/http/auth-cookies.js';
+
+/** Inject refreshToken from cookie into body for validation (HttpOnly cookie flow) */
+function injectRefreshTokenFromCookie(req, _res, next) {
+  if (!req.body) req.body = {};
+  if (!req.body.refreshToken) {
+    req.body.refreshToken = getRefreshTokenFromRequest(req);
+  }
+  next();
+}
 
 /**
  * Auth Routes
@@ -171,6 +181,7 @@ export function createAuthRoutes(authController) {
   router.post(
     '/refresh',
     refreshLimiter,
+    injectRefreshTokenFromCookie,
     validateRequest(authSchemas.refreshToken),
     authController.refreshToken.bind(authController)
   );
@@ -197,7 +208,8 @@ export function createAuthRoutes(authController) {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/logout', authenticate, authController.logout.bind(authController));
+  // Logout does not require auth - clears HttpOnly cookies (works with expired token)
+  router.post('/logout', authController.logout.bind(authController));
 
   /**
    * @swagger

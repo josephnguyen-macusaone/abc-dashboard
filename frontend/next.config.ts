@@ -194,12 +194,21 @@ const nextConfig: NextConfig = {
     return config;
   },
 
-  // Proxy configuration for API routes
+  // Proxy configuration: /api/v1/* -> backend (for same-origin cookies with HttpOnly)
+  // When NEXT_PUBLIC_USE_RELATIVE_API=true, frontend calls /api/v1/* (same origin).
+  // Rewrite forwards to backend; cookies set by backend response apply to frontend origin.
   async rewrites() {
+    const backendUrl =
+      process.env.BACKEND_URL ||
+      (process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5001');
     return [
       {
+        source: '/api/v1/:path*',
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+      {
         source: '/api/:path*',
-        destination: '/api/:path*', // Keep local API routes as-is
+        destination: '/api/:path*', // Keep other /api routes (e.g. csp-report) as-is
       },
     ];
   },

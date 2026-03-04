@@ -127,6 +127,8 @@ describe('RefreshTokenUseCase', () => {
       expect(mockTokenService.generateAccessToken).toHaveBeenCalledWith({
         userId: mockUser.id,
         email: mockUser.email,
+        role: mockUser.role,
+        isActive: mockUser.isActive,
         requiresPasswordChange: mockUser.requiresPasswordChange,
       });
 

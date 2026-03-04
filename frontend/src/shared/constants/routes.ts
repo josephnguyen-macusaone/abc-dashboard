@@ -28,6 +28,8 @@ export const ROUTES = {
 
   // Protected routes
   DASHBOARD: '/dashboard',
+  USERS: '/users',
+  LICENSES: '/licenses',
   PROFILE: '/profile',
   PROFILE_EDIT: '/profile/edit',
   PROFILE_CHANGE_PASSWORD: '/profile/change-password',
@@ -69,6 +71,26 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     path: ROUTES.DASHBOARD,
     title: 'Dashboard',
     description: 'System dashboard and overview',
+    requireAuth: true,
+    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    redirectTo: ROUTES.LOGIN,
+    showInNav: true,
+  },
+
+  [ROUTES.USERS]: {
+    path: ROUTES.USERS,
+    title: 'Users',
+    description: 'User management',
+    requireAuth: true,
+    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    redirectTo: ROUTES.LOGIN,
+    showInNav: true,
+  },
+
+  [ROUTES.LICENSES]: {
+    path: ROUTES.LICENSES,
+    title: 'Licenses',
+    description: 'License management',
     requireAuth: true,
     allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
     redirectTo: ROUTES.LOGIN,

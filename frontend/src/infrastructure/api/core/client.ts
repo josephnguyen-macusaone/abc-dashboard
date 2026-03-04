@@ -9,7 +9,7 @@ import { RequestConfig, RetryConfig } from '@/infrastructure/api/core/types';
 import { handleApiError } from '@/infrastructure/api/core/errors';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 import { startTrace, injectIntoHeaders, TraceContext } from '@/shared/helpers/tracing';
-import { API_CONFIG, STORAGE_KEYS } from '@/shared/constants';
+import { API_CONFIG } from '@/shared/constants';
 import { createApiCircuitBreaker, CircuitBreaker } from '@/shared/helpers/circuit-breaker';
 
 // Default configuration - API_CONFIG.BASE_URL already handles validation and normalization
@@ -28,7 +28,7 @@ class HttpClient {
     resolve: (token: string) => void;
     reject: (error: unknown) => void;
   }> = [];
-  private pendingRequests = new Map<string, Promise<any>>(); // Request deduplication cache
+  private pendingRequests = new Map<string, Promise<unknown>>(); // Request deduplication cache
   private circuitBreaker: CircuitBreaker;
 
   // Create child logger for HttpClient with component context
@@ -41,6 +41,7 @@ class HttpClient {
     this.instance = axios.create({
       baseURL,
       timeout: config?.timeout || DEFAULT_TIMEOUT,
+      withCredentials: true, // Send HttpOnly cookies with cross-origin requests
       headers: {
         'Content-Type': 'application/json',
         ...config?.headers,
@@ -81,20 +82,8 @@ class HttpClient {
         const traceHeaders = injectIntoHeaders(trace);
         Object.assign(config.headers, traceHeaders);
 
-        // Add authorization header if token exists
-        if (typeof window !== 'undefined') {
-          const token = this.getAuthToken();
-          if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`;
-          } else if (config.url && !/\/auth\/(login|register|forgot-password|verify-email)/.test(String(config.url))) {
-            // Only log when token is missing for protected endpoints (skip auth routes)
-            this.httpLogger.debug('No token found for request', {
-              correlationId,
-              url: config.url,
-              category: 'api-auth',
-            });
-          }
-        }
+        // Token is in HttpOnly cookie - sent automatically with withCredentials: true
+        // Do not add Authorization header; backend reads token from cookie
 
         // Add timestamp for cache busting
         if (config.method?.toUpperCase() === 'GET') {
@@ -172,19 +161,6 @@ class HttpClient {
           details: errorResponse.details,
         });
 
-        // Auto-logout on network error when token is expired (e.g. CORS hides 401, so we see network error)
-        const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
-        const token = this.getAuthToken();
-        if (isNetworkError && token && this.isTokenExpired(token) && !this.authFailureHandled) {
-          this.httpLogger.warn('Network error with expired token - treating as auth failure and logging out', {
-            correlationId,
-            category: 'api-auth',
-          });
-          await this.handleAuthFailure();
-          errorResponse.authHandled = true;
-          return Promise.reject(errorResponse);
-        }
-
         // Handle 403 (Forbidden) - treat as auth failure, no refresh attempt
         if (error.response?.status === 403 && !this.authFailureHandled) {
           await this.handleAuthFailure();
@@ -201,16 +177,6 @@ class HttpClient {
             return Promise.reject(errorResponse);
           }
 
-          // Check token expiration proactively
-          const token = this.getAuthToken();
-          if (token && this.isTokenExpired(token)) {
-            // Token is expired, skip refresh attempt and handle auth failure directly
-            await this.handleAuthFailure();
-            // Mark the error as auth-handled so components don't show error messages
-            errorResponse.authHandled = true;
-            return Promise.reject(errorResponse);
-          }
-
           if (this.isRefreshing) {
             // If refresh is already in progress, queue this request
             return new Promise((resolve, reject) => {
@@ -220,16 +186,7 @@ class HttpClient {
 
           originalRequest._retry = true;
 
-          // Check if we have a refresh token
-          const refreshToken = this.getRefreshToken();
-          if (!refreshToken) {
-            // No refresh token, handle auth failure
-            await this.handleAuthFailure();
-            // Mark the error as auth-handled so components don't show error messages
-            errorResponse.authHandled = true;
-            return Promise.reject(errorResponse);
-          }
-
+          // Refresh token is in HttpOnly cookie - always attempt refresh
           this.isRefreshing = true;
 
           try {
@@ -237,16 +194,10 @@ class HttpClient {
             const refreshResult = await this.attemptTokenRefresh();
 
             if (refreshResult) {
-              // Token refresh successful, retry original request
-              const newToken = this.getAuthToken();
-              if (newToken && originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${newToken}`;
-              }
+              // Token refresh successful - new token in HttpOnly cookie, retry original request
+              this.processQueue(null, 'refreshed');
 
-              // Process queued requests with the new token
-              this.processQueue(null, newToken);
-
-              // Retry the original request
+              // Retry the original request (cookie sent automatically)
               return this.instance(originalRequest);
             } else {
               // Token refresh failed - reject all queued requests and handle auth failure once
@@ -292,59 +243,10 @@ class HttpClient {
   }
 
   /**
-   * Get authentication token from cookies or localStorage.
-   * Uses same keys as CookieService ('token') and LocalStorageService (STORAGE_KEYS.TOKEN).
-   */
-  private getAuthToken(): string | null {
-    if (typeof window === 'undefined') return null;
-
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(';').shift();
-      return null;
-    };
-
-    return getCookie('token') || localStorage.getItem(STORAGE_KEYS.TOKEN);
-  }
-
-  /**
-   * Get refresh token from localStorage.
-   * Uses same key as LocalStorageService (STORAGE_KEYS.REFRESH_TOKEN).
-   */
-  private getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-  }
-
-  /**
-   * Check if JWT token is expired
-   */
-  private isTokenExpired(token: string): boolean {
-    try {
-      // Decode JWT payload (base64 decode the middle part)
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Math.floor(Date.now() / 1000);
-      return payload.exp < currentTime;
-    } catch (error) {
-      // If we can't decode the token, assume it's expired for safety
-      return true;
-    }
-  }
-
-  /**
    * Attempt to refresh the authentication token
    */
   private async attemptTokenRefresh(): Promise<boolean> {
     try {
-      const refreshToken = this.getRefreshToken();
-      if (!refreshToken) {
-        this.httpLogger.warn('No refresh token available for token refresh attempt', {
-          category: 'api-auth',
-        });
-        return false;
-      }
-
       this.httpLogger.info('Attempting token refresh', {
         category: 'api-auth',
       });
@@ -460,22 +362,21 @@ class HttpClient {
   }
 
   /**
-   * Generic GET request with deduplication and circuit breaker protection
+   * Generic GET request with deduplication and circuit breaker protection.
+   * Dedup key omits _t (cache-busting) so identical logical requests share one in-flight request.
    */
   async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.circuitBreaker.execute(async () => {
-      // Create a cache key for GET requests
-      const cacheKey = `GET:${url}:${JSON.stringify(config?.params || {})}`;
+      const params = config?.params && typeof config.params === 'object' ? { ...config.params } : {};
+      delete (params as Record<string, unknown>)._t;
+      const cacheKey = `GET:${url}:${JSON.stringify(params)}`;
 
-      // Check if identical request is already in flight
       const pendingRequest = this.pendingRequests.get(cacheKey);
       if (pendingRequest) {
         return pendingRequest;
       }
 
-      // Create new request and cache it
       const request = this.instance.get(url, config).then(response => response.data).finally(() => {
-        // Clean up cache after request completes (success or failure)
         this.pendingRequests.delete(cacheKey);
       });
 

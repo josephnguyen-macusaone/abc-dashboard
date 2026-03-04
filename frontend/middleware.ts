@@ -1,7 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ROUTE_CONFIGS, AUTH_ROUTES, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
+import { ROUTE_CONFIGS, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+
+/**
+ * Decode JWT payload without verification (middleware uses for role/isActive only;
+ * API still verifies token). Returns null on parse error.
+ */
+function decodeJwtPayload(token: string): { role?: string; isActive?: boolean; exp?: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
+    return JSON.parse(json) as { role?: string; isActive?: boolean; exp?: number };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Build connect-src value for CSP. Allows same-origin plus API origin when frontend and API
@@ -23,13 +39,23 @@ function getConnectSrc(): string {
 }
 
 /**
- * Build full Content-Security-Policy header value (includes dynamic connect-src for API).
+ * Build Content-Security-Policy with optional nonce (Phase 5 hardening).
+ * - Production: nonce for scripts/styles; no unsafe-eval
+ * - Development: unsafe-eval required for React dev; unsafe-inline for HMR
  */
-function buildCsp(): string {
+function buildCsp(nonce?: string): string {
+  const isDev = process.env.NODE_ENV === 'development';
+  const scriptSrc = nonce && !isDev
+    ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
+    : `'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`;
+  const styleSrc = nonce && !isDev
+    ? `'self' 'nonce-${nonce}'`
+    : `'self' 'unsafe-inline'`;
+
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
+    `script-src ${scriptSrc}`,
+    `style-src ${styleSrc}`,
     "img-src 'self' data: https:",
     "font-src 'self' https://fonts.gstatic.com",
     `connect-src ${getConnectSrc()}`,
@@ -38,7 +64,7 @@ function buildCsp(): string {
     "base-uri 'self'",
     "form-action 'self'",
     "upgrade-insecure-requests",
-    process.env.NODE_ENV === 'development' ? "report-uri /api/csp-report" : ""
+    isDev ? "report-uri /api/csp-report" : ""
   ].filter(Boolean).join('; ');
 }
 
@@ -52,13 +78,18 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 /**
- * Apply security headers to response (CSP with API origin in connect-src).
+ * Apply security headers to response (CSP with optional nonce in production).
  */
-function applySecurityHeaders(response: NextResponse) {
-  response.headers.set('Content-Security-Policy', buildCsp());
+function applySecurityHeaders(response: NextResponse, nonce?: string) {
+  response.headers.set('Content-Security-Policy', buildCsp(nonce));
   Object.entries(SECURITY_HEADERS).forEach(([header, value]) => {
     response.headers.set(header, value);
   });
+}
+
+/** Generate CSP nonce for production (Next.js picks up x-nonce for inline scripts). Edge-safe. */
+function generateNonce(): string {
+  return crypto.randomUUID().replace(/-/g, '');
 }
 
 export function middleware(request: NextRequest) {
@@ -70,6 +101,9 @@ export function middleware(request: NextRequest) {
   });
 
   const { pathname } = request.nextUrl;
+
+  // CSP nonce for production (enables strict script-src without unsafe-inline)
+  const nonce = process.env.NODE_ENV === 'production' ? generateNonce() : undefined;
 
   // ==========================================================================
   // SECURITY: Block malformed Server Action requests from bots/scanners
@@ -96,7 +130,7 @@ export function middleware(request: NextRequest) {
         JSON.stringify({ error: 'Invalid request' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
-      applySecurityHeaders(response);
+      applySecurityHeaders(response, nonce);
       return response;
     }
 
@@ -122,10 +156,12 @@ export function middleware(request: NextRequest) {
     pathname.includes('.') ||
     pathname.startsWith('/favicon')
   ) {
-    return NextResponse.next();
+    const res = NextResponse.next();
+    applySecurityHeaders(res, nonce);
+    return res;
   }
 
-  // Get auth token from cookies (using the same names as CookieService)
+  // Get auth token from cookies (derive role/isActive from JWT; don't trust user cookie for auth)
   const token = request.cookies.get('token')?.value;
   const userData = request.cookies.get('user')?.value;
 
@@ -133,31 +169,41 @@ export function middleware(request: NextRequest) {
   let isAuthenticated = false;
 
   try {
-    if (token && userData) {
-      user = JSON.parse(userData) as { id?: string; role?: string; email?: string; isActive?: boolean };
-      // Ensure user has required fields for role checking
-      if (user && user.role) {
+    if (token) {
+      const payload = decodeJwtPayload(token);
+      if (payload && payload.role !== undefined) {
+        // Role from JWT (trusted); isActive from JWT for verify-email redirect
+        user = {
+          role: payload.role,
+          isActive: payload.isActive ?? true,
+        };
+        // Fallback: merge display name from user cookie if present (for logging only)
+        if (userData) {
+          try {
+            const parsed = JSON.parse(userData) as { id?: string; email?: string };
+            user.id = parsed.id;
+            user.email = parsed.email;
+          } catch {
+            // ignore
+          }
+        }
         isAuthenticated = true;
-        middlewareLogger.debug('User authenticated', {
+        middlewareLogger.debug('User authenticated (role from JWT)', {
           userId: user.id,
           userRole: user.role,
           userEmail: user.email
         });
       } else {
-        middlewareLogger.warn('User data missing role field', {
-          userId: user?.id,
-          userData: userData.substring(0, 100)
-        });
+        middlewareLogger.warn('JWT missing role field', payload ? { hasRole: !!payload.role } : { payload: null });
         isAuthenticated = false;
       }
     } else {
-      middlewareLogger.debug('No authentication cookies found');
+      middlewareLogger.debug('No authentication token found');
     }
   } catch (error) {
     middlewareLogger.warn('Failed to parse authentication data', {
       error: error instanceof Error ? error.message : String(error),
       hasToken: !!token,
-      hasUserData: !!userData
     });
     isAuthenticated = false;
   }
@@ -167,12 +213,20 @@ export function middleware(request: NextRequest) {
   const isStaticGeneration = !token && !userData;
   if (isStaticGeneration) {
     middlewareLogger.debug('Skipping auth checks during static generation');
-    return NextResponse.next();
+    const reqHeaders = new Headers(request.headers);
+    if (nonce) reqHeaders.set('x-nonce', nonce);
+    const res = NextResponse.next({ request: { headers: reqHeaders } });
+    applySecurityHeaders(res, nonce);
+    return res;
   }
 
-  // Check if current route is protected
-  const routeConfig = Object.values(ROUTE_CONFIGS).find(config =>
-    pathname.startsWith(config.path)
+  // Match the most specific route (longest path that matches) so e.g. /profile/edit
+  // matches PROFILE_EDIT, not PROFILE or HOME. Sort by path length descending.
+  const sortedConfigs = Object.values(ROUTE_CONFIGS).sort(
+    (a, b) => b.path.length - a.path.length
+  );
+  const routeConfig = sortedConfigs.find(config =>
+    pathname === config.path || pathname.startsWith(config.path + '/')
   );
 
   middlewareLogger.debug('Route protection check', {
@@ -196,7 +250,7 @@ export function middleware(request: NextRequest) {
       const loginUrl = new URL(routeConfig.redirectTo || '/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       const response = NextResponse.redirect(loginUrl);
-      applySecurityHeaders(response);
+      applySecurityHeaders(response, nonce);
       return response;
     }
 
@@ -214,7 +268,7 @@ export function middleware(request: NextRequest) {
         // Redirect to appropriate page based on user role
         const redirectPath = getDefaultRedirect(user.role);
         const response = NextResponse.redirect(new URL(redirectPath, request.url));
-        applySecurityHeaders(response);
+        applySecurityHeaders(response, nonce);
         return response;
       }
     }
@@ -231,7 +285,7 @@ export function middleware(request: NextRequest) {
       const verifyUrl = new URL('/verify-email', request.url);
       verifyUrl.searchParams.set('email', user.email || '');
       const response = NextResponse.redirect(verifyUrl);
-      applySecurityHeaders(response);
+      applySecurityHeaders(response, nonce);
       return response;
     }
 
@@ -252,12 +306,20 @@ export function middleware(request: NextRequest) {
     });
     const redirectPath = getDefaultRedirect(user.role);
     const response = NextResponse.redirect(new URL(redirectPath, request.url));
-    applySecurityHeaders(response);
+    applySecurityHeaders(response, nonce);
     return response;
   }
 
-  const response = NextResponse.next();
-  applySecurityHeaders(response);
+  // Pass nonce to request for Next.js to apply to inline scripts
+  const requestHeaders = new Headers(request.headers);
+  if (nonce) {
+    requestHeaders.set('x-nonce', nonce);
+  }
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  applySecurityHeaders(response, nonce);
   return response;
 }
 

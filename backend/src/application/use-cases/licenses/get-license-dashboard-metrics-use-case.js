@@ -56,93 +56,66 @@ export class GetLicenseDashboardMetricsUseCase {
       // User filters (search, status, plan, term, etc.) - when present, metrics reflect filtered subset
       const userFilters = { ...filters };
 
-      // Get all licenses matching user filters (no date range) - when no filter, this is full set
-      logger.debug('Fetching licenses for dashboard metrics (with user filters)', {
-        hasUserFilters: Object.keys(userFilters).length > 0,
-      });
-      let allLicenses;
-      try {
-        allLicenses = await this.licenseRepository.findLicenses({
-          page: 1,
-          limit: 10000, // Get all licenses for accurate stats
-          filters: userFilters,
-        });
-        logger.debug('All licenses fetched:', {
-          count: allLicenses?.licenses?.length,
-          total: allLicenses?.total,
-        });
-      } catch (allLicensesError) {
-        logger.error('Failed to fetch all licenses:', { error: allLicensesError.message });
-        throw new Error(`Failed to fetch licenses: ${allLicensesError.message}`);
-      }
-
-      // Get licenses filtered by user filters + date range (if provided) - this affects total counts
-      let filteredLicenses;
-      try {
-        filteredLicenses =
-          mergedFilters.startsAtFrom || mergedFilters.startsAtTo
-            ? await this.licenseRepository.findLicenses({
-                page: 1,
-                limit: 10000,
-                filters: mergedFilters,
-              })
-            : allLicenses;
-        logger.debug('Date filtering successful');
-      } catch (dateFilterError) {
-        logger.error('Date filtering failed, using all licenses:', {
-          error: dateFilterError.message,
-          filters,
-        });
-        filteredLicenses = allLicenses;
-      }
-      logger.debug('Filtered licenses result:', {
-        count: filteredLicenses?.licenses?.length,
-        total: filteredLicenses?.total,
-      });
-
-      // Get target period licenses (user filters + target period date range)
+      // Run all license queries in parallel to reduce total latency (was 4 sequential round-trips)
+      const hasDateRange = mergedFilters.startsAtFrom || mergedFilters.startsAtTo;
       const targetPeriodFilters = {
         ...userFilters,
         startsAtFrom: targetPeriodStart.toISOString(),
         startsAtTo: targetPeriodEnd.toISOString(),
       };
-      let targetPeriodLicenses;
-      try {
-        targetPeriodLicenses = await this.licenseRepository.findLicenses({
-          page: 1,
-          limit: 10000,
-          filters: targetPeriodFilters,
-        });
-        logger.debug('Target period licenses fetched:', {
-          count: targetPeriodLicenses?.licenses?.length,
-        });
-      } catch (targetError) {
-        logger.error('Failed to fetch target period licenses:', { error: targetError.message });
-        targetPeriodLicenses = { licenses: [] };
-      }
-
-      // Get comparison period licenses (user filters + comparison period date range)
       const comparisonPeriodFilters = {
         ...userFilters,
         startsAtFrom: comparisonPeriodStart.toISOString(),
         startsAtTo: comparisonPeriodEnd.toISOString(),
       };
-      let comparisonPeriodLicenses;
-      try {
-        comparisonPeriodLicenses = await this.licenseRepository.findLicenses({
+
+      logger.debug('Fetching licenses for dashboard metrics (parallel)', {
+        hasUserFilters: Object.keys(userFilters).length > 0,
+        hasDateRange,
+      });
+
+      const [allLicensesResult, filteredResult, targetResult, comparisonResult] = await Promise.all([
+        this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000,
+          filters: userFilters,
+        }),
+        hasDateRange
+          ? this.licenseRepository.findLicenses({
+              page: 1,
+              limit: 10000,
+              filters: mergedFilters,
+            })
+          : Promise.resolve(null),
+        this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000,
+          filters: targetPeriodFilters,
+        }).catch((err) => {
+          logger.error('Failed to fetch target period licenses:', { error: err.message });
+          return { licenses: [] };
+        }),
+        this.licenseRepository.findLicenses({
           page: 1,
           limit: 10000,
           filters: comparisonPeriodFilters,
-        });
-        logger.debug('Comparison period licenses fetched:', {
-          count: comparisonPeriodLicenses?.licenses?.length,
-        });
-      } catch (comparisonError) {
-        logger.error('Failed to fetch comparison period licenses:', {
-          error: comparisonError.message,
-        });
-        comparisonPeriodLicenses = { licenses: [] };
-      }
+        }).catch((err) => {
+          logger.error('Failed to fetch comparison period licenses:', { error: err.message });
+          return { licenses: [] };
+        }),
+      ]);
+
+      const allLicenses = allLicensesResult;
+      const filteredLicenses = filteredResult || allLicenses;
+      const targetPeriodLicenses = targetResult;
+      const comparisonPeriodLicenses = comparisonResult;
+
+      logger.debug('All licenses fetched (parallel):', {
+        allCount: allLicenses?.licenses?.length,
+        filteredCount: filteredLicenses?.licenses?.length,
+        targetCount: targetPeriodLicenses?.licenses?.length,
+        comparisonCount: comparisonPeriodLicenses?.licenses?.length,
+      });
 
       // Calculate metrics
       logger.debug('About to calculate metrics with data:', {

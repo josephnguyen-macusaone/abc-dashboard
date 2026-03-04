@@ -1,7 +1,9 @@
+import crypto from 'crypto';
 import { LicenseValidator } from '../../application/validators/license-validator.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { sendErrorResponse, formatCanonicalError } from '../../shared/http/error-responses.js';
 import logger from '../config/logger.js';
+import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
 
 export class LicenseController {
   constructor(licenseService, licenseSyncScheduler = null, licenseRealtimeService = null) {
@@ -449,12 +451,6 @@ export class LicenseController {
 
   getDashboardMetrics = async (req, res) => {
     try {
-      logger.debug('Dashboard metrics request', {
-        correlationId: req.correlationId,
-        query: req.query,
-        userId: req.user?.id,
-      });
-
       const query = LicenseValidator.validateListQuery(req.query);
       const dateRange = {};
       if (req.query.startsAtFrom) {
@@ -463,11 +459,26 @@ export class LicenseController {
       if (req.query.startsAtTo) {
         dateRange.startsAtTo = decodeURIComponent(req.query.startsAtTo);
       }
-
-      const metrics = await this.licenseService.getDashboardMetrics({
+      const options = {
         filters: query.filters,
         ...(Object.keys(dateRange).length > 0 && { dateRange }),
+      };
+
+      // Short-TTL response cache (Redis or in-memory) to avoid repeated heavy queries
+      const cachePayload = JSON.stringify({
+        filters: options.filters,
+        dateRange: options.dateRange,
       });
+      const queryHash = crypto.createHash('sha256').update(cachePayload).digest('hex').slice(0, 16);
+      const cacheKey = cacheKeys.dashboardMetrics(queryHash);
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        logger.debug('Dashboard metrics cache hit', { correlationId: req.correlationId });
+        return res.success(cached, 'Dashboard metrics retrieved successfully');
+      }
+
+      const metrics = await this.licenseService.getDashboardMetrics(options);
+      await cache.set(cacheKey, metrics, cacheTTL.dashboardMetrics);
 
       logger.info('Dashboard metrics', {
         correlationId: req.correlationId,
