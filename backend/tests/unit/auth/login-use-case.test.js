@@ -32,6 +32,7 @@ describe('LoginUseCase', () => {
   beforeEach(() => {
     mockUserRepository = {
       findByEmail: jest.fn(),
+      storeRefreshToken: jest.fn().mockResolvedValue(undefined),
     };
 
     mockAuthService = {
@@ -41,6 +42,7 @@ describe('LoginUseCase', () => {
     mockTokenService = {
       generateAccessToken: jest.fn().mockReturnValue('access-token-123'),
       generateRefreshToken: jest.fn().mockReturnValue('refresh-token-123'),
+      hashToken: jest.fn().mockReturnValue('hashed-refresh-token'),
     };
 
     loginUseCase = new LoginUseCase(mockUserRepository, mockAuthService, mockTokenService);

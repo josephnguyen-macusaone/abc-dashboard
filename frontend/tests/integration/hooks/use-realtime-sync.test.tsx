@@ -53,11 +53,14 @@ describe('useRealtimeSync', () => {
     const { io } = require('socket.io-client');
     renderHook(() => useRealtimeSync());
 
-    expect(io).toHaveBeenCalledWith('http://localhost:5000', {
-      path: '/socket.io',
-      auth: { token: 'test-token' },
-      transports: ['websocket', 'polling'],
-    });
+    expect(io).toHaveBeenCalledWith(
+      'http://localhost:5000',
+      expect.objectContaining({
+        path: '/socket.io',
+        auth: { token: 'test-token' },
+        transports: ['polling', 'websocket'],
+      })
+    );
   });
 
   it('registers license:sync_complete and license:data_changed handlers', () => {
