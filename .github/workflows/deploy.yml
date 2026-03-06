@@ -218,7 +218,7 @@ jobs:
             fi
 
             echo "Running database migrations..."
-            docker compose run --rm backend npm run migrate
+            docker compose run --rm -e NODE_ENV=production backend node src/infrastructure/scripts/migrate.js
 
             echo "Starting services..."
             docker compose up -d
