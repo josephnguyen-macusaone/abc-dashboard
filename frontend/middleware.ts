@@ -48,9 +48,11 @@ function buildCsp(nonce?: string): string {
   const scriptSrc = nonce && !isDev
     ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
     : `'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`;
-  const styleSrc = nonce && !isDev
-    ? `'self' 'nonce-${nonce}'`
-    : `'self' 'unsafe-inline'`;
+  // 'unsafe-inline' is required for style-src even in production because inline
+  // style="" attributes (used by Radix UI, Tailwind, and Next.js internals) cannot
+  // be nonce'd — only <style> elements support nonces. CSS injection attacks are
+  // far less severe than JS injection, so this trade-off is widely accepted.
+  const styleSrc = `'self' 'unsafe-inline'`;
 
   return [
     "default-src 'self'",
