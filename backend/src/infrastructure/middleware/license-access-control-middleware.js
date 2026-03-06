@@ -1,4 +1,4 @@
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { licenseSyncMonitor } from '../monitoring/license-sync-monitor.js';
 import { formatCanonicalError } from '../../shared/http/error-responses.js';
 

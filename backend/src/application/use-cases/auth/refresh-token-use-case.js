@@ -35,23 +35,25 @@ export class RefreshTokenUseCase {
         throw new InvalidRefreshTokenException();
       }
 
-      // Validate token type - ensure it's a refresh token
       if (decoded.type !== 'refresh') {
         throw new InvalidRefreshTokenException();
       }
 
-      // Find user by ID from token
+      // Verify the token exists in our store (SEC-4: revocation check)
+      const tokenHash = this.tokenService.hashToken(refreshToken);
+      const stored = await this.userRepository.findRefreshToken(tokenHash);
+      if (!stored) {
+        throw new InvalidRefreshTokenException();
+      }
+
       const user = await this.userRepository.findById(decoded.userId);
-      if (!user) {
+      if (!user || !user.isActive) {
         throw new InvalidCredentialsException();
       }
 
-      // Check if account is still active
-      if (!user.isActive) {
-        throw new InvalidCredentialsException();
-      }
+      // Rotate: revoke the old token, issue a new one (token rotation)
+      await this.userRepository.revokeRefreshToken(tokenHash);
 
-      // Generate new access token (include role and isActive for middleware auth decisions)
       const accessToken = this.tokenService.generateAccessToken({
         userId: user.id,
         email: user.email,
@@ -60,10 +62,11 @@ export class RefreshTokenUseCase {
         requiresPasswordChange: user.requiresPasswordChange,
       });
 
-      // Generate new refresh token (token rotation for security)
       const newRefreshToken = this.tokenService.generateRefreshToken({ userId: user.id });
+      const newHash = this.tokenService.hashToken(newRefreshToken);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await this.userRepository.storeRefreshToken(user.id, newHash, expiresAt);
 
-      // Return new tokens as DTO
       return {
         tokens: new TokensDto({ accessToken, refreshToken: newRefreshToken }),
       };
@@ -77,7 +80,7 @@ export class RefreshTokenUseCase {
         throw error;
       }
       // Wrap unexpected errors
-      throw new Error(`Refresh token failed: ${error.message}`);
+      throw new Error(`Refresh token failed: ${error.message}`, { cause: error });
     }
   }
 }

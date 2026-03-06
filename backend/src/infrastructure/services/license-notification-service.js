@@ -2,7 +2,7 @@
  * License Notification Service
  * Handles notifications for license lifecycle events
  */
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 export class LicenseNotificationService {
   constructor(notificationProvider = null, config = {}) {

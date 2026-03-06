@@ -2,7 +2,7 @@
 // Note: Passwords need to be hashed before saving
 
 import bcrypt from 'bcryptjs';
-import logger from '../../config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 /**
  * @param { import("knex").Knex } knex

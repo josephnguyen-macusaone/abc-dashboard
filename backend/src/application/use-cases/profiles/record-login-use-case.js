@@ -28,7 +28,7 @@ export class RecordLoginUseCase {
         profile: ProfileDto.fromEntity(updatedProfile),
       };
     } catch (error) {
-      throw new Error(`Failed to record login: ${error.message}`);
+      throw new Error(`Failed to record login: ${error.message}`, { cause: error });
     }
   }
 }

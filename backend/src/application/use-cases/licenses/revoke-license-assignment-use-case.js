@@ -58,7 +58,7 @@ export class RevokeLicenseAssignmentUseCase {
 
       return LicenseAssignmentResponseDto.fromEntity(revokedAssignment);
     } catch (error) {
-      throw new Error(`Failed to revoke license assignment: ${error.message}`);
+      throw new Error(`Failed to revoke license assignment: ${error.message}`, { cause: error });
     }
   }
 }

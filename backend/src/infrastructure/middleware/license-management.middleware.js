@@ -4,7 +4,7 @@
  */
 
 import { InsufficientPermissionsException } from '../../domain/exceptions/domain.exception.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { ROLES } from '../../shared/constants/roles.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 
@@ -14,7 +14,7 @@ import { sendErrorResponse } from '../../shared/http/error-responses.js';
  * @param {Object} currentUser - The authenticated user
  * @return {boolean} - Whether creation is allowed
  */
-export function canCreateLicense(currentUser) {
+function canCreateLicense(currentUser) {
   // Only admin can create licenses
   return currentUser.role === ROLES.ADMIN;
 }
@@ -25,7 +25,7 @@ export function canCreateLicense(currentUser) {
  * @param {Object} currentUser - The authenticated user
  * @return {boolean} - Whether update is allowed
  */
-export function canUpdateLicense(currentUser) {
+function canUpdateLicense(currentUser) {
   // Admin can update licenses
   return currentUser.role === ROLES.ADMIN;
 }
@@ -36,7 +36,7 @@ export function canUpdateLicense(currentUser) {
  * @param {Object} currentUser - The authenticated user
  * @return {boolean} - Whether deletion is allowed
  */
-export function canDeleteLicense(currentUser) {
+function canDeleteLicense(currentUser) {
   // Only admin can delete licenses
   return currentUser.role === ROLES.ADMIN;
 }
@@ -47,32 +47,10 @@ export function canDeleteLicense(currentUser) {
  * @param {Object} currentUser - The authenticated user
  * @return {boolean} - Whether viewing is allowed
  */
-export function canViewLicense(currentUser) {
+function canViewLicense(currentUser) {
   // Admin and managers can view all licenses
   // Staff can view their assigned licenses
   return [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF].includes(currentUser.role);
-}
-
-/**
- * Check if user can assign licenses to users
- *
- * @param {Object} currentUser - The authenticated user
- * @return {boolean} - Whether assignment is allowed
- */
-export function canAssignLicense(currentUser) {
-  // Admin and managers can assign licenses
-  return [ROLES.ADMIN, ROLES.MANAGER].includes(currentUser.role);
-}
-
-/**
- * Check if user can revoke license assignments
- *
- * @param {Object} currentUser - The authenticated user
- * @return {boolean} - Whether revocation is allowed
- */
-export function canRevokeLicense(currentUser) {
-  // Admin and managers can revoke assignments
-  return [ROLES.ADMIN, ROLES.MANAGER].includes(currentUser.role);
 }
 
 /**
@@ -176,94 +154,6 @@ export function checkLicenseAccessPermission(operation) {
         );
       }
       throw error;
-    }
-  };
-}
-
-/**
- * Middleware to check license assignment permissions
- *
- * @return {Function} - The middleware function
- */
-export function checkLicenseAssignmentPermission() {
-  return (req, res, next) => {
-    try {
-      const currentUser = req.user;
-
-      if (!currentUser) {
-        logger.warn('License assignment attempted without authentication', {
-          correlationId: req.correlationId,
-          ip: req.ip,
-        });
-        throw new InsufficientPermissionsException('Authentication required');
-      }
-
-      if (!canAssignLicense(currentUser)) {
-        logger.warn('Unauthorized license assignment attempt', {
-          correlationId: req.correlationId,
-          userId: currentUser.id,
-          userRole: currentUser.role,
-        });
-        throw new InsufficientPermissionsException(
-          'Only administrators and managers can assign licenses'
-        );
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof InsufficientPermissionsException) {
-        return sendErrorResponse(
-          res,
-          'INSUFFICIENT_PERMISSIONS',
-          {},
-          { customMessage: error.message }
-        );
-      }
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
-    }
-  };
-}
-
-/**
- * Middleware to check license revocation permissions
- *
- * @return {Function} - The middleware function
- */
-export function checkLicenseRevocationPermission() {
-  return (req, res, next) => {
-    try {
-      const currentUser = req.user;
-
-      if (!currentUser) {
-        logger.warn('License revocation attempted without authentication', {
-          correlationId: req.correlationId,
-          ip: req.ip,
-        });
-        throw new InsufficientPermissionsException('Authentication required');
-      }
-
-      if (!canRevokeLicense(currentUser)) {
-        logger.warn('Unauthorized license revocation attempt', {
-          correlationId: req.correlationId,
-          userId: currentUser.id,
-          userRole: currentUser.role,
-        });
-        throw new InsufficientPermissionsException(
-          'Only administrators and managers can revoke license assignments'
-        );
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof InsufficientPermissionsException) {
-        return sendErrorResponse(
-          res,
-          'INSUFFICIENT_PERMISSIONS',
-          {},
-          { customMessage: error.message }
-        );
-      }
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   };
 }

@@ -3,7 +3,7 @@
  * Handles CRUD operations for external licenses stored internally
  */
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 export class ManageExternalLicensesUseCase {
   constructor(externalLicenseRepository) {
@@ -15,7 +15,7 @@ export class ManageExternalLicensesUseCase {
    */
   async getLicenses(options = {}) {
     return withTimeout(
-      async () => await this.externalLicenseRepository.findLicenses(options),
+      async () => this.externalLicenseRepository.findLicenses(options),
       TimeoutPresets.DATABASE,
       'get_external_licenses',
       {
@@ -33,28 +33,28 @@ export class ManageExternalLicensesUseCase {
    * Get single license by ID
    */
   async getLicenseById(id) {
-    return await this.externalLicenseRepository.findById(id);
+    return this.externalLicenseRepository.findById(id);
   }
 
   /**
    * Get license by appid
    */
   async getLicenseByAppId(appid) {
-    return await this.externalLicenseRepository.findByAppId(appid);
+    return this.externalLicenseRepository.findByAppId(appid);
   }
 
   /**
    * Get license by email
    */
   async getLicenseByEmail(email) {
-    return await this.externalLicenseRepository.findByEmail(email);
+    return this.externalLicenseRepository.findByEmail(email);
   }
 
   /**
    * Get license by countid
    */
   async getLicenseByCountId(countid) {
-    return await this.externalLicenseRepository.findByCountId(countid);
+    return this.externalLicenseRepository.findByCountId(countid);
   }
 
   /**
@@ -156,28 +156,28 @@ export class ManageExternalLicensesUseCase {
    * Get license statistics
    */
   async getLicenseStats() {
-    return await this.externalLicenseRepository.getLicenseStats();
+    return this.externalLicenseRepository.getLicenseStats();
   }
 
   /**
    * Get expiring licenses
    */
   async getExpiringLicenses(daysThreshold = 30) {
-    return await this.externalLicenseRepository.findExpiringSoonLicenses(daysThreshold);
+    return this.externalLicenseRepository.findExpiringSoonLicenses(daysThreshold);
   }
 
   /**
    * Get expired licenses
    */
   async getExpiredLicenses() {
-    return await this.externalLicenseRepository.findExpiredLicenses();
+    return this.externalLicenseRepository.findExpiredLicenses();
   }
 
   /**
    * Get licenses by organization (DBA)
    */
   async getLicensesByOrganization(dba) {
-    return await this.externalLicenseRepository.findLicensesByOrganization(dba);
+    return this.externalLicenseRepository.findLicensesByOrganization(dba);
   }
 
   /**
@@ -251,7 +251,7 @@ export class ManageExternalLicensesUseCase {
           throw new Error('License not found');
         }
 
-        return await this.externalLicenseRepository.update(existingLicense.id, updates);
+        return this.externalLicenseRepository.update(existingLicense.id, updates);
       },
       TimeoutPresets.DATABASE,
       'update_external_license_by_email',
@@ -277,7 +277,7 @@ export class ManageExternalLicensesUseCase {
           throw new Error('License not found');
         }
 
-        return await this.externalLicenseRepository.delete(existingLicense.id);
+        return this.externalLicenseRepository.delete(existingLicense.id);
       },
       TimeoutPresets.DATABASE,
       'delete_external_license_by_email',
@@ -303,7 +303,7 @@ export class ManageExternalLicensesUseCase {
           throw new Error('License not found');
         }
 
-        return await this.externalLicenseRepository.update(existingLicense.id, updates);
+        return this.externalLicenseRepository.update(existingLicense.id, updates);
       },
       TimeoutPresets.DATABASE,
       'update_external_license_by_countid',
@@ -329,7 +329,7 @@ export class ManageExternalLicensesUseCase {
           throw new Error('License not found');
         }
 
-        return await this.externalLicenseRepository.delete(existingLicense.id);
+        return this.externalLicenseRepository.delete(existingLicense.id);
       },
       TimeoutPresets.DATABASE,
       'delete_external_license_by_countid',
@@ -365,7 +365,7 @@ export class ManageExternalLicensesUseCase {
         // Reset the ID to null (this would typically be a special operation)
         // Note: This might need to be implemented differently based on business requirements
         const updates = { id: null };
-        return await this.externalLicenseRepository.update(license.id, updates);
+        return this.externalLicenseRepository.update(license.id, updates);
       },
       TimeoutPresets.DATABASE,
       'reset_external_license',
@@ -426,7 +426,7 @@ export class ManageExternalLicensesUseCase {
    * Add row license (create single license for DataGrid)
    */
   async addRowLicense(licenseData) {
-    return await this.createLicense(licenseData);
+    return this.createLicense(licenseData);
   }
 
   /**
@@ -440,7 +440,7 @@ export class ManageExternalLicensesUseCase {
         const { externalLicenseApiService } =
           await import('../../../shared/services/external-license-api-service.js');
 
-        return await externalLicenseApiService.getSmsPayments(options);
+        return externalLicenseApiService.getSmsPayments(options);
       },
       TimeoutPresets.SLOW,
       'get_sms_payments',
@@ -465,7 +465,7 @@ export class ManageExternalLicensesUseCase {
         const { externalLicenseApiService } =
           await import('../../../shared/services/external-license-api-service.js');
 
-        return await externalLicenseApiService.addSmsPayment(paymentData);
+        return externalLicenseApiService.addSmsPayment(paymentData);
       },
       TimeoutPresets.SLOW,
       'add_sms_payment',
@@ -490,7 +490,7 @@ export class ManageExternalLicensesUseCase {
         const { externalLicenseApiService } =
           await import('../../../shared/services/external-license-api-service.js');
 
-        return await externalLicenseApiService.getLicenseAnalytics(options);
+        return externalLicenseApiService.getLicenseAnalytics(options);
       },
       TimeoutPresets.SLOW,
       'get_license_analytics',

@@ -96,6 +96,11 @@ export class LicenseDomainService {
       errors.push('Agents cost cannot be negative');
     }
 
+    // Yearly term requires a due date
+    if (props.term === 'yearly' && !props.dueDate) {
+      errors.push('Due date is required for yearly term licenses');
+    }
+
     // SMS validations
     if (props.smsPurchased !== undefined && props.smsPurchased < 0) {
       errors.push('SMS purchased cannot be negative');

@@ -70,7 +70,8 @@ export interface UpdateCell {
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
-    cell?: CellOpts & { align?: CellAlign };
+    /** When true this column's cells are always read-only regardless of the table-level readOnly setting. */
+    cell?: CellOpts & { align?: CellAlign; readOnly?: boolean };
     headerAlign?: CellAlign;
   }
 

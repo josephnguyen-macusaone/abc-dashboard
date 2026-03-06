@@ -3,7 +3,7 @@
  * Provides retry mechanisms with exponential backoff and jitter for transient failures
  */
 import { NetworkTimeoutException } from '../../../domain/exceptions/domain.exception.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../logger.js';
 
 /**
  * Default retry configuration

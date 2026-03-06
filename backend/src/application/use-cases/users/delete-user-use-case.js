@@ -2,7 +2,7 @@
  * Delete User Use Case
  * Handles user deletion (soft delete by deactivating)
  */
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 import {
   ValidationException,
   ResourceNotFoundException,
@@ -122,7 +122,7 @@ export class DeleteUserUseCase {
         throw error;
       }
       // For unexpected errors, wrap with context
-      throw new Error(`User deletion failed: ${error.message}`);
+      throw new Error(`User deletion failed: ${error.message}`, { cause: error });
     }
   }
 }

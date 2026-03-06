@@ -3,7 +3,7 @@
  * Handles license renewal operations with business logic validation
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 export class RenewLicenseUseCase {
   constructor(licenseRepository, licenseLifecycleService) {

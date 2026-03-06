@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import logger from './logger.js';
+import logger from '../../shared/utils/logger.js';
 import { createEmailTransporter } from '../email/transporter.js';
 import { emailTemplates, renderEmailTemplate } from '../email/templates.js';
 

@@ -2,7 +2,7 @@
  * License Lifecycle Service
  * Handles automated lifecycle operations for licenses
  */
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 export class LicenseLifecycleService {
   constructor(licenseRepository, notificationService = null) {

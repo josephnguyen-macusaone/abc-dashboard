@@ -6,7 +6,7 @@ import {
   ValidationException,
   InsufficientPermissionsException,
 } from '../../domain/exceptions/domain.exception.js';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { PERMISSIONS, hasPermission } from '../../shared/constants/roles.js';
 import { UserValidator } from '../../application/validators/index.js';
 import { CreateUserRequestDto } from '../../application/dto/user/index.js';

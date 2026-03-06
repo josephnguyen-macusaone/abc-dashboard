@@ -12,7 +12,7 @@ import { RevokeLicenseAssignmentUseCase } from '../../application/use-cases/lice
 import { GetLicenseStatsUseCase } from '../../application/use-cases/licenses/get-license-stats-use-case.js';
 import { GetLicenseDashboardMetricsUseCase } from '../../application/use-cases/licenses/get-license-dashboard-metrics-use-case.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 
 export class LicenseService extends ILicenseService {
   constructor(licenseRepository, userRepository, externalLicenseRepository = null) {
@@ -76,7 +76,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Created license
    */
   async createLicense(licenseData, context) {
-    return await this.createLicenseUseCase.execute(licenseData, context);
+    return this.createLicenseUseCase.execute(licenseData, context);
   }
 
   /**
@@ -87,7 +87,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Updated license
    */
   async updateLicense(licenseId, updates, context) {
-    return await this.updateLicenseUseCase.execute(licenseId, updates, context);
+    return this.updateLicenseUseCase.execute(licenseId, updates, context);
   }
 
   /**
@@ -97,7 +97,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<boolean>} Success status
    */
   async deleteLicense(licenseId, context) {
-    return await this.deleteLicenseUseCase.execute(licenseId, context);
+    return this.deleteLicenseUseCase.execute(licenseId, context);
   }
 
   /**
@@ -107,7 +107,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Created assignment
    */
   async assignLicense(assignmentData, context) {
-    return await this.assignLicenseUseCase.execute(assignmentData, context);
+    return this.assignLicenseUseCase.execute(assignmentData, context);
   }
 
   /**
@@ -117,7 +117,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Revoked assignment
    */
   async revokeAssignment(assignmentId, context) {
-    return await this.revokeLicenseAssignmentUseCase.execute(assignmentId, context);
+    return this.revokeLicenseAssignmentUseCase.execute(assignmentId, context);
   }
 
   /**
@@ -125,7 +125,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} License stats
    */
   async getLicenseStats() {
-    return await this.getLicenseStatsUseCase.execute();
+    return this.getLicenseStatsUseCase.execute();
   }
 
   /**
@@ -134,7 +134,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Dashboard metrics
    */
   async getDashboardMetrics(options = {}) {
-    return await this.getDashboardMetricsUseCase.execute(options);
+    return this.getDashboardMetricsUseCase.execute(options);
   }
 
   /**
@@ -296,7 +296,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<Object>} Audit events
    */
   async getAuditEvents(licenseId, options) {
-    return await this.licenseRepository.findAuditEvents(licenseId, options);
+    return this.licenseRepository.findAuditEvents(licenseId, options);
   }
 
   /**
@@ -313,7 +313,7 @@ export class LicenseService extends ILicenseService {
    * @returns {Promise<string[]>} Array of unique agent names
    */
   async getAllAgentNames() {
-    return await this.licenseRepository.getAllAgentNames();
+    return this.licenseRepository.getAllAgentNames();
   }
 }
 

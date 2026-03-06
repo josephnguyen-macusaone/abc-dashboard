@@ -34,7 +34,7 @@ export class GetUsersUseCase {
         stats: result.stats,
       });
     } catch (error) {
-      throw new Error(`Failed to get users: ${error.message}`);
+      throw new Error(`Failed to get users: ${error.message}`, { cause: error });
     }
   }
 }

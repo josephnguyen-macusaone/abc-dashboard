@@ -111,7 +111,7 @@ export const authSchemas = {
     newPassword: Joi.string()
       .min(8)
       .max(128)
-      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/)
+      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>0/?])/)
       .required()
       .messages({
         'string.min': 'New password must be at least 8 characters long',

@@ -1,6 +1,6 @@
 import { licenseSyncMonitor } from '../monitoring/license-sync-monitor.js';
 import { licenseSyncConfig } from '../config/license-sync-config.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * License Sync Monitoring Controller

@@ -132,6 +132,7 @@ export class LicenseRepository implements ILicenseRepository {
         cancelDate,
         plan: (apiLicense.plan as string) || '',
         term: (apiLicense.term === 'yearly' || apiLicense.term === 'monthly' ? apiLicense.term : 'monthly') as 'monthly' | 'yearly',
+        dueDate: (raw.dueDate as string | undefined) ?? (raw.renewal_due_date as string | undefined) ?? (raw.coming_expired as string | undefined),
         seatsTotal: (apiLicense.seatsTotal as number) || 1,
         seatsUsed: (apiLicense.seatsUsed as number) || 0,
         lastPayment: (apiLicense.lastPayment as number) || 0,
@@ -166,6 +167,7 @@ export class LicenseRepository implements ILicenseRepository {
       status: license.status,
       plan: license.plan,
       term: license.term,
+      dueDate: license.dueDate?.toISOString(),
       seatsTotal: license.seatsTotal,
       lastPayment: license.lastPayment.getAmount(),
       smsPurchased: license.smsPurchased,
@@ -186,6 +188,9 @@ export class LicenseRepository implements ILicenseRepository {
       startsAt: typeof props.startsAt === 'string' ? props.startsAt : props.startsAt.toISOString(),
       plan: props.plan,
       term: props.term,
+      dueDate: props.dueDate
+        ? (typeof props.dueDate === 'string' ? props.dueDate : props.dueDate.toISOString())
+        : undefined,
       seatsTotal: props.seatsTotal || 1,
       lastPayment: props.lastPayment || 0,
       smsPurchased: props.smsPurchased || 0,

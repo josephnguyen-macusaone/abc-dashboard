@@ -10,7 +10,7 @@
  * - Sanitizes cookie/localStorage access
  * - No dynamic content injection
  */
-export function ThemeScript() {
+export function ThemeScript({ nonce }: { nonce?: string }) {
   // Minimal inline script - just calls a secure function
   const inlineScript = `
     (function() {
@@ -102,14 +102,14 @@ export function ThemeScript() {
 
   return (
     <>
-      {/* Define the secure theme function first */}
       <script
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: initThemeScript,
         }}
       />
-      {/* Then call it with minimal inline script */}
       <script
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: inlineScript,
         }}

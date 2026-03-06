@@ -1,4 +1,4 @@
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { licenseSyncConfig } from '../config/license-sync-config.js';
 
 /**
@@ -372,26 +372,40 @@ export class LicenseSyncMonitor {
    */
   getPerformanceSummary() {
     const metrics = this.getMetrics();
+    return this._buildPerformanceSummary(metrics);
+  }
 
+  _metricVal(metrics, key, defaultValue = 0) {
+    const v = metrics[key]?.value;
+    return v !== undefined && v !== null ? v : defaultValue;
+  }
+
+  _buildPerformanceSummary(metrics) {
     return {
       syncOperations: {
-        total: metrics.sync_operations_total?.value || 0,
-        errors: metrics.sync_operations_errors_total?.value || 0,
-        active: metrics.sync_active_operations?.value || 0,
-        avgDuration: this._calculateAverage(metrics.sync_operations_duration?.value || []),
+        total: this._metricVal(metrics, 'sync_operations_total'),
+        errors: this._metricVal(metrics, 'sync_operations_errors_total'),
+        active: this._metricVal(metrics, 'sync_active_operations'),
+        avgDuration: this._calculateAverage(
+          this._metricVal(metrics, 'sync_operations_duration', [])
+        ),
       },
       externalApi: {
-        totalRequests: metrics.external_api_requests_total?.value || 0,
-        errors: metrics.external_api_errors_total?.value || 0,
-        avgResponseTime: this._calculateAverage(metrics.external_api_request_duration?.value || []),
+        totalRequests: this._metricVal(metrics, 'external_api_requests_total'),
+        errors: this._metricVal(metrics, 'external_api_errors_total'),
+        avgResponseTime: this._calculateAverage(
+          this._metricVal(metrics, 'external_api_request_duration', [])
+        ),
       },
       database: {
-        totalOperations: metrics.database_operations_total?.value || 0,
-        avgResponseTime: this._calculateAverage(metrics.database_operation_duration?.value || []),
+        totalOperations: this._metricVal(metrics, 'database_operations_total'),
+        avgResponseTime: this._calculateAverage(
+          this._metricVal(metrics, 'database_operation_duration', [])
+        ),
       },
-      dataProcessed: metrics.sync_data_processed_total?.value || 0,
-      peakMemoryUsage: metrics.sync_memory_peak_usage?.value || 0,
-      validationErrors: metrics.validation_errors_total?.value || 0,
+      dataProcessed: this._metricVal(metrics, 'sync_data_processed_total'),
+      peakMemoryUsage: this._metricVal(metrics, 'sync_memory_peak_usage'),
+      validationErrors: this._metricVal(metrics, 'validation_errors_total'),
     };
   }
 

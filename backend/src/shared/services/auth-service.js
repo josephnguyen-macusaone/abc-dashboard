@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { config } from '../../infrastructure/config/config.js';
 import crypto from 'crypto';
@@ -45,7 +45,7 @@ export class AuthService {
         errorType: error.constructor.name,
       });
 
-      throw new Error(`Password hashing failed: ${error.message}`);
+      throw new Error(`Password hashing failed: ${error.message}`, { cause: error });
     }
   }
 
@@ -80,7 +80,7 @@ export class AuthService {
         errorType: error.constructor.name,
       });
 
-      throw new Error(`Password verification failed: ${error.message}`);
+      throw new Error(`Password verification failed: ${error.message}`, { cause: error });
     }
   }
 
@@ -171,7 +171,7 @@ export class AuthService {
     }
 
     // Special character bonus
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
       score += 10;
     }
 

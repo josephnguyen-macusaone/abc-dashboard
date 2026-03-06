@@ -26,8 +26,8 @@ export const PERMISSIONS = {
   MANAGE_OWN_PROFILE: 'manage_own_profile',
 };
 
-// Role-based permissions mapping
-export const ROLE_PERMISSIONS = {
+// Role-based permissions mapping (used internally by hasPermission helpers)
+const ROLE_PERMISSIONS = {
   [ROLES.ADMIN]: [
     PERMISSIONS.CREATE_USER,
     PERMISSIONS.READ_USER,
@@ -65,42 +65,9 @@ export function hasPermission(role, permission) {
   return ROLE_PERMISSIONS[role]?.includes(permission) || false;
 }
 
-/**
- * Check if a role has any of the specified permissions
- * @param {string} role - The user role
- * @param {string[]} permissions - Array of permissions to check
- * @returns {boolean} True if role has at least one permission
- */
-export function hasAnyPermission(role, permissions) {
-  return permissions.some((permission) => hasPermission(role, permission));
-}
-
-/**
- * Check if a role has all of the specified permissions
- * @param {string} role - The user role
- * @param {string[]} permissions - Array of permissions to check
- * @returns {boolean} True if role has all permissions
- */
-export function hasAllPermissions(role, permissions) {
-  return permissions.every((permission) => hasPermission(role, permission));
-}
-
-/**
- * Get all permissions for a role
- * @param {string} role - The user role
- * @returns {string[]} Array of permissions for the role
- */
-export function getRolePermissions(role) {
-  return ROLE_PERMISSIONS[role] || [];
-}
-
 export default {
   ROLES,
   PERMISSIONS,
-  ROLE_PERMISSIONS,
   ROLE_CREATION_PERMISSIONS,
   hasPermission,
-  hasAnyPermission,
-  hasAllPermissions,
-  getRolePermissions,
 };

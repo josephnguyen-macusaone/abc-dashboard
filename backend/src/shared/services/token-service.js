@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { config } from '../../infrastructure/config/config.js';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 import {
   ValidationException,
   TokenExpiredException,
@@ -62,7 +62,7 @@ export class TokenService {
         payloadKeys: payload ? Object.keys(payload) : null,
       });
 
-      throw new Error(`Failed to generate access token: ${error.message}`);
+      throw new Error(`Failed to generate access token: ${error.message}`, { cause: error });
     }
   }
 
@@ -97,7 +97,7 @@ export class TokenService {
       if (error instanceof ValidationException) {
         throw error;
       }
-      throw new Error(`Failed to generate refresh token: ${error.message}`);
+      throw new Error(`Failed to generate refresh token: ${error.message}`, { cause: error });
     }
   }
 
@@ -169,7 +169,9 @@ export class TokenService {
         }
       );
     } catch (error) {
-      throw new Error(`Failed to generate email verification token: ${error.message}`);
+      throw new Error(`Failed to generate email verification token: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 
@@ -185,12 +187,14 @@ export class TokenService {
       });
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
-        throw new Error('Email verification token has expired');
-      } else if (error.name === 'JsonWebTokenError') {
-        throw new Error('Invalid email verification token');
-      } else {
-        throw new Error(`Email verification token verification failed: ${error.message}`);
+        throw new Error('Email verification token has expired', { cause: error });
       }
+      if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid email verification token', { cause: error });
+      }
+      throw new Error(`Email verification token verification failed: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 
@@ -215,7 +219,9 @@ export class TokenService {
         }
       );
     } catch (error) {
-      throw new Error(`Failed to generate password reset token: ${error.message}`);
+      throw new Error(`Failed to generate password reset token: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 
@@ -231,12 +237,14 @@ export class TokenService {
       });
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
-        throw new Error('Password reset token has expired');
-      } else if (error.name === 'JsonWebTokenError') {
-        throw new Error('Invalid password reset token');
-      } else {
-        throw new Error(`Password reset token verification failed: ${error.message}`);
+        throw new Error('Password reset token has expired', { cause: error });
       }
+      if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid password reset token', { cause: error });
+      }
+      throw new Error(`Password reset token verification failed: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 
@@ -255,7 +263,7 @@ export class TokenService {
         refreshToken,
       };
     } catch (error) {
-      throw new Error(`Failed to generate tokens: ${error.message}`);
+      throw new Error(`Failed to generate tokens: ${error.message}`, { cause: error });
     }
   }
 

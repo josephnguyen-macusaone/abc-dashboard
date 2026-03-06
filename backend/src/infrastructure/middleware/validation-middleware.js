@@ -3,7 +3,7 @@
  * Express middleware for request validation using Joi
  */
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * Validate request body

@@ -5,7 +5,7 @@
  */
 import { LicenseListResponseDto, LicenseResponseDto } from '../../dto/license/index.js';
 import { PaginationDto } from '../../dto/common/index.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 export class GetLicensesUseCase {
   constructor(licenseRepository, externalLicenseRepository = null) {
@@ -172,7 +172,7 @@ export class GetLicensesUseCase {
       return responseDto;
     } catch (error) {
       logger.error('GetLicensesUseCase error', { error: error.message, stack: error.stack });
-      throw new Error(`Failed to get licenses: ${error.message}`);
+      throw new Error(`Failed to get licenses: ${error.message}`, { cause: error });
     }
   }
 }

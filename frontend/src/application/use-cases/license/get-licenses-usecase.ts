@@ -92,6 +92,7 @@ export class GetLicensesUseCaseImpl implements GetLicensesUseCase {
         seatsTotal: license.seatsTotal,
         seatsUsed: license.seatsUsed,
         lastPayment: license.lastPayment.getAmount(),
+        dueDate: license.dueDate?.toISOString(),
         lastActive: license.lastActive.toISOString(),
         smsPurchased: license.smsPurchased,
         smsSent: license.smsSent,

@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config as appConfig } from '../config/config.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 function coerceBoolean(value) {
   if (value === true || value === false) {

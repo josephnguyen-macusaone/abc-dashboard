@@ -38,7 +38,6 @@ function findJsFiles(dir, baseDir, files = []) {
   const entries = readdirSync(fullPath, { withFileTypes: true });
   for (const entry of entries) {
     const relPath = join(dir, entry.name);
-    const _absPath = join(baseDir, relPath);
     if (entry.isDirectory()) {
       findJsFiles(relPath, baseDir, files);
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {

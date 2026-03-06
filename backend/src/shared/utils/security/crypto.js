@@ -1,12 +1,5 @@
 import crypto from 'crypto';
 
-// Generate a secure random token
-const generateToken = () => crypto.randomBytes(32).toString('hex');
-
-// Generate a secure hash for tokens
-const generateTokenHash = (token) => crypto.createHash('sha256').update(token).digest('hex');
-
-// Generate a secure temporary password
 const generateTemporaryPassword = (length = 12) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
   let password = '';
@@ -29,4 +22,4 @@ const generateTemporaryPassword = (length = 12) => {
     .join('');
 };
 
-export { generateToken, generateTokenHash, generateTemporaryPassword };
+export { generateTemporaryPassword };

@@ -1,4 +1,4 @@
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 
 /**
  * Canonical error response schema (RECOMMENDATIONS_IMPLEMENTATION_PLAN R4).

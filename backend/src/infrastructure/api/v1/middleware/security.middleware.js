@@ -1,4 +1,4 @@
-import logger from '../../../config/logger.js';
+import logger from '../../../../shared/utils/logger.js';
 import { config } from '../../../config/config.js';
 import { cache } from '../../../config/redis.js';
 import { sendErrorResponse } from '../../../../shared/http/error-responses.js';
@@ -9,7 +9,7 @@ const CACHE_KEY_PREFIX = 'failed_attempts:';
 
 // Account lockout middleware
 export const accountLockout = async (req, res, next) => {
-  const clientIP = req.ip || req.connection.remoteAddress;
+  const clientIP = req.ip || req.socket?.remoteAddress;
   const cacheKey = `${CACHE_KEY_PREFIX}${clientIP}`;
 
   try {
@@ -53,7 +53,7 @@ export const accountLockout = async (req, res, next) => {
 
 // Track failed login attempts
 export const trackFailedLogin = async (req) => {
-  const clientIP = req.ip || req.connection.remoteAddress;
+  const clientIP = req.ip || req.socket?.remoteAddress;
   const cacheKey = `${CACHE_KEY_PREFIX}${clientIP}`;
 
   try {
@@ -91,7 +91,7 @@ export const trackFailedLogin = async (req) => {
 
 // Reset failed attempts on successful login
 export const resetFailedAttempts = async (req) => {
-  const clientIP = req.ip || req.connection.remoteAddress;
+  const clientIP = req.ip || req.socket?.remoteAddress;
   const cacheKey = `${CACHE_KEY_PREFIX}${clientIP}`;
 
   try {
@@ -236,7 +236,7 @@ export const createRateLimit = (windowMs, maxRequests, _message) => {
   const requests = new Map();
 
   return (req, res, next) => {
-    const clientIP = req.ip || req.connection.remoteAddress;
+    const clientIP = req.ip || req.socket?.remoteAddress;
     const now = Date.now();
     const windowStart = now - windowMs;
 

@@ -6,7 +6,7 @@
  */
 
 import { ExternalLicenseApiService } from '../../shared/services/external-license-api-service.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 async function testConnectivity() {
   try {

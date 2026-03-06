@@ -2,7 +2,7 @@ import { ExternalLicense } from '../../domain/entities/external-license-entity.j
 import { IExternalLicenseRepository } from '../../domain/repositories/interfaces/i-external-license-repository.js';
 import { licenseSyncConfig } from '../config/license-sync-config.js';
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * External License Repository Implementation
@@ -324,6 +324,101 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
     return parseInt(result?.count || 0) > 0;
   }
 
+  async countAll() {
+    const row = await this.db(this.licensesTable).count('id as count').first();
+    return parseInt(row?.count || 0);
+  }
+
+  // ── Sync state (delta/incremental sync support) ──────────────────────────
+
+  static SYNC_KEY = 'external_licenses';
+
+  async getLastSyncTimestamp() {
+    const row = await this.db('sync_state')
+      .where('sync_key', ExternalLicenseRepository.SYNC_KEY)
+      .first();
+    return row?.last_successful_sync_at ?? null;
+  }
+
+  async updateSyncState({ status, syncedCount = 0, error = null }) {
+    const now = new Date();
+    const update = {
+      last_sync_at: now,
+      last_sync_status: status,
+      last_sync_count: syncedCount,
+      last_sync_error: error,
+      updated_at: now,
+      ...(status === 'success' && { last_successful_sync_at: now }),
+    };
+    await this.db('sync_state')
+      .where('sync_key', ExternalLicenseRepository.SYNC_KEY)
+      .update(update);
+  }
+
+  // ── Sync failures dead-letter queue ──────────────────────────────────────
+
+  async recordSyncFailures(failures) {
+    if (!failures?.length) {
+      return;
+    }
+    const now = new Date();
+    const rows = failures.map(({ appid, error }) => ({
+      appid: String(appid),
+      error_message: String(error),
+      retry_count: 0,
+      next_retry_at: now,
+      created_at: now,
+      updated_at: now,
+    }));
+    // Upsert: if the appid already has an unresolved failure, increment retry count
+    await this.db('sync_failures')
+      .insert(rows)
+      .onConflict(this.db.raw('(appid) WHERE resolved = false'))
+      .ignore();
+  }
+
+  async getPendingSyncFailures(limit = 100) {
+    return this.db('sync_failures')
+      .where('resolved', false)
+      .where('retry_count', '<', this.db.raw('max_retries'))
+      .where('next_retry_at', '<=', new Date())
+      .orderBy('next_retry_at', 'asc')
+      .limit(limit);
+  }
+
+  async markSyncFailureResolved(appid) {
+    await this.db('sync_failures')
+      .where('appid', appid)
+      .where('resolved', false)
+      .update({ resolved: true, updated_at: new Date() });
+  }
+
+  async incrementSyncFailureRetry(appid) {
+    const backoffMinutes = [5, 15, 60, 240, 1440]; // 5m, 15m, 1h, 4h, 24h
+    const row = await this.db('sync_failures')
+      .where('appid', appid)
+      .where('resolved', false)
+      .first();
+    if (!row) {
+      return;
+    }
+
+    const retryCount = (row.retry_count ?? 0) + 1;
+    const delayMinutes = backoffMinutes[Math.min(retryCount - 1, backoffMinutes.length - 1)];
+    const nextRetry = new Date(Date.now() + delayMinutes * 60 * 1000);
+
+    await this.db('sync_failures')
+      .where('appid', appid)
+      .where('resolved', false)
+      .update({
+        retry_count: retryCount,
+        last_attempted_at: new Date(),
+        next_retry_at: nextRetry,
+        updated_at: new Date(),
+        resolved: retryCount >= row.max_retries,
+      });
+  }
+
   async markSynced(id, syncedAt) {
     const updates = {
       sync_status: 'synced',
@@ -487,6 +582,10 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
       }
     }
 
+    // Expose the upserted row ids so callers can call bulkMarkSynced directly
+    // without an extra N×findByAppId round-trip.
+    const upsertedIds = [...created, ...updated].map((r) => r.id).filter(Boolean);
+
     const summary = {
       created: created.length,
       updated: updated.length,
@@ -496,6 +595,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
         licensesData.length > 0
           ? Math.round(((created.length + updated.length) / licensesData.length) * 100)
           : 0,
+      upsertedIds,
     };
     logger.debug('Bulk upsert operation completed', { ...summary, errorCount: errors.length });
     return summary;
@@ -1148,7 +1248,7 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
 
       if (chunk.licenses.length === 0) {
         hasMorePages = false;
-        break;
+        continue;
       }
 
       // Build lookup maps for this chunk

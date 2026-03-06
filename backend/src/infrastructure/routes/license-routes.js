@@ -1,5 +1,5 @@
 import express from 'express';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { awilixContainer } from '../../shared/kernel/container.js';
 import { validateRequest } from '../middleware/validation-middleware.js';
 import { licenseSchemas } from '../api/v1/schemas/license.schemas.js';
@@ -13,12 +13,15 @@ import {
  * License Routes
  * Defines routes for license management operations
  */
-export const createLicenseRoutes = (controller, lifecycleController, authMiddleware) => {
+export function createLicenseRoutes(controller, lifecycleController, authMiddleware) {
   const router = express.Router();
-
-  // All routes require authentication
   router.use(authMiddleware.authenticate);
+  registerLicenseRoutes(router, controller, lifecycleController);
+  return router;
+}
 
+/* eslint-disable max-lines-per-function -- route file: each route has large inline swagger JSDoc */
+function registerLicenseRoutes(router, controller, lifecycleController) {
   // ========================================================================
   // LIFECYCLE MANAGEMENT ROUTES
   // ========================================================================
@@ -1505,6 +1508,5 @@ export const createLicenseRoutes = (controller, lifecycleController, authMiddlew
       return res.serverError('Failed to retrieve sync status');
     }
   });
-
-  return router;
-};
+}
+/* eslint-enable max-lines-per-function */

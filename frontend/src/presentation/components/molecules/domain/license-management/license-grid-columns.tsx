@@ -138,7 +138,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       meta: {
         label: "Last Active",
         headerAlign: "end" as const,
-        cell: { variant: "date" as const },
+        cell: { variant: "date" as const, readOnly: true },
       },
     },
     {

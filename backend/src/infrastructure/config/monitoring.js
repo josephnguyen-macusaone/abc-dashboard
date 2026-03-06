@@ -1,5 +1,5 @@
 import { cache, cacheKeys } from './redis.js';
-import logger from './logger.js';
+import logger from '../../shared/utils/logger.js';
 import { getComprehensiveMetrics, applicationMetrics } from './metrics.js';
 import { errorMonitor } from '../../shared/utils/monitoring/error-monitor.js';
 import { gracefulDegradationManager } from '../../shared/utils/reliability/graceful-degradation.js';
@@ -106,18 +106,6 @@ class APIMonitor {
       endpoints: new Map(),
       statusCodes: new Map(),
     };
-  }
-
-  // Load persisted metrics (disabled - Redis removed)
-  async loadPersistedMetrics() {
-    // Metrics persistence disabled - using in-memory only
-    logger.debug('Metrics persistence disabled');
-  }
-
-  // Persist current metrics (disabled - Redis removed)
-  async persistMetrics() {
-    // Metrics persistence disabled - data will be lost on restart
-    // This is a no-op since we're using in-memory storage only
   }
 
   // Cache metrics response (for API endpoint caching)
@@ -357,72 +345,6 @@ export const getHealthWithMetrics = async (req, res) => {
   }
 };
 
-// Helper function to get health data for dashboard
-export const getHealthData = async () => {
-  try {
-    const comprehensiveMetrics = await getComprehensiveMetrics();
-    const apiMetrics = apiMonitor.getMetrics();
-
-    return {
-      status: comprehensiveMetrics.summary?.status || 'OK',
-      message: 'Server is running',
-      timestamp: comprehensiveMetrics.timestamp,
-      environment: comprehensiveMetrics.environment,
-      uptime: comprehensiveMetrics.system?.uptime,
-      memory: comprehensiveMetrics.system?.memory,
-      version: comprehensiveMetrics.version,
-
-      // Summary metrics for dashboard
-      metrics: {
-        requests: apiMetrics.summary.totalRequests,
-        errorRate: apiMetrics.summary.errorRate,
-        avgResponseTime: apiMetrics.summary.averageResponseTime,
-        activeUsers: comprehensiveMetrics.application?.activeUsers,
-        memoryUsagePercent: comprehensiveMetrics.system?.memory?.usedPercent,
-        cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
-        databaseConnected: comprehensiveMetrics.database?.connected,
-        cacheHitRate: comprehensiveMetrics.cache?.hitRate,
-      },
-
-      // System overview
-      system: {
-        platform: comprehensiveMetrics.system?.platform,
-        hostname: comprehensiveMetrics.system?.hostname,
-        loadAverage: comprehensiveMetrics.system?.loadAverage,
-        diskUsage: comprehensiveMetrics.system?.disk,
-      },
-    };
-  } catch (error) {
-    logger.error('Error getting health data for dashboard:', error);
-    return {
-      status: 'ERROR',
-      message: 'Failed to collect health data',
-      timestamp: new Date().toISOString(),
-      error: error.message,
-    };
-  }
-};
-
-// Get detailed metrics (admin only)
-export const getDetailedMetrics = async (req, res) => {
-  try {
-    const comprehensiveMetrics = await getComprehensiveMetrics();
-    const apiMetrics = apiMonitor.getMetrics();
-
-    res.json({
-      success: true,
-      correlationId: req.correlationId,
-      data: {
-        comprehensive: comprehensiveMetrics,
-        apiMonitor: apiMetrics,
-      },
-    });
-  } catch (error) {
-    logger.error('Error getting detailed metrics:', error);
-    return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
-  }
-};
-
 // Reset metrics (admin only)
 export const resetMetrics = (req, res) => {
   apiMonitor.resetMetrics();
@@ -437,7 +359,5 @@ export const resetMetrics = (req, res) => {
 export default {
   monitorMiddleware,
   getHealthWithMetrics,
-  getDetailedMetrics,
-  resetMetrics,
   apiMonitor,
 };

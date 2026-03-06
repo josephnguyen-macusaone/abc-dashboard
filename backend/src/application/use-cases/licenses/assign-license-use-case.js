@@ -80,7 +80,7 @@ export class AssignLicenseUseCase {
 
       return LicenseAssignmentResponseDto.fromEntity(assignment);
     } catch (error) {
-      throw new Error(`Failed to assign license: ${error.message}`);
+      throw new Error(`Failed to assign license: ${error.message}`, { cause: error });
     }
   }
 }

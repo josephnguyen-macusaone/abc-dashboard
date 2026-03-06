@@ -39,7 +39,7 @@ export class UpdateProfileUseCase {
         profile: ProfileDto.fromEntity(updatedProfile),
       };
     } catch (error) {
-      throw new Error(`Failed to update profile: ${error.message}`);
+      throw new Error(`Failed to update profile: ${error.message}`, { cause: error });
     }
   }
 }

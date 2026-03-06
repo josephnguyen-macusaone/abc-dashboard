@@ -5,7 +5,7 @@
  */
 import { licenseSyncConfig } from '../../../infrastructure/config/license-sync-config.js';
 import { licenseSyncMonitor } from '../../../infrastructure/monitoring/license-sync-monitor.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 export class SyncExternalLicensesUseCase {
   constructor(
@@ -211,8 +211,7 @@ export class SyncExternalLicensesUseCase {
   async _runSyncToInternalOnly(syncResults) {
     logger.info('Skipping external API fetch, syncing existing external data to internal...');
     try {
-      const externalLicenses = await this.externalLicenseRepository.findAll({ limit: 100000 });
-      syncResults.totalFetched = externalLicenses.length;
+      syncResults.totalFetched = await this.externalLicenseRepository.countAll();
     } catch (error) {
       logger.warn('Could not get external license count', { error: error.message });
       syncResults.totalFetched = 0;
@@ -486,6 +485,9 @@ export class SyncExternalLicensesUseCase {
       await this._handleSyncError(error, operationContext, syncResults, startTime, options);
     }
 
+    // Persist outcome (sync_state + dead-letter failures) regardless of success/failure
+    await this._persistSyncOutcome(syncResults);
+
     return syncResults;
   }
 
@@ -683,37 +685,11 @@ export class SyncExternalLicensesUseCase {
       results.failed = bulkResult.errors.length;
       results.errors = bulkResult.errors;
 
-      // Mark successfully synced licenses
-      if (bulkResult.created > 0 || bulkResult.updated > 0) {
-        const successfulAppIds = [];
-
-        // Collect successful appids (only valid: non-empty string or number)
-        const isValidAppid = (id) =>
-          (typeof id === 'string' && id.trim() !== '') ||
-          (typeof id === 'number' && !Number.isNaN(id));
-        batch.forEach((licenseData) => {
-          const hasError = bulkResult.errors.some(
-            (error) => error.data && error.data.appid === licenseData.appid
-          );
-          if (!hasError && isValidAppid(licenseData.appid)) {
-            successfulAppIds.push(licenseData.appid);
-          }
-        });
-
-        if (successfulAppIds.length > 0) {
-          // Get the internal IDs for successful licenses and mark them as synced
-          const successfulLicenses = await Promise.all(
-            successfulAppIds.map((appid) => this.externalLicenseRepository.findByAppId(appid))
-          );
-
-          const successfulIds = successfulLicenses
-            .filter((license) => license)
-            .map((license) => license.id);
-
-          if (successfulIds.length > 0) {
-            await this.externalLicenseRepository.bulkMarkSynced(successfulIds, syncTimestamp);
-          }
-        }
+      // Mark successfully synced licenses.
+      // bulkUpsert now returns upsertedIds directly from the RETURNING clause,
+      // eliminating the previous N×findByAppId round-trip.
+      if (bulkResult.upsertedIds?.length > 0) {
+        await this.externalLicenseRepository.bulkMarkSynced(bulkResult.upsertedIds, syncTimestamp);
       }
     } catch (error) {
       logger.error('Batch processing failed', {
@@ -1354,18 +1330,37 @@ export class SyncExternalLicensesUseCase {
 
   async _getLastSyncTimestamp() {
     try {
-      // Get the most recent last_synced_at timestamp
-      const result = await this.externalLicenseRepository
-        .db('external_licenses')
-        .max('last_synced_at as last_sync')
-        .first();
-
-      return result?.last_sync || null;
+      return await this.externalLicenseRepository.getLastSyncTimestamp();
     } catch (error) {
-      logger.warn('Failed to get last sync timestamp', {
-        error: error.message,
-      });
+      logger.warn('Failed to get last sync timestamp', { error: error.message });
       return null;
+    }
+  }
+
+  /**
+   * Persist sync outcome to sync_state and write any failed appids to sync_failures.
+   * Called after every sync attempt regardless of success/failure.
+   */
+  async _persistSyncOutcome(syncResults) {
+    try {
+      const status = syncResults.success ? 'success' : 'failed';
+      await this.externalLicenseRepository.updateSyncState({
+        status,
+        syncedCount: (syncResults.synced ?? 0) + (syncResults.created ?? 0) + (syncResults.updated ?? 0),
+        error: syncResults.error ?? null,
+      });
+
+      // Write failed appids to the dead-letter table for later retry (A5)
+      const failures = (syncResults.errors ?? [])
+        .filter((e) => e.appid)
+        .map((e) => ({ appid: e.appid, error: e.error || e.message || 'Unknown error' }));
+
+      if (failures.length) {
+        await this.externalLicenseRepository.recordSyncFailures(failures);
+        logger.info('Recorded sync failures for retry', { count: failures.length });
+      }
+    } catch (err) {
+      logger.warn('Failed to persist sync outcome', { error: err.message });
     }
   }
 }
