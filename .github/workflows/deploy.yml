@@ -217,6 +217,9 @@ jobs:
               echo "LICENSE_SYNC_ENABLED=false" >> .env
             fi
 
+            echo "Ensuring logs directory is writable by container user (uid 1001)..."
+            mkdir -p backend/logs && chown -R 1001:1001 backend/logs
+
             echo "Running database migrations..."
             docker compose run --rm -e NODE_ENV=production backend node src/infrastructure/scripts/migrate.js
 

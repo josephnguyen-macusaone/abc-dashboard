@@ -27,8 +27,8 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S appuser -u 1001
 
-# Change ownership of app directory
-RUN chown -R appuser:nodejs /app
+# Change ownership of app directory and ensure logs dir exists
+RUN mkdir -p /app/logs && chown -R appuser:nodejs /app
 USER appuser
 
 # Expose port
