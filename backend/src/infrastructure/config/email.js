@@ -39,14 +39,14 @@ const sendEmail = async (options) => {
     };
   } catch (error) {
     logger.error(`Failed to send email to ${options.email}:`, error);
-    throw new Error(`Email sending failed: ${error.message}`);
+    throw new Error(`Email sending failed: ${error.message}`, { cause: error });
   }
 };
 
 // Helper function to send templated emails
 const sendTemplatedEmail = async (template, email, data) => {
   const emailContent = renderEmailTemplate(template, data);
-  return await sendEmail({
+  return sendEmail({
     email,
     ...emailContent,
   });

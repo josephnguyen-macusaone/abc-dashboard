@@ -328,13 +328,25 @@ export class ExternalLicenseValidator {
     if (typeof value !== 'string') {
       throw new Error(`must be a string, got ${typeof value}`);
     }
-    if (schema.maxLength != null && value.length > schema.maxLength) {
+    if (
+      schema.maxLength !== null &&
+      schema.maxLength !== undefined &&
+      value.length > schema.maxLength
+    ) {
       throw new Error(`exceeds maximum length of ${schema.maxLength} characters`);
     }
-    if (schema.minLength != null && value.length < schema.minLength) {
+    if (
+      schema.minLength !== null &&
+      schema.minLength !== undefined &&
+      value.length < schema.minLength
+    ) {
       throw new Error(`must be at least ${schema.minLength} characters long`);
     }
-    if (schema.pattern != null && !new RegExp(schema.pattern).test(value)) {
+    if (
+      schema.pattern !== null &&
+      schema.pattern !== undefined &&
+      !new RegExp(schema.pattern).test(value)
+    ) {
       throw new Error(`does not match required pattern`);
     }
     if (schema.format === 'email' && !this._isValidEmail(value)) {

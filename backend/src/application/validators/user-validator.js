@@ -181,7 +181,11 @@ export class UserValidator {
   }
 
   static _validateUpdatePhone(input, errors) {
-    if (input.phone !== undefined && input.phone !== null && !UserValidator.isValidPhone(input.phone)) {
+    if (
+      input.phone !== undefined &&
+      input.phone !== null &&
+      !UserValidator.isValidPhone(input.phone)
+    ) {
       errors.push({ field: 'phone', message: 'Invalid phone number format' });
     }
   }
@@ -318,8 +322,12 @@ export class UserValidator {
           .split(',')
           .map((v) => {
             const lower = v.trim().toLowerCase();
-            if (lower === 'true') return true;
-            if (lower === 'false') return false;
+            if (lower === 'true') {
+              return true;
+            }
+            if (lower === 'false') {
+              return false;
+            }
             return null;
           })
           .filter((v) => v !== null);

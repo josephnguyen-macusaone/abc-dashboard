@@ -168,17 +168,21 @@ function buildMeta(meta) {
   const winstonMeta = { ...restMeta };
   // Explicit correlationId wins; fall back to the async-local context value.
   const cid = correlationId ?? getCorrelationId();
-  if (cid) winstonMeta.correlationId = cid;
-  if (userId) winstonMeta.userId = userId;
+  if (cid) {
+    winstonMeta.correlationId = cid;
+  }
+  if (userId) {
+    winstonMeta.userId = userId;
+  }
   return winstonMeta;
 }
 
 // Enhanced logging methods with automatic correlation ID injection
 const enhancedLogger = {
   error: (message, meta = {}) => logger.error(message, buildMeta(meta)),
-  warn:  (message, meta = {}) => logger.warn(message,  buildMeta(meta)),
-  info:  (message, meta = {}) => logger.info(message,  buildMeta(meta)),
-  http:  (message, meta = {}) => logger.http(message,  buildMeta(meta)),
+  warn: (message, meta = {}) => logger.warn(message, buildMeta(meta)),
+  info: (message, meta = {}) => logger.info(message, buildMeta(meta)),
+  http: (message, meta = {}) => logger.http(message, buildMeta(meta)),
   debug: (message, meta = {}) => logger.debug(message, buildMeta(meta)),
 
   // Request-aware logging methods
@@ -219,11 +223,11 @@ const enhancedLogger = {
     debug: (message) => logger.debug(message, context),
   }),
 
-  startup:     (message, meta = {}) => logger.info(message,  buildMeta(meta)),
-  security:    (message, meta = {}) => logger.warn(message,  buildMeta(meta)),
-  database:    (message, meta = {}) => logger.debug(message, buildMeta(meta)),
-  api:         (message, meta = {}) => logger.http(message,  buildMeta(meta)),
-  performance: (message, meta = {}) => logger.info(message,  buildMeta(meta)),
+  startup: (message, meta = {}) => logger.info(message, buildMeta(meta)),
+  security: (message, meta = {}) => logger.warn(message, buildMeta(meta)),
+  database: (message, meta = {}) => logger.debug(message, buildMeta(meta)),
+  api: (message, meta = {}) => logger.http(message, buildMeta(meta)),
+  performance: (message, meta = {}) => logger.info(message, buildMeta(meta)),
 };
 
 export default enhancedLogger;

@@ -92,9 +92,7 @@ export class SyncExternalLicensesUseCase {
       ...(hasLimit && { maxLicenses: limit }),
       ...(hasMaxPages && { maxPages }),
       onFetchProgress:
-        typeof syncResults.onProgress === 'function'
-          ? (p) => syncResults.onProgress(p)
-          : undefined,
+        typeof syncResults.onProgress === 'function' ? (p) => syncResults.onProgress(p) : undefined,
     });
 
     if (!externalData.success) {
@@ -359,64 +357,102 @@ export class SyncExternalLicensesUseCase {
    * Run the main sync steps (external fetch, internal sync, bidirectional)
    * Returns early syncResults if fetch had early return, else undefined
    */
-  async _runSyncSteps(options, syncResults, operationContext, startTime) {
-    const { batchSize, dryRun, syncToInternalOnly, comprehensive, limit, maxPages } = options;
+  _initProcessingProgress(syncResults, total) {
+    if (!syncResults.onProgress || total <= 0) {
+      return;
+    }
+    syncResults.onProgress({ processed: 0, total, percent: 0, phase: 'processing' });
+  }
 
-    if (!syncToInternalOnly) {
-      const fetchResult = await this._fetchExternalLicenses(
-        { batchSize, dryRun, limit, maxPages },
-        syncResults,
-        startTime
-      );
-      if (fetchResult.earlyReturn) {
-        return fetchResult.syncResults;
-      }
-      const total = syncResults.totalFetched || fetchResult.externalData?.data?.length || 0;
-      if (syncResults.onProgress && total > 0) {
-        syncResults.onProgress({ processed: 0, total, percent: 0, phase: 'processing' });
-      }
-      const syncTimestamp = new Date();
-      await this._processExternalBatches(
-        fetchResult.externalData,
-        batchSize,
-        syncResults,
-        syncTimestamp
-      );
-      syncResults.success = true;
-    } else {
-      await this._runSyncToInternalOnly(syncResults);
+  async _runExternalFetchAndProcess(
+    { batchSize, dryRun, limit, maxPages },
+    syncResults,
+    startTime
+  ) {
+    const fetchResult = await this._fetchExternalLicenses(
+      { batchSize, dryRun, limit, maxPages },
+      syncResults,
+      startTime
+    );
+
+    if (fetchResult.earlyReturn) {
+      return fetchResult.syncResults;
     }
 
-    const shouldRunInternal = this.internalLicenseRepository && (!dryRun || syncToInternalOnly);
-    if (shouldRunInternal) {
-      try {
-        await this._runInternalSync(
-          { comprehensive, batchSize, dryRun, syncToInternalOnly, limit, maxPages },
-          syncResults
-        );
-      } catch (error) {
-        logger.error('Failed to sync to internal licenses (DETAILED ERROR)', {
-          error: error.message,
-          errorStack: error.stack,
-          errorType: error.constructor.name,
-        });
-        syncResults.internalSyncError = error.message;
-      }
+    const total = syncResults.totalFetched || fetchResult.externalData?.data?.length || 0;
+    this._initProcessingProgress(syncResults, total);
+
+    const syncTimestamp = new Date();
+    await this._processExternalBatches(
+      fetchResult.externalData,
+      batchSize,
+      syncResults,
+      syncTimestamp
+    );
+    syncResults.success = true;
+
+    return undefined;
+  }
+
+  async _maybeRunInternalSync(options, syncResults) {
+    const shouldRunInternal =
+      this.internalLicenseRepository && (!options.dryRun || options.syncToInternalOnly);
+    if (!shouldRunInternal) {
+      return;
     }
 
+    try {
+      await this._runInternalSync(options, syncResults);
+    } catch (error) {
+      logger.error('Failed to sync to internal licenses (DETAILED ERROR)', {
+        error: error.message,
+        errorStack: error.stack,
+        errorType: error.constructor.name,
+      });
+      syncResults.internalSyncError = error.message;
+    }
+  }
+
+  async _maybeRunBidirectionalSync(options, syncResults) {
     const shouldRunBidirectional =
       options.syncBidirectional &&
       this.internalLicenseRepository &&
       this.externalLicenseApiService &&
-      !dryRun;
-    if (shouldRunBidirectional) {
-      try {
-        await this._runBidirectionalSync(options, syncResults);
-      } catch (error) {
-        logger.error('Failed bidirectional sync', { error: error.message });
-        syncResults.bidirectionalSyncError = error.message;
+      !options.dryRun;
+    if (!shouldRunBidirectional) {
+      return;
+    }
+
+    try {
+      await this._runBidirectionalSync(options, syncResults);
+    } catch (error) {
+      logger.error('Failed bidirectional sync', { error: error.message });
+      syncResults.bidirectionalSyncError = error.message;
+    }
+  }
+
+  async _runSyncSteps(options, syncResults, operationContext, startTime) {
+    const { batchSize, dryRun, syncToInternalOnly, comprehensive, limit, maxPages } = options;
+
+    if (syncToInternalOnly) {
+      await this._runSyncToInternalOnly(syncResults);
+    } else {
+      const earlySyncResults = await this._runExternalFetchAndProcess(
+        { batchSize, dryRun, limit, maxPages },
+        syncResults,
+        startTime
+      );
+      if (earlySyncResults) {
+        return earlySyncResults;
       }
     }
+
+    await this._maybeRunInternalSync(
+      { comprehensive, batchSize, dryRun, syncToInternalOnly, limit, maxPages },
+      syncResults
+    );
+
+    await this._maybeRunBidirectionalSync(options, syncResults);
 
     this._finalizeSyncSuccess(operationContext, syncResults, startTime);
     return undefined;
@@ -1346,7 +1382,8 @@ export class SyncExternalLicensesUseCase {
       const status = syncResults.success ? 'success' : 'failed';
       await this.externalLicenseRepository.updateSyncState({
         status,
-        syncedCount: (syncResults.synced ?? 0) + (syncResults.created ?? 0) + (syncResults.updated ?? 0),
+        syncedCount:
+          (syncResults.synced ?? 0) + (syncResults.created ?? 0) + (syncResults.updated ?? 0),
         error: syncResults.error ?? null,
       });
 

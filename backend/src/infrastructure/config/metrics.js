@@ -4,6 +4,194 @@ import logger from '../../shared/utils/logger.js';
 import { cache } from './redis.js';
 import { getDB, getDatabaseMetrics } from './database.js';
 
+function toInt(value, fallback = 0) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function formatPgVersion(versionString) {
+  if (!versionString) {
+    return undefined;
+  }
+  const [first, second] = String(versionString).split(' ');
+  if (!first) {
+    return undefined;
+  }
+  return second ? `${first} ${second}` : first;
+}
+
+function computePgCacheHitRatio(stats) {
+  const blocksHit = toInt(stats?.blocks_hit, 0);
+  const blocksRead = toInt(stats?.blocks_read, 0);
+  const denominator = blocksHit + blocksRead;
+  if (denominator <= 0) {
+    return null;
+  }
+  return ((blocksHit / denominator) * 100).toFixed(2);
+}
+
+function withFallback(value, fallback) {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  return value;
+}
+
+function withFallbackNumber(value, fallback = 0) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return fallback;
+  }
+  return value;
+}
+
+function getDbOrNull() {
+  try {
+    return getDB();
+  } catch {
+    return null;
+  }
+}
+
+async function isPostgresConnected(db) {
+  const result = await db.raw('SELECT 1 as connected');
+  return Boolean(result?.rows?.length);
+}
+
+async function queryPostgresInfo(db) {
+  const [dbInfo, tableCount, dbSize, connInfo] = await Promise.all([
+    db.raw(`
+        SELECT 
+          current_database() as database_name,
+          current_user as current_user,
+          version() as version
+      `),
+    db.raw(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+      `),
+    db.raw(`
+        SELECT pg_size_pretty(pg_database_size(current_database())) as size
+      `),
+    db.raw(`
+        SELECT 
+          numbackends as active_connections,
+          xact_commit as transactions_committed,
+          xact_rollback as transactions_rollback,
+          blks_read as blocks_read,
+          blks_hit as blocks_hit,
+          tup_returned as rows_returned,
+          tup_fetched as rows_fetched,
+          tup_inserted as rows_inserted,
+          tup_updated as rows_updated,
+          tup_deleted as rows_deleted
+        FROM pg_stat_database 
+        WHERE datname = current_database()
+      `),
+  ]);
+
+  return {
+    dbInfoRow: dbInfo?.rows?.[0],
+    tableCountRow: tableCount?.rows?.[0],
+    dbSizeRow: dbSize?.rows?.[0],
+    statsRow: connInfo?.rows?.[0] || {},
+  };
+}
+
+function getSettledValue(result, fallback) {
+  return result?.status === 'fulfilled' ? result.value : fallback;
+}
+
+function logMetricsCollectionFailures(results, metricNames) {
+  results.forEach((result, index) => {
+    if (result.status !== 'rejected') {
+      return;
+    }
+    logger.warn(`Failed to collect ${metricNames[index]} metrics:`, {
+      error: result.reason?.message || result.reason,
+      stack: result.reason?.stack,
+    });
+  });
+}
+
+function buildHealthyComprehensiveMetricsSummary({
+  system,
+  processInfo,
+  database,
+  cacheData,
+  application,
+}) {
+  return {
+    status: 'healthy',
+    uptime: withFallbackNumber(processInfo?.uptime, 0),
+    memoryUsagePercent: withFallbackNumber(system?.memory?.usedPercent, 0),
+    cpuUsagePercent: withFallbackNumber(system?.cpu?.usagePercent, 0),
+    activeUsers: withFallbackNumber(application?.activeUsers, 0),
+    cacheHitRate: withFallbackNumber(cacheData?.hitRate, 0),
+    databaseConnected: Boolean(database?.connected),
+  };
+}
+
+function buildHealthyComprehensiveMetrics({
+  timestamp,
+  nodeEnv,
+  nodeVersion,
+  system,
+  processInfo,
+  database,
+  cacheData,
+  application,
+}) {
+  const safeDatabase = withFallback(database, { connected: false });
+  const safeCache = withFallback(cacheData, { hitRate: 0 });
+  const safeApplication = withFallback(application, { activeUsers: 0 });
+
+  return {
+    timestamp,
+    environment: nodeEnv,
+    version: nodeVersion,
+
+    system,
+    process: processInfo,
+    database: safeDatabase,
+    cache: safeCache,
+    application: safeApplication,
+
+    // Summary metrics for quick overview
+    summary: buildHealthyComprehensiveMetricsSummary({
+      system,
+      processInfo,
+      database: safeDatabase,
+      cacheData: safeCache,
+      application: safeApplication,
+    }),
+  };
+}
+
+function buildErrorComprehensiveMetrics({ timestamp, nodeEnv, nodeVersion, errorMessage }) {
+  return {
+    timestamp,
+    environment: nodeEnv,
+    version: nodeVersion,
+    error: errorMessage,
+    status: 'error',
+    system: null,
+    process: null,
+    database: { connected: false },
+    cache: { hitRate: 0 },
+    application: { activeUsers: 0 },
+    summary: {
+      status: 'error',
+      uptime: 0,
+      memoryUsagePercent: 0,
+      cpuUsagePercent: 0,
+      activeUsers: 0,
+      cacheHitRate: 0,
+      databaseConnected: false,
+    },
+  };
+}
+
 class SystemMetrics {
   constructor() {
     this.startTime = process.hrtime.bigint();
@@ -100,10 +288,8 @@ class DatabaseMetrics {
       // Get pool and performance metrics
       const poolMetrics = await getDatabaseMetrics();
 
-      let db;
-      try {
-        db = getDB();
-      } catch (error) {
+      const db = getDbOrNull();
+      if (!db) {
         return {
           connected: false,
           error: 'Database not initialized',
@@ -113,82 +299,36 @@ class DatabaseMetrics {
       }
 
       // Test connection
-      const result = await db.raw('SELECT 1 as connected');
-      const isConnected = result.rows && result.rows.length > 0;
-
-      if (!isConnected) {
+      const connected = await isPostgresConnected(db);
+      if (!connected) {
         return {
           connected: false,
           error: 'Connection test failed',
         };
       }
 
-      // Get database information
-      const dbInfo = await db.raw(`
-        SELECT 
-          current_database() as database_name,
-          current_user as current_user,
-          version() as version
-      `);
-
-      // Get table count
-      const tableCount = await db.raw(`
-        SELECT COUNT(*) as count 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public'
-      `);
-
-      // Get database size
-      const dbSize = await db.raw(`
-        SELECT pg_size_pretty(pg_database_size(current_database())) as size
-      `);
-
-      // Get connection info
-      const connInfo = await db.raw(`
-        SELECT 
-          numbackends as active_connections,
-          xact_commit as transactions_committed,
-          xact_rollback as transactions_rollback,
-          blks_read as blocks_read,
-          blks_hit as blocks_hit,
-          tup_returned as rows_returned,
-          tup_fetched as rows_fetched,
-          tup_inserted as rows_inserted,
-          tup_updated as rows_updated,
-          tup_deleted as rows_deleted
-        FROM pg_stat_database 
-        WHERE datname = current_database()
-      `);
-
-      const stats = connInfo.rows[0] || {};
-      const cacheHitRatio =
-        stats.blocks_hit && stats.blocks_read
-          ? (
-              (parseInt(stats.blocks_hit) /
-                (parseInt(stats.blocks_hit) + parseInt(stats.blocks_read))) *
-              100
-            ).toFixed(2)
-          : null;
+      const { dbInfoRow, tableCountRow, dbSizeRow, statsRow } = await queryPostgresInfo(db);
+      const cacheHitRatio = computePgCacheHitRatio(statsRow);
 
       return {
         connected: true,
-        name: dbInfo.rows[0]?.database_name,
-        user: dbInfo.rows[0]?.current_user,
-        version: `${dbInfo.rows[0]?.version?.split(' ')[0]} ${dbInfo.rows[0]?.version?.split(' ')[1]}`,
+        name: dbInfoRow?.database_name,
+        user: dbInfoRow?.current_user,
+        version: formatPgVersion(dbInfoRow?.version),
         pool: poolMetrics.pool,
         performance: poolMetrics.performance,
         databaseStats: {
-          tables: parseInt(tableCount.rows[0]?.count || 0),
-          size: dbSize.rows[0]?.size,
-          activeConnections: parseInt(stats.active_connections || 0),
-          transactionsCommitted: parseInt(stats.transactions_committed || 0),
-          transactionsRollback: parseInt(stats.transactions_rollback || 0),
+          tables: toInt(tableCountRow?.count, 0),
+          size: dbSizeRow?.size,
+          activeConnections: toInt(statsRow.active_connections, 0),
+          transactionsCommitted: toInt(statsRow.transactions_committed, 0),
+          transactionsRollback: toInt(statsRow.transactions_rollback, 0),
           cacheHitRatio,
-          rowsReturned: parseInt(stats.rows_returned || 0),
-          rowsFetched: parseInt(stats.rows_fetched || 0),
-          rowsInserted: parseInt(stats.rows_inserted || 0),
-          rowsUpdated: parseInt(stats.rows_updated || 0),
-          rowsDeleted: parseInt(stats.rows_deleted || 0),
+          rowsReturned: toInt(statsRow.rows_returned, 0),
+          rowsFetched: toInt(statsRow.rows_fetched, 0),
+          rowsInserted: toInt(statsRow.rows_inserted, 0),
+          rowsUpdated: toInt(statsRow.rows_updated, 0),
+          rowsDeleted: toInt(statsRow.rows_deleted, 0),
         },
       };
     } catch (error) {
@@ -362,6 +502,7 @@ export const getComprehensiveMetrics = async () => {
 
   try {
     // Use Promise.allSettled to handle partial failures gracefully
+    const metricNames = ['system', 'process', 'database', 'cache', 'application'];
     const results = await Promise.allSettled([
       Promise.resolve(systemMetrics.getSystemMetrics()),
       Promise.resolve(systemMetrics.getProcessMetrics()),
@@ -371,77 +512,42 @@ export const getComprehensiveMetrics = async () => {
     ]);
 
     // Extract results, handling failures gracefully
-    const system = results[0].status === 'fulfilled' ? results[0].value : null;
-    const processInfo = results[1].status === 'fulfilled' ? results[1].value : null;
-    const database = results[2].status === 'fulfilled' ? results[2].value : { connected: false };
-    const cacheData = results[3].status === 'fulfilled' ? results[3].value : { hitRate: 0 };
-    const application = results[4].status === 'fulfilled' ? results[4].value : { activeUsers: 0 };
+    const system = getSettledValue(results[0], null);
+    const processInfo = getSettledValue(results[1], null);
+    const database = getSettledValue(results[2], { connected: false });
+    const cacheData = getSettledValue(results[3], { hitRate: 0 });
+    const application = getSettledValue(results[4], { activeUsers: 0 });
 
     // Log any failures
-    results.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        const metricNames = ['system', 'process', 'database', 'cache', 'application'];
-        logger.warn(`Failed to collect ${metricNames[index]} metrics:`, {
-          error: result.reason?.message || result.reason,
-          stack: result.reason?.stack,
-        });
-      }
-    });
+    logMetricsCollectionFailures(results, metricNames);
 
     // Ensure we have valid system metrics (they should always succeed)
     if (!system) {
       throw new Error('Failed to collect essential system metrics');
     }
 
-    return {
+    return buildHealthyComprehensiveMetrics({
       timestamp,
-      environment: nodeEnv,
-      version: nodeVersion,
-
+      nodeEnv,
+      nodeVersion,
       system,
-      process: processInfo,
-      database: database || { connected: false },
-      cache: cacheData || { hitRate: 0 },
-      application: application || { activeUsers: 0 },
-
-      // Summary metrics for quick overview
-      summary: {
-        status: 'healthy',
-        uptime: processInfo?.uptime || 0,
-        memoryUsagePercent: system.memory?.usedPercent || 0,
-        cpuUsagePercent: system.cpu?.usagePercent || 0,
-        activeUsers: application?.activeUsers || 0,
-        cacheHitRate: cacheData?.hitRate || 0,
-        databaseConnected: database?.connected || false,
-      },
-    };
+      processInfo,
+      database,
+      cacheData,
+      application,
+    });
   } catch (error) {
     logger.error('Error collecting comprehensive metrics:', {
       message: error.message,
       stack: error.stack,
       name: error.name,
     });
-    return {
+    return buildErrorComprehensiveMetrics({
       timestamp,
-      environment: nodeEnv,
-      version: nodeVersion,
-      error: error.message,
-      status: 'error',
-      system: null,
-      process: null,
-      database: { connected: false },
-      cache: { hitRate: 0 },
-      application: { activeUsers: 0 },
-      summary: {
-        status: 'error',
-        uptime: 0,
-        memoryUsagePercent: 0,
-        cpuUsagePercent: 0,
-        activeUsers: 0,
-        cacheHitRate: 0,
-        databaseConnected: false,
-      },
-    };
+      nodeEnv,
+      nodeVersion,
+      errorMessage: error.message,
+    });
   }
 };
 

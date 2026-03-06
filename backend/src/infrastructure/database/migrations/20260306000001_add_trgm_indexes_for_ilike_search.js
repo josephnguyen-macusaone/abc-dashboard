@@ -33,7 +33,9 @@ export async function up(knex) {
       WHERE agents_name IS NOT NULL
   `);
 
-  logger.info('Trigram indexes created: idx_licenses_dba_trgm, idx_licenses_key_trgm, idx_licenses_agents_name_trgm');
+  logger.info(
+    'Trigram indexes created: idx_licenses_dba_trgm, idx_licenses_key_trgm, idx_licenses_agents_name_trgm'
+  );
 }
 
 export async function down(knex) {

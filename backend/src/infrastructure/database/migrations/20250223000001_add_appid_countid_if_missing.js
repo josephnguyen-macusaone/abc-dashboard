@@ -28,7 +28,7 @@ export async function up(knex) {
   }
 }
 
-export async function down(knex) {
+export async function down(_knex) {
   // No-op: these columns may have been added by 20241217000001.
   // Rolling back would break sync; leave them in place.
 }

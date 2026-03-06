@@ -36,7 +36,6 @@ export class UpdateLicenseUseCase {
       }
 
       // Strip lastActive: only the external sync process is allowed to update it.
-      // eslint-disable-next-line no-unused-vars
       const { lastActive: _lastActive, ...safeUpdates } = updates;
 
       // Add audit fields

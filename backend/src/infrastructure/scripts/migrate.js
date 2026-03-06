@@ -164,16 +164,14 @@ async function handleMake(db) {
   logger.info('Created migration', { path: name });
 }
 
-function showUsage(db) {
+function showUsage(_db) {
   logger.info('Usage:');
   logger.info('  npm run migrate              # Run all pending migrations');
   logger.info('  npm run migrate:fresh        # Drop all tables and run fresh migrations');
   logger.info('  npm run rollback             # Rollback last batch');
   logger.info('  npm run rollback 3           # Rollback last 3 batches');
   logger.info('  npm run seed                 # Run all seed files');
-  logger.info(
-    '  npm run seed:fresh           # Drop all tables, run fresh migrations + seeds'
-  );
+  logger.info('  npm run seed:fresh           # Drop all tables, run fresh migrations + seeds');
   logger.info('  npm run seed <filename>      # Run specific seed file');
   logger.info('  npm run db:status            # Show migration status');
 }

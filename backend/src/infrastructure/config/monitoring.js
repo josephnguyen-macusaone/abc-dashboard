@@ -3,7 +3,203 @@ import logger from '../../shared/utils/logger.js';
 import { getComprehensiveMetrics, applicationMetrics } from './metrics.js';
 import { errorMonitor } from '../../shared/utils/monitoring/error-monitor.js';
 import { gracefulDegradationManager } from '../../shared/utils/reliability/graceful-degradation.js';
-import { sendErrorResponse } from '../../shared/http/error-responses.js';
+
+function computeOverallHealth({ errorHealth, databaseConnected, apiErrorRate }) {
+  let score = 100;
+  const issues = [];
+
+  if (errorHealth?.status !== 'healthy') {
+    score -= 100 - (errorHealth?.score ?? 0);
+    issues.push({
+      system: 'error_monitoring',
+      status: errorHealth?.status,
+      score: errorHealth?.score,
+      issues: errorHealth?.issues,
+    });
+  }
+
+  if (!databaseConnected) {
+    score -= 50;
+    issues.push({
+      system: 'database',
+      status: 'disconnected',
+      message: 'Database connection failed',
+    });
+  }
+
+  if (apiErrorRate > 5) {
+    score -= Math.min(30, apiErrorRate * 2);
+    issues.push({
+      system: 'api',
+      status: 'high_error_rate',
+      errorRate: apiErrorRate,
+      message: `API error rate is ${apiErrorRate}%`,
+    });
+  }
+
+  const clampedScore = Math.max(0, Math.min(100, score));
+  let status = 'healthy';
+  if (clampedScore < 50) {
+    status = 'critical';
+  } else if (clampedScore < 75) {
+    status = 'unhealthy';
+  } else if (clampedScore < 90) {
+    status = 'degraded';
+  }
+
+  return { status, score: clampedScore, issues };
+}
+
+function buildHealthConfig() {
+  return {
+    port: process.env.PORT || 5000,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
+    databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_HOST ? '✅ Set' : '❌ Missing',
+    emailService: process.env.EMAIL_SERVICE || 'not configured',
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
+  };
+}
+
+function buildHealthMessage(status, issuesCount) {
+  if (status === 'healthy') {
+    return 'All systems operational';
+  }
+  return `${issuesCount} system(s) have issues`;
+}
+
+function buildHealthSystemSection(comprehensiveMetrics) {
+  return {
+    uptime: comprehensiveMetrics.system?.uptime,
+    memoryUsagePercent: comprehensiveMetrics.system?.memory?.usedPercent,
+    cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
+    loadAverage: comprehensiveMetrics.system?.loadAverage,
+    platform: comprehensiveMetrics.system?.platform,
+    hostname: comprehensiveMetrics.system?.hostname,
+  };
+}
+
+function buildHealthDatabaseSection(comprehensiveMetrics) {
+  return {
+    connected: comprehensiveMetrics.database?.connected,
+    name: comprehensiveMetrics.database?.name,
+    collections: comprehensiveMetrics.database?.databaseStats?.tables || 0,
+    objects: comprehensiveMetrics.database?.databaseStats?.rowsReturned || 0,
+  };
+}
+
+function buildHealthCacheSection(comprehensiveMetrics) {
+  return {
+    hitRate: comprehensiveMetrics.cache?.hitRate,
+    type: comprehensiveMetrics.cache?.cacheStats?.cache_type || 'in-memory',
+    connected: comprehensiveMetrics.cache?.cacheStats?.connected_clients !== undefined,
+  };
+}
+
+function buildHealthApplicationSection(comprehensiveMetrics) {
+  return {
+    activeUsers: comprehensiveMetrics.application?.activeUsers,
+    endpointCount: Object.keys(comprehensiveMetrics.application?.endpointStats || {}).length,
+    securityEvents: comprehensiveMetrics.application?.security,
+  };
+}
+
+function buildHealthErrorMonitoringSection({ errorHealth, errorMetrics }) {
+  return {
+    status: errorHealth.status,
+    score: errorHealth.score,
+    totalErrors: errorMetrics.total,
+    errorRates: errorMetrics.rates,
+    recentErrorsCount: errorMetrics.recentErrors?.length || 0,
+    topErrorCategories: Object.fromEntries(
+      Array.from(errorMetrics.byCategory.entries())
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+    ),
+  };
+}
+
+function buildHealthGracefulDegradationSection(degradationStatus) {
+  return {
+    level: degradationStatus.degradationLevel,
+    lastUpdated: degradationStatus.lastUpdated,
+    features: degradationStatus.features,
+  };
+}
+
+function buildHealthLegacyMetricsSection(apiMetrics) {
+  return {
+    totalRequests: apiMetrics.summary.totalRequests,
+    errorRate: apiMetrics.summary.errorRate,
+    averageResponseTime: apiMetrics.summary.averageResponseTime,
+    medianResponseTime: apiMetrics.summary.medianResponseTime,
+    p95ResponseTime: apiMetrics.summary.p95ResponseTime,
+  };
+}
+
+function buildHealthData({
+  req,
+  comprehensiveMetrics,
+  apiMetrics,
+  errorMetrics,
+  errorHealth,
+  degradationStatus,
+  overallHealth,
+}) {
+  const { status, score, issues } = overallHealth;
+
+  return {
+    status,
+    score,
+    message: buildHealthMessage(status, issues.length),
+    correlationId: req.correlationId,
+    timestamp: comprehensiveMetrics.timestamp,
+    environment: comprehensiveMetrics.environment,
+    version: comprehensiveMetrics.version,
+
+    // System health indicators
+    system: buildHealthSystemSection(comprehensiveMetrics),
+
+    // Database health
+    database: buildHealthDatabaseSection(comprehensiveMetrics),
+
+    // Cache health
+    cache: buildHealthCacheSection(comprehensiveMetrics),
+
+    // Application metrics
+    application: buildHealthApplicationSection(comprehensiveMetrics),
+
+    // Error monitoring health
+    errorMonitoring: buildHealthErrorMonitoringSection({ errorHealth, errorMetrics }),
+
+    // Graceful degradation status
+    gracefulDegradation: buildHealthGracefulDegradationSection(degradationStatus),
+
+    // Legacy API metrics (for backward compatibility)
+    legacyMetrics: buildHealthLegacyMetricsSection(apiMetrics),
+
+    // Health issues summary
+    issues: issues.length > 0 ? issues : undefined,
+
+    // Configuration (safe to expose)
+    config: buildHealthConfig(),
+
+    // Detailed metrics available at /api/v1/metrics
+    detailedMetricsAvailable: true,
+  };
+}
+
+function buildFallbackHealthData(req, error) {
+  return {
+    status: 'DEGRADED',
+    message: 'Server is running but metrics collection failed',
+    correlationId: req.correlationId,
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    error: error.message,
+    config: buildHealthConfig(),
+  };
+}
 
 class APIMonitor {
   constructor() {
@@ -164,146 +360,22 @@ export const getHealthWithMetrics = async (req, res) => {
     const errorHealth = errorMonitor.getHealthStatus();
     const degradationStatus = gracefulDegradationManager.getSystemStatus();
 
-    // Determine overall health status based on all systems
-    let overallStatus = 'healthy';
-    let overallScore = 100;
-    const healthIssues = [];
-
-    // Check error monitoring health
-    if (errorHealth.status !== 'healthy') {
-      overallScore -= 100 - errorHealth.score;
-      healthIssues.push({
-        system: 'error_monitoring',
-        status: errorHealth.status,
-        score: errorHealth.score,
-        issues: errorHealth.issues,
-      });
-    }
-
-    // Check database health
-    if (!comprehensiveMetrics.database?.connected) {
-      overallScore -= 50;
-      overallStatus = 'unhealthy';
-      healthIssues.push({
-        system: 'database',
-        status: 'disconnected',
-        message: 'Database connection failed',
-      });
-    }
-
-    // Check API error rate
     const apiErrorRate = parseFloat(apiMetrics.summary.errorRate);
-    if (apiErrorRate > 5) {
-      // More than 5% error rate
-      overallScore -= Math.min(30, apiErrorRate * 2);
-      healthIssues.push({
-        system: 'api',
-        status: 'high_error_rate',
-        errorRate: apiErrorRate,
-        message: `API error rate is ${apiErrorRate}%`,
-      });
-    }
+    const overallHealth = computeOverallHealth({
+      errorHealth,
+      databaseConnected: Boolean(comprehensiveMetrics.database?.connected),
+      apiErrorRate,
+    });
 
-    // Determine overall status
-    if (overallScore < 50) {
-      overallStatus = 'critical';
-    } else if (overallScore < 75) {
-      overallStatus = 'unhealthy';
-    } else if (overallScore < 90) {
-      overallStatus = 'degraded';
-    }
-
-    const healthData = {
-      status: overallStatus,
-      score: Math.max(0, Math.min(100, overallScore)),
-      message:
-        overallStatus === 'healthy'
-          ? 'All systems operational'
-          : `${healthIssues.length} system(s) have issues`,
-      correlationId: req.correlationId,
-      timestamp: comprehensiveMetrics.timestamp,
-      environment: comprehensiveMetrics.environment,
-      version: comprehensiveMetrics.version,
-
-      // System health indicators
-      system: {
-        uptime: comprehensiveMetrics.system?.uptime,
-        memoryUsagePercent: comprehensiveMetrics.system?.memory?.usedPercent,
-        cpuUsagePercent: comprehensiveMetrics.system?.cpu?.usagePercent,
-        loadAverage: comprehensiveMetrics.system?.loadAverage,
-        platform: comprehensiveMetrics.system?.platform,
-        hostname: comprehensiveMetrics.system?.hostname,
-      },
-
-      // Database health
-      database: {
-        connected: comprehensiveMetrics.database?.connected,
-        name: comprehensiveMetrics.database?.name,
-        collections: comprehensiveMetrics.database?.databaseStats?.tables || 0,
-        objects: comprehensiveMetrics.database?.databaseStats?.rowsReturned || 0,
-      },
-
-      // Cache health
-      cache: {
-        hitRate: comprehensiveMetrics.cache?.hitRate,
-        type: comprehensiveMetrics.cache?.cacheStats?.cache_type || 'in-memory',
-        connected: comprehensiveMetrics.cache?.cacheStats?.connected_clients !== undefined,
-      },
-
-      // Application metrics
-      application: {
-        activeUsers: comprehensiveMetrics.application?.activeUsers,
-        endpointCount: Object.keys(comprehensiveMetrics.application?.endpointStats || {}).length,
-        securityEvents: comprehensiveMetrics.application?.security,
-      },
-
-      // Error monitoring health
-      errorMonitoring: {
-        status: errorHealth.status,
-        score: errorHealth.score,
-        totalErrors: errorMetrics.total,
-        errorRates: errorMetrics.rates,
-        recentErrorsCount: errorMetrics.recentErrors?.length || 0,
-        topErrorCategories: Object.fromEntries(
-          Array.from(errorMetrics.byCategory.entries())
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-        ),
-      },
-
-      // Graceful degradation status
-      gracefulDegradation: {
-        level: degradationStatus.degradationLevel,
-        lastUpdated: degradationStatus.lastUpdated,
-        features: degradationStatus.features,
-      },
-
-      // Legacy API metrics (for backward compatibility)
-      legacyMetrics: {
-        totalRequests: apiMetrics.summary.totalRequests,
-        errorRate: apiMetrics.summary.errorRate,
-        averageResponseTime: apiMetrics.summary.averageResponseTime,
-        medianResponseTime: apiMetrics.summary.medianResponseTime,
-        p95ResponseTime: apiMetrics.summary.p95ResponseTime,
-      },
-
-      // Health issues summary
-      issues: healthIssues.length > 0 ? healthIssues : undefined,
-
-      // Configuration (safe to expose)
-      config: {
-        port: process.env.PORT || 5000,
-        nodeEnv: process.env.NODE_ENV || 'development',
-        jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
-        databaseUrl:
-          process.env.DATABASE_URL || process.env.POSTGRES_HOST ? '✅ Set' : '❌ Missing',
-        emailService: process.env.EMAIL_SERVICE || 'not configured',
-        bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
-      },
-
-      // Detailed metrics available at /api/v1/metrics
-      detailedMetricsAvailable: true,
-    };
+    const healthData = buildHealthData({
+      req,
+      comprehensiveMetrics,
+      apiMetrics,
+      errorMetrics,
+      errorHealth,
+      degradationStatus,
+      overallHealth,
+    });
 
     if (res) {
       res.json(healthData);
@@ -319,23 +391,7 @@ export const getHealthWithMetrics = async (req, res) => {
     });
 
     // Fallback to basic health check
-    const fallbackData = {
-      status: 'DEGRADED',
-      message: 'Server is running but metrics collection failed',
-      correlationId: req.correlationId,
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      error: error.message,
-      config: {
-        port: process.env.PORT || 5000,
-        nodeEnv: process.env.NODE_ENV || 'development',
-        jwtSecret: process.env.JWT_SECRET ? '✅ Set' : '❌ Missing',
-        databaseUrl:
-          process.env.DATABASE_URL || process.env.POSTGRES_HOST ? '✅ Set' : '❌ Missing',
-        emailService: process.env.EMAIL_SERVICE || 'not configured',
-        bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 14,
-      },
-    };
+    const fallbackData = buildFallbackHealthData(req, error);
 
     if (res) {
       res.status(200).json(fallbackData); // Still return 200 for health checks
