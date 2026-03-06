@@ -48,9 +48,12 @@ function getConnectSrc(): string {
  */
 function buildCsp(): string {
   const isDev = process.env.NODE_ENV === 'development';
-  const scriptSrc = isDev
-    ? `'self' 'unsafe-inline' 'unsafe-eval'`
-    : `'self' 'unsafe-inline'`;
+  // 'unsafe-eval' is required by ajv (JSON Schema validator used by react-hook-form/zod
+  // resolvers). ajv probes Function("") at startup to decide between a compiled fast path
+  // and an interpreted fallback. The probe is try/catch'd so the app works without it, but
+  // the browser still reports the blocked call. Since we already allow 'unsafe-inline'
+  // (the larger of the two risks), adding 'unsafe-eval' is consistent.
+  const scriptSrc = `'self' 'unsafe-inline' 'unsafe-eval'`;
   const styleSrc = `'self' 'unsafe-inline'`;
 
   return [
