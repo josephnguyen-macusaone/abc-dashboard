@@ -1,7 +1,7 @@
 import { licenseSyncConfig } from '../../infrastructure/config/license-sync-config.js';
 import { externalLicenseValidator } from '../utils/validation/external-license-validator.js';
 import { licenseSyncMonitor } from '../../infrastructure/monitoring/license-sync-monitor.js';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 import { withServiceRetry, withTimeout } from '../utils/reliability/retry.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 
@@ -232,7 +232,9 @@ export class ExternalLicenseApiService {
         responsePreview: errorText.substring(0, 200),
         url,
       });
-      throw new Error(`Failed to parse API response: ${parseError.message}`);
+      throw new Error(`Failed to parse API response: ${parseError.message}`, {
+        cause: parseError,
+      });
     }
   }
 
@@ -491,7 +493,7 @@ export class ExternalLicenseApiService {
 
     // Always derive totalPages from meta.total (authoritative) so we use our batchSize.
     // meta.totalPages depends on the request limit; meta.total is the source of truth.
-    let totalPages = 1;
+    let totalPages;
     if (firstResponse.meta?.total !== null && firstResponse.meta.total > 0) {
       totalPages = Math.ceil(firstResponse.meta.total / options.batchSize);
     } else if (firstResponse.meta?.totalPages) {
@@ -660,12 +662,14 @@ export class ExternalLicenseApiService {
 
       const pageResults = await Promise.all(pagePromises);
 
-      if (pageBatchStart + concurrencyLimit <= state.totalPages) {
-        logger.debug(`⏸️  Pausing 2s before next batch...`, {
+      const delayMs = licenseSyncConfig.sync.pageBatchDelayMs;
+      if (delayMs > 0 && pageBatchStart + concurrencyLimit <= state.totalPages) {
+        logger.debug(`Pausing ${delayMs}ms before next page batch`, {
           correlationId: this.correlationId,
           nextBatch: pageBatchStart + concurrencyLimit,
+          delayMs,
         });
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
 
       const result = this._processPageBatchResults(
@@ -867,10 +871,9 @@ export class ExternalLicenseApiService {
    * Get single license by appid
    */
   async getLicenseByAppId(appid) {
-    // Allow operations without appid for sync purposes
-    // if (!appid) {
-    //   throw new ValidationException('App ID is required for this operation');
-    // }
+    if (!appid) {
+      throw new ValidationException('App ID is required for this operation');
+    }
 
     const response = await this.makeRequest(`/api/v1/licenses/${encodeURIComponent(appid)}`);
 
@@ -931,10 +934,9 @@ export class ExternalLicenseApiService {
    * Update license by appid
    */
   async updateLicenseByAppId(appid, updates) {
-    // Allow operations without appid for sync purposes
-    // if (!appid) {
-    //   throw new ValidationException('App ID is required');
-    // }
+    if (!appid) {
+      throw new ValidationException('App ID is required');
+    }
     if (!updates) {
       throw new ValidationException('Update data is required');
     }
@@ -966,10 +968,9 @@ export class ExternalLicenseApiService {
    * Delete license by appid
    */
   async deleteLicenseByAppId(appid) {
-    // Allow operations without appid for sync purposes
-    // if (!appid) {
-    //   throw new ValidationException('App ID is required');
-    // }
+    if (!appid) {
+      throw new ValidationException('App ID is required');
+    }
 
     return this.makeRequest(`/api/v1/licenses/${encodeURIComponent(appid)}`, {
       method: 'DELETE',

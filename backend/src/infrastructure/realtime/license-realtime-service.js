@@ -3,7 +3,7 @@
  * Emits WebSocket events when license data changes (sync complete, bulk operations).
  * Used by license-sync-scheduler and license-controller.
  */
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 export class LicenseRealtimeService {
   constructor(io = null) {

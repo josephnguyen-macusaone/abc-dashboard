@@ -151,7 +151,14 @@ export class License {
     private _cancelDate?: Date,
     private _createdAt?: Date,
     private _updatedAt?: Date,
-    private readonly _smsBalanceStored?: number
+    private readonly _smsBalanceStored?: number,
+    private _dueDate?: Date,
+    /**
+     * When true, write-only invariants are enforced (smsSent ≤ smsPurchased,
+     * yearly term requires dueDate). Set false (default) for fromPersistence() so
+     * existing data with historical overruns can still be loaded.
+     */
+    private readonly _strict: boolean = false
   ) {
     this.validateBusinessRules();
   }
@@ -187,6 +194,7 @@ export class License {
   public get cancelDate(): Date | undefined { return this._cancelDate; }
   public get createdAt(): Date | undefined { return this._createdAt; }
   public get updatedAt(): Date | undefined { return this._updatedAt; }
+  public get dueDate(): Date | undefined { return this._dueDate; }
 
   // Business Methods
 
@@ -403,8 +411,13 @@ export class License {
       throw new Error('SMS sent cannot be negative');
     }
 
-    if (this._smsSent > this._smsPurchased) {
-      throw new Error('SMS sent cannot exceed SMS purchased');
+    if (this._strict) {
+      if (this._smsSent > this._smsPurchased) {
+        throw new Error('SMS sent cannot exceed SMS purchased');
+      }
+      if (this._term === 'yearly' && !this._dueDate) {
+        throw new Error('Due date is required for yearly term licenses');
+      }
     }
 
     if (this._agents < 0) {
@@ -436,7 +449,7 @@ export class License {
       props.seatsTotal || 1,
       0, // seatsUsed starts at 0
       new Money(props.lastPayment || 0),
-      now, // lastActive
+      now, // lastActive defaults to now; only external sync may update it later
       props.smsPurchased || 0,
       0, // smsSent starts at 0
       props.agents || 0,
@@ -447,7 +460,10 @@ export class License {
       props.product,
       undefined, // cancelDate
       now, // createdAt
-      now  // updatedAt
+      now,  // updatedAt
+      undefined, // smsBalanceStored
+      props.dueDate ? new Date(props.dueDate) : undefined,
+      true  // strict: enforce write invariants on create
     );
 
     const event: LicenseCreatedEvent = {
@@ -489,7 +505,9 @@ export class License {
       props.cancelDate ? new Date(props.cancelDate) : undefined,
       props.createdAt ? new Date(props.createdAt) : undefined,
       props.updatedAt ? new Date(props.updatedAt) : undefined,
-      props.smsBalance
+      props.smsBalance,
+      props.dueDate ? new Date(props.dueDate) : undefined
+      // strict defaults to false: historical data may violate write invariants
     );
   }
 
@@ -508,6 +526,7 @@ export class License {
       cancelDate: this._cancelDate?.toISOString(),
       plan: this._plan,
       term: this._term,
+      dueDate: this._dueDate?.toISOString(),
       seatsTotal: this._seatsTotal,
       seatsUsed: this._seatsUsed,
       lastPayment: this._lastPayment.getAmount(),
@@ -532,6 +551,8 @@ export interface CreateLicenseProps {
   startsAt: string | Date;
   plan: string;
   term: LicenseTerm;
+  /** Required when term is 'yearly'. */
+  dueDate?: string | Date;
   seatsTotal?: number;
   lastPayment?: number;
   smsPurchased?: number;
@@ -554,6 +575,8 @@ export interface PersistenceLicenseProps {
   cancelDate?: string;
   plan: string;
   term: LicenseTerm;
+  /** ISO date string. Required when term is 'yearly'. */
+  dueDate?: string;
   seatsTotal?: number;
   seatsUsed?: number;
   lastPayment?: number;

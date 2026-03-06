@@ -6,7 +6,7 @@
  */
 
 import { awilixContainer } from '../../shared/kernel/container.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 async function runSync() {
   try {
@@ -33,8 +33,8 @@ async function runSync() {
       detectDuplicates: true,
       forceFullSync: false,
       batchSize: 15, // Reduced from 25 to avoid pool exhaustion
-      ...(limit != null && limit > 0 && { limit }),
-      ...(maxPages != null && maxPages > 0 && { maxPages }),
+      ...(limit !== null && limit > 0 && { limit }),
+      ...(maxPages !== null && maxPages > 0 && { maxPages }),
     });
 
     logger.info('Sync completed successfully', {

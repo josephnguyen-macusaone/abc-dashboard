@@ -2,7 +2,7 @@
  * Base Controller
  * Provides standardized error handling and common controller functionality
  */
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { errorMonitor } from '../../shared/utils/monitoring/error-monitor.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import {
@@ -296,7 +296,9 @@ export class BaseController {
       if (DOMAIN_EXCEPTION_CLASSES.has(error.constructor)) {
         throw error;
       }
-      throw new Error(`${context.operation || 'Use case'} failed: ${error.message}`);
+      throw new Error(`${context.operation || 'Use case'} failed: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 }

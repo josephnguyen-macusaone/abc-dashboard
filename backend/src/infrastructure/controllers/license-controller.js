@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { LicenseValidator } from '../../application/validators/license-validator.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { sendErrorResponse, formatCanonicalError } from '../../shared/http/error-responses.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
 
 export class LicenseController {
@@ -70,31 +70,7 @@ export class LicenseController {
     const hasFilters = query.filters && Object.keys(query.filters).length > 0;
     const total = meta?.total ?? 0;
 
-    // Check for signs of external API data contamination (only when filters are applied)
-    const violations = [];
-
-    // 1. With filters: total matches known external API total (2836) — suggests unfiltered count leaked
-    if (hasFilters && total === 2836) {
-      violations.push({
-        type: 'known_external_total_with_filters',
-        description:
-          'Filtered query total (2836) matches external API total — likely unfiltered count',
-        severity: 'critical',
-      });
-    }
-
-    // 2. With filters: single result but total suggests unfiltered (strong signal)
-    if (hasFilters && data.length === 1 && total > 10) {
-      violations.push({
-        type: 'single_result_high_total',
-        description: `Single result but total (${total}) suggests unfiltered data`,
-        severity: 'high',
-      });
-    }
-
-    // Note: total === 2836 with NO filters is valid — that's the expected full license count.
-    // Note: hasFilters && total > 1000 removed — broad filters (e.g. status=active) can legitimately match many rows.
-
+    const violations = this._collectDataIntegrityViolations(data, hasFilters, total);
     if (violations.length > 0) {
       logger.warn('Possible external API data contamination', {
         correlationId,
@@ -104,21 +80,42 @@ export class LicenseController {
         reportedTotal: total,
         filters: Object.keys(query.filters || {}),
       });
-
-      // Force correction for filtered queries when meta appears wrong
-      if (
-        hasFilters &&
-        violations.some((v) => v.severity === 'high' || v.severity === 'critical')
-      ) {
-        logger.debug('Auto-correcting meta for filtered query', { correlationId });
-        if (data.length === 0 && total > 0 && meta && typeof meta === 'object') {
-          meta.total = 0;
-          meta.totalPages = 0;
-        }
-      }
+      this._applyMetaCorrectionIfNeeded(violations, hasFilters, data, meta, total, correlationId);
     }
 
     return { violations, hasViolations: violations.length > 0 };
+  }
+
+  _collectDataIntegrityViolations(data, hasFilters, total) {
+    const violations = [];
+    if (hasFilters && total === 2836) {
+      violations.push({
+        type: 'known_external_total_with_filters',
+        description:
+          'Filtered query total (2836) matches external API total — likely unfiltered count',
+        severity: 'critical',
+      });
+    }
+    if (hasFilters && data.length === 1 && total > 10) {
+      violations.push({
+        type: 'single_result_high_total',
+        description: `Single result but total (${total}) suggests unfiltered data`,
+        severity: 'high',
+      });
+    }
+    return violations;
+  }
+
+  _applyMetaCorrectionIfNeeded(violations, hasFilters, data, meta, total, correlationId) {
+    const hasSevere = violations.some((v) => v.severity === 'high' || v.severity === 'critical');
+    if (!hasFilters || !hasSevere) {
+      return;
+    }
+    logger.debug('Auto-correcting meta for filtered query', { correlationId });
+    if (data.length === 0 && total > 0 && meta && typeof meta === 'object') {
+      meta.total = 0;
+      meta.totalPages = 0;
+    }
   }
 
   /**
@@ -166,8 +163,7 @@ export class LicenseController {
 
   createLicense = async (req, res) => {
     try {
-      // Temporarily skip validation for sync testing
-      // LicenseValidator.validateCreateInput(req.body);
+      LicenseValidator.validateCreateInput(req.body);
 
       const context = {
         userId: req.user?.id,
@@ -219,6 +215,7 @@ export class LicenseController {
       } else if (Array.isArray(req.body)) {
         // Direct array format - transform to structured format
         // Only include fields that are actually updatable
+        // lastActive is intentionally excluded: only the external sync process may update it.
         const updatableFields = [
           'dba',
           'zip',
@@ -226,6 +223,7 @@ export class LicenseController {
           'status',
           'plan',
           'term',
+          'dueDate',
           'seatsTotal',
           'seatsUsed',
           'cancelDate',
@@ -237,7 +235,6 @@ export class LicenseController {
           'agentsName',
           'agentsCost',
           'notes',
-          'lastActive',
           'key',
           'product',
         ];
@@ -471,9 +468,10 @@ export class LicenseController {
       });
       const queryHash = crypto.createHash('sha256').update(cachePayload).digest('hex').slice(0, 16);
       const cacheKey = cacheKeys.dashboardMetrics(queryHash);
-      const cached = await cache.get(cacheKey);
-      if (cached) {
+      const cachedRaw = await cache.get(cacheKey);
+      if (cachedRaw) {
         logger.debug('Dashboard metrics cache hit', { correlationId: req.correlationId });
+        const cached = typeof cachedRaw === 'string' ? JSON.parse(cachedRaw) : cachedRaw;
         return res.success(cached, 'Dashboard metrics retrieved successfully');
       }
 

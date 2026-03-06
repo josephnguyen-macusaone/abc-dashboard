@@ -1,7 +1,7 @@
 import { UserProfile } from '../../domain/entities/user-profile-entity.js';
 import { IUserProfileRepository } from '../../domain/repositories/interfaces/i-user-profile-repository.js';
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * UserProfile Repository Implementation

@@ -63,7 +63,7 @@ export class CreateLicenseUseCase {
 
       return LicenseResponseDto.fromEntity(license);
     } catch (error) {
-      throw new Error(`Failed to create license: ${error.message}`);
+      throw new Error(`Failed to create license: ${error.message}`, { cause: error });
     }
   }
 }

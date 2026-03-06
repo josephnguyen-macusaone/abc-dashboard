@@ -1,6 +1,6 @@
 import { cache, cacheKeys, cacheTTL } from '../../../config/redis.js';
 import { cacheMetrics, applicationMetrics } from '../../../config/metrics.js';
-import logger from '../../../config/logger.js';
+import logger from '../../../../shared/utils/logger.js';
 
 /**
  * Middleware to track cache operations

@@ -3,7 +3,7 @@
  * Handles HTTP requests for authentication
  */
 import { BaseController } from './base-controller.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { AuthValidator } from '../../application/validators/index.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import {
@@ -69,7 +69,8 @@ export class AuthController extends BaseController {
     requestPasswordResetWithGeneratedPasswordUseCase,
     resetPasswordUseCase,
     tokenService,
-    userProfileRepository
+    userProfileRepository,
+    userRepository = null
   ) {
     super();
     this.loginUseCase = loginUseCase;
@@ -81,6 +82,7 @@ export class AuthController extends BaseController {
     this.resetPasswordUseCase = resetPasswordUseCase;
     this.tokenService = tokenService;
     this.userProfileRepository = userProfileRepository;
+    this.userRepository = userRepository;
   }
 
   async login(req, res) {
@@ -250,7 +252,20 @@ export class AuthController extends BaseController {
 
   async logout(req, res) {
     try {
-      // Clear HttpOnly auth cookies (works with or without valid token)
+      // Revoke the refresh token from the DB store so it cannot be replayed (SEC-4)
+      const refreshToken = getRefreshTokenFromRequest(req);
+      if (refreshToken && this.tokenService && this.userRepository) {
+        try {
+          const tokenHash = this.tokenService.hashToken(refreshToken);
+          await this.userRepository.revokeRefreshToken(tokenHash);
+        } catch (_revokeErr) {
+          // Non-fatal — still clear cookies and return success
+          logger.warn('Could not revoke refresh token on logout', {
+            correlationId: req.correlationId,
+          });
+        }
+      }
+
       clearAuthCookies(res);
 
       if (req.user) {

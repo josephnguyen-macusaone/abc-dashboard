@@ -3,7 +3,7 @@
  * Handles scheduled execution of license synchronization with external sources
  */
 import cron from 'node-cron';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 export class LicenseSyncScheduler {
   constructor(syncExternalLicensesUseCase, config = {}, licenseRealtimeService = null) {
@@ -125,15 +125,6 @@ export class LicenseSyncScheduler {
     this.lastProgressLogLine = null;
     const startTime = Date.now();
 
-    const onProgress = (p) => {
-      this.syncProgress = p;
-      const percent = p.percent != null ? p.percent : (p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0);
-      this.lastProgressLogLine =
-        p.phase === 'fetch'
-          ? `Fetching pages ${p.processed} of ${p.total} (${percent}% complete)`
-          : `Processing ${p.processed} / ${p.total} (${percent}% complete)`;
-    };
-
     try {
       logger.info('Running scheduled license sync');
       this.syncStats.totalRuns += 1;
@@ -143,59 +134,14 @@ export class LicenseSyncScheduler {
         batchSize: this.config.batchSize,
         syncToInternalOnly: this.config.syncToInternalOnly,
         forceFullSync: this.config.forceFullSync,
-        onProgress,
+        onProgress: (p) => this._onSyncProgress(p),
       });
 
       const duration = Date.now() - startTime;
       this.syncStats.totalDuration += duration;
       this.syncStats.lastRunTime = new Date().toISOString();
 
-      // Update success/failure stats
-      if (syncResult.success) {
-        this.syncStats.successfulRuns += 1;
-        this.syncStats.totalRecordsProcessed +=
-          (syncResult.created || 0) + (syncResult.updated || 0);
-      } else {
-        this.syncStats.failedRuns += 1;
-      }
-
-      this.lastSyncResult = {
-        ...syncResult,
-        duration,
-        timestamp: new Date().toISOString(),
-      };
-
-      logger.info('Scheduled license sync completed', {
-        duration,
-        success: syncResult.success,
-        totalFetched: syncResult.totalFetched,
-        created: syncResult.created,
-        updated: syncResult.updated,
-        failed: syncResult.failed,
-        errors: syncResult.errors?.length || 0,
-      });
-
-      if (this.licenseRealtimeService?.emitSyncComplete) {
-        this.licenseRealtimeService.emitSyncComplete({
-          timestamp: this.lastSyncResult.timestamp,
-          duration: this.lastSyncResult.duration,
-          created: syncResult.created ?? 0,
-          updated: syncResult.updated ?? 0,
-          failed: syncResult.failed ?? 0,
-          success: syncResult.success ?? false,
-        });
-      }
-
-      // Log metrics for monitoring
-      this.logJobMetrics(jobName, {
-        duration,
-        success: syncResult.success,
-        totalFetched: syncResult.totalFetched,
-        created: syncResult.created,
-        updated: syncResult.updated,
-        failed: syncResult.failed,
-        errors: syncResult.errors?.length || 0,
-      });
+      this._applySyncResult(syncResult, duration, jobName);
     } catch (error) {
       this.syncStats.failedRuns += 1;
       logger.error('Scheduled license sync failed', {
@@ -216,6 +162,16 @@ export class LicenseSyncScheduler {
       this.syncProgress = null;
       this.lastProgressLogLine = null;
     }
+  }
+
+  _onSyncProgress(p) {
+    this.syncProgress = p;
+    const percent =
+      p.percent !== null ? p.percent : p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0;
+    this.lastProgressLogLine =
+      p.phase === 'fetch'
+        ? `Fetching pages ${p.processed} of ${p.total} (${percent}% complete)`
+        : `Processing ${p.processed} / ${p.total} (${percent}% complete)`;
   }
 
   /**
@@ -247,7 +203,12 @@ export class LicenseSyncScheduler {
 
     const onProgress = (p) => {
       this.syncProgress = p;
-      const percent = p.percent != null ? p.percent : (p.total > 0 ? Math.round((p.processed / p.total) * 100) : 0);
+      const percent =
+        p.percent !== null
+          ? p.percent
+          : p.total > 0
+            ? Math.round((p.processed / p.total) * 100)
+            : 0;
       this.lastProgressLogLine =
         p.phase === 'fetch'
           ? `Fetching pages ${p.processed} of ${p.total} (${percent}% complete)`

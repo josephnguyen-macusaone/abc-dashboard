@@ -42,7 +42,6 @@ const loadEnvironmentConfig = () => {
   const standardEnvFile = path.join(__dirname, '../../../.env');
 
   const envFile = envFiles[nodeEnv];
-  let _loadedFrom = null;
 
   // Try environment-specific file first, then fallback to standard .env
   if (fs.existsSync(envFile)) {
@@ -52,7 +51,6 @@ const loadEnvironmentConfig = () => {
     process.stdout.write = () => {};
     dotenv.config({ path: envFile });
     process.stdout.write = originalStdoutWrite;
-    _loadedFrom = envFile;
   } else if (fs.existsSync(standardEnvFile)) {
     startupLogger.startup(`Loading environment config: ${standardEnvFile} (NODE_ENV=${nodeEnv})`);
     // Suppress dotenv output
@@ -60,7 +58,6 @@ const loadEnvironmentConfig = () => {
     process.stdout.write = () => {};
     dotenv.config({ path: standardEnvFile });
     process.stdout.write = originalStdoutWrite;
-    _loadedFrom = standardEnvFile;
   } else {
     // In Docker, env vars are injected by docker-compose; no .env file in container
     const inDocker =

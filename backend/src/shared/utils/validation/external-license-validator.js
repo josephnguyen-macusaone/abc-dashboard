@@ -1,5 +1,5 @@
 import { licenseSyncConfig } from '../../../infrastructure/config/license-sync-config.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../logger.js';
 
 /**
  * External License Data Validator
@@ -305,62 +305,66 @@ export class ExternalLicenseValidator {
    * @private
    */
   _sanitizeField(fieldName, value, schema) {
-    // Handle null/undefined values for optional fields
     if (value === null || value === undefined) {
-      if (schema.type.includes('null')) {
-        return null;
-      }
-      return undefined;
+      return Array.isArray(schema.type) && schema.type.includes('null') ? null : undefined;
     }
 
-    // Type validation and conversion
-    switch (schema.type) {
+    const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+    switch (type) {
       case 'string':
-      case ['string', 'null']:
-        if (typeof value !== 'string') {
-          throw new Error(`must be a string, got ${typeof value}`);
-        }
-        if (schema.maxLength && value.length > schema.maxLength) {
-          throw new Error(`exceeds maximum length of ${schema.maxLength} characters`);
-        }
-        if (schema.minLength && value.length < schema.minLength) {
-          throw new Error(`must be at least ${schema.minLength} characters long`);
-        }
-        if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
-          throw new Error(`does not match required pattern`);
-        }
-        if (schema.format === 'email' && !this._isValidEmail(value)) {
-          throw new Error(`must be a valid email address`);
-        }
-        return value.trim();
-
+        return this._sanitizeStringValue(value, schema);
       case 'number':
-      case ['number', 'null']: {
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-        if (isNaN(numValue)) {
-          throw new Error(`must be a valid number, got "${value}"`);
-        }
-        if (schema.minimum !== undefined && numValue < schema.minimum) {
-          throw new Error(`must be at least ${schema.minimum}`);
-        }
-        return numValue;
-      }
-
+        return this._sanitizeNumberValue(value, schema);
       case 'object':
       case 'array':
-      case ['object', 'array', 'null']:
-        // For complex types, just validate they exist and are the right type
-        if (schema.type === 'object' && typeof value !== 'object') {
-          throw new Error(`must be an object`);
-        }
-        if (schema.type === 'array' && !Array.isArray(value)) {
-          throw new Error(`must be an array`);
-        }
-        return value;
-
+        return this._sanitizeComplexValue(value, schema);
       default:
         return value;
     }
+  }
+
+  /** @private */
+  _sanitizeStringValue(value, schema) {
+    if (typeof value !== 'string') {
+      throw new Error(`must be a string, got ${typeof value}`);
+    }
+    if (schema.maxLength != null && value.length > schema.maxLength) {
+      throw new Error(`exceeds maximum length of ${schema.maxLength} characters`);
+    }
+    if (schema.minLength != null && value.length < schema.minLength) {
+      throw new Error(`must be at least ${schema.minLength} characters long`);
+    }
+    if (schema.pattern != null && !new RegExp(schema.pattern).test(value)) {
+      throw new Error(`does not match required pattern`);
+    }
+    if (schema.format === 'email' && !this._isValidEmail(value)) {
+      throw new Error(`must be a valid email address`);
+    }
+    return value.trim();
+  }
+
+  /** @private */
+  _sanitizeNumberValue(value, schema) {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numValue)) {
+      throw new Error(`must be a valid number, got "${value}"`);
+    }
+    if (schema.minimum !== undefined && numValue < schema.minimum) {
+      throw new Error(`must be at least ${schema.minimum}`);
+    }
+    return numValue;
+  }
+
+  /** @private */
+  _sanitizeComplexValue(value, schema) {
+    const type = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+    if (type === 'object' && typeof value !== 'object') {
+      throw new Error(`must be an object`);
+    }
+    if (type === 'array' && !Array.isArray(value)) {
+      throw new Error(`must be an array`);
+    }
+    return value;
   }
 
   /**

@@ -1,5 +1,5 @@
 import knex from 'knex';
-import logger from './logger.js';
+import logger from '../../shared/utils/logger.js';
 import { config } from './config.js';
 
 let db = null;

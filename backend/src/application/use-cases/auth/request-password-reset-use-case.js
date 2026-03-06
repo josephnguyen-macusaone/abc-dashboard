@@ -3,7 +3,7 @@
  * Handles password reset request logic - generates reset token and sends via email
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 import { config } from '../../../infrastructure/config/config.js';
 
 export class RequestPasswordResetUseCase {

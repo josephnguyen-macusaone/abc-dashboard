@@ -1,5 +1,7 @@
 import winston from 'winston';
+import 'winston-daily-rotate-file';
 import { config } from './config.js';
+import { getCorrelationId } from '../../shared/utils/correlation-context.js';
 
 // Define log levels
 const levels = {
@@ -127,19 +129,27 @@ const transports = [
   }),
 ];
 
-// Add file transports in non-test environments
+// Add rotating file transports in non-test environments.
+// Logs rotate daily, capped at 20 MB per file, kept for 14 days.
 if (config.NODE_ENV !== 'test') {
+  const rotateBase = {
+    dirname: 'logs',
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '14d',
+    format: customFormat,
+    zippedArchive: true,
+  };
+
   transports.push(
-    // Error log file
-    new winston.transports.File({
-      filename: 'logs/error.log',
+    new winston.transports.DailyRotateFile({
+      ...rotateBase,
+      filename: 'error-%DATE%.log',
       level: 'error',
-      format: customFormat,
     }),
-    // All logs file
-    new winston.transports.File({
-      filename: 'logs/all.log',
-      format: customFormat,
+    new winston.transports.DailyRotateFile({
+      ...rotateBase,
+      filename: 'all-%DATE%.log',
     })
   );
 }
@@ -151,64 +161,25 @@ const logger = winston.createLogger({
   transports,
 });
 
-// Enhanced logging methods with correlation ID support
+// Build a meta object, automatically injecting the AsyncLocalStorage
+// correlation ID when the caller hasn't provided one explicitly.
+function buildMeta(meta) {
+  const { correlationId, userId, ...restMeta } = meta;
+  const winstonMeta = { ...restMeta };
+  // Explicit correlationId wins; fall back to the async-local context value.
+  const cid = correlationId ?? getCorrelationId();
+  if (cid) winstonMeta.correlationId = cid;
+  if (userId) winstonMeta.userId = userId;
+  return winstonMeta;
+}
+
+// Enhanced logging methods with automatic correlation ID injection
 const enhancedLogger = {
-  // Original methods with optional metadata
-  error: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.error(message, winstonMeta);
-  },
-  warn: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.warn(message, winstonMeta);
-  },
-  info: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.info(message, winstonMeta);
-  },
-  http: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.http(message, winstonMeta);
-  },
-  debug: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.debug(message, winstonMeta);
-  },
+  error: (message, meta = {}) => logger.error(message, buildMeta(meta)),
+  warn:  (message, meta = {}) => logger.warn(message,  buildMeta(meta)),
+  info:  (message, meta = {}) => logger.info(message,  buildMeta(meta)),
+  http:  (message, meta = {}) => logger.http(message,  buildMeta(meta)),
+  debug: (message, meta = {}) => logger.debug(message, buildMeta(meta)),
 
   // Request-aware logging methods
   withRequest: (req) => ({
@@ -248,70 +219,11 @@ const enhancedLogger = {
     debug: (message) => logger.debug(message, context),
   }),
 
-  // Application startup logging
-  startup: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.info(message, winstonMeta);
-  },
-
-  // Security event logging
-  security: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.warn(message, winstonMeta);
-  },
-
-  // Database operation logging
-  database: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.debug(message, winstonMeta);
-  },
-
-  // API operation logging
-  api: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.http(message, winstonMeta);
-  },
-
-  // Performance logging
-  performance: (message, meta = {}) => {
-    const { correlationId, userId, ...restMeta } = meta;
-    const winstonMeta = { ...restMeta };
-    if (correlationId) {
-      winstonMeta.correlationId = correlationId;
-    }
-    if (userId) {
-      winstonMeta.userId = userId;
-    }
-    return logger.info(message, winstonMeta);
-  },
+  startup:     (message, meta = {}) => logger.info(message,  buildMeta(meta)),
+  security:    (message, meta = {}) => logger.warn(message,  buildMeta(meta)),
+  database:    (message, meta = {}) => logger.debug(message, buildMeta(meta)),
+  api:         (message, meta = {}) => logger.http(message,  buildMeta(meta)),
+  performance: (message, meta = {}) => logger.info(message,  buildMeta(meta)),
 };
 
 export default enhancedLogger;

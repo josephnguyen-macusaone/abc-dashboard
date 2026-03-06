@@ -57,7 +57,7 @@ export class DeleteLicenseUseCase {
 
       return deleted;
     } catch (error) {
-      throw new Error(`Failed to delete license: ${error.message}`);
+      throw new Error(`Failed to delete license: ${error.message}`, { cause: error });
     }
   }
 }

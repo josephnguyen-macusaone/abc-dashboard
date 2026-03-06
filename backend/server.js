@@ -20,11 +20,11 @@ import { createRoutes } from './src/infrastructure/routes/index.js';
 import { errorHandler } from './src/infrastructure/api/v1/middleware/error-handler.middleware.js';
 import { correlationIdMiddleware } from './src/infrastructure/api/v1/middleware/correlation-id.middleware.js';
 import { requestLogger } from './src/infrastructure/api/v1/middleware/request-logger.middleware.js';
+import rateLimit from 'express-rate-limit';
 import {
   securityHeaders,
   requestSizeLimiter,
   injectionProtection,
-  createRateLimit,
 } from './src/infrastructure/api/v1/middleware/security.middleware.js';
 import { extractUserIdForCache } from './src/infrastructure/api/v1/middleware/extract-user-id-for-cache.middleware.js';
 import {
@@ -71,8 +71,10 @@ const performStartupChecks = async () => {
 
   // Initialize Redis (optional; falls back to in-memory if unavailable)
   try {
-    const { initRedis } = await import('./src/infrastructure/config/redis.js');
+    const { initRedis, cache } = await import('./src/infrastructure/config/redis.js');
     checks.redis = await initRedis();
+    // Wire cache to app.locals so cacheTrackingMiddleware can read hit/miss stats.
+    app.locals.cache = cache;
   } catch (error) {
     logger.warn('Redis init skipped, using in-memory cache', { error: error.message });
   }
@@ -91,11 +93,12 @@ app.use(correlationIdMiddleware);
 app.use(helmet());
 app.use(securityHeaders);
 
-// CORS configuration - simplified for development
+// CORS configuration — restrict to the configured client origin in all environments.
+// SEC-1: never use `origin: true` as it reflects any origin, bypassing CORS protection.
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin: config.CLIENT_URL || false,
   credentials: true,
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
@@ -107,15 +110,61 @@ app.use(compression());
 app.use(requestSizeLimiter);
 app.use(injectionProtection);
 
-// Rate limiting: configurable via env to support dashboard + sync status polling (default 2000/30min)
-const RATE_LIMIT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+// Rate limiting via express-rate-limit.
+// When Redis is available, use rate-limit-redis for a distributed store so limits
+// work correctly across multiple replicas (SEC-2/3).  Falls back to the built-in
+// memory store when Redis is not configured.
+//
+// IMPORTANT: express-rate-limit v7 throws ERR_ERL_CREATED_IN_REQUEST_HANDLER if
+// rateLimit() is called inside a request handler. We therefore create the limiter
+// synchronously at module level (memory store) and optionally upgrade it to a
+// Redis-backed instance during startServer() after Redis has been initialised.
+const RATE_LIMIT_WINDOW_MS = 30 * 60 * 1000;
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000', 10) || 2000;
-const generalLimiter = createRateLimit(
-  RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_MAX,
-  'Too many requests from this IP, please try again later.'
-);
-app.use(generalLimiter);
+const RATE_LIMIT_HANDLER = (_req, res) => {
+  res.status(429).json({ success: false, error: 'Too many requests, please try again later.' });
+};
+
+// Synchronous in-memory limiter — created here, not inside a request handler.
+let activeRateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/v1/health',
+  handler: RATE_LIMIT_HANDLER,
+});
+
+// Proxy middleware: delegates to whichever instance is current (swapped to Redis after startup).
+app.use((req, res, next) => activeRateLimiter(req, res, next));
+
+/**
+ * Attempt to upgrade the in-memory rate limiter to a Redis-backed one.
+ * Called once during startServer() after Redis has been initialised.
+ */
+const upgradeRateLimiterToRedis = async () => {
+  if (!config.REDIS_ENABLED || !config.REDIS_URL) return;
+  try {
+    const { RedisStore } = await import('rate-limit-redis');
+    const { redisClient } = await import('./src/infrastructure/config/redis.js');
+    if (!redisClient) return;
+    activeRateLimiter = rateLimit({
+      windowMs: RATE_LIMIT_WINDOW_MS,
+      max: RATE_LIMIT_MAX,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skip: (req) => req.path === '/api/v1/health',
+      handler: RATE_LIMIT_HANDLER,
+      store: new RedisStore({
+        sendCommand: (...args) => redisClient.call(...args),
+        prefix: 'rl:',
+      }),
+    });
+    logger.info('Rate limiter: upgraded to Redis store');
+  } catch (err) {
+    logger.warn('Rate limiter: Redis store unavailable, keeping in-memory', { error: err.message });
+  }
+};
 
 // Request logging middleware
 app.use(requestLogger);
@@ -238,6 +287,9 @@ const startServer = async () => {
   try {
     // Perform startup health checks
     const healthChecks = await performStartupChecks();
+
+    // Upgrade rate limiter to Redis-backed store now that Redis is initialised.
+    await upgradeRateLimiterToRedis();
 
     // Only start server if critical services are available
     if (!healthChecks.database) {

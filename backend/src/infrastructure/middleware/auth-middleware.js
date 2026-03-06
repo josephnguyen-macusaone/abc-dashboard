@@ -6,7 +6,7 @@
  */
 
 import { ROLES, hasPermission } from '../../shared/constants/roles.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import { getTokenFromRequest } from '../../shared/http/auth-cookies.js';
 import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
@@ -64,12 +64,19 @@ export class AuthMiddleware {
       let loadPromise = inFlightUserLoads.get(userId);
       if (!loadPromise) {
         loadPromise = (async () => {
-          let u = await cache.get(cacheKey);
-          if (!u) {
-            u = await this.userRepository.findById(userId);
-            if (!u) return null;
-            await cache.set(cacheKey, u, cacheTTL.authUser);
+          const cached = await cache.get(cacheKey);
+          if (cached) {
+            try {
+              return JSON.parse(cached);
+            } catch {
+              // cached value is not JSON — treat as a miss
+            }
           }
+          const u = await this.userRepository.findById(userId);
+          if (!u) {
+            return null;
+          }
+          await cache.set(cacheKey, u, cacheTTL.authUser);
           return u;
         })();
         inFlightUserLoads.set(userId, loadPromise);
@@ -163,79 +170,58 @@ export class AuthMiddleware {
   optionalAuth = async (req, res, next) => {
     try {
       const token = getTokenFromRequest(req);
-
-      logger.debug('Optional auth check', {
-        correlationId: req.correlationId,
-        hasToken: !!token,
-        tokenLength: token ? token.length : 0,
-      });
-
-      if (token) {
-        try {
-          // Verify token
-          const decoded = this.tokenService.verifyToken(token);
-
-          logger.debug('Token decoded', {
-            correlationId: req.correlationId,
-            userId: decoded?.userId,
-            hasUserId: !!(decoded && decoded.userId),
-          });
-
-          // Find user
-          if (decoded && decoded.userId) {
-            const user = await this.userRepository.findById(decoded.userId);
-
-            if (user) {
-              req.user = user;
-              logger.debug('User found and attached', {
-                correlationId: req.correlationId,
-                userId: user.id,
-                userRole: user.role,
-                userEmail: user.email,
-              });
-            } else {
-              req.user = null;
-              logger.warn('User not found for token', {
-                correlationId: req.correlationId,
-                userId: decoded.userId,
-              });
-            }
-          } else {
-            req.user = null;
-            logger.warn('No userId in decoded token', {
-              correlationId: req.correlationId,
-              decodedKeys: decoded ? Object.keys(decoded) : null,
-            });
-          }
-        } catch (tokenError) {
-          // Token is invalid or expired, but don't fail the request
-          // Just continue without user attached
-          req.user = null;
-          logger.warn('Token verification failed', {
-            correlationId: req.correlationId,
-            error: tokenError.message,
-            errorType: tokenError.constructor.name,
-          });
-        }
-      } else {
+      if (!token) {
         req.user = null;
-        logger.debug('No token provided', {
+        return next();
+      }
+
+      try {
+        const decoded = this.tokenService.verifyToken(token);
+        const userId = decoded?.userId;
+        if (!userId) {
+          req.user = null;
+          return next();
+        }
+
+        // Use same cache + single-flight pattern as authenticate (SEC-7)
+        const cacheKey = cacheKeys.authUser(userId);
+        let loadPromise = inFlightUserLoads.get(userId);
+        if (!loadPromise) {
+          loadPromise = (async () => {
+            const cached = await cache.get(cacheKey);
+            if (cached) {
+              try {
+                return JSON.parse(cached);
+              } catch {
+                // cache miss — fall through to DB
+              }
+            }
+            const u = await this.userRepository.findById(userId);
+            if (!u) {
+              return null;
+            }
+            await cache.set(cacheKey, u, cacheTTL.authUser);
+            return u;
+          })();
+          inFlightUserLoads.set(userId, loadPromise);
+          loadPromise.finally(() => inFlightUserLoads.delete(userId));
+        }
+
+        req.user = await loadPromise;
+      } catch (tokenError) {
+        req.user = null;
+        logger.debug('Optional auth token verification failed', {
           correlationId: req.correlationId,
+          error: tokenError.message,
         });
       }
     } catch (error) {
-      // Log unexpected errors but don't fail the request for optional auth
-      logger.error('Optional auth middleware error:', {
+      logger.error('Optional auth middleware error', {
         error: error.message,
         correlationId: req.correlationId,
       });
       req.user = null;
     }
-
-    logger.debug('Optional auth result', {
-      correlationId: req.correlationId,
-      hasUser: !!req.user,
-    });
 
     next();
   };
@@ -250,11 +236,5 @@ const getAuthMiddleware = async () => {
 
 export const authenticate = async (req, res, next) =>
   (await getAuthMiddleware()).authenticate(req, res, next);
-export const authorizeSelf = async (req, res, next) =>
-  (await getAuthMiddleware()).authorizeSelf(req, res, next);
-export const authorize = (permissions) => async (req, res, next) =>
-  (await getAuthMiddleware()).authorize(permissions)(req, res, next);
-export const requireAdmin = async (req, res, next) =>
-  (await getAuthMiddleware()).requireAdmin(req, res, next);
 export const optionalAuth = async (req, res, next) =>
   (await getAuthMiddleware()).optionalAuth(req, res, next);

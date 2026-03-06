@@ -1,4 +1,4 @@
-import logger from '../../config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 /**
  * Migration: Add composite index for licenses(starts_at, status)

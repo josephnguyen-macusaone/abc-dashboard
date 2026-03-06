@@ -1,4 +1,4 @@
-import logger from '../../../config/logger.js';
+import logger from '../../../../shared/utils/logger.js';
 
 // Middleware to log incoming requests
 export const requestLogger = (req, res, next) => {

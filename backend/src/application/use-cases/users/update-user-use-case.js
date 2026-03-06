@@ -2,7 +2,7 @@
  * Update User Use Case
  * Handles user profile updates
  */
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 import { UserResponseDto } from '../../dto/user/index.js';
 import {
   ValidationException,
@@ -116,69 +116,17 @@ export class UpdateUserUseCase {
    */
   async execute(userId, updates, currentUser) {
     try {
-      // Validate input
-      if (!userId) {
-        throw new ValidationException('User ID is required');
-      }
+      this._validateInput(userId, updates, currentUser);
+      const user = await this._getUser(userId);
+      this._assertCanUpdate(currentUser, user);
+      this._assertCanUpdateStatusIfRequested(updates, currentUser, user);
+      await this._assertUsernameUniqueIfChanged(updates, user);
 
-      if (!updates || Object.keys(updates).length === 0) {
-        throw new ValidationException('No updates provided');
-      }
-
-      if (!currentUser) {
-        throw new ValidationException('Current user information is required');
-      }
-
-      // Find the user to update
-      const user = await this.userRepository.findById(userId);
-      if (!user) {
-        throw new ResourceNotFoundException('User');
-      }
-
-      // Check permissions based on user roles
-      const canUpdate = this.canUserUpdateUser(currentUser, user);
-
-      if (!canUpdate.allowed) {
-        throw new InsufficientPermissionsException(canUpdate.reason || 'update this user');
-      }
-
-      // Check special permission for status (isActive) update
-      if (updates.isActive !== undefined) {
-        const canUpdateStatus = this.canUserUpdateStatus(currentUser, user);
-        if (!canUpdateStatus.allowed) {
-          throw new InsufficientPermissionsException(
-            canUpdateStatus.reason || 'change account status'
-          );
-        }
-
-        // Log status change for audit
-        logger.security('USER_STATUS_CHANGE', {
-          action: updates.isActive ? 'activate' : 'deactivate',
-          actorId: currentUser.id,
-          actorRole: currentUser.role,
-          targetId: user.id,
-          targetRole: user.role,
-          previousStatus: user.isActive,
-          newStatus: updates.isActive,
-        });
-      }
-
-      // Validate username uniqueness if being updated
-      if (updates.username && updates.username !== user.username) {
-        const existingUsername = await this.userRepository.findByUsername(updates.username);
-        if (existingUsername) {
-          throw new ValidationException('Username already taken');
-        }
-      }
-
-      // Update the user
       const updatedUser = await this.userRepository.update(userId, updates);
-
       if (!updatedUser) {
         throw new ValidationException('Failed to update user');
       }
 
-      // Log the update
       logger.info('User profile updated', {
         userId,
         updatedBy: currentUser.id,
@@ -190,7 +138,6 @@ export class UpdateUserUseCase {
         message: 'User profile updated successfully',
       };
     } catch (error) {
-      // Re-throw domain exceptions as-is for proper error handling
       if (
         error instanceof ValidationException ||
         error instanceof ResourceNotFoundException ||
@@ -198,8 +145,63 @@ export class UpdateUserUseCase {
       ) {
         throw error;
       }
-      // Wrap unexpected errors
-      throw new Error(`User update failed: ${error.message}`);
+      throw new Error(`User update failed: ${error.message}`, { cause: error });
+    }
+  }
+
+  _validateInput(userId, updates, currentUser) {
+    if (!userId) {
+      throw new ValidationException('User ID is required');
+    }
+    if (!updates || Object.keys(updates).length === 0) {
+      throw new ValidationException('No updates provided');
+    }
+    if (!currentUser) {
+      throw new ValidationException('Current user information is required');
+    }
+  }
+
+  async _getUser(userId) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new ResourceNotFoundException('User');
+    }
+    return user;
+  }
+
+  _assertCanUpdate(currentUser, user) {
+    const canUpdate = this.canUserUpdateUser(currentUser, user);
+    if (!canUpdate.allowed) {
+      throw new InsufficientPermissionsException(canUpdate.reason || 'update this user');
+    }
+  }
+
+  _assertCanUpdateStatusIfRequested(updates, currentUser, user) {
+    if (updates.isActive === undefined) {
+      return;
+    }
+    const canUpdateStatus = this.canUserUpdateStatus(currentUser, user);
+    if (!canUpdateStatus.allowed) {
+      throw new InsufficientPermissionsException(canUpdateStatus.reason || 'change account status');
+    }
+    logger.security('USER_STATUS_CHANGE', {
+      action: updates.isActive ? 'activate' : 'deactivate',
+      actorId: currentUser.id,
+      actorRole: currentUser.role,
+      targetId: user.id,
+      targetRole: user.role,
+      previousStatus: user.isActive,
+      newStatus: updates.isActive,
+    });
+  }
+
+  async _assertUsernameUniqueIfChanged(updates, user) {
+    if (!updates.username || updates.username === user.username) {
+      return;
+    }
+    const existing = await this.userRepository.findByUsername(updates.username);
+    if (existing) {
+      throw new ValidationException('Username already taken');
     }
   }
 }

@@ -71,7 +71,11 @@ export class LoginUseCase {
 
       const refreshToken = this.tokenService.generateRefreshToken({ userId: user.id });
 
-      // Return structured DTO response
+      // Store a hash of the refresh token so logout / rotation can revoke it (SEC-4).
+      const tokenHash = this.tokenService.hashToken(refreshToken);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      await this.userRepository.storeRefreshToken(user.id, tokenHash, expiresAt);
+
       return new LoginResponseDto({
         user: UserAuthDto.fromEntity(user),
         tokens: new TokensDto({ accessToken, refreshToken }),
@@ -87,7 +91,7 @@ export class LoginUseCase {
         throw error;
       }
       // Wrap unexpected errors
-      throw new Error(`Login failed: ${error.message}`);
+      throw new Error(`Login failed: ${error.message}`, { cause: error });
     }
   }
 }

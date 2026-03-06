@@ -3,7 +3,7 @@ import { UserProfileRepository } from '../../infrastructure/repositories/user-pr
 import { LicenseRepository } from '../../infrastructure/repositories/license-repository.js';
 import { ExternalLicenseRepository } from '../../infrastructure/repositories/external-license-repository.js';
 import connectDB, { getDB } from '../../infrastructure/config/database.js';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 import { AuthController } from '../../infrastructure/controllers/auth-controller.js';
 import { UserController } from '../../infrastructure/controllers/user-controller.js';
 import { ProfileController } from '../../infrastructure/controllers/profile-controller.js';
@@ -42,164 +42,118 @@ import { AuthMiddleware } from '../../infrastructure/middleware/auth-middleware.
 
 /**
  * Dependency Injection Container
- * Manages the creation and wiring of all dependencies
+ *
+ * Two helpers collapse the repetitive boilerplate:
+ *   _singleton(key, factory)       – synchronous singleton
+ *   _asyncSingleton(key, factory)  – async singleton (awaits DB / external init)
+ *
+ * setCorrelationId is kept but its concurrency hazard is noted in MASTER-PLAN.md;
+ * the full AsyncLocalStorage migration is tracked as Phase 4.2.
  */
 class Container {
   constructor() {
     this.instances = new Map();
   }
 
-  // Singleton pattern for repositories
-  async getUserRepository() {
-    if (!this.instances.has('userRepository')) {
-      try {
-        const db = getDB();
-        this.instances.set('userRepository', new UserRepository(db));
-      } catch (error) {
-        if (error.message === 'Database not initialized. Call connectDB first.') {
-          // Initialize database connection if not already done
-          await connectDB();
-          const db = getDB();
-          this.instances.set('userRepository', new UserRepository(db));
-        } else {
-          throw error;
-        }
-      }
+  /** Return cached instance or call sync factory once. */
+  _singleton(key, factory) {
+    if (!this.instances.has(key)) {
+      this.instances.set(key, factory());
     }
-    return this.instances.get('userRepository');
+    return this.instances.get(key);
   }
 
-  // Set correlation ID on all instances for request-scoped tracking
+  /** Return cached instance or call async factory once. */
+  async _asyncSingleton(key, factory) {
+    if (!this.instances.has(key)) {
+      this.instances.set(key, await factory());
+    }
+    return this.instances.get(key);
+  }
+
+  /** Resolve the Knex DB handle, initialising the connection if needed. */
+  async _db() {
+    try {
+      return getDB();
+    } catch (err) {
+      if (err.message === 'Database not initialized. Call connectDB first.') {
+        await connectDB();
+        return getDB();
+      }
+      throw err;
+    }
+  }
+
+  // ── Set correlation ID on all live singletons ────────────────────────────
   setCorrelationId(correlationId) {
-    // Set on repositories
-    const userRepo = this.instances.get('userRepository');
-    if (userRepo) {
-      userRepo.setCorrelationId(correlationId);
-    }
-
-    const userProfileRepo = this.instances.get('userProfileRepository');
-    if (userProfileRepo && userProfileRepo.setCorrelationId) {
-      userProfileRepo.setCorrelationId(correlationId);
-    }
-
-    const licenseRepo = this.instances.get('licenseRepository');
-    if (licenseRepo && licenseRepo.setCorrelationId) {
-      licenseRepo.setCorrelationId(correlationId);
-    }
-
-    const externalLicenseRepo = this.instances.get('externalLicenseRepository');
-    if (externalLicenseRepo && externalLicenseRepo.setCorrelationId) {
-      externalLicenseRepo.setCorrelationId(correlationId);
-    }
-
-    // Set on services
-    const authService = this.instances.get('authService');
-    if (authService) {
-      authService.correlationId = correlationId;
-    }
-
-    const tokenService = this.instances.get('tokenService');
-    if (tokenService) {
-      tokenService.correlationId = correlationId;
-    }
-
-    const emailService = this.instances.get('emailService');
-    if (emailService) {
-      emailService.correlationId = correlationId;
-    }
-
-    const externalLicenseApiService = this.instances.get('externalLicenseApiService');
-    if (externalLicenseApiService && externalLicenseApiService.setCorrelationId) {
-      externalLicenseApiService.setCorrelationId(correlationId);
-    }
-
-    // Set on middleware
-    const authMiddleware = this.instances.get('authMiddleware');
-    if (authMiddleware && authMiddleware.setCorrelationId) {
-      authMiddleware.setCorrelationId(correlationId);
-    }
-  }
-
-  async getUserProfileRepository() {
-    if (!this.instances.has('userProfileRepository')) {
-      try {
-        const db = getDB();
-        this.instances.set('userProfileRepository', new UserProfileRepository(db));
-      } catch (error) {
-        if (error.message === 'Database not initialized. Call connectDB first.') {
-          // Initialize database connection if not already done
-          await connectDB();
-          const db = getDB();
-          this.instances.set('userProfileRepository', new UserProfileRepository(db));
-        } else {
-          throw error;
-        }
+    const set = (key, prop = null) => {
+      const inst = this.instances.get(key);
+      if (!inst) {
+        return;
       }
-    }
-    return this.instances.get('userProfileRepository');
+      if (prop) {
+        inst[prop] = correlationId;
+      } else if (typeof inst.setCorrelationId === 'function') {
+        inst.setCorrelationId(correlationId);
+      }
+    };
+
+    set('userRepository');
+    set('userProfileRepository');
+    set('licenseRepository');
+    set('externalLicenseRepository');
+    set('authService', 'correlationId');
+    set('tokenService', 'correlationId');
+    set('emailService', 'correlationId');
+    set('externalLicenseApiService');
+    set('authMiddleware');
   }
 
-  async getLicenseRepository() {
-    if (!this.instances.has('licenseRepository')) {
-      try {
-        const db = getDB();
-        this.instances.set('licenseRepository', new LicenseRepository(db));
-      } catch (error) {
-        if (error.message === 'Database not initialized. Call connectDB first.') {
-          // Initialize database connection if not already done
-          await connectDB();
-          const db = getDB();
-          this.instances.set('licenseRepository', new LicenseRepository(db));
-        } else {
-          throw error;
-        }
-      }
-    }
-    return this.instances.get('licenseRepository');
+  // ── Repositories ─────────────────────────────────────────────────────────
+
+  getUserRepository() {
+    return this._asyncSingleton('userRepository', async () => new UserRepository(await this._db()));
   }
 
-  async getExternalLicenseRepository() {
-    if (!this.instances.has('externalLicenseRepository')) {
-      try {
-        const db = getDB();
-        this.instances.set('externalLicenseRepository', new ExternalLicenseRepository(db));
-      } catch (error) {
-        if (error.message === 'Database not initialized. Call connectDB first.') {
-          // Initialize database connection if not already done
-          await connectDB();
-          const db = getDB();
-          this.instances.set('externalLicenseRepository', new ExternalLicenseRepository(db));
-        } else {
-          throw error;
-        }
-      }
-    }
-    return this.instances.get('externalLicenseRepository');
+  getUserProfileRepository() {
+    return this._asyncSingleton(
+      'userProfileRepository',
+      async () => new UserProfileRepository(await this._db())
+    );
   }
+
+  getLicenseRepository() {
+    return this._asyncSingleton(
+      'licenseRepository',
+      async () => new LicenseRepository(await this._db())
+    );
+  }
+
+  getExternalLicenseRepository() {
+    return this._asyncSingleton(
+      'externalLicenseRepository',
+      async () => new ExternalLicenseRepository(await this._db())
+    );
+  }
+
+  // ── Services ─────────────────────────────────────────────────────────────
 
   getAuthService() {
-    if (!this.instances.has('authService')) {
-      this.instances.set('authService', new AuthService());
-    }
-    return this.instances.get('authService');
+    return this._singleton('authService', () => new AuthService());
   }
 
   getTokenService() {
-    if (!this.instances.has('tokenService')) {
-      this.instances.set('tokenService', new TokenService());
-    }
-    return this.instances.get('tokenService');
+    return this._singleton('tokenService', () => new TokenService());
   }
 
   getEmailService() {
-    if (!this.instances.has('emailService')) {
+    return this._singleton('emailService', () => {
       try {
-        this.instances.set('emailService', new EmailService());
+        return new EmailService();
       } catch (error) {
-        // In development, allow server to start without email service
         if (process.env.NODE_ENV === 'development') {
           logger.warn('Email service not available, creating mock service for development');
-          this.instances.set('emailService', {
+          return {
             sendEmail: async () => ({ success: false, message: 'Email service not configured' }),
             sendTemplatedEmail: async () => ({
               success: false,
@@ -207,93 +161,75 @@ class Container {
             }),
             correlationId: null,
             setCorrelationId: () => {},
-          });
-        } else {
-          throw error; // Re-throw in production
+          };
         }
+        throw error;
       }
-    }
-    return this.instances.get('emailService');
+    });
   }
 
   getExternalLicenseApiService() {
-    if (!this.instances.has('externalLicenseApiService')) {
-      this.instances.set('externalLicenseApiService', new ExternalLicenseApiService());
-    }
-    return this.instances.get('externalLicenseApiService');
+    return this._singleton('externalLicenseApiService', () => new ExternalLicenseApiService());
   }
 
-  async getLicenseService() {
-    if (!this.instances.has('licenseService')) {
-      const licenseRepository = await this.getLicenseRepository();
-      const userRepository = await this.getUserRepository();
-      const externalLicenseRepository = await this.getExternalLicenseRepository();
-      this.instances.set(
-        'licenseService',
-        new LicenseService(licenseRepository, userRepository, externalLicenseRepository)
-      );
-    }
-    return this.instances.get('licenseService');
+  getLicenseService() {
+    return this._asyncSingleton(
+      'licenseService',
+      async () =>
+        new LicenseService(
+          await this.getLicenseRepository(),
+          await this.getUserRepository(),
+          await this.getExternalLicenseRepository()
+        )
+    );
   }
 
-  async getLicenseLifecycleService() {
-    if (!this.instances.has('licenseLifecycleService')) {
-      const licenseRepository = await this.getLicenseRepository();
-      const notificationService = await this.getLicenseNotificationService();
-      this.instances.set(
-        'licenseLifecycleService',
-        new LicenseLifecycleService(licenseRepository, notificationService)
-      );
-    }
-    return this.instances.get('licenseLifecycleService');
+  getLicenseLifecycleService() {
+    return this._asyncSingleton(
+      'licenseLifecycleService',
+      async () =>
+        new LicenseLifecycleService(
+          await this.getLicenseRepository(),
+          await this.getLicenseNotificationService()
+        )
+    );
   }
 
-  async getLicenseNotificationService() {
-    if (!this.instances.has('licenseNotificationService')) {
-      // For now, create without a notification provider (logs to console)
-      this.instances.set('licenseNotificationService', new LicenseNotificationService());
-    }
-    return this.instances.get('licenseNotificationService');
-  }
-
-  async getLicenseLifecycleScheduler() {
-    if (!this.instances.has('licenseLifecycleScheduler')) {
-      const lifecycleService = await this.getLicenseLifecycleService();
-      this.instances.set(
-        'licenseLifecycleScheduler',
-        new LicenseLifecycleScheduler(lifecycleService)
-      );
-    }
-    return this.instances.get('licenseLifecycleScheduler');
+  getLicenseNotificationService() {
+    return this._asyncSingleton(
+      'licenseNotificationService',
+      async () => new LicenseNotificationService()
+    );
   }
 
   getLicenseRealtimeService() {
-    if (!this.instances.has('licenseRealtimeService')) {
-      this.instances.set('licenseRealtimeService', new LicenseRealtimeService());
-    }
-    return this.instances.get('licenseRealtimeService');
+    return this._singleton('licenseRealtimeService', () => new LicenseRealtimeService());
   }
 
-  async getLicenseSyncScheduler() {
-    if (!this.instances.has('licenseSyncScheduler')) {
+  // ── Schedulers ───────────────────────────────────────────────────────────
+
+  getLicenseLifecycleScheduler() {
+    return this._asyncSingleton(
+      'licenseLifecycleScheduler',
+      async () => new LicenseLifecycleScheduler(await this.getLicenseLifecycleService())
+    );
+  }
+
+  getLicenseSyncScheduler() {
+    return this._asyncSingleton('licenseSyncScheduler', async () => {
       const syncUseCase = await this.getSyncExternalLicensesUseCase();
       const realtimeService = this.getLicenseRealtimeService();
-      const config = {
-        // Set LICENSE_SYNC_ENABLED=false to disable automatic sync (manual sync only)
+      const cfg = {
         enabled: process.env.LICENSE_SYNC_ENABLED !== 'false',
-        // Default: 2am and 3am daily (night sync to reduce conflict with data entry)
         syncSchedule: process.env.LICENSE_SYNC_SCHEDULE || '0 2,3 * * *',
         timezone: process.env.LICENSE_SYNC_TIMEZONE || 'America/Chicago',
       };
-      this.instances.set(
-        'licenseSyncScheduler',
-        new LicenseSyncScheduler(syncUseCase, config, realtimeService)
-      );
-    }
-    return this.instances.get('licenseSyncScheduler');
+      return new LicenseSyncScheduler(syncUseCase, cfg, realtimeService);
+    });
   }
 
-  // Use cases
+  // ── Use cases (transient — new instance per call unless noted) ───────────
+
   async getLoginUseCase() {
     return new LoginUseCase(
       await this.getUserRepository(),
@@ -346,7 +282,6 @@ class Container {
     );
   }
 
-  // User use cases
   async getGetUsersUseCase() {
     return new GetUsersUseCase(await this.getUserRepository());
   }
@@ -367,7 +302,6 @@ class Container {
     return new DeleteUserUseCase(await this.getUserRepository());
   }
 
-  // Profile Use Cases
   async getGetProfileUseCase() {
     return new GetProfileUseCase(await this.getUserProfileRepository());
   }
@@ -380,58 +314,49 @@ class Container {
     return new RecordLoginUseCase(await this.getUserProfileRepository());
   }
 
-  // External License Use Cases
-  async getSyncExternalLicensesUseCase() {
-    if (!this.instances.has('syncExternalLicensesUseCase')) {
-      this.instances.set(
-        'syncExternalLicensesUseCase',
+  getSyncExternalLicensesUseCase() {
+    return this._asyncSingleton(
+      'syncExternalLicensesUseCase',
+      async () =>
         new SyncExternalLicensesUseCase(
           await this.getExternalLicenseRepository(),
           this.getExternalLicenseApiService(),
-          await this.getLicenseRepository() // Add internal license repository for sync-to-internal functionality
+          await this.getLicenseRepository()
         )
-      );
-    }
-    return this.instances.get('syncExternalLicensesUseCase');
+    );
   }
 
-  async getManageExternalLicensesUseCase() {
-    if (!this.instances.has('manageExternalLicensesUseCase')) {
-      this.instances.set(
-        'manageExternalLicensesUseCase',
-        new ManageExternalLicensesUseCase(await this.getExternalLicenseRepository())
-      );
-    }
-    return this.instances.get('manageExternalLicensesUseCase');
+  getManageExternalLicensesUseCase() {
+    return this._asyncSingleton(
+      'manageExternalLicensesUseCase',
+      async () => new ManageExternalLicensesUseCase(await this.getExternalLicenseRepository())
+    );
   }
 
-  async getRenewLicenseUseCase() {
-    if (!this.instances.has('renewLicenseUseCase')) {
-      this.instances.set(
-        'renewLicenseUseCase',
+  getRenewLicenseUseCase() {
+    return this._asyncSingleton(
+      'renewLicenseUseCase',
+      async () =>
         new RenewLicenseUseCase(
           await this.getLicenseRepository(),
           await this.getLicenseLifecycleService()
         )
-      );
-    }
-    return this.instances.get('renewLicenseUseCase');
+    );
   }
 
-  async getExpireLicenseUseCase() {
-    if (!this.instances.has('expireLicenseUseCase')) {
-      this.instances.set(
-        'expireLicenseUseCase',
+  getExpireLicenseUseCase() {
+    return this._asyncSingleton(
+      'expireLicenseUseCase',
+      async () =>
         new ExpireLicenseUseCase(
           await this.getLicenseRepository(),
           await this.getLicenseLifecycleService()
         )
-      );
-    }
-    return this.instances.get('expireLicenseUseCase');
+    );
   }
 
-  // Controllers
+  // ── Controllers ──────────────────────────────────────────────────────────
+
   async getAuthController() {
     return new AuthController(
       await this.getLoginUseCase(),
@@ -441,7 +366,8 @@ class Container {
       await this.getRequestPasswordResetWithGeneratedPasswordUseCase(),
       await this.getResetPasswordUseCase(),
       this.getTokenService(),
-      await this.getUserProfileRepository()
+      await this.getUserProfileRepository(),
+      await this.getUserRepository()
     );
   }
 
@@ -464,79 +390,56 @@ class Container {
     );
   }
 
-  async getLicenseController() {
-    if (!this.instances.has('licenseController')) {
-      const licenseService = await this.getLicenseService();
-      const licenseSyncScheduler = await this.getLicenseSyncScheduler();
-      const realtimeService = this.getLicenseRealtimeService();
-      this.instances.set(
-        'licenseController',
-        new LicenseController(licenseService, licenseSyncScheduler, realtimeService)
+  getLicenseController() {
+    return this._asyncSingleton('licenseController', async () => {
+      logger.info('Container: Creating license controller');
+      return new LicenseController(
+        await this.getLicenseService(),
+        await this.getLicenseSyncScheduler(),
+        this.getLicenseRealtimeService()
       );
-    }
-    return this.instances.get('licenseController');
+    });
   }
 
-  async getLicenseLifecycleController() {
-    if (!this.instances.has('licenseLifecycleController')) {
+  getLicenseLifecycleController() {
+    return this._asyncSingleton('licenseLifecycleController', async () => {
       logger.info('Container: Creating license lifecycle controller');
-      const lifecycleService = await this.getLicenseLifecycleService();
-      const renewLicenseUseCase = await this.getRenewLicenseUseCase();
-      const expireLicenseUseCase = await this.getExpireLicenseUseCase();
-      const licenseRepository = await this.getLicenseRepository();
-      const controller = new LicenseLifecycleController(
-        lifecycleService,
-        renewLicenseUseCase,
-        expireLicenseUseCase,
-        licenseRepository
+      const ctrl = new LicenseLifecycleController(
+        await this.getLicenseLifecycleService(),
+        await this.getRenewLicenseUseCase(),
+        await this.getExpireLicenseUseCase(),
+        await this.getLicenseRepository()
       );
       logger.info('Container: License lifecycle controller created successfully');
-      this.instances.set('licenseLifecycleController', controller);
-    }
-    return this.instances.get('licenseLifecycleController');
+      return ctrl;
+    });
   }
 
-  async getExternalLicenseController() {
-    if (!this.instances.has('externalLicenseController')) {
-      const syncExternalLicensesUseCase = await this.getSyncExternalLicensesUseCase();
-      const manageExternalLicensesUseCase = await this.getManageExternalLicensesUseCase();
-      this.instances.set(
-        'externalLicenseController',
-        new ExternalLicenseController(syncExternalLicensesUseCase, manageExternalLicensesUseCase)
-      );
-    }
-    return this.instances.get('externalLicenseController');
+  getExternalLicenseController() {
+    return this._asyncSingleton(
+      'externalLicenseController',
+      async () =>
+        new ExternalLicenseController(
+          await this.getSyncExternalLicensesUseCase(),
+          await this.getManageExternalLicensesUseCase()
+        )
+    );
   }
 
-  // Middleware (auth uses unified cache from infrastructure/config/redis.js: Redis or in-memory)
-  async getAuthMiddleware() {
-    if (!this.instances.has('authMiddleware')) {
-      this.instances.set(
-        'authMiddleware',
-        new AuthMiddleware(this.getTokenService(), await this.getUserRepository())
-      );
-    }
-    return this.instances.get('authMiddleware');
+  // ── Middleware ────────────────────────────────────────────────────────────
+
+  getAuthMiddleware() {
+    return this._asyncSingleton(
+      'authMiddleware',
+      async () => new AuthMiddleware(this.getTokenService(), await this.getUserRepository())
+    );
   }
 
-  // Middleware functions (convenience methods)
-  getAuthenticateMiddleware() {
-    return this.getAuthMiddleware().authenticate;
-  }
+  // ── Utilities ─────────────────────────────────────────────────────────────
 
-  getAuthorizeSelfMiddleware() {
-    return this.getAuthMiddleware().authorizeSelf;
-  }
-
-  getOptionalAuthMiddleware() {
-    return this.getAuthMiddleware().optionalAuth;
-  }
-
-  // Reset instances (useful for testing or reconfiguration)
   reset() {
     this.instances.clear();
   }
 }
 
-// Export singleton instance
 export const awilixContainer = new Container();

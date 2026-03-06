@@ -3,7 +3,7 @@
  * Handles license expiration operations and status transitions
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 
 export class ExpireLicenseUseCase {
   constructor(licenseRepository, licenseLifecycleService) {

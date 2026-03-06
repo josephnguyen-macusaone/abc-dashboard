@@ -1,4 +1,4 @@
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * License Domain Entity
@@ -179,40 +179,37 @@ export class License {
    */
   validate() {
     const errors = [];
-
-    // License key is required (but allow generation for external sync)
-    if (!this.key || this.key.trim() === '') {
-      // For external sync, we can auto-generate keys, but for internal creation it's required
-      if (!this.external_sync_status) {
-        errors.push('License key is required');
-      }
+    this._validateRequiredFields(errors);
+    this._validateStatusAndTerm(errors);
+    this._validateSeats(errors);
+    this._validateDates(errors);
+    if (errors.length > 0) {
+      throw new Error(`License validation failed: ${errors.join(', ')}`);
     }
+  }
 
-    // Product is required (but be more lenient for external data)
-    if (!this.product || (typeof this.product === 'string' && this.product.trim() === '')) {
-      if (!this.external_sync_status) {
-        errors.push('Product is required');
-      }
+  _validateRequiredFields(errors) {
+    const skipForExternal = this.external_sync_status;
+    if ((!this.key || this.key.trim() === '') && !skipForExternal) {
+      errors.push('License key is required');
     }
-
-    // Plan is required (but be more lenient for external data)
-    if (!this.plan || (typeof this.plan === 'string' && this.plan.trim() === '')) {
-      if (!this.external_sync_status) {
-        errors.push('Plan is required');
-      }
+    const emptyStr = (v) => !v || (typeof v === 'string' && v.trim() === '');
+    if (emptyStr(this.product) && !skipForExternal) {
+      errors.push('Product is required');
     }
-
-    // DBA is required (but be more lenient for external data)
-    if (!this.dba || (typeof this.dba === 'string' && this.dba.trim() === '')) {
-      if (!this.external_sync_status) {
+    if (emptyStr(this.plan) && !skipForExternal) {
+      errors.push('Plan is required');
+    }
+    if (emptyStr(this.dba)) {
+      if (!skipForExternal) {
         errors.push('DBA is required');
       } else {
-        // For external sync, provide a fallback
         this.dba = this.dba || 'Unknown Business';
       }
     }
+  }
 
-    // Status validation
+  _validateStatusAndTerm(errors) {
     const validStatuses = [
       'draft',
       'active',
@@ -225,22 +222,19 @@ export class License {
     if (this.status && !validStatuses.includes(this.status)) {
       errors.push(`Status must be one of: ${validStatuses.join(', ')}`);
     }
-
-    // Term validation
     const validTerms = ['monthly', 'yearly'];
     if (this.term && !validTerms.includes(this.term)) {
       errors.push(`Term must be one of: ${validTerms.join(', ')}`);
     }
+  }
 
-    // Seats validation
+  _validateSeats(errors) {
     if (this.seatsTotal !== undefined && this.seatsTotal < 1) {
       errors.push('Total seats must be at least 1');
     }
-
     if (this.seatsUsed !== undefined && this.seatsUsed < 0) {
       errors.push('Used seats cannot be negative');
     }
-
     if (
       this.seatsTotal !== undefined &&
       this.seatsUsed !== undefined &&
@@ -248,35 +242,31 @@ export class License {
     ) {
       errors.push('Used seats cannot exceed total seats');
     }
+  }
 
-    // Start date is required
+  _validateDates(errors) {
     if (!this.startsAt) {
       errors.push('Start date is required');
     }
-
-    // Expiry date validation - auto-swap if expiry < start (data quality fix)
-    if (this.startsAt && this.expiresAt) {
-      const startDate = new Date(this.startsAt);
-      const expiryDate = new Date(this.expiresAt);
-      if (!isNaN(startDate.getTime()) && !isNaN(expiryDate.getTime()) && expiryDate <= startDate) {
-        // Auto-swap dates - assume data entry error where dates were reversed
-        const originalStart = this.startsAt;
-        const originalExpiry = this.expiresAt;
-        this.startsAt = originalExpiry;
-        this.expiresAt = originalStart;
-        logger.debug('License auto-swapped dates (expiry was before start)', {
-          licenseKey: this.key || this.id,
-          originalStart,
-          originalExpiry,
-          fixedStart: this.startsAt,
-          fixedExpiry: this.expiresAt,
-        });
-      }
+    if (!this.startsAt || !this.expiresAt) {
+      return;
     }
-
-    if (errors.length > 0) {
-      throw new Error(`License validation failed: ${errors.join(', ')}`);
+    const startDate = new Date(this.startsAt);
+    const expiryDate = new Date(this.expiresAt);
+    if (isNaN(startDate.getTime()) || isNaN(expiryDate.getTime()) || expiryDate > startDate) {
+      return;
     }
+    const originalStart = this.startsAt;
+    const originalExpiry = this.expiresAt;
+    this.startsAt = originalExpiry;
+    this.expiresAt = originalStart;
+    logger.debug('License auto-swapped dates (expiry was before start)', {
+      licenseKey: this.key || this.id,
+      originalStart,
+      originalExpiry,
+      fixedStart: this.startsAt,
+      fixedExpiry: this.expiresAt,
+    });
   }
 
   /**
@@ -405,7 +395,7 @@ export class License {
     const expiryDate = new Date(this.expiresAt);
     const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
 
-    let shouldSend = false;
+    let shouldSend;
     switch (reminderType) {
       case '30days':
         shouldSend = daysUntilExpiry <= 30 && daysUntilExpiry > 7;

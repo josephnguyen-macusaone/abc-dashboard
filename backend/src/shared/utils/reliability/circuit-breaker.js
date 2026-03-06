@@ -3,7 +3,7 @@
  * Prevents cascade failures by temporarily stopping calls to failing services
  */
 
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../logger.js';
 import { ExternalServiceUnavailableException } from '../../../domain/exceptions/domain.exception.js';
 
 /**

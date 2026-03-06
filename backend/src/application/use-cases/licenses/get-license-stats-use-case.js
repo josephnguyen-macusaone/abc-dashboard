@@ -29,7 +29,7 @@ export class GetLicenseStatsUseCase {
         },
       };
     } catch (error) {
-      throw new Error(`Failed to get license stats: ${error.message}`);
+      throw new Error(`Failed to get license stats: ${error.message}`, { cause: error });
     }
   }
 }

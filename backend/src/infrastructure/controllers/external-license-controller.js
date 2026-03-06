@@ -1,6 +1,6 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * External License Controller

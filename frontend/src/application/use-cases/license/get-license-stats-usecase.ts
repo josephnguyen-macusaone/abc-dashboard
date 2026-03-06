@@ -43,6 +43,42 @@ export interface LicenseMetricsFilters {
 }
 
 /**
+ * Type guard: true if value has the shape expected from the dashboard metrics API.
+ */
+function isDashboardMetrics(value: unknown): value is DashboardMetrics {
+  if (value == null || typeof value !== 'object') return false;
+  const m = value as Record<string, unknown>;
+  const hasMetric = (key: string) => {
+    const metric = m[key];
+    return metric != null && typeof metric === 'object' && 'value' in (metric as object);
+  };
+  return (
+    hasMetric('totalActiveLicenses') &&
+    hasMetric('newLicensesThisMonth') &&
+    hasMetric('licenseIncomeThisMonth') &&
+    hasMetric('smsIncomeThisMonth') &&
+    hasMetric('inHouseLicenses') &&
+    hasMetric('agentHeavyLicenses') &&
+    hasMetric('highRiskLicenses') &&
+    hasMetric('estimatedNextMonthIncome')
+  );
+}
+
+/**
+ * Default zeroed metrics when API fails and licenses are not yet loaded (avoids UI error, updates when licenses load).
+ */
+const DEFAULT_LICENSE_DASHBOARD_METRICS: LicenseDashboardMetric[] = [
+  { id: 'total-active-licenses', label: 'Total Active Licenses', value: '0', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
+  { id: 'new-licenses-month', label: 'New Licenses this month', value: '0', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
+  { id: 'licenses-income-month', label: 'Total Licenses income this month', value: '$0.00', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
+  { id: 'sms-income-month', label: 'Total SMS income this month', value: '$0.00', trend: { value: 0, direction: 'neutral', label: 'usage vs last month' } },
+  { id: 'total-inhouse-licenses', label: 'Total In-house Licenses', value: '0', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
+  { id: 'total-agent-licenses', label: 'Total Agent Licenses', value: '0', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
+  { id: 'high-risk-licenses', label: 'Total High Risk (7 days no active)', value: '0', trend: { value: 0, direction: 'neutral', label: 'auto-updated daily' } },
+  { id: 'estimate-next-month', label: 'Estimate next month Licenses income', value: '$0.00', trend: { value: 0, direction: 'neutral', label: 'projected' } },
+];
+
+/**
  * Transform backend dashboard metrics to business domain format.
  * Exported for reuse when store already has metrics (avoids duplicate API calls).
  */
@@ -171,6 +207,9 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       // Try API metrics first if requested
       if (useApiMetrics) {
         const apiMetrics = await this.fetchDashboardMetrics(dateRange, filters);
+        if (!isDashboardMetrics(apiMetrics)) {
+          throw new Error('Dashboard metrics response missing required fields');
+        }
         return this.transformDashboardMetricsToCards(apiMetrics);
       }
     } catch (error) {
@@ -182,28 +221,28 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
       });
     }
 
-    // Fallback to client-side calculation
-    if (!licenses) {
-      this.useCaseLogger.error('Licenses data required for client-side calculation', {
-        correlationId,
-        operation: 'client_calculation_missing_data',
-      });
-      throw new Error('Licenses data is required for client-side calculation');
+    // Fallback to client-side calculation when we have license data
+    if (licenses && licenses.length > 0) {
+      try {
+        return this.buildLicenseStatsCards(licenses, dateRange);
+      } catch (error) {
+        this.useCaseLogger.error('Client-side calculation failed', {
+          correlationId,
+          licenseCount: licenses?.length,
+          dateRange,
+          operation: 'client_calculation_error',
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     }
 
-    try {
-      const result = this.buildLicenseStatsCards(licenses, dateRange);
-      return result;
-    } catch (error) {
-      this.useCaseLogger.error('Client-side calculation failed', {
-        correlationId,
-        licenseCount: licenses?.length,
-        dateRange,
-        operation: 'client_calculation_error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    // No licenses yet (e.g. still loading) or API failed with invalid shape: return zeroed metrics so UI doesn't error; effect will re-run when licenses load
+    this.useCaseLogger.debug('No license data for client-side metrics; returning defaults', {
+      correlationId,
+      operation: 'client_calculation_missing_data',
+    });
+    return [...DEFAULT_LICENSE_DASHBOARD_METRICS];
   }
 
   /**

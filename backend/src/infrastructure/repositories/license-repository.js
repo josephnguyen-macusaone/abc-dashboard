@@ -3,7 +3,7 @@ import { LicenseAssignment } from '../../domain/entities/license-assignment-enti
 import { LicenseAuditEvent } from '../../domain/entities/license-audit-event-entity.js';
 import { ILicenseRepository } from '../../domain/repositories/interfaces/i-license-repository.js';
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * License Repository Implementation
@@ -456,19 +456,73 @@ export class LicenseRepository extends ILicenseRepository {
   async getLicenseStatsWithFilters(filters = {}) {
     let query = this.db(this.licensesTable);
     query = this._applyLicenseListFilters(query, filters);
-    const [totalCount, activeCount, expiredCount, pendingCount, cancelCount] = await Promise.all([
-      query.clone().count('id as count').first(),
-      query.clone().where('status', 'active').count('id as count').first(),
-      query.clone().where('status', 'expired').count('id as count').first(),
-      query.clone().where('status', 'pending').count('id as count').first(),
-      query.clone().where('status', 'cancel').count('id as count').first(),
-    ]);
+    const row = await query
+      .select(
+        this.db.raw('COUNT(*)::int as total'),
+        this.db.raw("COUNT(*) FILTER (WHERE status = 'active')::int as active"),
+        this.db.raw("COUNT(*) FILTER (WHERE status = 'expired')::int as expired"),
+        this.db.raw("COUNT(*) FILTER (WHERE status = 'pending')::int as pending"),
+        this.db.raw("COUNT(*) FILTER (WHERE status = 'cancel')::int as cancel")
+      )
+      .first();
     return {
-      total: parseInt(totalCount?.count || 0),
-      active: parseInt(activeCount?.count || 0),
-      expired: parseInt(expiredCount?.count || 0),
-      pending: parseInt(pendingCount?.count || 0),
-      cancel: parseInt(cancelCount?.count || 0),
+      total: row?.total || 0,
+      active: row?.active || 0,
+      expired: row?.expired || 0,
+      pending: row?.pending || 0,
+      cancel: row?.cancel || 0,
+    };
+  }
+
+  /**
+   * Single-query aggregate for dashboard metrics over a date-bounded set of licenses.
+   *
+   * Returns counts, financial totals, and SMS totals needed by
+   * GetLicenseDashboardMetricsUseCase — all in one round-trip.
+   *
+   * @param {Object} filters     - User-supplied filters (search, status, plan, …)
+   * @param {Date}   periodStart - Inclusive start of `starts_at` window
+   * @param {Date}   periodEnd   - Inclusive end of `starts_at` window
+   */
+  async getDashboardAggregates(filters = {}, periodStart = null, periodEnd = null) {
+    const periodFilters = this._buildDashboardPeriodFilters(filters, periodStart, periodEnd);
+    let query = this.db(this.licensesTable);
+    query = this._applyLicenseListFilters(query, periodFilters);
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const row = await query
+      .select(
+        this.db.raw('COUNT(*)::int                                         AS total'),
+        this.db.raw("COUNT(*) FILTER (WHERE status = 'active')::int       AS active"),
+        this.db.raw('COUNT(*) FILTER (WHERE (agents)::int > 3)::int       AS agent_heavy'),
+        this.db.raw(
+          'COUNT(*) FILTER (WHERE last_active IS NOT NULL AND last_active < ?)::int AS high_risk',
+          [sevenDaysAgo]
+        ),
+        this.db.raw('COALESCE(SUM(last_payment), 0)                       AS income'),
+        this.db.raw('COALESCE(SUM(sms_sent), 0)::int                      AS sms_sent')
+      )
+      .first();
+
+    return this._mapDashboardAggregatesRow(row);
+  }
+
+  _buildDashboardPeriodFilters(filters, periodStart, periodEnd) {
+    return {
+      ...filters,
+      ...(periodStart ? { startsAtFrom: periodStart.toISOString() } : {}),
+      ...(periodEnd ? { startsAtTo: periodEnd.toISOString() } : {}),
+    };
+  }
+
+  _mapDashboardAggregatesRow(row) {
+    return {
+      total: row?.total ?? 0,
+      active: row?.active ?? 0,
+      agentHeavy: row?.agent_heavy ?? 0,
+      highRisk: row?.high_risk ?? 0,
+      income: parseFloat(row?.income ?? 0),
+      smsSent: row?.sms_sent ?? 0,
     };
   }
 
@@ -944,7 +998,7 @@ export class LicenseRepository extends ILicenseRepository {
       smsPurchased: licenseRow.sms_purchased,
       smsSent: licenseRow.sms_sent,
       smsBalance:
-        licenseRow.sms_balance != null ? parseFloat(licenseRow.sms_balance) || 0 : undefined,
+        licenseRow.sms_balance !== null ? parseFloat(licenseRow.sms_balance) || 0 : undefined,
       agents: licenseRow.agents,
       agentsName: this._normalizeAgentsName(licenseRow.agents_name),
       agentsCost: parseFloat(licenseRow.agents_cost) || 0,
@@ -964,45 +1018,6 @@ export class LicenseRepository extends ILicenseRepository {
       last_external_sync: licenseRow.last_external_sync,
       external_sync_error: licenseRow.external_sync_error,
     });
-  }
-
-  /**
-      agentsName: licenseRow.agents_name,
-      agentsCost: parseFloat(licenseRow.agents_cost) || 0,
-      notes: licenseRow.notes,
-
-      // Lifecycle management fields
-      renewalRemindersSent: licenseRow.renewal_reminders_sent || [],
-      lastRenewalReminder: licenseRow.last_renewal_reminder,
-      renewalDueDate: licenseRow.renewal_due_date,
-      autoSuspendEnabled: licenseRow.auto_suspend_enabled,
-      gracePeriodDays: licenseRow.grace_period_days,
-      gracePeriodEnd: licenseRow.grace_period_end,
-      suspensionReason: licenseRow.suspension_reason,
-      suspendedAt: licenseRow.suspended_at,
-      reactivatedAt: licenseRow.reactivated_at,
-      renewalHistory: licenseRow.renewal_history || [],
-
-      createdBy: licenseRow.created_by,
-      updatedBy: licenseRow.updated_by,
-      createdAt: licenseRow.created_at,
-      updatedAt: licenseRow.updated_at,
-      // External sync fields (unified)
-      appid: licenseRow.appid,
-      countid: licenseRow.countid,
-      mid: licenseRow.mid,
-      license_type: licenseRow.license_type,
-      package_data: licenseRow.package,
-      sendbat_workspace: licenseRow.sendbat_workspace,
-      coming_expired: licenseRow.coming_expired,
-      external_sync_status: licenseRow.external_sync_status,
-      last_external_sync: licenseRow.last_external_sync,
-      external_sync_error: licenseRow.external_sync_error,
-    });
-
-    logger.debug('Final entityData.startsAt', { startsAt: entityData.startsAt });
-
-    return new License(entityData);
   }
 
   /**
@@ -1289,45 +1304,28 @@ export class LicenseRepository extends ILicenseRepository {
     return withTimeout(
       async () => {
         const now = new Date();
-        let expiryCondition;
+        let lowerBound;
+        let upperBound;
 
         switch (reminderType) {
           case '30days': {
-            const thirtyDaysFromNow = new Date();
-            thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-            const sevenDaysFromNow = new Date();
-            sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-            expiryCondition = [
-              'expires_at',
-              '<=',
-              thirtyDaysFromNow,
-              'and',
-              'expires_at',
-              '>',
-              sevenDaysFromNow,
-            ];
+            upperBound = new Date();
+            upperBound.setDate(upperBound.getDate() + 30);
+            lowerBound = new Date();
+            lowerBound.setDate(lowerBound.getDate() + 7);
             break;
           }
           case '7days': {
-            const sevenDaysFromNow2 = new Date();
-            sevenDaysFromNow2.setDate(sevenDaysFromNow2.getDate() + 7);
-            const oneDayFromNow = new Date();
-            oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
-            expiryCondition = [
-              'expires_at',
-              '<=',
-              sevenDaysFromNow2,
-              'and',
-              'expires_at',
-              '>',
-              oneDayFromNow,
-            ];
+            upperBound = new Date();
+            upperBound.setDate(upperBound.getDate() + 7);
+            lowerBound = new Date();
+            lowerBound.setDate(lowerBound.getDate() + 1);
             break;
           }
           case '1day': {
-            const oneDayFromNow2 = new Date();
-            oneDayFromNow2.setDate(oneDayFromNow2.getDate() + 1);
-            expiryCondition = ['expires_at', '<=', oneDayFromNow2, 'and', 'expires_at', '>', now];
+            upperBound = new Date();
+            upperBound.setDate(upperBound.getDate() + 1);
+            lowerBound = now;
             break;
           }
           default:
@@ -1335,7 +1333,8 @@ export class LicenseRepository extends ILicenseRepository {
         }
 
         const licenseRows = await this.db(this.licensesTable)
-          .where(...expiryCondition)
+          .where('expires_at', '<=', upperBound)
+          .where('expires_at', '>', lowerBound)
           .whereNotIn('status', ['expired', 'revoked', 'cancel'])
           .whereRaw('NOT (renewal_reminders_sent::jsonb ? ?)', [reminderType])
           .orderBy('expires_at', 'asc');
@@ -1544,55 +1543,42 @@ export class LicenseRepository extends ILicenseRepository {
    */
   async getAllAgentNames() {
     try {
-      // Get all licenses with agents_name field (stored as string in database)
-      const licenses = await this.db(this.licensesTable)
-        .select('agents_name')
-        .whereNotNull('agents_name');
+      // Push all splitting/deduplication work into Postgres.
+      //
+      // agents_name is stored in three legacy formats:
+      //   1. JSON array string  → '["Alice","Bob"]'
+      //   2. Comma-separated    → 'Alice, Bob'
+      //   3. Plain string       → 'Alice'
+      //
+      // Strategy:
+      //   • If the value starts with '[', treat it as a JSON array and use
+      //     jsonb_array_elements_text to unpack it.
+      //   • Otherwise, split on commas with string_to_array.
+      //   • UNION both sets, trim whitespace, filter empties, then DISTINCT + ORDER.
+      const rows = await this.db.raw(`
+        SELECT DISTINCT trim(name) AS name
+        FROM (
+          -- JSON array format: '["Alice","Bob"]'
+          SELECT jsonb_array_elements_text(agents_name::jsonb) AS name
+          FROM   ${this.licensesTable}
+          WHERE  agents_name IS NOT NULL
+            AND  agents_name <> ''
+            AND  agents_name LIKE '[%'
 
-      // Extract unique agent names from all licenses
-      const agentNamesSet = new Set();
+          UNION ALL
 
-      licenses.forEach((license) => {
-        if (license.agents_name) {
-          let names = [];
+          -- Comma-separated / plain string format
+          SELECT unnest(string_to_array(agents_name, ',')) AS name
+          FROM   ${this.licensesTable}
+          WHERE  agents_name IS NOT NULL
+            AND  agents_name <> ''
+            AND  agents_name NOT LIKE '[%'
+        ) sub
+        WHERE trim(name) <> ''
+        ORDER BY 1
+      `);
 
-          // Handle backward compatibility: may be string, JSON string, or array
-          if (typeof license.agents_name === 'string') {
-            // Try to parse as JSON first (for backward compatibility)
-            try {
-              const parsed = JSON.parse(license.agents_name);
-              if (Array.isArray(parsed)) {
-                names = parsed;
-              } else {
-                // It's a plain string (JSON string value), split by comma
-                names = license.agents_name
-                  .split(',')
-                  .map((n) => n.trim())
-                  .filter(Boolean);
-              }
-            } catch {
-              // Not JSON, treat as comma-separated string
-              names = license.agents_name
-                .split(',')
-                .map((n) => n.trim())
-                .filter(Boolean);
-            }
-          } else if (Array.isArray(license.agents_name)) {
-            // Backward compatibility: handle array format
-            names = license.agents_name;
-          }
-
-          // Add each name to the set
-          names.forEach((name) => {
-            if (name && name.trim()) {
-              agentNamesSet.add(name.trim());
-            }
-          });
-        }
-      });
-
-      // Convert set to sorted array
-      return Array.from(agentNamesSet).sort();
+      return rows.rows.map((r) => r.name);
     } catch (error) {
       logger.error('Failed to get all agent names', {
         correlationId: this.correlationId,

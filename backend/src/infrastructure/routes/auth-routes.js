@@ -7,7 +7,9 @@ import { getRefreshTokenFromRequest } from '../../shared/http/auth-cookies.js';
 
 /** Inject refreshToken from cookie into body for validation (HttpOnly cookie flow) */
 function injectRefreshTokenFromCookie(req, _res, next) {
-  if (!req.body) req.body = {};
+  if (!req.body) {
+    req.body = {};
+  }
   if (!req.body.refreshToken) {
     req.body.refreshToken = getRefreshTokenFromRequest(req);
   }

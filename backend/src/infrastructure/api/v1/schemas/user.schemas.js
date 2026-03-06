@@ -203,7 +203,7 @@ export const userSchemas = {
     }),
 
     phone: Joi.string()
-      .pattern(/^[\+]?[1-9][\d]{0,15}$/)
+      .pattern(/^\+?[1-9]\d{1,14}$/)
       .allow('', null)
       .messages({
         'string.pattern.base': 'Phone number must be in valid format',
@@ -229,7 +229,7 @@ export const userSchemas = {
     }),
 
     phone: Joi.string()
-      .pattern(/^[\+]?[1-9][\d]{0,15}$/)
+      .pattern(/^\+?[1-9]\d{1,14}$/)
       .allow('')
       .messages({
         'string.pattern.base': 'Phone number must be in valid format',
@@ -262,7 +262,7 @@ export const userSchemas = {
     }),
 
     phone: Joi.string()
-      .pattern(/^[\+]?[1-9][\d]{0,15}$/)
+      .pattern(/^\+?[1-9]\d{1,14}$/)
       .allow('')
       .messages({
         'string.pattern.base': 'Phone number must be in valid format',

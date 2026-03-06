@@ -3,7 +3,7 @@
  * Handles role-based access control for user management operations
  */
 
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { ROLES, ROLE_CREATION_PERMISSIONS } from '../../shared/constants/roles.js';
 
 /**

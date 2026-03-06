@@ -22,7 +22,7 @@ export const profileSchemas = {
       'string.max': 'Bio cannot exceed 500 characters',
     }),
     phone: Joi.string()
-      .pattern(/^[\+]?[1-9][\d]{0,15}$/)
+      .pattern(/^[+]?[1-9][\d]{0,15}$/)
       .allow('', null)
       .optional()
       .messages({

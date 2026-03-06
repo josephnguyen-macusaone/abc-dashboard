@@ -6,7 +6,7 @@ import {
   ValidationException,
   ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../../../shared/utils/logger.js';
 import { config } from '../../../infrastructure/config/config.js';
 
 export class ResetPasswordUseCase {
@@ -112,7 +112,7 @@ export class ResetPasswordUseCase {
       }
 
       logger.error('Password reset failed:', error);
-      throw new Error(`Password reset failed: ${error.message}`);
+      throw new Error(`Password reset failed: ${error.message}`, { cause: error });
     }
   }
 }

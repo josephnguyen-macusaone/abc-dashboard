@@ -3,7 +3,7 @@
  * Handles scheduled execution of license lifecycle operations
  */
 import cron from 'node-cron';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 export class LicenseLifecycleScheduler {
   constructor(licenseLifecycleService, config = {}) {

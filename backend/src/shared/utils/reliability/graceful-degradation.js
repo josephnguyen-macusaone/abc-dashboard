@@ -3,7 +3,7 @@
  * Provides strategies for handling non-critical failures while maintaining core functionality
  */
 
-import logger from '../../../infrastructure/config/logger.js';
+import logger from '../logger.js';
 
 /**
  * Degradation level definitions

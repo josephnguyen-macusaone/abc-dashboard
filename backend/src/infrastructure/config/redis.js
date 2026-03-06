@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import logger from './logger.js';
+import logger from '../../shared/utils/logger.js';
 import Redis from 'ioredis';
 
 // Redis client instance
@@ -350,9 +350,11 @@ function parseRedisInfo(str) {
  */
 export const cache = {
   async set(key, value, ttl = config.CACHE_API_RESPONSE_TTL) {
+    // Always serialize to a JSON string so cache.get always returns a raw string
+    // regardless of whether Redis or in-memory is the active backend.
+    const serialized = typeof value === 'string' ? value : JSON.stringify(value);
     try {
       if (isRedisEnabled && redisClient) {
-        const serialized = JSON.stringify(value);
         if (ttl > 0) {
           await redisClient.setex(key, ttl, serialized);
         } else {
@@ -367,7 +369,7 @@ export const cache = {
       });
     }
 
-    return inMemoryCache.set(key, value, ttl);
+    return inMemoryCache.set(key, serialized, ttl);
   },
 
   async get(key) {
@@ -377,12 +379,10 @@ export const cache = {
         if (value === null) {
           return null;
         }
-
-        try {
-          return JSON.parse(value);
-        } catch {
-          return value;
-        }
+        // Return raw string — callers are responsible for JSON.parse when needed.
+        // This keeps the contract consistent with the in-memory fallback which
+        // also returns the value exactly as it was stored.
+        return value;
       }
     } catch (error) {
       logger.warn('Redis get failed, using in-memory fallback', {

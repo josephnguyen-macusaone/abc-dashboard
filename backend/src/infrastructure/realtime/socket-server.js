@@ -4,7 +4,7 @@
  */
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 import { config } from '../config/config.js';
 
 /**

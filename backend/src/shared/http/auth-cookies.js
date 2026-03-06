@@ -59,7 +59,8 @@ export function clearAuthCookies(res) {
  */
 export function getTokenFromRequest(req) {
   const authHeader = req.headers.authorization || req.headers.Authorization;
-  const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  const bearerToken =
+    authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
   const cookieToken = req.cookies?.[TOKEN_COOKIE_NAME];
   return bearerToken || cookieToken || null;
 }

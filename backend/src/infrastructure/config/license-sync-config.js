@@ -27,6 +27,10 @@ export const licenseSyncConfig = {
     // Data processing limits
     maxConcurrentBatches: parseInt(process.env.LICENSE_SYNC_MAX_CONCURRENT_BATCHES) || 5,
     maxRetries: parseInt(process.env.LICENSE_SYNC_MAX_RETRIES) || 5,
+
+    // Delay between page-fetch batches (ms). Set to 0 to disable throttling.
+    // Increase if the partner API returns 429s during large syncs.
+    pageBatchDelayMs: parseInt(process.env.LICENSE_SYNC_PAGE_BATCH_DELAY_MS) || 0,
   },
 
   // Monitoring and Observability

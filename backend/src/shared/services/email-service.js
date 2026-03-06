@@ -1,6 +1,6 @@
 import handlebars from 'handlebars';
 import { config } from '../../infrastructure/config/config.js';
-import logger from '../../infrastructure/config/logger.js';
+import logger from '../utils/logger.js';
 import { createEmailTransporter } from '../../infrastructure/email/transporter.js';
 import { renderEmailTemplate } from '../../infrastructure/email/templates.js';
 import { withServiceRetry, withTimeout } from '../utils/reliability/retry.js';
@@ -365,110 +365,19 @@ export class EmailService {
     const errorMessage = error.message?.toLowerCase() || '';
     const errorCode = error.code || error.responseCode;
 
-    // Google Workspace specific errors
-    if (config.EMAIL_SERVICE === 'google-workspace') {
-      // App Password issues
-      if (errorCode === 535 || errorMessage.includes('authentication failed')) {
-        logger.error('Google Workspace authentication failed - check App Password', {
-          correlationId: this.correlationId,
-          error: errorMessage,
-        });
-        return new ExternalServiceUnavailableException(
-          'Google Workspace authentication failed. Verify App Password is correct.'
-        );
-      }
+    const mapped =
+      this._mapGoogleWorkspaceError(error, errorMessage, errorCode) ??
+      this._mapConnectionError(error, errorMessage) ??
+      this._mapTimeoutError(error, errorMessage) ??
+      this._mapAuthError(error, errorMessage) ??
+      this._mapRateLimitError(error, errorMessage) ??
+      this._mapRecipientError(error, errorMessage) ??
+      this._mapServerError(error);
 
-      // Daily sending limit exceeded
-      if (errorCode === 550 && errorMessage.includes('quota')) {
-        logger.warn('Google Workspace daily sending limit exceeded', {
-          correlationId: this.correlationId,
-          error: errorMessage,
-        });
-        return new ExternalServiceUnavailableException(
-          'Google Workspace daily sending limit exceeded'
-        );
-      }
-
-      // Account disabled or suspended
-      if (
-        errorCode === 550 &&
-        (errorMessage.includes('disabled') || errorMessage.includes('suspended'))
-      ) {
-        logger.error('Google Workspace account issue', {
-          correlationId: this.correlationId,
-          error: errorMessage,
-        });
-        return new ExternalServiceUnavailableException(
-          'Google Workspace account disabled or suspended'
-        );
-      }
-
-      // TLS/SSL issues
-      if (errorMessage.includes('tls') || errorMessage.includes('ssl')) {
-        logger.warn('Google Workspace TLS/SSL connection issue', {
-          correlationId: this.correlationId,
-          error: errorMessage,
-        });
-        return new ExternalServiceUnavailableException('Google Workspace TLS connection failed');
-      }
+    if (mapped) {
+      return mapped;
     }
 
-    // Connection errors
-    if (
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ENOTFOUND' ||
-      errorMessage.includes('connection') ||
-      errorMessage.includes('connect') ||
-      errorMessage.includes('network')
-    ) {
-      return new ExternalServiceUnavailableException('Email SMTP server connection failed');
-    }
-
-    // Timeout errors
-    if (
-      error.code === 'ETIMEDOUT' ||
-      error.code === 'ESOCKETTIMEDOUT' ||
-      errorMessage.includes('timeout')
-    ) {
-      return new NetworkTimeoutException('Email sending timeout');
-    }
-
-    // Authentication errors (generic)
-    if (
-      error.code === 'EAUTH' ||
-      errorMessage.includes('authentication') ||
-      errorMessage.includes('credentials') ||
-      errorMessage.includes('login')
-    ) {
-      return new ExternalServiceUnavailableException('Email authentication failed');
-    }
-
-    // Rate limiting
-    if (
-      error.code === 'EMESSAGE' &&
-      (errorMessage.includes('rate limit') || errorMessage.includes('quota'))
-    ) {
-      return new ExternalServiceUnavailableException('Email rate limiting exceeded');
-    }
-
-    // Invalid recipient
-    if (
-      error.code === 'EENVELOPE' ||
-      errorMessage.includes('invalid recipient') ||
-      errorMessage.includes('mailbox') ||
-      errorMessage.includes('user unknown')
-    ) {
-      return new ValidationException('Invalid email recipient address');
-    }
-
-    // Server errors
-    if (error.code === 'ESOCKET' || (error.responseCode && error.responseCode >= 500)) {
-      return new ExternalServiceUnavailableException(
-        'Email delivery service temporarily unavailable'
-      );
-    }
-
-    // Return original error wrapped in service exception
     logger.warn('Unhandled email error', {
       correlationId: this.correlationId,
       service: config.EMAIL_SERVICE,
@@ -476,8 +385,119 @@ export class EmailService {
       code: error.code,
       responseCode: error.responseCode,
     });
-
     return new ExternalServiceUnavailableException('Email service error');
+  }
+
+  /** @private */
+  _mapGoogleWorkspaceError(error, errorMessage, errorCode) {
+    if (config.EMAIL_SERVICE !== 'google-workspace') {
+      return null;
+    }
+    if (errorCode === 535 || errorMessage.includes('authentication failed')) {
+      logger.error('Google Workspace authentication failed - check App Password', {
+        correlationId: this.correlationId,
+        error: errorMessage,
+      });
+      return new ExternalServiceUnavailableException(
+        'Google Workspace authentication failed. Verify App Password is correct.'
+      );
+    }
+    if (errorCode === 550 && errorMessage.includes('quota')) {
+      logger.warn('Google Workspace daily sending limit exceeded', {
+        correlationId: this.correlationId,
+        error: errorMessage,
+      });
+      return new ExternalServiceUnavailableException(
+        'Google Workspace daily sending limit exceeded'
+      );
+    }
+    if (
+      errorCode === 550 &&
+      (errorMessage.includes('disabled') || errorMessage.includes('suspended'))
+    ) {
+      logger.error('Google Workspace account issue', {
+        correlationId: this.correlationId,
+        error: errorMessage,
+      });
+      return new ExternalServiceUnavailableException(
+        'Google Workspace account disabled or suspended'
+      );
+    }
+    if (errorMessage.includes('tls') || errorMessage.includes('ssl')) {
+      logger.warn('Google Workspace TLS/SSL connection issue', {
+        correlationId: this.correlationId,
+        error: errorMessage,
+      });
+      return new ExternalServiceUnavailableException('Google Workspace TLS connection failed');
+    }
+    return null;
+  }
+
+  /** @private */
+  _mapConnectionError(error, errorMessage) {
+    const connectionRelated =
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ENOTFOUND' ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('network');
+    return connectionRelated
+      ? new ExternalServiceUnavailableException('Email SMTP server connection failed')
+      : null;
+  }
+
+  /** @private */
+  _mapTimeoutError(error, errorMessage) {
+    const timeoutRelated =
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ESOCKETTIMEDOUT' ||
+      errorMessage.includes('timeout');
+    return timeoutRelated ? new NetworkTimeoutException('Email sending timeout') : null;
+  }
+
+  /** @private */
+  _mapAuthError(error, errorMessage) {
+    const authRelated =
+      error.code === 'EAUTH' ||
+      errorMessage.includes('authentication') ||
+      errorMessage.includes('credentials') ||
+      errorMessage.includes('login');
+    return authRelated
+      ? new ExternalServiceUnavailableException('Email authentication failed')
+      : null;
+  }
+
+  /** @private */
+  _mapRateLimitError(error, errorMessage) {
+    const rateLimitRelated =
+      error.code === 'EMESSAGE' &&
+      (errorMessage.includes('rate limit') || errorMessage.includes('quota'));
+    return rateLimitRelated
+      ? new ExternalServiceUnavailableException('Email rate limiting exceeded')
+      : null;
+  }
+
+  /** @private */
+  _mapRecipientError(error, errorMessage) {
+    const recipientRelated =
+      error.code === 'EENVELOPE' ||
+      errorMessage.includes('invalid recipient') ||
+      errorMessage.includes('mailbox') ||
+      errorMessage.includes('user unknown');
+    return recipientRelated
+      ? new ValidationException('Invalid email recipient address')
+      : null;
+  }
+
+  /** @private */
+  _mapServerError(error) {
+    const serverRelated =
+      error.code === 'ESOCKET' || (error.responseCode && error.responseCode >= 500);
+    return serverRelated
+      ? new ExternalServiceUnavailableException(
+          'Email delivery service temporarily unavailable'
+        )
+      : null;
   }
 
   /**

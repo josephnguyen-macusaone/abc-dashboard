@@ -58,6 +58,8 @@ mkdir -p "$OUT_DIR"
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 export BUILDKIT_INLINE_CACHE=1
+# Target server architecture (server is amd64, dev machine may be arm64)
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 echo "✓ Pre-flight checks passed"
 echo ""

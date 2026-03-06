@@ -1,6 +1,6 @@
 import os from 'os';
 import fs from 'fs';
-import logger from './logger.js';
+import logger from '../../shared/utils/logger.js';
 import { cache } from './redis.js';
 import { getDB, getDatabaseMetrics } from './database.js';
 
@@ -445,13 +445,10 @@ export const getComprehensiveMetrics = async () => {
   }
 };
 
-// Export individual metric collectors for middleware use
-export { systemMetrics, databaseMetrics, cacheMetrics, applicationMetrics };
+export { cacheMetrics, applicationMetrics };
 
 export default {
   getComprehensiveMetrics,
-  systemMetrics,
-  databaseMetrics,
   cacheMetrics,
   applicationMetrics,
 };

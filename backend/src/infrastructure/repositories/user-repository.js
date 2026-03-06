@@ -1,7 +1,7 @@
 import { User } from '../../domain/entities/user-entity.js';
 import { IUserRepository } from '../../domain/repositories/interfaces/i-user-repository.js';
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
-import logger from '../config/logger.js';
+import logger from '../../shared/utils/logger.js';
 
 /**
  * User Repository Implementation
@@ -418,5 +418,58 @@ export class UserRepository extends IUserRepository {
     }
 
     return dbData;
+  }
+
+  // ── Refresh token revocation ─────────────────────────────────────────────
+
+  /**
+   * Persist a hashed refresh token so it can be validated and revoked later.
+   * @param {string} userId
+   * @param {string} tokenHash   SHA-256 hex of the raw refresh token
+   * @param {Date}   expiresAt
+   */
+  async storeRefreshToken(userId, tokenHash, expiresAt) {
+    await this.db('refresh_tokens').insert({
+      user_id: userId,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    });
+  }
+
+  /**
+   * Look up a stored refresh token by its hash.
+   * Returns the row or null; also returns null if the token is expired.
+   * @param {string} tokenHash
+   */
+  async findRefreshToken(tokenHash) {
+    return (
+      this.db('refresh_tokens')
+        .where('token_hash', tokenHash)
+        .where('expires_at', '>', new Date())
+        .first() ?? null
+    );
+  }
+
+  /**
+   * Delete a specific refresh token (used during rotation or logout).
+   * @param {string} tokenHash
+   */
+  async revokeRefreshToken(tokenHash) {
+    await this.db('refresh_tokens').where('token_hash', tokenHash).delete();
+  }
+
+  /**
+   * Delete all refresh tokens for a user (used on password change or admin revoke).
+   * @param {string} userId
+   */
+  async revokeAllUserRefreshTokens(userId) {
+    await this.db('refresh_tokens').where('user_id', userId).delete();
+  }
+
+  /** Remove all expired rows — intended to be called by a nightly scheduler. */
+  async cleanExpiredRefreshTokens() {
+    const deleted = await this.db('refresh_tokens').where('expires_at', '<', new Date()).delete();
+    logger.info('Cleaned expired refresh tokens', { correlationId: this.correlationId, deleted });
+    return deleted;
   }
 }

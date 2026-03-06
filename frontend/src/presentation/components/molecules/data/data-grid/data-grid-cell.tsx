@@ -62,6 +62,7 @@ function DataGridCellImpl<TData>({
 }: DataGridCellProps<TData>) {
   const cellOpts = cell.column.columnDef.meta?.cell;
   const variant = cellOpts?.variant ?? "short-text";
+  const effectiveReadOnly = readOnly || (cellOpts?.readOnly ?? false);
 
   let Comp: React.ComponentType<CellVariantProps<TData>>;
 
@@ -107,7 +108,7 @@ function DataGridCellImpl<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
-      readOnly={readOnly}
+      readOnly={effectiveReadOnly}
     />
   );
 }

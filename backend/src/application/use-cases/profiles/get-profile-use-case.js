@@ -44,7 +44,7 @@ export class GetProfileUseCase {
         profile: ProfileDto.fromEntity(profile),
       };
     } catch (error) {
-      throw new Error(`Failed to get profile: ${error.message}`);
+      throw new Error(`Failed to get profile: ${error.message}`, { cause: error });
     }
   }
 }

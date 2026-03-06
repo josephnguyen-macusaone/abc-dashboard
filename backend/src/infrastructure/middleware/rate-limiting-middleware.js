@@ -1,131 +1,50 @@
-import logger from '../config/logger.js';
 import { licenseSyncMonitor } from '../monitoring/license-sync-monitor.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import logger from '../../shared/utils/logger.js';
 
-/**
- * Rate Limiting Middleware
- * Implements sliding window rate limiting for API endpoints
- * Uses in-memory storage (for production, consider Redis or database)
- */
-export class RateLimiter {
+class RateLimiter {
   constructor() {
-    this.requests = new Map(); // Map of clientId -> request timestamps
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60000); // Clean up every minute
+    this.requests = new Map();
+    setInterval(() => this.cleanup(), 60000);
   }
 
-  /**
-   * Check if request should be rate limited
-   * @param {string} clientId - Unique identifier for the client (IP, user ID, etc.)
-   * @param {Object} options - Rate limiting options
-   * @returns {Object} Rate limit check result
-   */
   check(clientId, options = {}) {
-    const {
-      maxRequests = 100, // Max requests per window
-      windowMs = 15 * 60 * 1000, // 15 minutes window
-      skipSuccessfulRequests: _skipSuccessfulRequests = false,
-      skipFailedRequests: _skipFailedRequests = false,
-    } = options;
-
+    const { maxRequests = 100, windowMs = 15 * 60 * 1000 } = options;
     const now = Date.now();
     const windowStart = now - windowMs;
 
-    // Get or create request history for this client
-    let clientRequests = this.requests.get(clientId);
-    if (!clientRequests) {
-      clientRequests = [];
-      this.requests.set(clientId, clientRequests);
-    }
-
-    // Remove old requests outside the window
-    clientRequests = clientRequests.filter((timestamp) => timestamp > windowStart);
+    let clientRequests = this.requests.get(clientId) || [];
+    clientRequests = clientRequests.filter((ts) => ts > windowStart);
     this.requests.set(clientId, clientRequests);
 
-    // Check if limit exceeded
-    const isLimited = clientRequests.length >= maxRequests;
-
     return {
-      limited: isLimited,
+      limited: clientRequests.length >= maxRequests,
       remainingRequests: Math.max(0, maxRequests - clientRequests.length),
       resetTime: new Date(now + windowMs),
       currentRequests: clientRequests.length,
     };
   }
 
-  /**
-   * Record a request for rate limiting
-   * @param {string} clientId - Unique identifier for the client
-   * @param {boolean} successful - Whether the request was successful
-   */
-  recordRequest(clientId, _successful = true) {
+  recordRequest(clientId) {
     const clientRequests = this.requests.get(clientId) || [];
     clientRequests.push(Date.now());
     this.requests.set(clientId, clientRequests);
   }
 
-  /**
-   * Clean up old request data
-   * @private
-   */
   cleanup() {
-    const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // Keep data for 30 minutes max
-    const cutoff = now - maxAge;
-
+    const cutoff = Date.now() - 30 * 60 * 1000;
     for (const [clientId, requests] of this.requests.entries()) {
-      const filtered = requests.filter((timestamp) => timestamp > cutoff);
+      const filtered = requests.filter((ts) => ts > cutoff);
       if (filtered.length === 0) {
         this.requests.delete(clientId);
       } else {
         this.requests.set(clientId, filtered);
       }
     }
-
-    logger.debug('Rate limiter cleanup completed', {
-      activeClients: this.requests.size,
-      totalRequests: Array.from(this.requests.values()).reduce((sum, reqs) => sum + reqs.length, 0),
-    });
-  }
-
-  /**
-   * Get rate limiting statistics
-   */
-  getStats() {
-    const now = Date.now();
-    const stats = {
-      activeClients: this.requests.size,
-      totalRequests: 0,
-      requestsPerMinute: 0,
-      topClients: [],
-    };
-
-    const lastMinute = now - 60000;
-
-    // Calculate statistics
-    const clientStats = [];
-    for (const [clientId, requests] of this.requests.entries()) {
-      const recentRequests = requests.filter((ts) => ts > lastMinute).length;
-      const totalRequests = requests.length;
-
-      stats.totalRequests += totalRequests;
-      stats.requestsPerMinute += recentRequests;
-
-      clientStats.push({
-        clientId,
-        totalRequests,
-        recentRequests,
-      });
-    }
-
-    // Get top 10 clients by request count
-    stats.topClients = clientStats.sort((a, b) => b.totalRequests - a.totalRequests).slice(0, 10);
-
-    return stats;
   }
 }
 
-// Global rate limiter instance
-export const rateLimiter = new RateLimiter();
+const rateLimiter = new RateLimiter();
 
 /**
  * Express middleware for rate limiting
@@ -137,7 +56,7 @@ export const createRateLimitMiddleware = (options = {}) => {
     windowMs = 15 * 60 * 1000, // 15 minutes
     skipSuccessfulRequests: _skipSuccessfulRequests = false,
     skipFailedRequests: _skipFailedRequests = false,
-    keyGenerator = (_req) => _req.ip, // Default to IP-based limiting
+    keyGenerator = (_req) => _req.ip || _req.socket?.remoteAddress, // Default to IP-based limiting
     skip = (_req) => false, // Function to skip rate limiting for certain requests
     handler = null, // Custom handler for rate limited requests
   } = options;
