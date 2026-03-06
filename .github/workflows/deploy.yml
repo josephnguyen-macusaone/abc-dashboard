@@ -218,11 +218,7 @@ jobs:
             fi
 
             echo "Running database migrations..."
-            docker compose run --rm backend node -e "
-              import('./src/infrastructure/config/database.js').then(({ default: db }) =>
-                db.migrate.latest().then(() => { console.log('Migrations done'); process.exit(0); })
-              ).catch(e => { console.error(e); process.exit(1); });
-            "
+            docker compose run --rm backend npm run migrate
 
             echo "Starting services..."
             docker compose up -d
