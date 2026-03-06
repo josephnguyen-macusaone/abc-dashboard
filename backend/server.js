@@ -1,8 +1,6 @@
 // Ensure joi is loaded first to avoid import timing issues
 import 'joi';
 
-/* global URL */
-
 // Load environment configuration FIRST (this will load the appropriate .env file)
 import './src/infrastructure/config/env.js';
 
@@ -143,11 +141,15 @@ app.use((req, res, next) => activeRateLimiter(req, res, next));
  * Called once during startServer() after Redis has been initialised.
  */
 const upgradeRateLimiterToRedis = async () => {
-  if (!config.REDIS_ENABLED || !config.REDIS_URL) return;
+  if (!config.REDIS_ENABLED || !config.REDIS_URL) {
+    return;
+  }
   try {
     const { RedisStore } = await import('rate-limit-redis');
     const { redisClient } = await import('./src/infrastructure/config/redis.js');
-    if (!redisClient) return;
+    if (!redisClient) {
+      return;
+    }
     activeRateLimiter = rateLimit({
       windowMs: RATE_LIMIT_WINDOW_MS,
       max: RATE_LIMIT_MAX,

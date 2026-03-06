@@ -27,6 +27,47 @@ const COMMANDS = {
   all: 'Run all email tests',
 };
 
+function logEmailServiceDetailsForSending() {
+  switch (config.EMAIL_SERVICE) {
+    case 'mailhog':
+      console.log(`   📧 Status: Development - Local testing`);
+      console.log(`   🌐 Web UI: http://localhost:8025`);
+      return;
+    case 'google-workspace':
+      console.log(`   📧 Status: Production - Gmail SMTP`);
+      console.log(`   👤 Account: ${config.EMAIL_USER || 'Not configured'}`);
+      return;
+    default:
+      console.log(`   ⚠️  Status: Unknown service configuration`);
+  }
+}
+
+function logEmailTroubleshootingForSending() {
+  console.log('\n🔧 Troubleshooting:');
+
+  if (config.EMAIL_SERVICE === 'mailhog' || config.EMAIL_HOST === 'localhost') {
+    console.log('1. Make sure MailHog is running: mailhog');
+    console.log('2. Check MailHog web interface: http://localhost:8025');
+    console.log('3. Verify EMAIL_HOST=localhost and EMAIL_PORT=1025 in your .env');
+  } else if (
+    config.EMAIL_SERVICE === 'google-workspace' ||
+    config.EMAIL_HOST === 'smtp.gmail.com'
+  ) {
+    console.log('1. Verify Google Workspace account has 2FA enabled');
+    console.log('2. Check that EMAIL_USER and EMAIL_PASS are set correctly');
+    console.log('3. Ensure EMAIL_PASS is an App Password, not your regular password');
+    console.log('4. Check Google Workspace sending limits');
+  } else {
+    console.log('1. Verify SMTP server is running and accessible');
+    console.log('2. Check EMAIL_HOST, EMAIL_PORT, and EMAIL_SECURE settings');
+    console.log('3. Verify EMAIL_USER and EMAIL_PASS credentials');
+    console.log('4. Check firewall settings for SMTP port access');
+  }
+
+  console.log('5. Review the Email Setup Guide: backend/docs/guides/email-setup.md');
+  console.log('6. Check application logs for detailed error messages');
+}
+
 function displayCurrentConfig() {
   console.log('📋 Current Email Configuration:');
   console.log(`   Service: ${config.EMAIL_SERVICE || 'Not set'}`);
@@ -166,18 +207,7 @@ async function testSending() {
   console.log(`   From: ${config.EMAIL_FROM_NAME} <${config.EMAIL_FROM}>`);
 
   // Show service-specific details
-  switch (config.EMAIL_SERVICE) {
-    case 'mailhog':
-      console.log(`   📧 Status: Development - Local testing`);
-      console.log(`   🌐 Web UI: http://localhost:8025`);
-      break;
-    case 'google-workspace':
-      console.log(`   📧 Status: Production - Gmail SMTP`);
-      console.log(`   👤 Account: ${config.EMAIL_USER || 'Not configured'}`);
-      break;
-    default:
-      console.log(`   ⚠️  Status: Unknown service configuration`);
-  }
+  logEmailServiceDetailsForSending();
 
   console.log(`   🔐 Auth: ${config.EMAIL_USER ? '✅ Configured' : '❌ Not configured'}\n`);
 
@@ -236,29 +266,7 @@ async function testSending() {
     console.log(`   Error: ${error.message}`);
 
     // Provide troubleshooting advice based on service
-    console.log('\n🔧 Troubleshooting:');
-
-    if (config.EMAIL_SERVICE === 'mailhog' || config.EMAIL_HOST === 'localhost') {
-      console.log('1. Make sure MailHog is running: mailhog');
-      console.log('2. Check MailHog web interface: http://localhost:8025');
-      console.log('3. Verify EMAIL_HOST=localhost and EMAIL_PORT=1025 in your .env');
-    } else if (
-      config.EMAIL_SERVICE === 'google-workspace' ||
-      config.EMAIL_HOST === 'smtp.gmail.com'
-    ) {
-      console.log('1. Verify Google Workspace account has 2FA enabled');
-      console.log('2. Check that EMAIL_USER and EMAIL_PASS are set correctly');
-      console.log('3. Ensure EMAIL_PASS is an App Password, not your regular password');
-      console.log('4. Check Google Workspace sending limits');
-    } else {
-      console.log('1. Verify SMTP server is running and accessible');
-      console.log('2. Check EMAIL_HOST, EMAIL_PORT, and EMAIL_SECURE settings');
-      console.log('3. Verify EMAIL_USER and EMAIL_PASS credentials');
-      console.log('4. Check firewall settings for SMTP port access');
-    }
-
-    console.log('5. Review the Email Setup Guide: backend/docs/guides/email-setup.md');
-    console.log('6. Check application logs for detailed error messages');
+    logEmailTroubleshootingForSending();
 
     return false;
   }
@@ -287,21 +295,21 @@ async function testTemplates() {
     };
 
     console.log('Testing welcome email template...');
-    const welcomeResult = await emailService.sendWelcomeWithPassword(
+    const _welcomeResult = await emailService.sendWelcomeWithPassword(
       'template-test@example.com',
       testUser
     );
     console.log('✅ Welcome email sent');
 
     console.log('Testing verification email template...');
-    const verifyResult = await emailService.sendEmailVerification(
+    const _verifyResult = await emailService.sendEmailVerification(
       'template-test@example.com',
       testUser
     );
     console.log('✅ Verification email sent');
 
     console.log('Testing password reset email template...');
-    const resetResult = await emailService.sendPasswordResetEmail(
+    const _resetResult = await emailService.sendPasswordResetEmail(
       'template-test@example.com',
       testUser
     );

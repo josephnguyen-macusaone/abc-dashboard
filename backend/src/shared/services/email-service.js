@@ -484,9 +484,7 @@ export class EmailService {
       errorMessage.includes('invalid recipient') ||
       errorMessage.includes('mailbox') ||
       errorMessage.includes('user unknown');
-    return recipientRelated
-      ? new ValidationException('Invalid email recipient address')
-      : null;
+    return recipientRelated ? new ValidationException('Invalid email recipient address') : null;
   }
 
   /** @private */
@@ -494,9 +492,7 @@ export class EmailService {
     const serverRelated =
       error.code === 'ESOCKET' || (error.responseCode && error.responseCode >= 500);
     return serverRelated
-      ? new ExternalServiceUnavailableException(
-          'Email delivery service temporarily unavailable'
-        )
+      ? new ExternalServiceUnavailableException('Email delivery service temporarily unavailable')
       : null;
   }
 

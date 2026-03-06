@@ -38,8 +38,7 @@ function logRecommendations(status) {
     logger.info('Recommendations: Check external API connectivity and EXTERNAL_LICENSE_API_KEY');
   }
   const lastSyncOld =
-    !status.lastSync ||
-    Date.now() - new Date(status.lastSync.timestamp) > 24 * 60 * 60 * 1000;
+    !status.lastSync || Date.now() - new Date(status.lastSync.timestamp) > 24 * 60 * 60 * 1000;
   if (lastSyncOld) {
     logger.info('Recommendations: Consider running a sync (npm run sync:start)');
   }
