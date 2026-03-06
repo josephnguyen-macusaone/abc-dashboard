@@ -39,19 +39,18 @@ function getConnectSrc(): string {
 }
 
 /**
- * Build Content-Security-Policy with optional nonce (Phase 5 hardening).
- * - Production: nonce for scripts/styles; no unsafe-eval
- * - Development: unsafe-eval required for React dev; unsafe-inline for HMR
+ * Build Content-Security-Policy.
+ * - Production: unsafe-inline for scripts/styles (nonce+strict-dynamic is
+ *   incompatible with the OpenLiteSpeed HTML cache — cached pages carry no
+ *   nonce while middleware generates a new one every request, so the browser
+ *   blocks all chunks and inline scripts).
+ * - Development: unsafe-eval required for React fast-refresh / HMR.
  */
-function buildCsp(nonce?: string): string {
+function buildCsp(): string {
   const isDev = process.env.NODE_ENV === 'development';
-  const scriptSrc = nonce && !isDev
-    ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
-    : `'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`;
-  // 'unsafe-inline' is required for style-src even in production because inline
-  // style="" attributes (used by Radix UI, Tailwind, and Next.js internals) cannot
-  // be nonce'd — only <style> elements support nonces. CSS injection attacks are
-  // far less severe than JS injection, so this trade-off is widely accepted.
+  const scriptSrc = isDev
+    ? `'self' 'unsafe-inline' 'unsafe-eval'`
+    : `'self' 'unsafe-inline'`;
   const styleSrc = `'self' 'unsafe-inline'`;
 
   return [
@@ -80,18 +79,13 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 /**
- * Apply security headers to response (CSP with optional nonce in production).
+ * Apply security headers to response.
  */
-function applySecurityHeaders(response: NextResponse, nonce?: string) {
-  response.headers.set('Content-Security-Policy', buildCsp(nonce));
+function applySecurityHeaders(response: NextResponse) {
+  response.headers.set('Content-Security-Policy', buildCsp());
   Object.entries(SECURITY_HEADERS).forEach(([header, value]) => {
     response.headers.set(header, value);
   });
-}
-
-/** Generate CSP nonce for production (Next.js picks up x-nonce for inline scripts). Edge-safe. */
-function generateNonce(): string {
-  return crypto.randomUUID().replace(/-/g, '');
 }
 
 export function middleware(request: NextRequest) {
@@ -103,9 +97,6 @@ export function middleware(request: NextRequest) {
   });
 
   const { pathname } = request.nextUrl;
-
-  // CSP nonce for production (enables strict script-src without unsafe-inline)
-  const nonce = process.env.NODE_ENV === 'production' ? generateNonce() : undefined;
 
   // ==========================================================================
   // SECURITY: Block malformed Server Action requests from bots/scanners
@@ -132,7 +123,7 @@ export function middleware(request: NextRequest) {
         JSON.stringify({ error: 'Invalid request' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
-      applySecurityHeaders(response, nonce);
+      applySecurityHeaders(response);
       return response;
     }
 
@@ -159,7 +150,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/favicon')
   ) {
     const res = NextResponse.next();
-    applySecurityHeaders(res, nonce);
+    applySecurityHeaders(res);
     return res;
   }
 
@@ -215,10 +206,8 @@ export function middleware(request: NextRequest) {
   const isStaticGeneration = !token && !userData;
   if (isStaticGeneration) {
     middlewareLogger.debug('Skipping auth checks during static generation');
-    const reqHeaders = new Headers(request.headers);
-    if (nonce) reqHeaders.set('x-nonce', nonce);
-    const res = NextResponse.next({ request: { headers: reqHeaders } });
-    applySecurityHeaders(res, nonce);
+    const res = NextResponse.next();
+    applySecurityHeaders(res);
     return res;
   }
 
@@ -252,7 +241,7 @@ export function middleware(request: NextRequest) {
       const loginUrl = new URL(routeConfig.redirectTo || '/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       const response = NextResponse.redirect(loginUrl);
-      applySecurityHeaders(response, nonce);
+      applySecurityHeaders(response);
       return response;
     }
 
@@ -270,7 +259,7 @@ export function middleware(request: NextRequest) {
         // Redirect to appropriate page based on user role
         const redirectPath = getDefaultRedirect(user.role);
         const response = NextResponse.redirect(new URL(redirectPath, request.url));
-        applySecurityHeaders(response, nonce);
+        applySecurityHeaders(response);
         return response;
       }
     }
@@ -287,7 +276,7 @@ export function middleware(request: NextRequest) {
       const verifyUrl = new URL('/verify-email', request.url);
       verifyUrl.searchParams.set('email', user.email || '');
       const response = NextResponse.redirect(verifyUrl);
-      applySecurityHeaders(response, nonce);
+      applySecurityHeaders(response);
       return response;
     }
 
@@ -308,20 +297,12 @@ export function middleware(request: NextRequest) {
     });
     const redirectPath = getDefaultRedirect(user.role);
     const response = NextResponse.redirect(new URL(redirectPath, request.url));
-    applySecurityHeaders(response, nonce);
+    applySecurityHeaders(response);
     return response;
   }
 
-  // Pass nonce to request for Next.js to apply to inline scripts
-  const requestHeaders = new Headers(request.headers);
-  if (nonce) {
-    requestHeaders.set('x-nonce', nonce);
-  }
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-  applySecurityHeaders(response, nonce);
+  const response = NextResponse.next();
+  applySecurityHeaders(response);
   return response;
 }
 

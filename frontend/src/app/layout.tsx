@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
-import { headers } from "next/headers";
 import { ThemeScript } from '@/shared/scripts/theme-script';
 import { ClientAppShell } from '@/app/client-app-shell';
 
@@ -40,17 +39,11 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Reading headers() here is required for Next.js to propagate the nonce
-  // (set by middleware as x-nonce) to its own generated <script> tags (chunk
-  // loaders, __NEXT_DATA__, etc.). Without this call, Next.js renders those
-  // tags without a nonce attribute, causing 'strict-dynamic' to block them.
-  const nonce = (await headers()).get('x-nonce') ?? undefined;
-
   return (
     <html
       lang="en"
@@ -58,7 +51,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <ThemeScript nonce={nonce} />
+        <ThemeScript />
       </head>
       <body className={inter.className}>
         <ClientAppShell>{children}</ClientAppShell>
