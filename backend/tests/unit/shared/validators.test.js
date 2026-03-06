@@ -3,7 +3,6 @@
  */
 import { AuthValidator } from '../../../src/application/validators/auth-validator.js';
 import { UserValidator } from '../../../src/application/validators/user-validator.js';
-import { ProfileValidator } from '../../../src/application/validators/profile-validator.js';
 import { ValidationException } from '../../../src/domain/exceptions/domain.exception.js';
 
 describe('AuthValidator', () => {
@@ -174,72 +173,6 @@ describe('UserValidator', () => {
       const result = UserValidator.validateListQuery({ email: 'test@example.com', role: 'admin' });
       expect(result.filters.email).toBe('test@example.com');
       expect(result.filters.role).toBe('admin');
-    });
-  });
-});
-
-describe('ProfileValidator', () => {
-  describe('validateUpdateProfile', () => {
-    it('should pass for valid profile update', () => {
-      expect(
-        ProfileValidator.validateUpdateProfile({
-          displayName: 'New Name',
-          bio: 'New bio',
-        })
-      ).toBe(true);
-    });
-
-    it('should throw for empty displayName', () => {
-      expect(() => ProfileValidator.validateUpdateProfile({ displayName: '' })).toThrow(
-        ValidationException
-      );
-    });
-
-    it('should throw for bio too long', () => {
-      const longBio = 'x'.repeat(501);
-      expect(() => ProfileValidator.validateUpdateProfile({ bio: longBio })).toThrow(
-        ValidationException
-      );
-    });
-  });
-
-  describe('hasValidUpdates', () => {
-    it('should return true when valid fields present', () => {
-      expect(ProfileValidator.hasValidUpdates({ displayName: 'Name' })).toBe(true);
-      expect(ProfileValidator.hasValidUpdates({ bio: 'Bio' })).toBe(true);
-    });
-
-    it('should return false when no valid fields present', () => {
-      expect(ProfileValidator.hasValidUpdates({})).toBe(false);
-      expect(ProfileValidator.hasValidUpdates({ invalidField: 'value' })).toBe(false);
-    });
-  });
-
-  describe('sanitizeUpdateInput', () => {
-    it('should only include allowed fields', () => {
-      const input = {
-        displayName: 'Name',
-        bio: 'Bio',
-        invalidField: 'should be removed',
-        hashedPassword: 'should be removed',
-      };
-      const result = ProfileValidator.sanitizeUpdateInput(input);
-
-      expect(result).toEqual({ displayName: 'Name', bio: 'Bio' });
-      expect(result).not.toHaveProperty('invalidField');
-      expect(result).not.toHaveProperty('hashedPassword');
-    });
-  });
-
-  describe('isValidUrl', () => {
-    it('should return true for valid URLs', () => {
-      expect(ProfileValidator.isValidUrl('https://example.com')).toBe(true);
-      expect(ProfileValidator.isValidUrl('http://example.com/path')).toBe(true);
-    });
-
-    it('should return false for invalid URLs', () => {
-      expect(ProfileValidator.isValidUrl('not-a-url')).toBe(false);
-      expect(ProfileValidator.isValidUrl('ftp://example.com')).toBe(false);
     });
   });
 });

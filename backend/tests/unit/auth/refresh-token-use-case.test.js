@@ -25,12 +25,16 @@ describe('RefreshTokenUseCase', () => {
   beforeEach(() => {
     mockUserRepository = {
       findById: jest.fn(),
+      findRefreshToken: jest.fn().mockResolvedValue({ userId: 'user-123', expiresAt: new Date() }),
+      revokeRefreshToken: jest.fn().mockResolvedValue(undefined),
+      storeRefreshToken: jest.fn().mockResolvedValue(undefined),
     };
 
     mockTokenService = {
       verifyToken: jest.fn(),
       generateAccessToken: jest.fn().mockReturnValue('new-access-token'),
       generateRefreshToken: jest.fn().mockReturnValue('new-refresh-token'),
+      hashToken: jest.fn().mockReturnValue('hashed-refresh-token'),
     };
 
     refreshTokenUseCase = new RefreshTokenUseCase(mockUserRepository, mockTokenService);
