@@ -141,17 +141,27 @@ if (config.NODE_ENV !== 'test') {
     zippedArchive: true,
   };
 
-  transports.push(
-    new winston.transports.DailyRotateFile({
-      ...rotateBase,
-      filename: 'error-%DATE%.log',
-      level: 'error',
-    }),
-    new winston.transports.DailyRotateFile({
-      ...rotateBase,
-      filename: 'all-%DATE%.log',
-    })
-  );
+  const errorFileTransport = new winston.transports.DailyRotateFile({
+    ...rotateBase,
+    filename: 'error-%DATE%.log',
+    level: 'error',
+  });
+  const allFileTransport = new winston.transports.DailyRotateFile({
+    ...rotateBase,
+    filename: 'all-%DATE%.log',
+  });
+
+  // Prevent unhandled 'error' events from crashing the process when the logs
+  // directory is not writable (e.g. a read-only bind mount on first deploy).
+  // Console transport continues to work, so Docker logs remain intact.
+  errorFileTransport.on('error', (err) => {
+    process.stderr.write(`[logger] Cannot write error log file: ${err.message}\n`);
+  });
+  allFileTransport.on('error', (err) => {
+    process.stderr.write(`[logger] Cannot write all log file: ${err.message}\n`);
+  });
+
+  transports.push(errorFileTransport, allFileTransport);
 }
 
 // Create the logger instance
