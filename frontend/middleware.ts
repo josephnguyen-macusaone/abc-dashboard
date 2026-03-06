@@ -80,9 +80,15 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 /**
  * Apply security headers to response.
+ * @param noStore - when true, adds Cache-Control: no-store to prevent reverse
+ *   proxies (e.g. OpenLiteSpeed) from caching HTML responses. Cached HTML
+ *   retains stale CSP headers which can break script/style loading.
  */
-function applySecurityHeaders(response: NextResponse) {
+function applySecurityHeaders(response: NextResponse, { noStore = false } = {}) {
   response.headers.set('Content-Security-Policy', buildCsp());
+  if (noStore) {
+    response.headers.set('Cache-Control', 'no-store, must-revalidate');
+  }
   Object.entries(SECURITY_HEADERS).forEach(([header, value]) => {
     response.headers.set(header, value);
   });
@@ -207,7 +213,7 @@ export function middleware(request: NextRequest) {
   if (isStaticGeneration) {
     middlewareLogger.debug('Skipping auth checks during static generation');
     const res = NextResponse.next();
-    applySecurityHeaders(res);
+    applySecurityHeaders(res, { noStore: true });
     return res;
   }
 
@@ -241,7 +247,7 @@ export function middleware(request: NextRequest) {
       const loginUrl = new URL(routeConfig.redirectTo || '/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       const response = NextResponse.redirect(loginUrl);
-      applySecurityHeaders(response);
+      applySecurityHeaders(response, { noStore: true });
       return response;
     }
 
@@ -259,7 +265,7 @@ export function middleware(request: NextRequest) {
         // Redirect to appropriate page based on user role
         const redirectPath = getDefaultRedirect(user.role);
         const response = NextResponse.redirect(new URL(redirectPath, request.url));
-        applySecurityHeaders(response);
+        applySecurityHeaders(response, { noStore: true });
         return response;
       }
     }
@@ -276,7 +282,7 @@ export function middleware(request: NextRequest) {
       const verifyUrl = new URL('/verify-email', request.url);
       verifyUrl.searchParams.set('email', user.email || '');
       const response = NextResponse.redirect(verifyUrl);
-      applySecurityHeaders(response);
+      applySecurityHeaders(response, { noStore: true });
       return response;
     }
 
@@ -297,12 +303,12 @@ export function middleware(request: NextRequest) {
     });
     const redirectPath = getDefaultRedirect(user.role);
     const response = NextResponse.redirect(new URL(redirectPath, request.url));
-    applySecurityHeaders(response);
+    applySecurityHeaders(response, { noStore: true });
     return response;
   }
 
   const response = NextResponse.next();
-  applySecurityHeaders(response);
+  applySecurityHeaders(response, { noStore: true });
   return response;
 }
 
