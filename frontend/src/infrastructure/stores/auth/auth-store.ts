@@ -8,7 +8,7 @@ import { LocalStorageService } from '@/infrastructure/storage/local-storage-serv
 import { getLoginErrorMessage } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { container } from '@/shared/di/container';
-import { createTokenManager, TokenManager } from '@/shared/helpers/token-manager';
+import { createTokenManager, TokenManager, TokenManagerStats } from '@/shared/helpers/token-manager';
 
 interface AuthState {
   // State
@@ -50,7 +50,7 @@ interface AuthState {
 
   // Token management actions
   scheduleTokenRefresh: () => void;
-  getTokenStats: () => any;
+  getTokenStats: () => TokenManagerStats | null;
   handleAuthFailure: () => Promise<void>;
   /** True if current token is expired (or missing). Used to enforce consistent logout on protected routes. */
   isTokenExpired: () => boolean;
@@ -118,7 +118,7 @@ export const useAuthStore = create<AuthState>()(
                   // Non-auth error: keep persisted user so the UI isn't blank,
                   // but mark as unauthenticated so protected routes re-verify.
                   set({ isAuthenticated: false });
-                  storeLogger.warn('getProfile failed with non-auth error during init, will retry on next navigation', {
+                  storeLogger.debug('getProfile failed with non-auth error during init, will retry on next navigation', {
                     status,
                     error: profileError instanceof Error ? profileError.message : String(profileError),
                   });
