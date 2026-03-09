@@ -538,8 +538,12 @@ export function LicensesDataGrid({
   return (
     <div className={className}>
       <div className="space-y-5">
-        {/* Toolbar: Mobile = date above, search+Reset row; Tablet+ = date+search+Reset */}
-        <div className="flex flex-col gap-2 w-full min-w-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:justify-between">
+        {/* Toolbar: same layout as DataTableToolbar (dashboard license data-table) */}
+        <div
+          role="toolbar"
+          aria-orientation="horizontal"
+          className="flex w-full flex-col gap-2 py-2 min-w-0 min-h-[2.25rem] lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-10"
+        >
           {onDateRangeChange && (
             <>
               {/* Mobile: date range on its own row above */}
@@ -552,7 +556,7 @@ export function LicensesDataGrid({
                 />
               </div>
               {/* Mobile: search row with Search button + Reset */}
-              <div className="flex w-full sm:hidden lg:hidden flex-nowrap items-center gap-2 min-w-0 overflow-x-auto">
+              <div className="flex w-full sm:hidden lg:hidden items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
                 <SearchBar
                   value={searchInput}
                   onValueChange={handleSearchChange}
@@ -590,7 +594,7 @@ export function LicensesDataGrid({
                 )}
               </div>
               {/* Tablet+: date + search + Search button + Reset in one row */}
-              <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
+              <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center min-h-8 flex-nowrap gap-2 overflow-x-auto min-w-0">
                 <DataTableDateRangeFilter
                   value={dateRange ?? null}
                   onDateRangeChange={onDateRangeChange}
@@ -637,7 +641,7 @@ export function LicensesDataGrid({
             </>
           )}
           {!onDateRangeChange && (
-            <div className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto shrink-0">
+            <div className="flex w-full lg:w-auto lg:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
               <SearchBar
                 value={searchInput}
                 onValueChange={handleSearchChange}
@@ -676,8 +680,8 @@ export function LicensesDataGrid({
               )}
             </div>
           )}
-          {/* Row 2 (mobile/tablet) / Right (desktop): Status, Plan, Term + action buttons + View */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start overflow-x-auto lg:justify-end lg:overflow-visible">
+          {/* Status, Plan, Term + action buttons + View (same as DataTableToolbar: flex-wrap, overflow-x-auto) */}
+          <div className="flex flex-1 flex-wrap items-center min-h-8 gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
             {statusColumn && (
               <DataTableFacetedFilter
                 column={statusColumn}
@@ -732,6 +736,7 @@ export function LicensesDataGrid({
             <DataGridViewMenu table={table} />
           </div>
         </div>
+
         {isEmpty ? (
           <div className="p-12 text-center border rounded-md">
             <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">

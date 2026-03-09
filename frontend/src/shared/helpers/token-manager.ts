@@ -19,6 +19,16 @@ export interface TokenManagerConfig {
   maxRefreshRetries: number; // Maximum number of refresh retry attempts
 }
 
+export interface TokenManagerStats {
+  hasScheduledRefresh: boolean;
+  refreshInProgress: boolean;
+  lastRefreshAttempt: number;
+  tokenExpired: boolean;
+  tokenCloseToExpiry: boolean;
+  tokenExpirationTime: string | null;
+  timeUntilExpiry: number;
+}
+
 export class TokenManager {
   private refreshTimeoutId: NodeJS.Timeout | null = null;
   private lastRefreshAttempt = 0;
@@ -232,7 +242,7 @@ export class TokenManager {
   /**
    * Get token manager stats
    */
-  getStats() {
+  getStats(): TokenManagerStats {
     const token = this.getCurrentToken();
     const payload = token ? this.decodeToken(token) : null;
 
