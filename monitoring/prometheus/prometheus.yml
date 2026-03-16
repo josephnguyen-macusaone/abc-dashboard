@@ -1,0 +1,22 @@
+# Prometheus config for ABC Dashboard
+# Scrapes backend /api/v1/metrics/prometheus for Grafana and alerting.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Optional: load alert rules. Uncomment and mount monitoring/prometheus/alerts.yml to enable.
+# rule_files:
+#   - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: 'abc-backend'
+    metrics_path: /api/v1/metrics/prometheus
+    static_configs:
+      - targets: ['backend:5000']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Optional: monitor Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

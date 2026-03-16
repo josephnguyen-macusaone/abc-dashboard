@@ -41,29 +41,30 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API
+  # Backend API (all-in-one: Node + Prometheus + Grafana in one container)
   backend:
     image: abc-license-backend:latest
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       args:
         - BUILDKIT_INLINE_CACHE=1
-      # Optional: uncomment to use previous image as cache (can cause "importing cache manifest" on first build)
-      # cache_from:
-      #   - abc-license-backend:latest
     container_name: abc-license-backend
     restart: unless-stopped
     ports:
-      - "5001:5000"   # Host 5001 to avoid conflict with macOS AirPlay Receiver (5000)
+      - "5001:5000"   # API
+      - "9090:9090"   # Prometheus (in-container)
+      - "3030:3000"   # Grafana (in-container listens on 3000)
     deploy:
       resources:
         limits:
-          memory: 512M  # Increased from 256M for sync operations
-          cpus: '0.5'   # Increased from 0.3
+          memory: 768M  # Backend + Prometheus + Grafana
+          cpus: '0.75'
         reservations:
-          memory: 256M  # Increased from 128M
+          memory: 384M
     environment:
+      - GRAFANA_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - NODE_ENV=${NODE_ENV}
       - PORT=5000
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
@@ -91,6 +92,7 @@ services:
       - WEBSOCKET_ENABLED=${WEBSOCKET_ENABLED:-false}
     volumes:
       - ./backend/logs:/app/logs
+      - abc-grafana_data:/var/lib/grafana
     networks:
       - network
     depends_on:
@@ -155,6 +157,8 @@ volumes:
   abc-license-postgres_data:
     driver: local
   abc-license-redis_data:
+    driver: local
+  abc-grafana_data:
     driver: local
 
 networks:

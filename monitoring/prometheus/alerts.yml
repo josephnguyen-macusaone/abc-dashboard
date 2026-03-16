@@ -1,0 +1,57 @@
+# Optional Prometheus alert rules for ABC Backend.
+# To use: add to prometheus.yml:
+#   rule_files:
+#     - /etc/prometheus/alerts.yml
+#   alerting:
+#     alertmanagers:
+#       - static_configs:
+#           - targets: ['alertmanager:9093']
+# Then mount this file in the prometheus container.
+groups:
+  - name: abc-backend
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="abc-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ABC Backend is down"
+          description: "Backend target {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: DatabaseDisconnected
+        expr: abc_backend_database_connected == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ABC Backend database disconnected"
+          description: "Database has been disconnected for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: abc_backend_http_error_rate_percent > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value }}% (threshold 10%) for 5 minutes."
+
+      - alert: ErrorHealthUnhealthy
+        expr: abc_backend_error_health_healthy == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error monitor reports unhealthy"
+          description: "Error health score is degraded or critical."
+
+      - alert: LicenseSyncStale
+        expr: (time() - abc_backend_license_sync_last_completed_timestamp_seconds) > 86400
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "License sync has not completed in 24h"
+          description: "Last successful sync was more than 24 hours ago (or no sync has run yet)."

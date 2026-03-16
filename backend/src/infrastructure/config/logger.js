@@ -24,7 +24,28 @@ const colors = {
 // Add colors to winston
 winston.addColors(colors);
 
-// Custom format with correlation ID
+// Keys to include in human-readable log line (skip nested objects like headers)
+const IMPORTANT_META_KEYS = [
+  'error',
+  'userId',
+  'correlationId',
+  'duration',
+  'statusCode',
+  'method',
+  'url',
+];
+
+function metaForDisplay(meta) {
+  const out = {};
+  for (const key of IMPORTANT_META_KEYS) {
+    if (meta[key] === undefined) continue;
+    const v = meta[key];
+    out[key] = v instanceof Error ? v.message : v;
+  }
+  return out;
+}
+
+// Custom format with correlation ID (file / non-JSON)
 const customFormat = winston.format.combine(
   winston.format.timestamp({ format: 'MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
@@ -33,35 +54,19 @@ const customFormat = winston.format.combine(
 
     let logMessage = `[${timestamp}][${level.toUpperCase()}]`;
 
-    // Add correlation ID only if present
     if (correlationId) {
       logMessage += `[${correlationId}]`;
     }
-
-    // Add user ID only if present
     if (userId) {
       logMessage += `[user:${userId}]`;
     }
-
     logMessage += ` ${message}`;
 
-    // Add metadata in dark gray color if present
-    if (Object.keys(meta).length > 0) {
-      // Only show important metadata, not full JSON objects
-      const importantKeys = ['error', 'userId', 'correlationId', 'duration', 'statusCode'];
-      const importantMeta = {};
-      for (const key of importantKeys) {
-        if (meta[key] !== undefined) {
-          importantMeta[key] = meta[key];
-        }
-      }
-
-      const metaStr =
-        Object.keys(importantMeta).length > 0
-          ? Object.entries(importantMeta)
-              .map(([k, v]) => `${k}=${v}`)
-              .join(', ')
-          : '';
+    const importantMeta = metaForDisplay(meta);
+    if (Object.keys(importantMeta).length > 0) {
+      const metaStr = Object.entries(importantMeta)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ');
       logMessage += ` \x1b[37m${metaStr}\x1b[39m`;
     }
 
@@ -78,39 +83,22 @@ const consoleFormat = winston.format.combine(
 
     let logMessage = `[${timestamp}][${level.toUpperCase()}]`;
 
-    // Add correlation ID only if present
     if (correlationId) {
       logMessage += `[${correlationId}]`;
     }
-
-    // Add user ID only if present
     if (userId) {
       logMessage += `[user:${userId}]`;
     }
-
     logMessage += ` ${message}`;
 
-    // Add metadata in dark gray color if present
-    if (Object.keys(meta).length > 0) {
-      // Only show important metadata, not full JSON objects
-      const importantKeys = ['error', 'userId', 'correlationId', 'duration', 'statusCode'];
-      const importantMeta = {};
-      for (const key of importantKeys) {
-        if (meta[key] !== undefined) {
-          importantMeta[key] = meta[key];
-        }
-      }
-
-      const metaStr =
-        Object.keys(importantMeta).length > 0
-          ? Object.entries(importantMeta)
-              .map(([k, v]) => `${k}=${v}`)
-              .join(', ')
-          : '';
+    const importantMeta = metaForDisplay(meta);
+    if (Object.keys(importantMeta).length > 0) {
+      const metaStr = Object.entries(importantMeta)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ');
       logMessage += ` \x1b[37m${metaStr}\x1b[39m`;
     }
 
-    // Only include stack trace for errors
     if (stack && level === 'error') {
       logMessage += `\n${stack}`;
     }
@@ -120,24 +108,61 @@ const consoleFormat = winston.format.combine(
   winston.format.colorize({ all: true })
 );
 
+// JSON format: one line per log for aggregators (LOG_FORMAT=json)
+function serializeMeta(obj) {
+  if (obj === null || obj === undefined) return obj;
+  if (obj instanceof Error) {
+    return { message: obj.message, name: obj.name, stack: obj.stack };
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(serializeMeta);
+  }
+  if (typeof obj === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = serializeMeta(v);
+    }
+    return out;
+  }
+  return obj;
+}
+
+const jsonFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'ISO' }),
+  winston.format.errors({ stack: true }),
+  winston.format.printf((info) => {
+    const { timestamp, level, message, ...meta } = info;
+    const payload = {
+      timestamp,
+      level,
+      message,
+      ...serializeMeta(meta),
+    };
+    return JSON.stringify(payload);
+  })
+);
+
+const useJsonFormat = config.LOG_FORMAT === 'json';
+const consoleLogFormat = useJsonFormat ? jsonFormat : consoleFormat;
+
 // Define transports
 const transports = [
-  // Console transport
   new winston.transports.Console({
     level: config.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: consoleFormat,
+    format: consoleLogFormat,
   }),
 ];
 
 // Add rotating file transports in non-test environments.
 // Logs rotate daily, capped at 20 MB per file, kept for 14 days.
 if (config.NODE_ENV !== 'test') {
+  const fileFormat = useJsonFormat ? jsonFormat : customFormat;
   const rotateBase = {
     dirname: 'logs',
     datePattern: 'YYYY-MM-DD',
     maxSize: '20m',
     maxFiles: '14d',
-    format: customFormat,
+    format: fileFormat,
     zippedArchive: true,
   };
 
@@ -195,42 +220,28 @@ const enhancedLogger = {
   http: (message, meta = {}) => logger.http(message, buildMeta(meta)),
   debug: (message, meta = {}) => logger.debug(message, buildMeta(meta)),
 
-  // Request-aware logging methods
-  withRequest: (req) => ({
-    error: (message) =>
-      logger.error(message, {
-        correlationId: req.correlationId,
-        userId: req.user?._id,
-      }),
-    warn: (message) =>
-      logger.warn(message, {
-        correlationId: req.correlationId,
-        userId: req.user?._id,
-      }),
-    info: (message) =>
-      logger.info(message, {
-        correlationId: req.correlationId,
-        userId: req.user?._id,
-      }),
-    http: (message) =>
-      logger.http(message, {
-        correlationId: req.correlationId,
-        userId: req.user?._id,
-      }),
-    debug: (message) =>
-      logger.debug(message, {
-        correlationId: req.correlationId,
-        userId: req.user?._id,
-      }),
-  }),
+  // Request-aware logging: (message, meta?) — meta is merged with req.correlationId, req.user
+  withRequest: (req) => {
+    const baseMeta = {
+      correlationId: req.correlationId,
+      userId: req.user?._id,
+    };
+    return {
+      error: (message, meta = {}) => logger.error(message, buildMeta({ ...baseMeta, ...meta })),
+      warn: (message, meta = {}) => logger.warn(message, buildMeta({ ...baseMeta, ...meta })),
+      info: (message, meta = {}) => logger.info(message, buildMeta({ ...baseMeta, ...meta })),
+      http: (message, meta = {}) => logger.http(message, buildMeta({ ...baseMeta, ...meta })),
+      debug: (message, meta = {}) => logger.debug(message, buildMeta({ ...baseMeta, ...meta })),
+    };
+  },
 
-  // Context-aware logging for different parts of the application
+  // Context-aware logging: (message, meta?) — meta is merged with context and correlation ID
   createChild: (context) => ({
-    error: (message) => logger.error(message, context),
-    warn: (message) => logger.warn(message, context),
-    info: (message) => logger.info(message, context),
-    http: (message) => logger.http(message, context),
-    debug: (message) => logger.debug(message, context),
+    error: (message, meta = {}) => logger.error(message, buildMeta({ ...context, ...meta })),
+    warn: (message, meta = {}) => logger.warn(message, buildMeta({ ...context, ...meta })),
+    info: (message, meta = {}) => logger.info(message, buildMeta({ ...context, ...meta })),
+    http: (message, meta = {}) => logger.http(message, buildMeta({ ...context, ...meta })),
+    debug: (message, meta = {}) => logger.debug(message, buildMeta({ ...context, ...meta })),
   }),
 
   startup: (message, meta = {}) => logger.info(message, buildMeta(meta)),
