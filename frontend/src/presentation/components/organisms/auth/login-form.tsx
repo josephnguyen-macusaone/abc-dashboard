@@ -150,6 +150,15 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
         >
           <Typography variant="button-m" color="muted" className="hover:text-primary">Forgot your password?</Typography>
         </Button>
+        <br />
+        <Button
+          type="button"
+          variant="ghost"
+          className="p-0 h-auto"
+          onClick={() => router.push('/signup')}
+        >
+          <Typography variant="button-m" color="muted" className="hover:text-primary">Need an account? Sign up</Typography>
+        </Button>
       </div>
     </div>
   );

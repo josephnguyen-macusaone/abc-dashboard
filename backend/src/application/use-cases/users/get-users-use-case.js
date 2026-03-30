@@ -5,7 +5,12 @@
 import { UserListResponseDto, UserResponseDto } from '../../dto/user/index.js';
 import { PaginationDto } from '../../dto/common/index.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+
 export class GetUsersUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   */
   constructor(userRepository) {
     this.userRepository = userRepository;
   }

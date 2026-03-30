@@ -35,6 +35,59 @@ export function createAuthRoutes(authController) {
     'Too many refresh attempts, please try again later.'
   );
 
+  const signupLimiter = createRateLimit(
+    15 * 60 * 1000,
+    20,
+    'Too many signup attempts, please try again later.'
+  );
+
+  /**
+   * @swagger
+   * /auth/signup:
+   *   post:
+   *     summary: Signup user (agent/tech/accountant)
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - firstName
+   *               - lastName
+   *               - email
+   *               - password
+   *             properties:
+   *               firstName:
+   *                 type: string
+   *               lastName:
+   *                 type: string
+   *               username:
+   *                 type: string
+   *               email:
+   *                 type: string
+   *                 format: email
+   *               password:
+   *                 type: string
+   *               role:
+   *                 type: string
+   *                 enum: [agent, tech, accountant]
+   *               phone:
+   *                 type: string
+   *     responses:
+   *       201:
+   *         description: Signup successful
+   *       400:
+   *         description: Validation error
+   */
+  router.post(
+    '/signup',
+    signupLimiter,
+    validateRequest(authSchemas.signup),
+    authController.signup.bind(authController)
+  );
+
   /**
    * @swagger
    * /auth/login:

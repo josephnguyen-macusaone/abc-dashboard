@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
+import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { cn } from "@/shared/helpers";
 
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
@@ -134,19 +135,16 @@ export function DataTable<TData>({
 
   return (
     <div
-      className={cn("flex w-full flex-col gap-4 overflow-auto", className)}
+      className={cn("flex w-full flex-col gap-4", className)}
       {...props}
     >
       {children}
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <div
-          className={cn("rounded-md border", stretch && "w-full")}
-          style={{ overflowX: "auto" }}
-        >
-          {tableContent}
-        </div>
+        <ScrollArea className={cn("max-h-[min(70vh,36rem)] w-full rounded-md border", stretch && "w-full")}>
+          <div className={cn(stretch && "w-full")}>{tableContent}</div>
+        </ScrollArea>
       )}
       <div className="flex flex-col gap-2.5">
         <TablePagination table={table} />

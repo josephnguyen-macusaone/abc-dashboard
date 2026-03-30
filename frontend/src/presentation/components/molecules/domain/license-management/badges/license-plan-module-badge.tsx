@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { Box, MessageCircle, Printer, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -46,9 +47,9 @@ export function LicensePlanModuleBadge({
         variant="outline"
         className={cn(colors, 'shrink-0 px-2 py-1 text-xs font-medium justify-center', className)}
       >
-        {showIcon && IconComponent && (
-          <IconComponent className="w-3 h-3 mr-1" />
-        )}
+        {showIcon &&
+          IconComponent &&
+          createElement(IconComponent, { className: 'w-3 h-3 mr-1' })}
         {module}
       </Badge>
     );
@@ -60,9 +61,9 @@ export function LicensePlanModuleBadge({
       variant="outline"
       className={cn(colors, 'shrink-0 px-3 py-1.5 text-xs font-medium shadow-sm', className)}
     >
-      {showIcon && IconComponent && (
-        <IconComponent className="w-3.5 h-3.5 mr-1.5" />
-      )}
+      {showIcon &&
+        IconComponent &&
+        createElement(IconComponent, { className: 'w-3.5 h-3.5 mr-1.5' })}
       {module}
     </Badge>
   );

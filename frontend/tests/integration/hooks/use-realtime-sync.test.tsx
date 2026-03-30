@@ -2,6 +2,7 @@
  * Tests for useRealtimeSync hook
  */
 import { renderHook } from '@testing-library/react';
+import { io } from 'socket.io-client';
 import { useRealtimeSync } from '@/presentation/hooks/use-realtime-sync';
 
 // Mock socket.io-client
@@ -50,7 +51,6 @@ describe('useRealtimeSync', () => {
   });
 
   it('connects socket when authenticated', () => {
-    const { io } = require('socket.io-client');
     renderHook(() => useRealtimeSync());
 
     expect(io).toHaveBeenCalledWith(

@@ -1,6 +1,7 @@
 import handlebars from 'handlebars';
 import { config } from '../../infrastructure/config/config.js';
 import logger from '../utils/logger.js';
+import { IEmailService } from '../../application/interfaces/i-email-service.js';
 import { createEmailTransporter } from '../../infrastructure/email/transporter.js';
 import { renderEmailTemplate } from '../../infrastructure/email/templates.js';
 import { withServiceRetry, withTimeout } from '../utils/reliability/retry.js';
@@ -16,8 +17,9 @@ import {
  * Email Service
  * Handles sending emails using nodemailer with retry logic and error handling
  */
-export class EmailService {
+export class EmailService extends IEmailService {
   constructor() {
+    super();
     this.correlationId = null;
     this.transporter = this.createTransporter();
     this.isHealthy = true;

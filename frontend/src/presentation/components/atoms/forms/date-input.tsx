@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, startTransition } from 'react';
 import { cn } from '@/shared/helpers';
 
 interface DateInputProps {
@@ -31,11 +31,13 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange, className, id })
   const yearRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const d = value ? new Date(value) : new Date();
-    setDate({
-      day: d.getDate(),
-      month: d.getMonth() + 1,
-      year: d.getFullYear(),
+    startTransition(() => {
+      const d = value ? new Date(value) : new Date();
+      setDate({
+        day: d.getDate(),
+        month: d.getMonth() + 1,
+        year: d.getFullYear(),
+      });
     });
   }, [value]);
 

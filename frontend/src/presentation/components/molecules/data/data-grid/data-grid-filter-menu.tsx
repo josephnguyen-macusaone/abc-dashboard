@@ -352,44 +352,37 @@ function DataGridFilterItem<TData>({
     [filter.id, showFieldSelector, showOperatorSelector, onFilterRemove],
   );
 
-  const onOperatorChange = React.useCallback(
-    (newOperator: FilterOperator) => {
-      onFilterUpdate(filter.id, {
-        value: {
-          operator: newOperator,
-          value: filterValue?.value,
-          endValue: filterValue?.endValue,
-        },
-      });
-    },
-    [filter.id, filterValue?.value, filterValue?.endValue, onFilterUpdate],
-  );
+  function onOperatorChange(newOperator: FilterOperator) {
+    onFilterUpdate(filter.id, {
+      value: {
+        operator: newOperator,
+        value: filterValue?.value,
+        endValue: filterValue?.endValue,
+      },
+    });
+  }
 
-  const onValueChange = React.useCallback(
-    (newValue: string | number | string[] | undefined) => {
-      onFilterUpdate(filter.id, {
-        value: {
-          operator,
-          value: newValue,
-          endValue: filterValue?.endValue,
-        },
-      });
-    },
-    [filter.id, operator, filterValue?.endValue, onFilterUpdate],
-  );
+  function onValueChange(newValue: string | number | string[] | undefined) {
+    const op = filterValue?.operator ?? getDefaultOperator(variant);
+    onFilterUpdate(filter.id, {
+      value: {
+        operator: op,
+        value: newValue,
+        endValue: filterValue?.endValue,
+      },
+    });
+  }
 
-  const onEndValueChange = React.useCallback(
-    (newValue: string | number | string[] | undefined) => {
-      onFilterUpdate(filter.id, {
-        value: {
-          operator,
-          value: filterValue?.value,
-          endValue: newValue as string | number | undefined,
-        },
-      });
-    },
-    [filter.id, operator, filterValue?.value, onFilterUpdate],
-  );
+  function onEndValueChange(newValue: string | number | string[] | undefined) {
+    const op = filterValue?.operator ?? getDefaultOperator(variant);
+    onFilterUpdate(filter.id, {
+      value: {
+        operator: op,
+        value: filterValue?.value,
+        endValue: newValue as string | number | undefined,
+      },
+    });
+  }
 
   return (
     <SortableItem value={filter.id} asChild>

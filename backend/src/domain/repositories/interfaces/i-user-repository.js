@@ -57,7 +57,7 @@ export class IUserRepository {
    * @param {Object} options.filters - Filter criteria
    * @param {string} options.sortBy - Sort field
    * @param {string} options.sortOrder - Sort order ('asc'|'desc')
-   * @returns {Promise<{users: User[], total: number, page: number, totalPages: number}>}
+   * @returns {Promise<{users: User[], page: number, totalPages: number, stats: Object, total?: number}>}
    */
   async findUsers(options = {}) {
     throw new Error('Method not implemented');
@@ -106,6 +106,52 @@ export class IUserRepository {
    * @returns {Promise<Object>} User statistics
    */
   async getUserStats() {
+    throw new Error('Method not implemented');
+  }
+
+  /**
+   * Store refresh token hash for user session rotation/revocation.
+   * @param {string} userId - User ID
+   * @param {string} tokenHash - SHA256 hash of refresh token
+   * @param {Date} expiresAt - Expiration date
+   * @returns {Promise<void>}
+   */
+  async storeRefreshToken(userId, tokenHash, expiresAt) {
+    throw new Error('Method not implemented');
+  }
+
+  /**
+   * Find stored refresh token by hash.
+   * @param {string} tokenHash - SHA256 hash of refresh token
+   * @returns {Promise<Object|null>}
+   */
+  async findRefreshToken(tokenHash) {
+    throw new Error('Method not implemented');
+  }
+
+  /**
+   * Revoke a specific refresh token by hash.
+   * @param {string} tokenHash - SHA256 hash of refresh token
+   * @returns {Promise<void>}
+   */
+  async revokeRefreshToken(tokenHash) {
+    throw new Error('Method not implemented');
+  }
+
+  /**
+   * Revoke all refresh tokens for a user.
+   * @param {string} userId - User ID
+   * @returns {Promise<void>}
+   */
+  async revokeAllUserRefreshTokens(userId) {
+    throw new Error('Method not implemented');
+  }
+
+  /**
+   * Remove expired refresh tokens from storage.
+   * @returns {Promise<number>} Number of removed rows
+   */
+  async cleanExpiredRefreshTokens() {
     throw new Error('Method not implemented');
   }
 }

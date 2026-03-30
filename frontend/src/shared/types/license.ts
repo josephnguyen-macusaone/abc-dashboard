@@ -35,5 +35,8 @@ export interface LicenseRecord {
   agentsName: string;
   agentsCost: number;
   notes: string;
+  /** ISO timestamp from API for optimistic concurrency */
+  createdAt?: string;
+  updatedAt?: string;
 }
 

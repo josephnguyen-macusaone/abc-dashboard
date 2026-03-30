@@ -1,6 +1,6 @@
 'use client';
 
-import React, { type FC, useState, useEffect, useRef } from 'react';
+import React, { type FC, useState, useEffect, useRef, startTransition } from 'react';
 import { ChevronUp, ChevronDown, Check, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import {
@@ -308,7 +308,9 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   };
 
   useEffect(() => {
-    checkPreset();
+    startTransition(() => {
+      checkPreset();
+    });
   }, [range]);
 
   const PresetButton = ({

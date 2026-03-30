@@ -66,6 +66,8 @@ interface LicenseManagementProps {
   dataSourceKey?: string;
   /** Additional CSS classes */
   className?: string;
+  /** Disable mutation actions and editing affordances */
+  isReadOnly?: boolean;
 }
 
 export function LicenseManagement({
@@ -81,7 +83,8 @@ export function LicenseManagement({
   totalCount,
   onQueryChange,
   dataSourceKey,
-  className
+  className,
+  isReadOnly = false,
 }: LicenseManagementProps) {
   // Reload licenses handler (called after operations)
   const handleLoadLicenses = useCallback(async () => {
@@ -167,6 +170,7 @@ export function LicenseManagement({
         key={dataSourceKey}
         data={licenses}
         isLoading={isLoading}
+        readOnly={isReadOnly}
         onSave={handleSave}
         onAddRow={handleAddRow}
         onDeleteRows={handleDeleteRows}

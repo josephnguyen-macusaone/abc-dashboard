@@ -38,7 +38,9 @@ const IMPORTANT_META_KEYS = [
 function metaForDisplay(meta) {
   const out = {};
   for (const key of IMPORTANT_META_KEYS) {
-    if (meta[key] === undefined) continue;
+    if (meta[key] === undefined) {
+      continue;
+    }
     const v = meta[key];
     out[key] = v instanceof Error ? v.message : v;
   }
@@ -110,7 +112,9 @@ const consoleFormat = winston.format.combine(
 
 // JSON format: one line per log for aggregators (LOG_FORMAT=json)
 function serializeMeta(obj) {
-  if (obj === null || obj === undefined) return obj;
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
   if (obj instanceof Error) {
     return { message: obj.message, name: obj.name, stack: obj.stack };
   }

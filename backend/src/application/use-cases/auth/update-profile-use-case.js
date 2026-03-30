@@ -10,7 +10,14 @@ import { executeWithDegradation } from '../../../shared/utils/reliability/gracef
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-profile-repository.js').IUserProfileRepository} IUserProfileRepository */
+
 export class UpdateProfileUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   * @param {IUserProfileRepository} userProfileRepository
+   */
   constructor(userRepository, userProfileRepository) {
     this.userRepository = userRepository;
     this.userProfileRepository = userProfileRepository;

@@ -26,7 +26,12 @@ import {
   selectLicensesRequiringAttentionError,
   selectBulkUpdateByIdentifiersLoading,
   selectSmsPaymentsLoading,
+  selectSmsPayments,
+  selectSmsPaymentsError,
+  selectSmsTotals,
 } from '@/infrastructure/stores/license';
+import { useAuthStore } from '@/infrastructure/stores/auth';
+import { FEATURE_FLAGS } from '@/shared/constants/feature-flags';
 
 import type { DashboardMetricsAlertItem } from '@/infrastructure/api/licenses/types';
 import type { LicenseStatus } from '@/types';
@@ -38,9 +43,11 @@ import {
   Filter,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   TrendingUp,
   Users,
+  Wrench,
   Zap
 } from 'lucide-react';
 
@@ -69,6 +76,18 @@ export const LicenseDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedLicenses, setSelectedLicenses] = useState<string[]>([]);
+  const [smsAppId, setSmsAppId] = useState('');
+  const [smsAmount, setSmsAmount] = useState('');
+  const [techResetAppId, setTechResetAppId] = useState('');
+  const [techResetEmail, setTechResetEmail] = useState('');
+  const [techAdjustAppId, setTechAdjustAppId] = useState('');
+  const [techActivateDate, setTechActivateDate] = useState('');
+  const [techComingExpiredDate, setTechComingExpiredDate] = useState('');
+  const [accountantAdjustAppId, setAccountantAdjustAppId] = useState('');
+  const [accountantStatus, setAccountantStatus] = useState('');
+  const [accountantPlan, setAccountantPlan] = useState('');
+  const [accountantStartsAt, setAccountantStartsAt] = useState('');
+  const [accountantDueDate, setAccountantDueDate] = useState('');
 
   const licenses = useLicenseStore(selectLicenses);
   const pagination = useLicenseStore(selectLicensePagination);
@@ -80,6 +99,8 @@ export const LicenseDashboard: React.FC = () => {
   const fetchLicensesRequiringAttention = useLicenseStore((s) => s.fetchLicensesRequiringAttention);
   const bulkUpdateByIdentifiers = useLicenseStore((s) => s.bulkUpdateByIdentifiers);
   const fetchSmsPayments = useLicenseStore((s) => s.fetchSmsPayments);
+  const addSmsPayment = useLicenseStore((s) => s.addSmsPayment);
+  const resetExternalLicenseId = useLicenseStore((s) => s.resetExternalLicenseId);
 
   const metrics = useLicenseStore(selectDashboardMetrics) as DashboardMetricsView | null | undefined;
   const metricsLoading = useLicenseStore(selectDashboardMetricsLoading);
@@ -88,6 +109,13 @@ export const LicenseDashboard: React.FC = () => {
   const lifecycleError = useLicenseStore(selectLicensesRequiringAttentionError);
   const bulkLoading = useLicenseStore(selectBulkUpdateByIdentifiersLoading);
   const smsLoading = useLicenseStore(selectSmsPaymentsLoading);
+  const smsPayments = useLicenseStore(selectSmsPayments);
+  const smsPaymentsError = useLicenseStore(selectSmsPaymentsError);
+  const smsTotals = useLicenseStore(selectSmsTotals);
+  const currentUser = useAuthStore((s) => s.user);
+  const isAgent = currentUser?.role === 'agent' && FEATURE_FLAGS.agentModule;
+  const isTech = currentUser?.role === 'tech' && FEATURE_FLAGS.techModule;
+  const isAccountant = currentUser?.role === 'accountant' && FEATURE_FLAGS.accountantModule;
 
   useEffect(() => {
     fetchDashboardMetrics();
@@ -138,6 +166,58 @@ export const LicenseDashboard: React.FC = () => {
     fetchDashboardMetrics();
   };
 
+  const handleLoadSmsHistory = async () => {
+    const appid = smsAppId.trim();
+    if (isAgent && !appid) return;
+    await fetchSmsPayments(appid ? { appid, page: 1, limit: 20 } : { page: 1, limit: 20 });
+  };
+
+  const handleAddSmsPayment = async () => {
+    const appid = smsAppId.trim();
+    const amount = Number(smsAmount);
+    if (!appid || Number.isNaN(amount) || amount <= 0) return;
+    await addSmsPayment({
+      appid,
+      amount,
+      paymentDate: new Date().toISOString(),
+      description: 'Manual top-up from dashboard',
+    });
+    setSmsAmount('');
+  };
+
+  const handleResetLicenseId = async () => {
+    const appid = techResetAppId.trim();
+    const email = techResetEmail.trim();
+    if (!appid && !email) return;
+    await resetExternalLicenseId({ appid: appid || undefined, email: email || undefined });
+    setTechResetAppId('');
+    setTechResetEmail('');
+  };
+
+  const handleTechDateAdjustment = async () => {
+    const appid = techAdjustAppId.trim();
+    if (!appid) return;
+    const updates: Record<string, unknown> = {};
+    if (techActivateDate) updates.startsAt = techActivateDate;
+    if (techComingExpiredDate) updates.dueDate = techComingExpiredDate;
+    if (Object.keys(updates).length === 0) return;
+    await bulkUpdateByIdentifiers({ appids: [appid] }, updates);
+    setTechActivateDate('');
+    setTechComingExpiredDate('');
+  };
+
+  const handleAccountantAdjustment = async () => {
+    const appid = accountantAdjustAppId.trim();
+    if (!appid) return;
+    const updates: Record<string, unknown> = {};
+    if (accountantStatus === 'active' || accountantStatus === 'cancel') updates.status = accountantStatus;
+    if (accountantPlan.trim()) updates.plan = accountantPlan.trim();
+    if (accountantStartsAt) updates.startsAt = accountantStartsAt;
+    if (accountantDueDate) updates.dueDate = accountantDueDate;
+    if (Object.keys(updates).length === 0) return;
+    await bulkUpdateByIdentifiers({ appids: [appid] }, updates);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -181,66 +261,106 @@ export const LicenseDashboard: React.FC = () => {
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           {/* Dashboard Metrics */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-4">
             {metricsLoading ? (
               <div className="col-span-full">
                 <LoadingSpinner />
               </div>
             ) : metrics ? (
               <>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Licenses</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                <Card className="h-full min-h-0 min-w-0 overflow-hidden">
+                  <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle
+                      className="line-clamp-2 min-h-[2.75rem] min-w-0 flex-1 text-sm font-medium leading-snug"
+                      title="Active Licenses"
+                    >
+                      Active Licenses
+                    </CardTitle>
+                    <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">{metrics.overview?.active ?? '—'}</div>
-                    <p className="text-xs text-muted-foreground">
+                  <CardContent className="min-w-0">
+                    <div
+                      className="truncate text-2xl font-semibold tabular-nums"
+                      title={String(metrics.overview?.active ?? '—')}
+                    >
+                      {metrics.overview?.active ?? '—'}
+                    </div>
+                    <p className="mt-2.5 truncate text-xs text-muted-foreground" title={`+${metrics.utilization?.newLicensesThisMonth ?? 0} from last month`}>
                       +{metrics.utilization?.newLicensesThisMonth ?? 0} from last month
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Card className="h-full min-h-0 min-w-0 overflow-hidden">
+                  <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle
+                      className="line-clamp-2 min-h-[2.75rem] min-w-0 flex-1 text-sm font-medium leading-snug"
+                      title="Expiring Soon"
+                    >
+                      Expiring Soon
+                    </CardTitle>
+                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold text-orange-600">
+                  <CardContent className="min-w-0">
+                    <div
+                      className="truncate text-2xl font-semibold text-orange-600 tabular-nums"
+                      title={String(metrics.overview?.expiringSoon ?? '—')}
+                    >
                       {metrics.overview?.expiringSoon ?? '—'}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="mt-2.5 truncate text-xs text-muted-foreground" title="Within 30 days">
                       Within 30 days
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Utilization Rate</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <Card className="h-full min-h-0 min-w-0 overflow-hidden">
+                  <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle
+                      className="line-clamp-2 min-h-[2.75rem] min-w-0 flex-1 text-sm font-medium leading-snug"
+                      title="Utilization Rate"
+                    >
+                      Utilization Rate
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">
+                  <CardContent className="min-w-0">
+                    <div
+                      className="truncate text-2xl font-semibold tabular-nums"
+                      title={`${Math.round(metrics.utilization?.utilizationRate ?? 0)}%`}
+                    >
                       {Math.round(metrics.utilization?.utilizationRate ?? 0)}%
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p
+                      className="mt-2.5 truncate text-xs text-muted-foreground"
+                      title={`${metrics.utilization?.availableSeats ?? 0} seats available`}
+                    >
                       {metrics.utilization?.availableSeats ?? 0} seats available
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <Card className="h-full min-h-0 min-w-0 overflow-hidden">
+                  <CardHeader className="flex shrink-0 flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle
+                      className="line-clamp-2 min-h-[2.75rem] min-w-0 flex-1 text-sm font-medium leading-snug"
+                      title="Revenue"
+                    >
+                      Revenue
+                    </CardTitle>
+                    <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">
+                  <CardContent className="min-w-0">
+                    <div
+                      className="truncate text-2xl font-semibold tabular-nums"
+                      title={`$${metrics.utilization?.licenseIncomeThisMonth ?? '—'}`}
+                    >
                       ${metrics.utilization?.licenseIncomeThisMonth ?? '—'}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p
+                      className="mt-2.5 truncate text-xs text-muted-foreground"
+                      title={`+${metrics.utilization?.smsIncomeThisMonth?.smsSent ?? 0} SMS credits`}
+                    >
                       +{metrics.utilization?.smsIncomeThisMonth?.smsSent ?? 0} SMS credits
                     </p>
                   </CardContent>
@@ -364,6 +484,133 @@ export const LicenseDashboard: React.FC = () => {
             )}
           </div>
 
+          {(isTech || isAccountant) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {isTech && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Wrench className="h-4 w-4" />
+                      Tech Tools
+                    </CardTitle>
+                    <CardDescription>
+                      Submit technical adjustments: reset license ID and update activation/coming-expired dates.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <Input
+                        placeholder="Reset by App ID"
+                        value={techResetAppId}
+                        onChange={(e) => setTechResetAppId(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Or reset by email"
+                        value={techResetEmail}
+                        onChange={(e) => setTechResetEmail(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleResetLicenseId}
+                      disabled={bulkLoading || (!techResetAppId.trim() && !techResetEmail.trim())}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Reset License ID
+                    </Button>
+
+                    <div className="grid gap-2 md:grid-cols-3">
+                      <Input
+                        placeholder="App ID for date update"
+                        value={techAdjustAppId}
+                        onChange={(e) => setTechAdjustAppId(e.target.value)}
+                      />
+                      <Input
+                        type="date"
+                        value={techActivateDate}
+                        onChange={(e) => setTechActivateDate(e.target.value)}
+                      />
+                      <Input
+                        type="date"
+                        value={techComingExpiredDate}
+                        onChange={(e) => setTechComingExpiredDate(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleTechDateAdjustment}
+                      disabled={
+                        bulkLoading ||
+                        !techAdjustAppId.trim() ||
+                        (!techActivateDate && !techComingExpiredDate)
+                      }
+                    >
+                      Apply Tech Date Adjustment
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isAccountant && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CreditCard className="h-4 w-4" />
+                      Accountant Controls
+                    </CardTitle>
+                    <CardDescription>
+                      Activate/deactivate licenses and adjust package/date values safely.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Input
+                      placeholder="App ID"
+                      value={accountantAdjustAppId}
+                      onChange={(e) => setAccountantAdjustAppId(e.target.value)}
+                    />
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <Select value={accountantStatus} onValueChange={setAccountantStatus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Status (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="cancel">Deactivate (Cancel)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Plan / package (optional)"
+                        value={accountantPlan}
+                        onChange={(e) => setAccountantPlan(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <Input
+                        type="date"
+                        value={accountantStartsAt}
+                        onChange={(e) => setAccountantStartsAt(e.target.value)}
+                      />
+                      <Input
+                        type="date"
+                        value={accountantDueDate}
+                        onChange={(e) => setAccountantDueDate(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleAccountantAdjustment}
+                      disabled={
+                        bulkLoading ||
+                        !accountantAdjustAppId.trim() ||
+                        (!accountantStatus && !accountantPlan.trim() && !accountantStartsAt && !accountantDueDate)
+                      }
+                    >
+                      Apply Accountant Adjustment
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
           {/* Licenses Table */}
           <Card>
             <CardContent className="p-0">
@@ -386,7 +633,7 @@ export const LicenseDashboard: React.FC = () => {
                             checked={selectedLicenses.length === licenses.length}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedLicenses(licenses.map(l => String(l.id)));
+                                setSelectedLicenses(licenses.map((l) => String(l.key ?? l.id)));
                               } else {
                                 setSelectedLicenses([]);
                               }
@@ -408,8 +655,10 @@ export const LicenseDashboard: React.FC = () => {
                           <TableCell>
                             <input
                               type="checkbox"
-                              checked={selectedLicenses.includes(String(license.id))}
-                              onChange={(e) => handleLicenseSelect(String(license.id), e.target.checked)}
+                              checked={selectedLicenses.includes(String(license.key ?? license.id))}
+                              onChange={(e) =>
+                                handleLicenseSelect(String(license.key ?? license.id), e.target.checked)
+                              }
                             />
                           </TableCell>
                           <TableCell className="font-medium">{license.key}</TableCell>
@@ -509,22 +758,93 @@ export const LicenseDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>SMS Payment Management</CardTitle>
               <CardDescription>
-                Track and manage SMS payment records
+                Track SMS top-ups and balance activity
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  SMS payment management integration ready
-                </p>
-                <Button
-                  onClick={() => fetchSmsPayments()}
-                  disabled={smsLoading}
-                  className="mt-4"
-                >
-                  {smsLoading ? 'Loading…' : 'Load Payment History'}
-                </Button>
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Input
+                    placeholder="App ID"
+                    value={smsAppId}
+                    onChange={(e) => setSmsAppId(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Top-up amount"
+                    value={smsAmount}
+                    onChange={(e) => setSmsAmount(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleAddSmsPayment}
+                      disabled={smsLoading || !smsAppId.trim() || Number(smsAmount) <= 0}
+                    >
+                      Add Payment
+                    </Button>
+                    <Button onClick={handleLoadSmsHistory} variant="outline" disabled={smsLoading}>
+                      {smsLoading ? 'Loading...' : 'Load History'}
+                    </Button>
+                  </div>
+                </div>
+
+                {isAgent && (
+                  <Alert>
+                    <AlertDescription>
+                      Agent role can only access SMS history by assigned App ID.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {smsPaymentsError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{smsPaymentsError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {smsTotals ? (
+                  <div className="text-sm text-muted-foreground">
+                    Totals: {JSON.stringify(smsTotals)}
+                  </div>
+                ) : null}
+
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>App ID</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {smsPayments.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            No SMS payment records found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        smsPayments.map((payment, index) => {
+                          const row = payment as Record<string, unknown>;
+                          return (
+                            <TableRow key={String(row.id ?? row.appid ?? index)}>
+                              <TableCell>{String(row.appid ?? row.AppID ?? '-')}</TableCell>
+                              <TableCell>{String(row.amount ?? row.Amount ?? '-')}</TableCell>
+                              <TableCell>
+                                {String(row.paymentDate ?? row.created_at ?? row.createdAt ?? '-')}
+                              </TableCell>
+                              <TableCell>{String(row.description ?? row.note ?? '-')}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -4,10 +4,12 @@ import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
 import { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
 import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
+import type { UpdateLicenseDTO } from '@/application/dto/license-dto';
 import { handleApiError } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
+import { httpClient } from '@/infrastructure/api/core/client';
 
 /**
  * License filters are shared between Dashboard and License Management page.
@@ -76,6 +78,8 @@ export interface UpdateLicenseRequest {
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
+  /** Sent as `expectedUpdatedAt` on the API; defaults to the current store row's `updatedAt` */
+  expectedUpdatedAt?: string;
 }
 
 interface LicenseState {
@@ -126,6 +130,7 @@ interface LicenseState {
   bulkUpdateByIdentifiers: (identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }, updates: Record<string, unknown>) => Promise<{ updated: number }>;
   fetchSmsPayments: (params?: { appid?: string; emailLicense?: string; countid?: number; startDate?: string; endDate?: string; page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => Promise<void>;
   addSmsPayment: (paymentData: { appid?: string; emailLicense?: string; countid?: number; amount: number; paymentDate?: string; description?: string }) => Promise<void>;
+  resetExternalLicenseId: (identifier: { appid?: string; email?: string }) => Promise<void>;
   fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[]; startsAtFrom?: string; startsAtTo?: string }>) => Promise<void>;
   fetchLicense: (id: number | string) => Promise<LicenseRecord | null>;
   createLicense: (licenseData: CreateLicenseRequest) => Promise<LicenseRecord>;
@@ -347,6 +352,27 @@ export const useLicenseStore = create<LicenseState>()(
           } catch (err) {
             set({ smsPaymentsLoading: false, smsPaymentsError: getErrorMessage(err) });
             throw err;
+          }
+        },
+
+        resetExternalLicenseId: async (identifier) => {
+          const appid = identifier.appid?.trim();
+          const email = identifier.email?.trim();
+          if (!appid && !email) {
+            throw new Error('App ID or email is required');
+          }
+
+          try {
+            await httpClient.post('/external-licenses/licenses/reset', {
+              ...(appid ? { appid } : {}),
+              ...(email ? { email } : {}),
+            });
+            toast.success('License ID reset successfully');
+            await get().fetchLicenses();
+          } catch (error) {
+            const errorMessage = getErrorMessage(error);
+            toast.error(errorMessage);
+            throw error;
           }
         },
 
@@ -767,11 +793,11 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             set({ loading: true, error: null });
 
-            // Transform UpdateLicenseRequest to Partial<LicenseRecord>
-            const licenseRecord: Partial<LicenseRecord> = {
+            const row = get().licenses.find((l) => String(l.id) === String(id));
+            const licenseRecord: UpdateLicenseDTO = {
               dba: licenseData.dba,
               zip: licenseData.zip,
-              startsAt: licenseData.startDay, // Transform startDay to startsAt
+              ...(licenseData.startDay !== undefined ? { startsAt: licenseData.startDay } : {}),
               status: licenseData.status,
               plan: licenseData.plan,
               term: licenseData.term,
@@ -783,6 +809,8 @@ export const useLicenseStore = create<LicenseState>()(
               agentsName: licenseData.agentsName,
               agentsCost: licenseData.agentsCost,
               notes: licenseData.notes,
+              expectedUpdatedAt:
+                licenseData.expectedUpdatedAt ?? row?.updatedAt,
             };
 
             const updatedLicense = await container.licenseManagementService.updateLicense(id.toString(), licenseRecord);
@@ -802,6 +830,11 @@ export const useLicenseStore = create<LicenseState>()(
             toast.success('License updated successfully');
             return updatedLicense;
           } catch (error) {
+            const apiError = error instanceof ApiExceptionDto ? error : handleApiError(error);
+            if (apiError.status === 409) {
+              toast.error('This license was updated elsewhere. Data has been refreshed.');
+              await get().fetchLicenses();
+            }
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
             storeLogger.error('Failed to update license', { licenseId: id, error: errorMessage });
@@ -1055,6 +1088,11 @@ export const useLicenseStore = create<LicenseState>()(
             toast.success(`Changes saved successfully`);
             return response;
           } catch (error) {
+            const apiError = error instanceof ApiExceptionDto ? error : handleApiError(error);
+            if (apiError.status === 409) {
+              toast.error('Some rows are stale. Grid reloaded with latest data; please re-apply changes.');
+              await get().fetchLicenses();
+            }
             const errorMessage = getErrorMessage(error);
             set({ error: errorMessage, loading: false });
             storeLogger.error('Failed to bulk update licenses', { error: errorMessage });

@@ -3,9 +3,11 @@
  * Handles automated lifecycle operations for licenses
  */
 import logger from '../../shared/utils/logger.js';
+import { ILicenseLifecycleService } from '../../application/interfaces/i-license-lifecycle-service.js';
 
-export class LicenseLifecycleService {
+export class LicenseLifecycleService extends ILicenseLifecycleService {
   constructor(licenseRepository, notificationService = null) {
+    super();
     this.licenseRepository = licenseRepository;
     this.notificationService = notificationService;
   }
@@ -183,6 +185,23 @@ export class LicenseLifecycleService {
         reason: context.reason || 'Manual extension',
       });
 
+      await this.licenseRepository.createAuditEvent({
+        type: 'license.extended',
+        actorId: context.userId,
+        entityId: licenseId,
+        entityType: 'license',
+        metadata: {
+          action: 'extend',
+          actorRole: context.userRole || null,
+          updatedBy: context.userId || null,
+          timestamp: new Date().toISOString(),
+          newExpirationDate,
+          reason: context.reason || 'Manual extension',
+        },
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      });
+
       // Send notification if service is available
       if (this.notificationService) {
         await this.notificationService.sendLicenseExtended(updatedLicense, context);
@@ -259,6 +278,24 @@ export class LicenseLifecycleService {
         renewalOptions,
       });
 
+      await this.licenseRepository.createAuditEvent({
+        type: 'license.renewed',
+        actorId: context.userId,
+        entityId: licenseId,
+        entityType: 'license',
+        metadata: {
+          action: 'renew',
+          actorRole: context.userRole || null,
+          updatedBy: context.userId || null,
+          timestamp: new Date().toISOString(),
+          previousExpiration: license.expiresAt,
+          newExpirationDate,
+          renewalTerm: license.term,
+        },
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      });
+
       // Send notification if service is available
       if (this.notificationService) {
         await this.notificationService.sendLicenseRenewed(updatedLicense, context);
@@ -301,6 +338,22 @@ export class LicenseLifecycleService {
         newStatus: 'active',
         reactivatedBy: context.userId,
         reason: context.reason || 'Manual reactivation',
+      });
+
+      await this.licenseRepository.createAuditEvent({
+        type: 'license.reactivated',
+        actorId: context.userId,
+        entityId: licenseId,
+        entityType: 'license',
+        metadata: {
+          action: 'reactivate',
+          actorRole: context.userRole || null,
+          updatedBy: context.userId || null,
+          timestamp: new Date().toISOString(),
+          reason: context.reason || 'Manual reactivation',
+        },
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
       });
 
       // Send notification if service is available

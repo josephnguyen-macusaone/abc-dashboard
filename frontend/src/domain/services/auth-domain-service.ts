@@ -11,8 +11,11 @@ export class AuthDomainService {
    */
   static canUserManageRole(managerRole: UserRole, targetRole: UserRole): boolean {
     const roleHierarchy = {
-      [UserRole.ADMIN]: 3,
-      [UserRole.MANAGER]: 2,
+      [UserRole.ADMIN]: 6,
+      [UserRole.ACCOUNTANT]: 5,
+      [UserRole.MANAGER]: 4,
+      [UserRole.TECH]: 3,
+      [UserRole.AGENT]: 2,
       [UserRole.STAFF]: 1,
     };
 
@@ -90,7 +93,12 @@ export class AuthDomainService {
    * Business rule: Managers and admins can access management features
    */
   static canAccessManagementFeatures(user: User): boolean {
-    return user.isActive && (user.role === UserRole.ADMIN || user.role === UserRole.MANAGER);
+    return (
+      user.isActive &&
+      (user.role === UserRole.ADMIN ||
+        user.role === UserRole.ACCOUNTANT ||
+        user.role === UserRole.MANAGER)
+    );
   }
 
   /**

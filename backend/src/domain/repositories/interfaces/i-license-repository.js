@@ -85,6 +85,28 @@ export class ILicenseRepository {
     throw new Error('getLicenseStats not implemented');
   }
 
+  /**
+   * Get aggregated dashboard metrics for a period.
+   * @param {Object} filters - Optional filters
+   * @param {Date} periodStart - Start date (inclusive)
+   * @param {Date} periodEnd - End date (exclusive/inclusive by implementation)
+   * @returns {Promise<Object>}
+   */
+  async getDashboardAggregates(filters, periodStart, periodEnd) {
+    throw new Error('getDashboardAggregates not implemented');
+  }
+
+  /**
+   * Update with optimistic concurrency check using expected updated timestamp.
+   * @param {string} id - License ID
+   * @param {Object} updates - Fields to update
+   * @param {Date|string} expectedUpdatedAt - Client-observed updated timestamp
+   * @returns {Promise<License|null>}
+   */
+  async updateWithExpectedUpdatedAt(id, updates, expectedUpdatedAt) {
+    throw new Error('updateWithExpectedUpdatedAt not implemented');
+  }
+
   // ========================================================================
   // License Assignment Operations
   // ========================================================================
@@ -260,5 +282,101 @@ export class ILicenseRepository {
    */
   async findLicensesWithLowSeats(threshold = 80) {
     throw new Error('findLicensesWithLowSeats not implemented');
+  }
+
+  /**
+   * Find internal license by external App ID.
+   * @param {string} appid - External appid
+   * @returns {Promise<License|null>}
+   */
+  async findByAppId(appid) {
+    throw new Error('findByAppId not implemented');
+  }
+
+  /**
+   * Find internal license by external Count ID.
+   * @param {number|string} countid - External count identifier
+   * @returns {Promise<License|null>}
+   */
+  async findByCountId(countid) {
+    throw new Error('findByCountId not implemented');
+  }
+
+  /**
+   * Find licenses requiring reminder notifications by reminder type.
+   * @param {string} reminderType - e.g. '30days'|'7days'|'1day'
+   * @returns {Promise<License[]>}
+   */
+  async findLicensesNeedingReminders(reminderType) {
+    throw new Error('findLicensesNeedingReminders not implemented');
+  }
+
+  /**
+   * Update renewal reminder markers on a license.
+   * @param {string} licenseId - License ID
+   * @param {string[]} reminders - Sent reminder markers
+   * @param {Date|null} lastReminderAt - Last reminder timestamp
+   * @returns {Promise<void>}
+   */
+  async updateRenewalReminders(licenseId, reminders, lastReminderAt) {
+    throw new Error('updateRenewalReminders not implemented');
+  }
+
+  /**
+   * Add lifecycle/renewal history entry.
+   * @param {string} licenseId - License ID
+   * @param {string} action - History action key
+   * @param {Object} details - Arbitrary metadata payload
+   * @returns {Promise<void>}
+   */
+  async addRenewalHistory(licenseId, action, details = {}) {
+    throw new Error('addRenewalHistory not implemented');
+  }
+
+  /**
+   * Find expired licenses eligible for suspension.
+   * @returns {Promise<License[]>}
+   */
+  async findExpiredLicensesForSuspension() {
+    throw new Error('findExpiredLicensesForSuspension not implemented');
+  }
+
+  /**
+   * Suspend multiple expired licenses in bulk.
+   * @param {string[]} licenseIds - License IDs to suspend
+   * @param {string} reason - Suspension reason
+   * @returns {Promise<number>} Number of rows updated
+   */
+  async suspendExpiredLicenses(licenseIds, reason) {
+    throw new Error('suspendExpiredLicenses not implemented');
+  }
+
+  /**
+   * Extend license expiration to a new date.
+   * @param {string} licenseId - License ID
+   * @param {Date|string} newExpirationDate - New expiration date
+   * @param {Object} context - Actor context
+   * @returns {Promise<License>}
+   */
+  async extendLicenseExpiration(licenseId, newExpirationDate, context = {}) {
+    throw new Error('extendLicenseExpiration not implemented');
+  }
+
+  /**
+   * Reactivate a previously expired/suspended license.
+   * @param {string} licenseId - License ID
+   * @param {Object} context - Actor context
+   * @returns {Promise<License>}
+   */
+  async reactivateLicense(licenseId, context = {}) {
+    throw new Error('reactivateLicense not implemented');
+  }
+
+  /**
+   * Return all distinct agent names currently linked to licenses.
+   * @returns {Promise<string[]>}
+   */
+  async getAllAgentNames() {
+    throw new Error('getAllAgentNames not implemented');
   }
 }

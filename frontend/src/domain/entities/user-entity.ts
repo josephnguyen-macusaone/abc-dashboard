@@ -47,7 +47,11 @@ export class User {
    * Check if user has manager privileges or higher
    */
   isManagerOrHigher(): boolean {
-    return this.role === UserRole.ADMIN || this.role === UserRole.MANAGER;
+    return (
+      this.role === UserRole.ADMIN ||
+      this.role === UserRole.ACCOUNTANT ||
+      this.role === UserRole.MANAGER
+    );
   }
 
   /**
@@ -214,7 +218,10 @@ export class User {
  */
 export enum UserRole {
   ADMIN = 'admin',
+  ACCOUNTANT = 'accountant',
   MANAGER = 'manager',
+  TECH = 'tech',
+  AGENT = 'agent',
   STAFF = 'staff',
 }
 

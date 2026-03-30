@@ -7,6 +7,11 @@ import {
   requireExternalLicenseSync,
   suspiciousActivityMonitor,
 } from '../middleware/license-access-control-middleware.js';
+import {
+  checkLicenseCreationPermission,
+  checkLicenseAccessPermission,
+  checkLicenseBulkOperationPermission,
+} from '../middleware/license-management.middleware.js';
 import { validateRequest, validateParams } from '../middleware/validation-middleware.js';
 import { licenseSchemas } from '../api/v1/schemas/license.schemas.js';
 
@@ -158,7 +163,12 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       404:
    *         description: License not found in external API
    */
-  router.post('/sync/:appid', controller.syncSingleLicense);
+  router.post(
+    '/sync/:appid',
+    requireExternalLicenseSync,
+    syncOperationRateLimit,
+    controller.syncSingleLicense
+  );
 
   /**
    * @swagger
@@ -211,7 +221,12 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                           items:
    *                             type: object
    */
-  router.post('/sync/pending', controller.syncPendingLicenses);
+  router.post(
+    '/sync/pending',
+    requireExternalLicenseSync,
+    syncOperationRateLimit,
+    controller.syncPendingLicenses
+  );
 
   /**
    * @swagger
@@ -264,7 +279,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                           format: date-time
    *                           nullable: true
    */
-  router.get('/sync/status', controller.getSyncStatus);
+  router.get('/sync/status', checkLicenseAccessPermission('read'), controller.getSyncStatus);
 
   // ========================================================================
   // License Management Routes
@@ -359,7 +374,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *             schema:
    *               $ref: '#/components/schemas/ExternalLicenseListResponse'
    */
-  router.get('/', controller.getLicenses);
+  router.get('/', checkLicenseAccessPermission('list'), controller.getLicenses);
 
   /**
    * @swagger
@@ -398,7 +413,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                             failedSync:
    *                               type: integer
    */
-  router.get('/stats', controller.getLicenseStats);
+  router.get('/stats', checkLicenseAccessPermission('read'), controller.getLicenseStats);
 
   /**
    * @swagger
@@ -437,7 +452,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                         count:
    *                           type: integer
    */
-  router.get('/expiring', controller.getExpiringLicenses);
+  router.get('/expiring', checkLicenseAccessPermission('read'), controller.getExpiringLicenses);
 
   /**
    * @swagger
@@ -467,7 +482,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                         count:
    *                           type: integer
    */
-  router.get('/expired', controller.getExpiredLicenses);
+  router.get('/expired', checkLicenseAccessPermission('read'), controller.getExpiredLicenses);
 
   /**
    * @swagger
@@ -504,7 +519,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                         count:
    *                           type: integer
    */
-  router.get('/organization/:dba', controller.getLicensesByOrganization);
+  router.get(
+    '/organization/:dba',
+    checkLicenseAccessPermission('read'),
+    controller.getLicensesByOrganization
+  );
 
   // ========================================================================
   // Single License CRUD Routes
@@ -636,14 +655,15 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       404:
    *         description: License not found
    */
-  router.get('/:id', controller.getLicenseById);
+  router.get('/:id', checkLicenseAccessPermission('read'), controller.getLicenseById);
   router.put(
     '/:id',
+    checkLicenseAccessPermission('update'),
     validateParams(licenseSchemas.licenseId),
     validateRequest(licenseSchemas.updateExternalLicense),
     controller.updateLicense
   );
-  router.delete('/:id', controller.deleteLicense);
+  router.delete('/:id', checkLicenseAccessPermission('delete'), controller.deleteLicense);
 
   /**
    * @swagger
@@ -678,7 +698,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       404:
    *         description: License not found
    */
-  router.get('/appid/:appid', controller.getLicenseByAppId);
+  router.get('/appid/:appid', checkLicenseAccessPermission('read'), controller.getLicenseByAppId);
 
   /**
    * @swagger
@@ -714,7 +734,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       404:
    *         description: License not found
    */
-  router.get('/email/:email', controller.getLicenseByEmail);
+  router.get('/email/:email', checkLicenseAccessPermission('read'), controller.getLicenseByEmail);
 
   /**
    * @swagger
@@ -749,7 +769,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       404:
    *         description: License not found
    */
-  router.get('/countid/:countid', controller.getLicenseByCountId);
+  router.get(
+    '/countid/:countid',
+    checkLicenseAccessPermission('read'),
+    controller.getLicenseByCountId
+  );
 
   // ========================================================================
   // Bulk Operations Routes
@@ -818,7 +842,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                         license:
    *                           $ref: '#/components/schemas/ExternalLicense'
    */
-  router.post('/', controller.createLicense);
+  router.post('/', checkLicenseCreationPermission(), controller.createLicense);
 
   /**
    * @swagger
@@ -873,7 +897,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                         requested:
    *                           type: integer
    */
-  router.put('/bulk/update', controller.bulkUpdateLicenses);
+  router.put('/bulk/update', checkLicenseBulkOperationPermission(), controller.bulkUpdateLicenses);
 
   /**
    * @swagger
@@ -915,7 +939,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *                         requested:
    *                           type: integer
    */
-  router.delete('/bulk/delete', controller.bulkDeleteLicenses);
+  router.delete(
+    '/bulk/delete',
+    checkLicenseBulkOperationPermission(),
+    controller.bulkDeleteLicenses
+  );
 
   // ========================================================================
   // MISSING ENDPOINTS FROM EXTERNAL API
@@ -946,7 +974,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License updated successfully
    */
-  router.put('/licenses/email/:email', controller.updateLicenseByEmail);
+  router.put(
+    '/licenses/email/:email',
+    checkLicenseAccessPermission('update'),
+    controller.updateLicenseByEmail
+  );
 
   /**
    * @swagger
@@ -967,7 +999,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License deleted successfully
    */
-  router.delete('/licenses/email/:email', controller.deleteLicenseByEmail);
+  router.delete(
+    '/licenses/email/:email',
+    checkLicenseAccessPermission('delete'),
+    controller.deleteLicenseByEmail
+  );
 
   /**
    * @swagger
@@ -994,7 +1030,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License updated successfully
    */
-  router.put('/licenses/countid/:countid', controller.updateLicenseByCountId);
+  router.put(
+    '/licenses/countid/:countid',
+    checkLicenseAccessPermission('update'),
+    controller.updateLicenseByCountId
+  );
 
   /**
    * @swagger
@@ -1015,7 +1055,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License deleted successfully
    */
-  router.delete('/licenses/countid/:countid', controller.deleteLicenseByCountId);
+  router.delete(
+    '/licenses/countid/:countid',
+    checkLicenseAccessPermission('delete'),
+    controller.deleteLicenseByCountId
+  );
 
   /**
    * @swagger
@@ -1041,7 +1085,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License reset successfully
    */
-  router.post('/licenses/reset', controller.resetLicense);
+  router.post('/licenses/reset', checkLicenseAccessPermission('update'), controller.resetLicense);
 
   /**
    * @swagger
@@ -1067,7 +1111,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       201:
    *         description: Licenses bulk created successfully
    */
-  router.post('/licenses/bulk', controller.bulkCreateLicenses);
+  router.post(
+    '/licenses/bulk',
+    checkLicenseBulkOperationPermission(),
+    controller.bulkCreateLicenses
+  );
 
   /**
    * @swagger
@@ -1088,7 +1136,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       201:
    *         description: License row added successfully
    */
-  router.post('/licenses/row', controller.addRowLicense);
+  router.post('/licenses/row', checkLicenseCreationPermission(), controller.addRowLicense);
 
   /**
    * @swagger
@@ -1134,7 +1182,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: SMS payments retrieved successfully
    */
-  router.get('/sms-payments', controller.getSmsPayments);
+  router.get('/sms-payments', checkLicenseAccessPermission('sms_history'), controller.getSmsPayments);
 
   /**
    * @swagger
@@ -1155,7 +1203,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: SMS payment added successfully
    */
-  router.post('/add-sms-payment', controller.addSmsPayment);
+  router.post('/add-sms-payment', checkLicenseAccessPermission('sms_payment'), controller.addSmsPayment);
 
   /**
    * @swagger
@@ -1198,7 +1246,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License analytics retrieved successfully
    */
-  router.get('/license-analytic', controller.getLicenseAnalytics);
+  router.get('/license-analytic', checkLicenseAccessPermission('read'), controller.getLicenseAnalytics);
 
   return router;
 };

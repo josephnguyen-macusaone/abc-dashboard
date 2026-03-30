@@ -2,6 +2,7 @@ import { licenseSyncConfig } from '../../infrastructure/config/license-sync-conf
 import { externalLicenseValidator } from '../utils/validation/external-license-validator.js';
 import { licenseSyncMonitor } from '../../infrastructure/monitoring/license-sync-monitor.js';
 import logger from '../utils/logger.js';
+import { IExternalLicenseApiService } from '../../application/interfaces/i-external-license-api-service.js';
 import { withServiceRetry, withTimeout } from '../utils/reliability/retry.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 
@@ -16,8 +17,9 @@ const ANSI_RESET = '\x1b[0m';
  * API Base URL: Configurable via LICENSE_SYNC_CONFIG
  * Authentication: x-api-key header
  */
-export class ExternalLicenseApiService {
+export class ExternalLicenseApiService extends IExternalLicenseApiService {
   constructor() {
+    super();
     this.baseUrl = licenseSyncConfig.external.baseUrl;
     this.apiKey = licenseSyncConfig.external.apiKey;
     this.correlationId = null;

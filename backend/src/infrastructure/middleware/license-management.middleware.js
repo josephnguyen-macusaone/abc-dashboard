@@ -7,6 +7,7 @@ import { InsufficientPermissionsException } from '../../domain/exceptions/domain
 import logger from '../../shared/utils/logger.js';
 import { ROLES } from '../../shared/constants/roles.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import { isRoleModuleEnabled } from '../config/role-module-flags.js';
 
 /**
  * Check if user can create licenses
@@ -15,8 +16,8 @@ import { sendErrorResponse } from '../../shared/http/error-responses.js';
  * @return {boolean} - Whether creation is allowed
  */
 function canCreateLicense(currentUser) {
-  // Only admin can create licenses
-  return currentUser.role === ROLES.ADMIN;
+  // Admin, accountant, and tech can create licenses
+  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.TECH].includes(currentUser.role);
 }
 
 /**
@@ -26,8 +27,8 @@ function canCreateLicense(currentUser) {
  * @return {boolean} - Whether update is allowed
  */
 function canUpdateLicense(currentUser) {
-  // Admin can update licenses
-  return currentUser.role === ROLES.ADMIN;
+  // Admin, accountant, and tech can update licenses
+  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.TECH].includes(currentUser.role);
 }
 
 /**
@@ -37,8 +38,20 @@ function canUpdateLicense(currentUser) {
  * @return {boolean} - Whether deletion is allowed
  */
 function canDeleteLicense(currentUser) {
-  // Only admin can delete licenses
-  return currentUser.role === ROLES.ADMIN;
+  // Only admin and accountant can delete licenses
+  return [ROLES.ADMIN, ROLES.ACCOUNTANT].includes(currentUser.role);
+}
+
+function canAddSmsPayment(currentUser) {
+  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT].includes(
+    currentUser.role
+  );
+}
+
+function canViewSmsPayments(currentUser) {
+  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT].includes(
+    currentUser.role
+  );
 }
 
 /**
@@ -48,9 +61,15 @@ function canDeleteLicense(currentUser) {
  * @return {boolean} - Whether viewing is allowed
  */
 function canViewLicense(currentUser) {
-  // Admin and managers can view all licenses
-  // Staff can view their assigned licenses
-  return [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF].includes(currentUser.role);
+  // All known roles can view licenses; assignment-level filtering is handled at query/use-case level
+  return [
+    ROLES.ADMIN,
+    ROLES.ACCOUNTANT,
+    ROLES.MANAGER,
+    ROLES.TECH,
+    ROLES.AGENT,
+    ROLES.STAFF,
+  ].includes(currentUser.role);
 }
 
 /**
@@ -77,7 +96,15 @@ export function checkLicenseCreationPermission() {
           userId: currentUser.id,
           userRole: currentUser.role,
         });
-        throw new InsufficientPermissionsException('Only administrators can create licenses');
+        throw new InsufficientPermissionsException(
+          'You do not have permission to create licenses'
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
+        );
       }
 
       next();
@@ -127,6 +154,12 @@ export function checkLicenseAccessPermission(operation) {
         case 'delete':
           hasPermission = canDeleteLicense(currentUser);
           break;
+        case 'sms_payment':
+          hasPermission = canAddSmsPayment(currentUser);
+          break;
+        case 'sms_history':
+          hasPermission = canViewSmsPayments(currentUser);
+          break;
         default:
           hasPermission = false;
       }
@@ -140,6 +173,12 @@ export function checkLicenseAccessPermission(operation) {
         });
         throw new InsufficientPermissionsException(
           `You do not have permission to ${operation} licenses`
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
         );
       }
 
@@ -176,15 +215,21 @@ export function checkLicenseBulkOperationPermission() {
         throw new InsufficientPermissionsException('Authentication required');
       }
 
-      // Only admin can perform bulk operations
-      if (currentUser.role !== ROLES.ADMIN) {
+      // Only admin and accountant can perform bulk operations
+      if (![ROLES.ADMIN, ROLES.ACCOUNTANT].includes(currentUser.role)) {
         logger.warn('Unauthorized license bulk operation attempt', {
           correlationId: req.correlationId,
           userId: currentUser.id,
           userRole: currentUser.role,
         });
         throw new InsufficientPermissionsException(
-          'Only administrators can perform bulk license operations'
+          'You do not have permission to perform bulk license operations'
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
         );
       }
 

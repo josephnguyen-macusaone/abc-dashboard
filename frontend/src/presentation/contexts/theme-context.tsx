@@ -1,6 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+  useRef,
+  startTransition,
+} from 'react';
 import { THEMES, THEME_CONFIG } from '@/shared/constants';
 import {
   getThemeData,
@@ -171,22 +180,22 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   // Hydration and initial setup
   useEffect(() => {
-    // Mark as hydrated
-    setIsHydrated(true);
+    startTransition(() => {
+      setIsHydrated(true);
 
-    // Apply initial theme (in case it wasn't applied by the script)
-    applyTheme(themeData.resolvedTheme);
+      applyTheme(themeData.resolvedTheme);
 
-    // Sync with any changes that happened during SSR
-    const currentThemeData = getThemeData();
-    if (
-      currentThemeData.theme !== themeData.theme ||
-      currentThemeData.resolvedTheme !== themeData.resolvedTheme
-    ) {
-      setThemeData(currentThemeData);
-      applyTheme(currentThemeData.resolvedTheme);
-    }
-  }, [applyTheme]); // Remove themeData from deps to avoid loops
+      const currentThemeData = getThemeData();
+      if (
+        currentThemeData.theme !== themeData.theme ||
+        currentThemeData.resolvedTheme !== themeData.resolvedTheme
+      ) {
+        setThemeData(currentThemeData);
+        applyTheme(currentThemeData.resolvedTheme);
+      }
+    });
+    // Intentionally omit themeData: run once after mount; theme changes use other effects.
+  }, [applyTheme]);
 
   // Cleanup transition timeout on unmount
   useEffect(() => {

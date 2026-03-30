@@ -1,5 +1,5 @@
 import { Home, Users, FileSpreadsheet } from 'lucide-react';
-import { PermissionUtils } from './auth';
+import { PermissionUtils, USER_ROLES } from './auth';
 import type { NavigationItem } from '@/presentation/components/molecules';
 
 /**
@@ -26,6 +26,18 @@ export function getNavigationItems(userRole?: string): NavigationItem[] {
       ...baseItems,
       { name: 'License Management', href: '/licenses', icon: FileSpreadsheet },
       { name: 'User Management', href: '/users', icon: Users },
+    ];
+  }
+
+  // Roles focused on license operations
+  if (
+    userRole === USER_ROLES.ACCOUNTANT ||
+    userRole === USER_ROLES.TECH ||
+    userRole === USER_ROLES.AGENT
+  ) {
+    return [
+      ...baseItems,
+      { name: 'License Management', href: '/licenses', icon: FileSpreadsheet },
     ];
   }
 

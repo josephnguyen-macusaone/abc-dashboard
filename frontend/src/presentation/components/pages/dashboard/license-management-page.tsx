@@ -29,6 +29,7 @@ const shouldShowError = (error: unknown): boolean => {
 
 export function LicenseManagementPage() {
   const currentUser = useAuthStore((s) => s.user);
+  const isAgentReadOnly = currentUser?.role === 'agent';
 
   const licenses = useLicenseStore(selectLicenses);
   const isLoading = useLicenseStore(selectLicenseLoading);
@@ -335,9 +336,10 @@ export function LicenseManagementPage() {
       licenses={licenses}
       isLoading={isLoading && licenses.length === 0}
       onLoadLicenses={loadLicenses}
-      onSaveLicenses={onSave}
-      onAddLicense={onAddRow}
-      onDeleteLicenses={onDeleteRows}
+      onSaveLicenses={isAgentReadOnly ? undefined : onSave}
+      onAddLicense={isAgentReadOnly ? undefined : onAddRow}
+      onDeleteLicenses={isAgentReadOnly ? undefined : onDeleteRows}
+      isReadOnly={isAgentReadOnly}
       dateRange={dateRange}
       onDateRangeChange={onDateRangeChange}
       onQueryChange={handleQueryChange}

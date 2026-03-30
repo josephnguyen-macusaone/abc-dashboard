@@ -1,6 +1,6 @@
 'use client';
 
-import { LoadingOverlay } from '@/presentation/components/atoms';
+import { LoadingOverlay, ScrollArea } from '@/presentation/components/atoms';
 import { AppSidebar, AppHeader, MobileOverlay } from '@/presentation/components/organisms';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -165,7 +165,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
       <MobileOverlay isOpen={sidebarOpen} onClose={handleSidebarClose} />
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-0 min-w-0">
+      <div className="flex min-h-0 flex-1 flex-col lg:pl-0 min-w-0">
         {/* Top bar */}
         <AppHeader
           sidebarOpen={sidebarOpen}
@@ -173,8 +173,11 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
           onSidebarCollapse={toggleCollapsed}
         />
 
-        {/* Page content - only vertical scrolling, horizontal scrolling happens inside tables */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+        {/* Page content — ScrollArea matches tables/sidebar; horizontal overflow stays inside nested scrollers */}
+        <ScrollArea
+          className="min-h-0 min-w-0 flex-1"
+          viewportClassName="overflow-x-hidden"
+        >
           <main className="p-4 lg:p-6 min-w-0">
             <SectionErrorBoundary
               variant="dashboard"
@@ -185,7 +188,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
               {children}
             </SectionErrorBoundary>
           </main>
-        </div>
+        </ScrollArea>
       </div>
 
       {/* Route transition loading overlay */}

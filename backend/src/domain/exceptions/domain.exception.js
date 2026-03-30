@@ -98,7 +98,7 @@ export class ValidationException extends DomainException {
 
 export class RequiredFieldMissingException extends DomainException {
   constructor(fieldName) {
-    super('REQUIRED_FIELD_MISSING', { fieldName });
+    super('MISSING_REQUIRED_FIELD', { fieldName });
   }
 }
 
@@ -171,8 +171,8 @@ export class ExternalServiceUnavailableException extends DomainException {
 }
 
 export class ConcurrentModificationException extends DomainException {
-  constructor(resource = 'Resource') {
-    super('CONCURRENT_MODIFICATION', { resource });
+  constructor(resource = 'Resource', additionalData = {}) {
+    super('CONCURRENT_MODIFICATION', { resource }, additionalData);
     this.message = `${resource} was modified by another process. Please refresh and try again.`;
   }
 }

@@ -6,7 +6,16 @@ import { ValidationException } from '../../../domain/exceptions/domain.exception
 import logger from '../../../shared/utils/logger.js';
 import { config } from '../../../infrastructure/config/config.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+/** @typedef {import('../../interfaces/i-token-service.js').ITokenService} ITokenService */
+/** @typedef {import('../../interfaces/i-email-service.js').IEmailService} IEmailService */
+
 export class RequestPasswordResetUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   * @param {ITokenService} tokenService
+   * @param {IEmailService} emailService
+   */
   constructor(userRepository, tokenService, emailService) {
     this.userRepository = userRepository;
     this.tokenService = tokenService;

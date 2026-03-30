@@ -306,17 +306,24 @@ export class UserRepository extends IUserRepository {
     let query = this.db(this.tableName);
     query = this._applyUserListFilters(query, filters);
 
-    const [totalCount, adminCount, managerCount, staffCount] = await Promise.all([
+    const [totalCount, adminCount, accountantCount, managerCount, techCount, agentCount, staffCount] =
+      await Promise.all([
       query.clone().count('id as count').first(),
       query.clone().where('role', 'admin').count('id as count').first(),
+      query.clone().where('role', 'accountant').count('id as count').first(),
       query.clone().where('role', 'manager').count('id as count').first(),
+      query.clone().where('role', 'tech').count('id as count').first(),
+      query.clone().where('role', 'agent').count('id as count').first(),
       query.clone().where('role', 'staff').count('id as count').first(),
     ]);
 
     return {
       total: parseInt(totalCount?.count || 0),
       admin: parseInt(adminCount?.count || 0),
+      accountant: parseInt(accountantCount?.count || 0),
       manager: parseInt(managerCount?.count || 0),
+      tech: parseInt(techCount?.count || 0),
+      agent: parseInt(agentCount?.count || 0),
       staff: parseInt(staffCount?.count || 0),
     };
   }

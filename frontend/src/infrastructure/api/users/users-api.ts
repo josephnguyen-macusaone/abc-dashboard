@@ -120,7 +120,7 @@ export class UserApiService {
    */
   static async deleteUser(id: string): Promise<{ message: string }> {
     try {
-      const response = await httpClient.delete<ApiResponse<any>>(`/users/${id}`);
+      const response = await httpClient.delete<ApiResponse<{ message?: string } | string>>(`/users/${id}`);
 
       // For delete operations, the message might be in data or at the top level
       if (response.data) {

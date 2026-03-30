@@ -34,6 +34,7 @@ const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
 interface LicensesDataGridProps {
   data: LicenseRecord[];
   isLoading?: boolean;
+  readOnly?: boolean;
   height?: number;
   className?: string;
   onSave?: (data: LicenseRecord[]) => Promise<void>;
@@ -62,6 +63,7 @@ interface LicensesDataGridProps {
 export function LicensesDataGrid({
   data: initialData,
   isLoading = false,
+  readOnly = false,
   height = 1200,
   className,
   onSave,
@@ -135,6 +137,9 @@ export function LicensesDataGrid({
   }, []);
 
   const handleRowAdd = React.useCallback(async () => {
+    if (readOnly) {
+      throw new Error('Read-only mode does not allow adding rows');
+    }
     if (!onAddRow) {
       throw new Error('onAddRow callback is required for adding new license rows');
     }
@@ -151,7 +156,7 @@ export function LicensesDataGrid({
       logger.error('Failed to add new license row', { error });
       throw error;
     }
-  }, [onAddRow]);
+  }, [onAddRow, readOnly]);
 
   const handleRowsDelete = React.useCallback(
     async (rows: LicenseRecord[], indices: number[]) => {
@@ -166,6 +171,7 @@ export function LicensesDataGrid({
 
   const handleSave = React.useCallback(async () => {
     if (!onSave) return;
+    if (readOnly) return;
 
     setIsSaving(true);
     try {
@@ -173,12 +179,24 @@ export function LicensesDataGrid({
       setHasChanges(false);
       // Toast messages are handled by the parent component (onSave callback)
     } catch (error) {
+      const status =
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error &&
+        typeof (error as { status?: unknown }).status === "number"
+          ? ((error as { status: number }).status)
+          : undefined;
+      if (status === 409) {
+        // Conflict means backend has fresher data. Drop local dirty state so fresh store data can render.
+        setHasChanges(false);
+        setData(initialData);
+      }
       // Error toast is handled by the parent component (onSave callback)
       throw error; // Re-throw to let parent handle the error
     } finally {
       setIsSaving(false);
     }
-  }, [data, onSave]);
+  }, [data, onSave, readOnly]);
 
   const handleReset = React.useCallback(() => {
     setData(initialData);
@@ -243,10 +261,10 @@ export function LicensesDataGrid({
     },
     onDataChange: handleDataChange,
     onRowAdd: handleRowAdd, // Use local handleRowAdd for data grid functionality
-    onRowsDelete: handleRowsDelete,
+    onRowsDelete: readOnly ? undefined : handleRowsDelete,
     rowHeight: "medium",
     enableSearch: false, // Disable built-in search, we'll handle it manually
-    enablePaste: true,
+    enablePaste: !readOnly,
     autoFocus: true,
     pageCount: pageCount ?? -1,
     totalRows: totalCount,
@@ -706,7 +724,7 @@ export function LicensesDataGrid({
                 multiple
               />
             )}
-            {hasChanges && (
+            {hasChanges && !readOnly && (
               <>
                 <Button
                   variant="outline"
@@ -748,7 +766,7 @@ export function LicensesDataGrid({
             <Typography variant="body-s" className="text-muted-foreground mb-4">
               Get started by adding your first license record.
             </Typography>
-            <Button onClick={handleRowAdd}>Add License</Button>
+            {!readOnly ? <Button onClick={handleRowAdd}>Add License</Button> : null}
           </div>
         ) : (
           <DataGrid

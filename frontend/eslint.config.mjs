@@ -29,6 +29,18 @@ const eslintConfig = defineConfig([
       "no-console": "off",
     },
   },
+  // Node-style config and tests: CommonJS `require` is expected
+  {
+    files: [
+      "jest.config.js",
+      "jest.setup.js",
+      "next.config.ts",
+      "tests/**/*.{js,jsx,ts,tsx}",
+    ],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -70,7 +70,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     deleteUser: null as string | null,
   });
 
-  const executeWithErrorHandling = useCallback(async <T = any>(
+  const executeWithErrorHandling = useCallback(async <T = unknown>(
     operation: () => Promise<T>,
     operationName: keyof typeof loadingStates,
     errorMessage: string

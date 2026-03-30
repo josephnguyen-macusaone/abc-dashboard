@@ -9,7 +9,7 @@ import logger from '../../../shared/utils/logger.js';
  * @returns { Promise<void> }
  */
 export async function seed(knex) {
-  logger.info('Creating admin and manager users...');
+  logger.info('Creating default users...');
 
   // Hash password helper
   const hashPassword = async (password) => {
@@ -17,32 +17,22 @@ export async function seed(knex) {
     return bcrypt.hash(password, salt);
   };
 
-  // Check and create admin user
-  const existingAdmin = await knex('users').where({ username: 'admin' }).first();
+  async function ensureUser(userData) {
+    const existing = await knex('users').where({ username: userData.username }).first();
+    if (existing) {
+      logger.info(`${userData.username} user already exists, skipping creation`);
+      return;
+    }
 
-  if (!existingAdmin) {
-    const adminData = {
-      username: 'admin',
-      email: 'admin@abcsalon.us',
-      password: 'Admin123!',
-      displayName: 'System Administrator',
-      role: 'admin',
-      phone: '+1-555-0100',
-      profile: {
-        bio: 'System administrator with full access',
-      },
-    };
-
-    const hashedPassword = await hashPassword(adminData.password);
-
+    const hashedPassword = await hashPassword(userData.password);
     await knex('users').insert({
       id: knex.raw('gen_random_uuid()'),
-      username: adminData.username,
+      username: userData.username,
       hashed_password: hashedPassword,
-      email: adminData.email,
-      display_name: adminData.displayName,
-      role: adminData.role,
-      phone: adminData.phone,
+      email: userData.email,
+      display_name: userData.displayName,
+      role: userData.role,
+      phone: userData.phone,
       is_active: true,
       is_first_login: false,
       requires_password_change: false,
@@ -50,50 +40,54 @@ export async function seed(knex) {
       created_at: new Date(),
       updated_at: new Date(),
     });
-
-    logger.info('Admin user created successfully');
-    logger.info('Login credentials: admin / admin@abcsalon.us / Admin123!');
-  } else {
-    logger.info('Admin user already exists, skipping creation');
+    logger.info(`${userData.username} user created successfully`);
+    logger.info(
+      `Login credentials: ${userData.username} / ${userData.email} / ${userData.password}`
+    );
   }
 
-  // Check and create manager user
-  const existingManager = await knex('users').where({ username: 'manager' }).first();
+  await ensureUser({
+    username: 'admin',
+    email: 'admin@abcsalon.us',
+    password: 'Admin123!',
+    displayName: 'System Administrator',
+    role: 'admin',
+    phone: '+1-555-0100',
+  });
 
-  if (!existingManager) {
-    const managerData = {
-      username: 'manager',
-      email: 'manager@abcsalon.us',
-      password: 'Manager123!',
-      displayName: 'Manager',
-      role: 'admin', // Use admin role for now (or create 'manager' role if needed)
-      phone: '+1-555-0101',
-      profile: {
-        bio: 'Manager with administrative access',
-      },
-    };
+  await ensureUser({
+    username: 'manager',
+    email: 'manager@abcsalon.us',
+    password: 'Manager123!',
+    displayName: 'Manager',
+    role: 'admin',
+    phone: '+1-555-0101',
+  });
 
-    const hashedPassword = await hashPassword(managerData.password);
+  await ensureUser({
+    username: 'tech',
+    email: 'tech@abcsalon.us',
+    password: 'Tech123!',
+    displayName: 'Tech User',
+    role: 'tech',
+    phone: '+1-555-0102',
+  });
 
-    await knex('users').insert({
-      id: knex.raw('gen_random_uuid()'),
-      username: managerData.username,
-      hashed_password: hashedPassword,
-      email: managerData.email,
-      display_name: managerData.displayName,
-      role: managerData.role,
-      phone: managerData.phone,
-      is_active: true,
-      is_first_login: false,
-      requires_password_change: false,
-      lang_key: 'en',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+  await ensureUser({
+    username: 'accountant',
+    email: 'accountant@abcsalon.us',
+    password: 'Accountant123!',
+    displayName: 'Accountant User',
+    role: 'accountant',
+    phone: '+1-555-0103',
+  });
 
-    logger.info('Manager user created successfully');
-    logger.info('Login credentials: manager / manager@abcsalon.us / Manager123!');
-  } else {
-    logger.info('Manager user already exists, skipping creation');
-  }
+  await ensureUser({
+    username: 'agent',
+    email: 'agent@abcsalon.us',
+    password: 'Agent123!',
+    displayName: 'Agent User',
+    role: 'agent',
+    phone: '+1-555-0104',
+  });
 }

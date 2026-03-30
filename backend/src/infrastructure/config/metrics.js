@@ -60,21 +60,21 @@ async function isPostgresConnected(db) {
 async function queryPostgresInfo(db) {
   const [dbInfo, tableCount, dbSize, connInfo] = await Promise.all([
     db.raw(`
-        SELECT 
+        SELECT
           current_database() as database_name,
           current_user as current_user,
           version() as version
       `),
     db.raw(`
-        SELECT COUNT(*) as count 
-        FROM information_schema.tables 
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
         WHERE table_schema = 'public'
       `),
     db.raw(`
         SELECT pg_size_pretty(pg_database_size(current_database())) as size
       `),
     db.raw(`
-        SELECT 
+        SELECT
           numbackends as active_connections,
           xact_commit as transactions_committed,
           xact_rollback as transactions_rollback,
@@ -85,7 +85,7 @@ async function queryPostgresInfo(db) {
           tup_inserted as rows_inserted,
           tup_updated as rows_updated,
           tup_deleted as rows_deleted
-        FROM pg_stat_database 
+        FROM pg_stat_database
         WHERE datname = current_database()
       `),
   ]);

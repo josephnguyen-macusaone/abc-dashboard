@@ -11,7 +11,6 @@ import {
 import {
   UpdateUserResponseDto,
   UsersListResponseDto,
-  UserStatsResponseDto,
   UserProfileDto,
   CreateUserResponseDto
 } from '@/application/dto/api-dto';

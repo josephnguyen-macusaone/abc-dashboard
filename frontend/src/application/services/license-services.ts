@@ -343,6 +343,7 @@ export class LicenseManagementService {
         startsAt: license.startsAt.toISOString(),
         status: license.status,
         cancelDate: license.cancelDate?.toISOString(),
+        dueDate: license.dueDate?.toISOString(),
         plan: license.plan,
         term: license.term,
         seatsTotal: license.seatsTotal,
@@ -409,6 +410,7 @@ export class LicenseManagementService {
         startsAt: license.startsAt.toISOString(),
         status: license.status,
         cancelDate: license.cancelDate?.toISOString(),
+        dueDate: license.dueDate?.toISOString(),
         plan: license.plan,
         term: license.term,
         seatsTotal: license.seatsTotal,
@@ -650,6 +652,7 @@ export class LicenseManagementService {
         cancelDate: dto.cancelDate,
         plan: dto.plan,
         term: dto.term,
+        dueDate: dto.dueDate,
         seatsTotal: dto.seatsTotal,
         seatsUsed: dto.seatsUsed,
         lastPayment: dto.lastPayment,
@@ -660,7 +663,9 @@ export class LicenseManagementService {
         agents: dto.agents,
         agentsName: dto.agentsName,
         agentsCost: dto.agentsCost,
-        notes: dto.notes
+        notes: dto.notes,
+        createdAt: dto.createdAt,
+        updatedAt: dto.updatedAt
       })),
       pagination: result.pagination
     };
@@ -679,6 +684,7 @@ export class LicenseManagementService {
       cancelDate: result.cancelDate,
       plan: result.plan,
       term: result.term,
+      dueDate: result.dueDate,
       seatsTotal: result.seatsTotal,
       seatsUsed: result.seatsUsed,
       lastPayment: result.lastPayment,
@@ -689,7 +695,9 @@ export class LicenseManagementService {
       agents: result.agents,
       agentsName: result.agentsName,
       agentsCost: result.agentsCost,
-      notes: result.notes
+      notes: result.notes,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt
     };
   }
 
@@ -706,6 +714,7 @@ export class LicenseManagementService {
       cancelDate: result.cancelDate,
       plan: result.plan,
       term: result.term,
+      dueDate: result.dueDate,
       seatsTotal: result.seatsTotal,
       seatsUsed: result.seatsUsed,
       lastPayment: result.lastPayment,
@@ -716,7 +725,9 @@ export class LicenseManagementService {
       agents: result.agents,
       agentsName: result.agentsName,
       agentsCost: result.agentsCost,
-      notes: result.notes
+      notes: result.notes,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt
     };
   }
 
@@ -733,6 +744,7 @@ export class LicenseManagementService {
       cancelDate: result.cancelDate,
       plan: result.plan,
       term: result.term,
+      dueDate: result.dueDate,
       seatsTotal: result.seatsTotal,
       seatsUsed: result.seatsUsed,
       lastPayment: result.lastPayment,
@@ -743,7 +755,9 @@ export class LicenseManagementService {
       agents: result.agents,
       agentsName: result.agentsName,
       agentsCost: result.agentsCost,
-      notes: result.notes
+      notes: result.notes,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt
     };
   }
 
@@ -835,6 +849,16 @@ export class LicenseManagementService {
         }
 
         normalizedUpdate.id = actualLicenseId;
+
+        const baseline = currentLicenses.find((l) => String(l.id) === String(actualLicenseId));
+        const row = normalizedUpdate as Record<string, unknown>;
+        if (
+          row.expectedUpdatedAt === undefined &&
+          row.updatedAt === undefined &&
+          baseline?.updatedAt
+        ) {
+          row.expectedUpdatedAt = baseline.updatedAt;
+        }
 
         // Normalize agentsName to string (backend expects string)
         const rawAgentsName = (normalizedUpdate as Record<string, unknown>).agentsName;
