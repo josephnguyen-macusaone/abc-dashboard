@@ -189,8 +189,12 @@ jobs:
           COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
         run: |
           echo "Deploying on server..."
-          ssh -i ~/.ssh/deploy_key ${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }} << ENDSSH
-            set -e
+          ssh -T -i ~/.ssh/deploy_key \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            ${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }} << ENDSSH
+            set -euo pipefail
             cd /root/abc-dashboard
 
             echo "=========================================="
@@ -227,8 +231,8 @@ jobs:
             docker tag abc-license-frontend:latest abc-license-frontend:rollback 2>/dev/null || true
 
             echo "Loading new images..."
-            docker load < dist/backend.tar.gz
-            docker load < dist/frontend.tar.gz
+            timeout 15m docker load < dist/backend.tar.gz
+            timeout 10m docker load < dist/frontend.tar.gz
             rm -f dist/backend.tar.gz dist/frontend.tar.gz
 
             echo "Verifying images..."
@@ -245,10 +249,10 @@ jobs:
             mkdir -p backend/logs && chown -R 1001:1001 backend/logs
 
             echo "Running database migrations..."
-            docker compose run --rm -e NODE_ENV=production backend node src/infrastructure/scripts/migrate.js
+            timeout 10m docker compose run --rm -T -e NODE_ENV=production backend node src/infrastructure/scripts/migrate.js
 
             echo "Starting services..."
-            docker compose up -d
+            timeout 5m docker compose up -d
 
             echo "Waiting for services to stabilize..."
             sleep 15
@@ -264,7 +268,11 @@ jobs:
       - name: Verify deployment
         run: |
           echo "Verifying deployment..."
-          ssh -i ~/.ssh/deploy_key ${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }} << 'ENDSSH'
+          ssh -T -i ~/.ssh/deploy_key \
+            -o ConnectTimeout=20 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            ${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }} << 'ENDSSH'
             cd /root/abc-dashboard
 
             # Wait up to 60 s for backend health
