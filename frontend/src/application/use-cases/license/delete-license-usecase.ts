@@ -1,4 +1,4 @@
-import { licenseApiService, LicenseServiceContract } from '@/application/services/license-services';
+import { LicenseServiceContract } from '@/application/services/license-services';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**

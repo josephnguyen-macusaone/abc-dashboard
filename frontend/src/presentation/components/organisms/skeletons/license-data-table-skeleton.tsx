@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
+import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
 import type { LicenseColumnId } from "@/shared/constants/license";
 import { getRowHeightValue } from "@/shared/lib/data-grid";
@@ -74,7 +75,7 @@ export function LicenseDataTableSkeleton({
   rowCount = 20,
 }: LicenseDataTableSkeletonProps) {
   const content = (
-    <div className={cn("flex w-full flex-col gap-4 overflow-auto", !showHeader && className)}>
+    <div className={cn("flex w-full flex-col gap-4", !showHeader && className)}>
       {/* Toolbar - same wrapper pattern as user skeleton; Skeleton placeholders */}
       <div
         role="toolbar"
@@ -105,7 +106,7 @@ export function LicenseDataTableSkeleton({
       </div>
 
       {/* Table - same structure as user skeleton */}
-      <div className="overflow-x-auto rounded-md border">
+      <ScrollArea className="max-h-[min(70vh,36rem)] w-full rounded-md border">
         <Table>
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
@@ -145,7 +146,7 @@ export function LicenseDataTableSkeleton({
             ))}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
 
       {/* Pagination - same structure as user skeleton */}
       <div className="flex flex-col gap-2.5">

@@ -206,7 +206,7 @@ const formatMessage = (
   }
 
   const timestamp = formatTimestamp();
-  const { correlationId, userId, category, ...restMeta } = meta;
+  const { correlationId, userId, category, ..._restMeta } = meta;
 
   let logMessage = `[${timestamp}][${level.toUpperCase()}]`;
 
@@ -311,7 +311,7 @@ const logToConsoleImmediate = (
   const startTime = LOG_CONFIG.performance.enabled ? (typeof window !== 'undefined' && window.performance ? window.performance.now() : Date.now()) : 0;
 
   const formattedMessage = formatMessage(level, message, meta);
-  const { correlationId, userId, category, ...restMeta } = meta;
+  const { correlationId: _c, userId: _u, category: _cat, ...restMeta } = meta;
 
   // Use appropriate console method
   const consoleMethod = level === 'error' ? 'error' :

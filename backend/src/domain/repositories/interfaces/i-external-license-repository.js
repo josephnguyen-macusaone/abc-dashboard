@@ -68,6 +68,15 @@ export class IExternalLicenseRepository {
   }
 
   /**
+   * Compatibility alias for create/upsert in some use-cases.
+   * @param {Object} licenseData - License data
+   * @returns {Promise<ExternalLicense>}
+   */
+  async save(licenseData) {
+    throw new Error('save not implemented');
+  }
+
+  /**
    * Update an existing external license
    * @param {string} id - License ID
    * @param {Object} updates - Update data
@@ -214,5 +223,76 @@ export class IExternalLicenseRepository {
    */
   async getLicenseStats() {
     throw new Error('getLicenseStats not implemented');
+  }
+
+  /**
+   * Find many external licenses by appids.
+   * @param {string[]} appids - External app IDs
+   * @returns {Promise<Map<string, ExternalLicense>>}
+   */
+  async findByAppIds(appids) {
+    throw new Error('findByAppIds not implemented');
+  }
+
+  /**
+   * Count all external licenses.
+   * @returns {Promise<number>}
+   */
+  async countAll() {
+    throw new Error('countAll not implemented');
+  }
+
+  /**
+   * Get stats with filter constraints.
+   * @param {Object} filters - Filter criteria
+   * @returns {Promise<Object>}
+   */
+  async getLicenseStatsWithFilters(filters = {}) {
+    throw new Error('getLicenseStatsWithFilters not implemented');
+  }
+
+  /**
+   * Get latest external sync timestamp.
+   * @returns {Promise<Date|null>}
+   */
+  async getLastSyncTimestamp() {
+    throw new Error('getLastSyncTimestamp not implemented');
+  }
+
+  /**
+   * Persist sync state metadata.
+   * @param {Object} state - Sync state payload
+   * @returns {Promise<void>}
+   */
+  async updateSyncState(state) {
+    throw new Error('updateSyncState not implemented');
+  }
+
+  /**
+   * Persist sync failures for diagnostics.
+   * @param {Object[]} failures - Failure records
+   * @returns {Promise<void>}
+   */
+  async recordSyncFailures(failures = []) {
+    throw new Error('recordSyncFailures not implemented');
+  }
+
+  /**
+   * Sync internal licenses to external store/api.
+   * @param {Object} internalLicenseRepository - Internal license repository
+   * @param {Object} externalLicenseApiService - External API service
+   * @returns {Promise<Object>}
+   */
+  async syncFromInternalLicenses(internalLicenseRepository, externalLicenseApiService) {
+    throw new Error('syncFromInternalLicenses not implemented');
+  }
+
+  /**
+   * Sync external licenses to internal store.
+   * @param {Object} internalLicenseRepository - Internal license repository
+   * @returns {Promise<Object>}
+   */
+  async syncToInternalLicenses(internalLicenseRepository) {
+    throw new Error('syncToInternalLicenses not implemented');
   }
 }

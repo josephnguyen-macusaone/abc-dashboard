@@ -48,34 +48,6 @@ interface GetUserTableColumnsProps {
   onToggleStatus?: (user: User) => void;
 }
 
-/**
- * Check if the current user can toggle status of the target user
- * Status can only be edited by higher-level users:
- * - Admin can edit status of manager and staff
- * - Manager can edit status of staff only
- * - Staff cannot edit status of anyone
- * - No one can edit their own status
- */
-function canToggleUserStatus(currentUserId: string, currentUserRole: string, targetUser: User): boolean {
-  // Cannot toggle own status
-  if (currentUserId === targetUser.id) {
-    return false;
-  }
-
-  // Admin can toggle manager and staff (not other admins)
-  if (currentUserRole === 'admin') {
-    return targetUser.role !== 'admin';
-  }
-
-  // Manager can only toggle staff
-  if (currentUserRole === 'manager') {
-    return targetUser.role === 'staff';
-  }
-
-  // Staff cannot toggle anyone
-  return false;
-}
-
 export function getUserTableColumns({
   onRowAction,
   currentUserId,

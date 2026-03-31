@@ -14,7 +14,16 @@ import {
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
 import { LoginResponseDto, UserAuthDto, TokensDto } from '../../dto/auth/index.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+/** @typedef {import('../../interfaces/i-auth-service.js').IAuthService} IAuthService */
+/** @typedef {import('../../interfaces/i-token-service.js').ITokenService} ITokenService */
+
 export class LoginUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   * @param {IAuthService} authService
+   * @param {ITokenService} tokenService
+   */
   constructor(userRepository, authService, tokenService) {
     this.userRepository = userRepository;
     this.authService = authService;

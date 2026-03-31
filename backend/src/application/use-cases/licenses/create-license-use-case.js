@@ -5,7 +5,12 @@
 import { LicenseResponseDto } from '../../dto/license/index.js';
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+
 export class CreateLicenseUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   */
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
   }
@@ -17,7 +22,7 @@ export class CreateLicenseUseCase {
    * @returns {Promise<LicenseResponseDto>} Created license
    */
   async execute(licenseData, context = {}) {
-    const { userId, ipAddress, userAgent } = context;
+    const { userId, userRole, ipAddress, userAgent } = context;
 
     try {
       // Check if license key already exists
@@ -52,9 +57,14 @@ export class CreateLicenseUseCase {
           entityId: license.id,
           entityType: 'license',
           metadata: {
+            action: 'create',
+            actorRole: userRole || null,
             license_key: license.key,
             product: license.product,
             plan: license.plan,
+            createdBy: userId,
+            updatedBy: userId,
+            timestamp: new Date().toISOString(),
           },
           ipAddress,
           userAgent,

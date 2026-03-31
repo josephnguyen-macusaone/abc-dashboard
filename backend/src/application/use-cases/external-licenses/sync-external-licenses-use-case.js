@@ -5,9 +5,19 @@
  */
 import { licenseSyncConfig } from '../../../infrastructure/config/license-sync-config.js';
 import { licenseSyncMonitor } from '../../../infrastructure/monitoring/license-sync-monitor.js';
+import { applyInternalMergePolicy } from '../../../shared/utils/internal-license-external-sync-merge.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-external-license-repository.js').IExternalLicenseRepository} IExternalLicenseRepository */
+/** @typedef {import('../../interfaces/i-external-license-api-service.js').IExternalLicenseApiService} IExternalLicenseApiService */
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+
 export class SyncExternalLicensesUseCase {
+  /**
+   * @param {IExternalLicenseRepository} externalLicenseRepository
+   * @param {IExternalLicenseApiService} externalLicenseApiService
+   * @param {ILicenseRepository | null} [internalLicenseRepository=null]
+   */
   constructor(
     externalLicenseRepository,
     externalLicenseApiService,
@@ -917,8 +927,12 @@ export class SyncExternalLicensesUseCase {
 
     if (internalLicense) {
       try {
-        const updateData =
+        const rawUpdateData =
           this.externalLicenseRepository._createExternalUpdateData(externalLicense);
+        const { updateData, preservedFields } = applyInternalMergePolicy(
+          rawUpdateData,
+          internalLicense
+        );
         updateData.external_sync_status = 'synced';
         updateData.last_external_sync = new Date();
         await this.internalLicenseRepository.update(internalLicense.id, updateData);
@@ -927,6 +941,7 @@ export class SyncExternalLicensesUseCase {
           matchReason,
           appid: externalLicense.appid,
           countid: externalLicense.countid,
+          preservedFields,
         });
         return { action: 'updated' };
       } catch (updateError) {

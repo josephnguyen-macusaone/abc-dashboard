@@ -23,6 +23,7 @@ export const ROUTES = {
   // Public routes
   HOME: '/',
   LOGIN: '/login',
+  SIGNUP: '/signup',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
 
@@ -53,6 +54,13 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     requireAuth: false,
   },
 
+  [ROUTES.SIGNUP]: {
+    path: ROUTES.SIGNUP,
+    title: 'Signup',
+    description: 'Create a new account',
+    requireAuth: false,
+  },
+
   [ROUTES.FORGOT_PASSWORD]: {
     path: ROUTES.FORGOT_PASSWORD,
     title: 'Forgot Password',
@@ -72,7 +80,13 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Dashboard',
     description: 'System dashboard and overview',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    allowedRoles: [
+      USER_ROLES.ADMIN,
+      USER_ROLES.ACCOUNTANT,
+      USER_ROLES.MANAGER,
+      USER_ROLES.TECH,
+      USER_ROLES.AGENT,
+    ],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -82,7 +96,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Users',
     description: 'User management',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.ACCOUNTANT, USER_ROLES.MANAGER],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -92,7 +106,14 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Licenses',
     description: 'License management',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    allowedRoles: [
+      USER_ROLES.ADMIN,
+      USER_ROLES.ACCOUNTANT,
+      USER_ROLES.MANAGER,
+      USER_ROLES.TECH,
+      USER_ROLES.AGENT,
+      USER_ROLES.STAFF,
+    ],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -102,7 +123,14 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Profile',
     description: 'Manage your profile',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    allowedRoles: [
+      USER_ROLES.ADMIN,
+      USER_ROLES.ACCOUNTANT,
+      USER_ROLES.MANAGER,
+      USER_ROLES.TECH,
+      USER_ROLES.AGENT,
+      USER_ROLES.STAFF,
+    ],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -112,7 +140,14 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Edit Profile',
     description: 'Update your profile information',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    allowedRoles: [
+      USER_ROLES.ADMIN,
+      USER_ROLES.ACCOUNTANT,
+      USER_ROLES.MANAGER,
+      USER_ROLES.TECH,
+      USER_ROLES.AGENT,
+      USER_ROLES.STAFF,
+    ],
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -122,7 +157,14 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Change Password',
     description: 'Update your password',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+    allowedRoles: [
+      USER_ROLES.ADMIN,
+      USER_ROLES.ACCOUNTANT,
+      USER_ROLES.MANAGER,
+      USER_ROLES.TECH,
+      USER_ROLES.AGENT,
+      USER_ROLES.STAFF,
+    ],
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -134,6 +176,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
  */
 export const AUTH_ROUTES = [
   ROUTES.LOGIN,
+  ROUTES.SIGNUP,
   ROUTES.FORGOT_PASSWORD,
   ROUTES.RESET_PASSWORD,
 ];
@@ -191,7 +234,10 @@ export function getDefaultRedirect(userRole?: string): string {
 
   switch (userRole) {
     case USER_ROLES.ADMIN:
+    case USER_ROLES.ACCOUNTANT:
     case USER_ROLES.MANAGER:
+    case USER_ROLES.TECH:
+    case USER_ROLES.AGENT:
     case USER_ROLES.STAFF:
       return ROUTES.DASHBOARD;
     default:

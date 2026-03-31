@@ -1,15 +1,162 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import logger from '../../shared/utils/logger.js';
+import { ROLES } from '../../shared/constants/roles.js';
 
 /**
  * External License Controller
  * Handles HTTP requests for external license management
  */
 export class ExternalLicenseController {
-  constructor(syncExternalLicensesUseCase, manageExternalLicensesUseCase) {
+  constructor(syncExternalLicensesUseCase, manageExternalLicensesUseCase, licenseRepository = null) {
     this.syncExternalLicensesUseCase = syncExternalLicensesUseCase;
     this.manageExternalLicensesUseCase = manageExternalLicensesUseCase;
+    this.licenseRepository = licenseRepository;
+  }
+
+  getAllowedUpdateFieldsForRole(role) {
+    if (role === ROLES.TECH) {
+      return new Set(['ActivateDate', 'coming_expired', 'Coming_expired']);
+    }
+    if (role === ROLES.ACCOUNTANT) {
+      return new Set([
+        'status',
+        'Package',
+        'ActivateDate',
+        'coming_expired',
+        'Coming_expired',
+        'monthlyFee',
+      ]);
+    }
+    return null;
+  }
+
+  normalizeRoleScopedUpdates(req, updates) {
+    const role = req.user?.role;
+    const allowedFields = this.getAllowedUpdateFieldsForRole(role);
+    if (!allowedFields) {
+      return updates;
+    }
+
+    const receivedFields = Object.keys(updates || {});
+    const disallowedFields = receivedFields.filter((field) => !allowedFields.has(field));
+    if (disallowedFields.length > 0) {
+      const allowed = Array.from(allowedFields).join(', ');
+      throw new ValidationException(
+        `${role} can only update the following fields: ${allowed}. Received unsupported fields: ${disallowedFields.join(', ')}`
+      );
+    }
+
+    const normalized = { ...(updates || {}) };
+    if (Object.prototype.hasOwnProperty.call(normalized, 'Coming_expired')) {
+      normalized.coming_expired = normalized.Coming_expired;
+      delete normalized.Coming_expired;
+    }
+
+    if (Object.keys(normalized).length === 0) {
+      throw new ValidationException('No update fields were provided');
+    }
+
+    return normalized;
+  }
+
+  buildAuditMetadata(req, action, extra = {}) {
+    return {
+      action,
+      actorRole: req.user?.role || null,
+      createdBy: req.user?.id || null,
+      updatedBy: req.user?.id || null,
+      timestamp: new Date().toISOString(),
+      ...extra,
+    };
+  }
+
+  logOperation(req, action, extra = {}) {
+    logger.info('external_license_operation', {
+      correlationId: req.correlationId,
+      userId: req.user?.id ?? null,
+      userRole: req.user?.role ?? null,
+      action,
+      method: req.method,
+      path: req.path,
+      ...extra,
+    });
+  }
+
+  async resolveLicenseIdForAudit({ id, appid, countid }) {
+    if (!this.licenseRepository) {
+      return null;
+    }
+    if (id) {
+      return id;
+    }
+    if (appid) {
+      const license = await this.licenseRepository.findByAppId(appid);
+      return license?.id ?? null;
+    }
+    if (countid !== undefined && countid !== null) {
+      const license = await this.licenseRepository.findByCountId(countid);
+      return license?.id ?? null;
+    }
+    return null;
+  }
+
+  async createExternalAuditEvent(req, { type, entityId, metadata }) {
+    if (!this.licenseRepository || !entityId || !req.user?.id) {
+      return;
+    }
+    try {
+      await this.licenseRepository.createAuditEvent({
+        type,
+        actorId: req.user.id,
+        entityId,
+        entityType: 'license',
+        metadata,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    } catch (error) {
+      logger.warn('Failed to create external license audit event', {
+        correlationId: req.correlationId,
+        type,
+        entityId,
+        error: error.message,
+      });
+    }
+  }
+
+  async resolveInternalLicenseForSmsScope(identifier) {
+    if (!this.licenseRepository) {
+      return null;
+    }
+    if (identifier.appid) {
+      return this.licenseRepository.findByAppId(identifier.appid);
+    }
+    if (identifier.countid !== undefined && identifier.countid !== null) {
+      return this.licenseRepository.findByCountId(identifier.countid);
+    }
+    return null;
+  }
+
+  async ensureSmsScopeAccess(req, identifier) {
+    const isAgent = req.user?.role === ROLES.AGENT;
+    if (!isAgent) {
+      return;
+    }
+
+    if (!identifier.appid && (identifier.countid === undefined || identifier.countid === null)) {
+      throw new ValidationException('Agent SMS operations require appid or countid');
+    }
+
+    const internalLicense = await this.resolveInternalLicenseForSmsScope(identifier);
+    if (!internalLicense) {
+      throw new ValidationException('License not found for provided appid/countid');
+    }
+
+    const hasAssignment = await this.licenseRepository.hasUserAssignment(internalLicense.id, req.user.id);
+    if (!hasAssignment) {
+      throw new ValidationException('You can only access SMS operations for assigned licenses');
+    }
   }
 
   // ========================================================================
@@ -187,18 +334,62 @@ export class ExternalLicenseController {
       const options = {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 10,
-        filters: {},
-        sortBy: 'updated_at',
-        sortOrder: 'desc',
+        filters: {
+          ...(req.query.search ? { search: req.query.search } : {}),
+          ...(req.query.status ? { status: req.query.status } : {}),
+          ...(req.query.dba ? { dba: req.query.dba } : {}),
+        },
+        sortBy: req.query.sortBy || 'updated_at',
+        sortOrder: req.query.sortOrder || 'desc',
       };
-
-      const result = await repo.findLicenses(options);
+      const isAgent = req.user?.role === ROLES.AGENT;
+      let result;
+      if (!isAgent || !this.licenseRepository) {
+        result = await repo.findLicenses(options);
+      } else {
+        const assigned = await this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000,
+          filters: { assignedUserId: req.user.id },
+        });
+        const appids = (assigned?.licenses || [])
+          .map((item) => item.appid || item.key)
+          .filter(Boolean);
+        const byAppid = await repo.findByAppIds(appids);
+        const scopedLicenses = byAppid instanceof Map ? Array.from(byAppid.values()) : [];
+        const normalizedSearch = String(req.query.search || '').trim().toLowerCase();
+        const normalizedStatus = req.query.status ? String(req.query.status).toLowerCase() : '';
+        const filtered = scopedLicenses.filter((license) => {
+          const matchesSearch = !normalizedSearch
+            ? true
+            : String(license.dba || '').toLowerCase().includes(normalizedSearch) ||
+              String(license.appid || '').toLowerCase().includes(normalizedSearch) ||
+              String(license.emailLicense || '').toLowerCase().includes(normalizedSearch);
+          if (!matchesSearch) return false;
+          if (!normalizedStatus) return true;
+          const s = String(license.status ?? '').toLowerCase();
+          return s === normalizedStatus;
+        });
+        const offset = (options.page - 1) * options.limit;
+        const paginated = filtered.slice(offset, offset + options.limit);
+        result = {
+          licenses: paginated,
+          total: filtered.length,
+        };
+      }
       logger.debug('External licenses repository call completed', { hasResult: !!result });
 
       await db.destroy();
 
       const total = result.total || 0;
       const totalPages = Math.ceil(total / options.limit);
+
+      this.logOperation(req, 'external_licenses_list', {
+        page: options.page,
+        limit: options.limit,
+        total,
+        isAgentScoped: isAgent,
+      });
 
       return res.json({
         success: true,
@@ -365,6 +556,19 @@ export class ExternalLicenseController {
   createLicense = async (req, res) => {
     try {
       const license = await this.manageExternalLicensesUseCase.createLicense(req.body);
+      const auditEntityId = await this.resolveLicenseIdForAudit({
+        id: license?.id,
+        appid: license?.appid,
+        countid: license?.countid,
+      });
+      await this.createExternalAuditEvent(req, {
+        type: 'license.external_created',
+        entityId: auditEntityId,
+        metadata: this.buildAuditMetadata(req, 'external_create', {
+          appid: license?.appid ?? null,
+          countid: license?.countid ?? null,
+        }),
+      });
 
       logger.info('External license created via API', {
         correlationId: req.correlationId,
@@ -395,7 +599,8 @@ export class ExternalLicenseController {
   updateLicense = async (req, res) => {
     try {
       const { id } = req.params;
-      const license = await this.manageExternalLicensesUseCase.updateLicense(id, req.body);
+      const scopedUpdates = this.normalizeRoleScopedUpdates(req, req.body);
+      const license = await this.manageExternalLicensesUseCase.updateLicense(id, scopedUpdates);
 
       if (!license) {
         return res.status(404).json({
@@ -409,8 +614,18 @@ export class ExternalLicenseController {
         correlationId: req.correlationId,
         licenseId: id,
         appid: license.appid,
-        updatedFields: Object.keys(req.body),
+        updatedFields: Object.keys(scopedUpdates),
         userId: req.user?.id,
+      });
+
+      await this.createExternalAuditEvent(req, {
+        type: 'license.external_updated',
+        entityId: id,
+        metadata: this.buildAuditMetadata(req, 'external_update', {
+          updatedFields: Object.keys(scopedUpdates),
+          appid: license?.appid ?? null,
+          countid: license?.countid ?? null,
+        }),
       });
 
       return res.success({ license }, 'License updated successfully');
@@ -569,11 +784,15 @@ export class ExternalLicenseController {
    */
   bulkUpdateLicenses = async (req, res) => {
     try {
-      const { updates } = req.body;
+      const { updates: rawUpdates } = req.body;
 
-      if (!updates || !Array.isArray(updates) || updates.length === 0) {
+      if (!rawUpdates || !Array.isArray(rawUpdates) || rawUpdates.length === 0) {
         return res.badRequest('Updates array is required');
       }
+      const updates = rawUpdates.map((entry) => ({
+        ...entry,
+        updates: this.normalizeRoleScopedUpdates(req, entry?.updates || {}),
+      }));
 
       logger.info('Starting bulk update of external licenses via API', {
         correlationId: req.correlationId,
@@ -582,6 +801,10 @@ export class ExternalLicenseController {
       });
 
       const results = await this.manageExternalLicensesUseCase.bulkUpdateLicenses(updates);
+      this.logOperation(req, 'external_bulk_update', {
+        requested: updates.length,
+        updated: results.length,
+      });
 
       logger.info('Bulk update of external licenses completed via API', {
         correlationId: req.correlationId,
@@ -673,7 +896,7 @@ export class ExternalLicenseController {
   updateLicenseByEmail = async (req, res) => {
     try {
       const { email } = req.params;
-      const updates = req.body;
+      const updates = this.normalizeRoleScopedUpdates(req, req.body);
 
       logger.info('Updating external license by email via API', {
         correlationId: req.correlationId,
@@ -682,6 +905,21 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.updateLicenseByEmail(email, updates);
+      const auditEntityId = await this.resolveLicenseIdForAudit({
+        id: result?.id,
+        appid: result?.appid,
+        countid: result?.countid,
+      });
+      await this.createExternalAuditEvent(req, {
+        type: 'license.external_updated',
+        entityId: auditEntityId,
+        metadata: this.buildAuditMetadata(req, 'external_update', {
+          updatedFields: Object.keys(updates),
+          email,
+          appid: result?.appid ?? null,
+          countid: result?.countid ?? null,
+        }),
+      });
 
       return res.success(result, 'License updated successfully');
     } catch (error) {
@@ -730,7 +968,7 @@ export class ExternalLicenseController {
   updateLicenseByCountId = async (req, res) => {
     try {
       const { countid } = req.params;
-      const updates = req.body;
+      const updates = this.normalizeRoleScopedUpdates(req, req.body);
 
       logger.info('Updating external license by countid via API', {
         correlationId: req.correlationId,
@@ -742,6 +980,21 @@ export class ExternalLicenseController {
         parseInt(countid),
         updates
       );
+      const parsedCountId = parseInt(countid);
+      const auditEntityId = await this.resolveLicenseIdForAudit({
+        id: result?.id,
+        appid: result?.appid,
+        countid: Number.isNaN(parsedCountId) ? undefined : parsedCountId,
+      });
+      await this.createExternalAuditEvent(req, {
+        type: 'license.external_updated',
+        entityId: auditEntityId,
+        metadata: this.buildAuditMetadata(req, 'external_update', {
+          updatedFields: Object.keys(updates),
+          countid: Number.isNaN(parsedCountId) ? countid : parsedCountId,
+          appid: result?.appid ?? null,
+        }),
+      });
 
       return res.success(result, 'License updated successfully');
     } catch (error) {
@@ -791,6 +1044,10 @@ export class ExternalLicenseController {
    */
   resetLicense = async (req, res) => {
     try {
+      if (![ROLES.ADMIN, ROLES.TECH].includes(req.user?.role)) {
+        return res.forbidden('Only admin and tech can reset license IDs');
+      }
+
       const { appid, email } = req.body;
 
       logger.info('Resetting external license ID via API', {
@@ -801,6 +1058,24 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.resetLicense({ appid, email });
+      this.logOperation(req, 'external_reset_license_id', {
+        appid: appid ?? null,
+        email: email ?? null,
+      });
+      const auditEntityId = await this.resolveLicenseIdForAudit({
+        id: result?.id,
+        appid: appid ?? result?.appid,
+        countid: result?.countid,
+      });
+      await this.createExternalAuditEvent(req, {
+        type: 'license.external_reset',
+        entityId: auditEntityId,
+        metadata: this.buildAuditMetadata(req, 'external_reset', {
+          appid: appid ?? result?.appid ?? null,
+          email: email ?? null,
+          countid: result?.countid ?? null,
+        }),
+      });
 
       return res.success(result, 'License reset successfully');
     } catch (error) {
@@ -886,6 +1161,11 @@ export class ExternalLicenseController {
         sortOrder: req.query.sortOrder,
       };
 
+      await this.ensureSmsScopeAccess(req, {
+        appid: options.appid,
+        countid: options.countid,
+      });
+
       logger.info('Getting SMS payments via API', {
         correlationId: req.correlationId,
         options,
@@ -893,9 +1173,21 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.getSmsPayments(options);
+      this.logOperation(req, 'external_get_sms_payments', {
+        appid: options.appid ?? null,
+        countid: options.countid ?? null,
+        page: options.page,
+        limit: options.limit,
+      });
 
       return res.success(result, 'SMS payments retrieved successfully');
     } catch (error) {
+      if (error instanceof ValidationException) {
+        if (error.message.includes('assigned licenses')) {
+          return res.forbidden(error.message);
+        }
+        return res.badRequest(error.message);
+      }
       logger.error('Get SMS payments failed via API', {
         correlationId: req.correlationId,
         error: error.message,
@@ -912,6 +1204,10 @@ export class ExternalLicenseController {
   addSmsPayment = async (req, res) => {
     try {
       const paymentData = req.body;
+      await this.ensureSmsScopeAccess(req, {
+        appid: paymentData?.appid,
+        countid: paymentData?.countid,
+      });
 
       logger.info('Adding SMS payment via API', {
         correlationId: req.correlationId,
@@ -919,9 +1215,20 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.addSmsPayment(paymentData);
+      this.logOperation(req, 'external_add_sms_payment', {
+        appid: paymentData?.appid ?? null,
+        countid: paymentData?.countid ?? null,
+        amount: paymentData?.amount ?? null,
+      });
 
       return res.success(result, 'SMS payment added successfully');
     } catch (error) {
+      if (error instanceof ValidationException) {
+        if (error.message.includes('assigned licenses')) {
+          return res.forbidden(error.message);
+        }
+        return res.badRequest(error.message);
+      }
       logger.error('Add SMS payment failed via API', {
         correlationId: req.correlationId,
         error: error.message,

@@ -4,7 +4,6 @@ import { z } from "zod";
 import type {
   ExtendedColumnFilter,
   ExtendedColumnSort,
-  FilterItemSchema,
 } from "@/types/data-table";
 
 const sortingItemSchema = z.object({

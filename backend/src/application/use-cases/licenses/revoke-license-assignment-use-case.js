@@ -5,7 +5,12 @@
 import { LicenseAssignmentResponseDto } from '../../dto/license/index.js';
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+
 export class RevokeLicenseAssignmentUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   */
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
   }

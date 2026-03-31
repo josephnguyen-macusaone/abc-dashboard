@@ -37,6 +37,10 @@ import logger from './src/infrastructure/config/logger.js';
 import { config } from './src/infrastructure/config/config.js';
 import swaggerSpec from './src/infrastructure/config/swagger.js';
 import { monitorMiddleware, getHealthWithMetrics } from './src/infrastructure/config/monitoring.js';
+import {
+  getPrometheusMetricsText,
+  getJsonMetrics,
+} from './src/infrastructure/config/prometheus-metrics.js';
 import { responseHelpersMiddleware } from './src/shared/http/response-transformer.js';
 import { awilixContainer } from './src/shared/kernel/container.js';
 
@@ -116,7 +120,7 @@ app.use(injectionProtection);
 // IMPORTANT: express-rate-limit v7 throws ERR_ERL_CREATED_IN_REQUEST_HANDLER if
 // rateLimit() is called inside a request handler. We therefore create the limiter
 // synchronously at module level (memory store) and optionally upgrade it to a
-// Redis-backed instance during startServer() after Redis has been initialised.
+// Redis-backed instance during startServer() after Redis has been initialized.
 const RATE_LIMIT_WINDOW_MS = 30 * 60 * 1000;
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000', 10) || 2000;
 const RATE_LIMIT_HANDLER = (_req, res) => {
@@ -129,7 +133,10 @@ let activeRateLimiter = rateLimit({
   max: RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === '/api/v1/health',
+  skip: (req) =>
+    req.path === '/api/v1/health' ||
+    req.path === '/api/v1/metrics' ||
+    req.path === '/api/v1/metrics/prometheus',
   handler: RATE_LIMIT_HANDLER,
 });
 
@@ -155,7 +162,10 @@ const upgradeRateLimiterToRedis = async () => {
       max: RATE_LIMIT_MAX,
       standardHeaders: true,
       legacyHeaders: false,
-      skip: (req) => req.path === '/api/v1/health',
+      skip: (req) =>
+        req.path === '/api/v1/health' ||
+        req.path === '/api/v1/metrics' ||
+        req.path === '/api/v1/metrics/prometheus',
       handler: RATE_LIMIT_HANDLER,
       store: new RedisStore({
         sendCommand: (...args) => redisClient.call(...args),
@@ -250,6 +260,28 @@ app.use(
 // Health check endpoint
 app.get('/api/v1/health', getHealthWithMetrics);
 
+// Metrics: JSON (for debugging) and Prometheus text (for Grafana / Prometheus)
+app.get('/api/v1/metrics', async (_req, res, next) => {
+  try {
+    const data = await getJsonMetrics();
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/v1/metrics/prometheus', async (_req, res, next) => {
+  try {
+    const text = await getPrometheusMetricsText();
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(text);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Favicon (serve existing logo as lightweight icon)
 app.get('/favicon.ico', (_req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'assets', 'logo_dark.svg'), {
@@ -290,7 +322,7 @@ const startServer = async () => {
     // Perform startup health checks
     const healthChecks = await performStartupChecks();
 
-    // Upgrade rate limiter to Redis-backed store now that Redis is initialised.
+    // Upgrade rate limiter to Redis-backed store now that Redis is initialized.
     await upgradeRateLimiterToRedis();
 
     // Only start server if critical services are available

@@ -8,7 +8,12 @@
  */
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+
 export class GetLicenseDashboardMetricsUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   */
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
   }

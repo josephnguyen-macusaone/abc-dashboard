@@ -8,7 +8,16 @@ import {
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+/** @typedef {import('../../interfaces/i-auth-service.js').IAuthService} IAuthService */
+/** @typedef {import('../../interfaces/i-email-service.js').IEmailService} IEmailService */
+
 export class ChangePasswordUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   * @param {IAuthService} authService
+   * @param {IEmailService | null} [emailService=null]
+   */
   constructor(userRepository, authService, emailService = null) {
     this.userRepository = userRepository;
     this.authService = authService;

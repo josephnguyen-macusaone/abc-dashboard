@@ -11,7 +11,10 @@ import { AssignLicenseUseCase } from '../../application/use-cases/licenses/assig
 import { RevokeLicenseAssignmentUseCase } from '../../application/use-cases/licenses/revoke-license-assignment-use-case.js';
 import { GetLicenseStatsUseCase } from '../../application/use-cases/licenses/get-license-stats-use-case.js';
 import { GetLicenseDashboardMetricsUseCase } from '../../application/use-cases/licenses/get-license-dashboard-metrics-use-case.js';
-import { ValidationException } from '../../domain/exceptions/domain.exception.js';
+import {
+  ValidationException,
+  ConcurrentModificationException,
+} from '../../domain/exceptions/domain.exception.js';
 import logger from '../utils/logger.js';
 
 export class LicenseService extends ILicenseService {
@@ -220,6 +223,7 @@ export class LicenseService extends ILicenseService {
   async bulkUpdateLicenses(updates) {
     const updatedLicenses = [];
     const errors = [];
+    const conflicts = [];
     const startTime = Date.now();
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -248,10 +252,19 @@ export class LicenseService extends ILicenseService {
         const userId = licenseData.updatedBy;
         const updatedLicense = await this.updateLicenseUseCase.execute(existingLicense.id, data, {
           userId,
+          expectedUpdatedAt: data?.expectedUpdatedAt || data?.updatedAt,
         });
 
         updatedLicenses.push(updatedLicense);
       } catch (error) {
+        if (error instanceof ConcurrentModificationException) {
+          conflicts.push({
+            index,
+            key: id,
+            ...(error.additionalData || {}),
+          });
+          continue;
+        }
         logger.warn('Individual license update failed in bulk operation', {
           index,
           key: id,
@@ -283,6 +296,13 @@ export class LicenseService extends ILicenseService {
       logger.warn('Some licenses failed to update in bulk operation', {
         failedCount: errors.length,
         errorSample: errors.slice(0, 3).map((e) => ({ key: e.key, error: e.error })),
+      });
+    }
+
+    if (conflicts.length > 0) {
+      throw new ConcurrentModificationException('License', {
+        conflicts,
+        updatedCount: updatedLicenses.length,
       });
     }
 

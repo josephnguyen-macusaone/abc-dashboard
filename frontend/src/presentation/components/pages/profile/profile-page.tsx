@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Typography } from '@/presentation/components/atoms';
@@ -14,21 +14,10 @@ export function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
-  // Early return if user data is not available
-  if (!user) {
-    return (
-      <DashboardTemplate>
-        <div className="flex items-center justify-center h-64">
-          {/* MAC USA ONE Typography: Body M for loading text */}
-          <Typography variant="body-m" color="muted">
-            Loading profile...
-          </Typography>
-        </div>
-      </DashboardTemplate>
-    );
-  }
-
   const userInitials = useMemo(() => {
+    if (!user) {
+      return 'U';
+    }
     if (user.displayName) {
       return user.displayName.slice(0, 2).toUpperCase();
     }
@@ -45,9 +34,22 @@ export function ProfilePage() {
       return user.name.slice(0, 2).toUpperCase();
     }
 
-    // Fallback to email initials or generic avatar
     return user.email?.slice(0, 2).toUpperCase() || 'U';
   }, [user]);
+
+  // Early return if user data is not available
+  if (!user) {
+    return (
+      <DashboardTemplate>
+        <div className="flex items-center justify-center h-64">
+          {/* MAC USA ONE Typography: Body M for loading text */}
+          <Typography variant="body-m" color="muted">
+            Loading profile...
+          </Typography>
+        </div>
+      </DashboardTemplate>
+    );
+  }
 
   const userRole = user.role || 'user';
   const displayName = user.displayName ||

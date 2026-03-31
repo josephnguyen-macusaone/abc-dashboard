@@ -5,6 +5,7 @@
 import logger from '../../../shared/utils/logger.js';
 import { config } from '../../../infrastructure/config/config.js';
 import { generateTemporaryPassword } from '../../../shared/utils/security/crypto.js';
+import { ROLES } from '../../../shared/constants/roles.js';
 import { UserResponseDto } from '../../dto/user/index.js';
 import {
   ValidationException,
@@ -12,7 +13,16 @@ import {
   ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+/** @typedef {import('../../interfaces/i-auth-service.js').IAuthService} IAuthService */
+/** @typedef {import('../../interfaces/i-email-service.js').IEmailService} IEmailService */
+
 export class CreateUserUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   * @param {IAuthService} authService
+   * @param {IEmailService} emailService
+   */
   constructor(userRepository, authService, emailService) {
     this.userRepository = userRepository;
     this.authService = authService;
@@ -88,7 +98,7 @@ export class CreateUserUseCase {
   }
 
   _resolveRole(role, creatorUser, username, email) {
-    const validRoles = ['admin', 'manager', 'staff'];
+    const validRoles = Object.values(ROLES);
     if (!role) {
       logger.warn('No role provided in user creation, defaulting to staff', {
         username,
@@ -96,7 +106,7 @@ export class CreateUserUseCase {
         creatorUserId: creatorUser.id,
         creatorUserRole: creatorUser.role,
       });
-      return 'staff';
+      return ROLES.STAFF;
     }
     if (!validRoles.includes(role)) {
       throw new ValidationException(

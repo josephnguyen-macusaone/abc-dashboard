@@ -5,7 +5,12 @@
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-external-license-repository.js').IExternalLicenseRepository} IExternalLicenseRepository */
+
 export class ManageExternalLicensesUseCase {
+  /**
+   * @param {IExternalLicenseRepository} externalLicenseRepository
+   */
   constructor(externalLicenseRepository) {
     this.externalLicenseRepository = externalLicenseRepository;
   }
@@ -63,7 +68,7 @@ export class ManageExternalLicensesUseCase {
   async createLicense(licenseData) {
     return withTimeout(
       async () => {
-        const license = await this.externalLicenseRepository.save(licenseData);
+        const license = await this.externalLicenseRepository.upsert(licenseData);
 
         logger.info('External license created', {
           id: license.id,

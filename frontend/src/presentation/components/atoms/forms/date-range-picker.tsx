@@ -1,6 +1,6 @@
 'use client';
 
-import React, { type FC, useState, useEffect, useRef } from 'react';
+import React, { type FC, useState, useEffect, useRef, startTransition } from 'react';
 import { ChevronUp, ChevronDown, Check, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/presentation/components/atoms/primitives/button';
 import {
@@ -51,7 +51,7 @@ export interface DateRangePickerProps {
   onClose?: () => void;
 }
 
-const formatDate = (date: Date, locale: string = 'en-us'): string => {
+const formatDate = (date: Date): string => {
   return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`;
 };
 
@@ -102,7 +102,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   initialCompareTo,
   onUpdate,
   align = 'end',
-  locale = 'en-US',
+  locale: _locale = 'en-US',
   showCompare = true,
   className,
   contentOnly = false,
@@ -308,7 +308,11 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   };
 
   useEffect(() => {
-    checkPreset();
+    startTransition(() => {
+      checkPreset();
+    });
+    // Preset label tracks `range` only; `checkPreset` closes over `range` + `getPresetRange`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run when range changes
   }, [range]);
 
   const PresetButton = ({
@@ -349,7 +353,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
       openedRangeRef.current = range;
       openedRangeCompareRef.current = rangeCompare;
     }
-  }, [isOpen]);
+  }, [isOpen, range, rangeCompare]);
 
   const handleClose = (): void => {
     if (contentOnly) onClose?.();
@@ -608,14 +612,14 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
           <CalendarIcon className="h-3.5 w-3.5 sm:h-3 sm:w-3 shrink-0 opacity-60" />
           <div className="hidden sm:block text-left flex-1 min-w-0">
             <div className="py-0.5">
-              <div className="text-xs sm:text-body-xs">{`${formatDate(range.from, locale)}${range.to != null ? ' - ' + formatDate(range.to, locale) : ''
+              <div className="text-xs sm:text-body-xs">{`${formatDate(range.from)}${range.to != null ? ' - ' + formatDate(range.to) : ''
                 }`}</div>
             </div>
             {rangeCompare != null && (
               <div className="opacity-60 text-body-xs text-xs -mt-0.5">
-                vs. {formatDate(rangeCompare.from, locale)}
+                vs. {formatDate(rangeCompare.from)}
                 {rangeCompare.to != null
-                  ? ` - ${formatDate(rangeCompare.to, locale)}`
+                  ? ` - ${formatDate(rangeCompare.to)}`
                   : ''}
               </div>
             )}

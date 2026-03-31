@@ -22,11 +22,9 @@ import * as React from "react";
 import { toast } from "sonner";
 import {
   getCellKey,
-  getIsFileCellData,
   getIsInPopover,
   getRowHeightValue,
   getScrollDirection,
-  matchSelectOption,
   parseCellKey,
   scrollCellIntoView,
 } from "@/shared/lib/data-grid";
@@ -50,22 +48,7 @@ const HORIZONTAL_PAGE_SIZE = 5;
 
 const MIN_COLUMN_SIZE = 88;
 const MAX_COLUMN_SIZE = 800;
-const SEARCH_SHORTCUT_KEY = "f";
 const NON_NAVIGABLE_COLUMN_IDS = ["select", "actions"];
-
-const DOMAIN_REGEX = /^[\w.-]+\.[a-z]{2,}(\/\S*)?$/i;
-const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}.*)?$/;
-const TRUTHY_BOOLEANS = new Set(["true", "1", "yes", "checked"]);
-const VALID_BOOLEANS = new Set([
-  "true",
-  "false",
-  "1",
-  "0",
-  "yes",
-  "no",
-  "checked",
-  "unchecked",
-]);
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
@@ -510,34 +493,6 @@ function useDataGrid<TData>({
     });
   }, [store]);
 
-  const selectAll = React.useCallback(() => {
-    const allCells = new Set<string>();
-    const currentTable = tableRef.current;
-    const rows = currentTable?.getRowModel().rows ?? [];
-    const rowCount = rows.length ?? propsRef.current.data.length;
-
-    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-      for (const columnId of columnIds) {
-        allCells.add(getCellKey(rowIndex, columnId));
-      }
-    }
-
-    const firstColumnId = columnIds[0];
-    const lastColumnId = columnIds[columnIds.length - 1];
-
-    store.setState("selectionState", {
-      selectedCells: allCells,
-      selectionRange:
-        columnIds.length > 0 && rowCount > 0 && firstColumnId && lastColumnId
-          ? {
-              start: { rowIndex: 0, columnId: firstColumnId },
-              end: { rowIndex: rowCount - 1, columnId: lastColumnId },
-            }
-          : null,
-      isSelecting: false,
-    });
-  }, [columnIds, propsRef, store]);
-
   const selectColumn = React.useCallback(
     (columnId: string) => {
       const currentTable = tableRef.current;
@@ -838,14 +793,6 @@ function useDataGrid<TData>({
     },
     [store, focusCellWrapper],
   );
-
-  const restoreFocus = React.useCallback((element: HTMLDivElement | null) => {
-    if (element && document.activeElement !== element) {
-      requestAnimationFrame(() => {
-        element.focus();
-      });
-    }
-  }, []);
 
   const onRowsDelete = React.useCallback(
     async (rowIndices: number[]) => {
@@ -1902,10 +1849,7 @@ function useDataGrid<TData>({
       colSizes[`--col-${header.column.id}-size`] = header.column.getSize();
     }
     return colSizes;
-    // Depend on stable primitive: serialized header sizes so we only recompute when sizing actually changes
-  }, [
-    table.getFlatHeaders().map((h) => `${h.id}:${h.getSize()}`).join(","),
-  ]);
+  }, [table]);
 
   const rowVirtualizer = useVirtualizer({
     count: table.getPaginationRowModel().rows.length,
@@ -1997,7 +1941,7 @@ function useDataGrid<TData>({
         onQueryChange(queryParams);
       });
     }
-  }, [onQueryChange, pagination, sorting, columnFilters, globalFilter]);
+  }, [onQueryChange, pagination, sorting, columnFilters, globalFilter, table]);
 
   const onScrollToRow = React.useCallback(
     async (opts: Partial<CellPosition>) => {

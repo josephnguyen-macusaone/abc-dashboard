@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/atoms';
 import { ProfileUpdateForm } from '@/presentation/components/organisms/user-profile/profile-update-form';
@@ -19,17 +19,17 @@ export function EditProfilePage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.isLoading);
-  const [parsedProfileData, setParsedProfileData] = useState<ParsedProfileData | null>(null);
 
-  useEffect(() => {
-    if (user && !parsedProfileData) {
-      setParsedProfileData({
-        displayName: user.displayName ?? '',
-        bio: user.bio ?? '',
-        phone: user.phone ?? '',
-      });
+  const parsedProfileData = useMemo((): ParsedProfileData | null => {
+    if (!user) {
+      return null;
     }
-  }, [user, parsedProfileData]);
+    return {
+      displayName: user.displayName ?? '',
+      bio: user.bio ?? '',
+      phone: user.phone ?? '',
+    };
+  }, [user]);
 
   if (authLoading || !user) {
     return (

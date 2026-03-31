@@ -3,9 +3,17 @@
  * Handles license updates with business rules and audit logging
  */
 import { LicenseResponseDto } from '../../dto/license/index.js';
-import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
+import {
+  ValidationException,
+  ConcurrentModificationException,
+} from '../../../domain/exceptions/domain.exception.js';
+
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
 
 export class UpdateLicenseUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   */
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
   }
@@ -18,7 +26,7 @@ export class UpdateLicenseUseCase {
    * @returns {Promise<LicenseResponseDto>} Updated license
    */
   async execute(licenseId, updates, context = {}) {
-    const { userId, ipAddress, userAgent } = context;
+    const { userId, userRole, ipAddress, userAgent, expectedUpdatedAt } = context;
 
     try {
       // Get existing license
@@ -36,7 +44,14 @@ export class UpdateLicenseUseCase {
       }
 
       // Strip lastActive: only the external sync process is allowed to update it.
-      const { lastActive: _lastActive, ...safeUpdates } = updates;
+      // expectedUpdatedAt is a concurrency token and must not be persisted.
+      const {
+        lastActive: _lastActive,
+        expectedUpdatedAt: updateExpectedUpdatedAt,
+        updatedAt: updateUpdatedAt,
+        ...safeUpdates
+      } = updates;
+      const concurrencyToken = expectedUpdatedAt || updateExpectedUpdatedAt || updateUpdatedAt;
 
       // Add audit fields
       const dataWithAudit = {
@@ -44,20 +59,38 @@ export class UpdateLicenseUseCase {
         updatedBy: userId,
       };
 
-      // Update license
-      const updatedLicense = await this.licenseRepository.update(licenseId, dataWithAudit);
+      // Update with optimistic concurrency if token provided
+      let updatedLicense = null;
+      if (concurrencyToken) {
+        updatedLicense = await this.licenseRepository.updateWithExpectedUpdatedAt(
+          licenseId,
+          dataWithAudit,
+          concurrencyToken
+        );
+        if (!updatedLicense) {
+          const latest = await this.licenseRepository.findById(licenseId);
+          const latestRecord = latest?.toJSON ? latest.toJSON() : latest;
+          throw new ConcurrentModificationException('License', {
+            expectedUpdatedAt: concurrencyToken,
+            latestRecord: latestRecord || null,
+          });
+        }
+      } else {
+        updatedLicense = await this.licenseRepository.update(licenseId, dataWithAudit);
+      }
 
-      // Create audit event for significant changes
-      const significantChanges = ['status', 'seatsTotal', 'expiresAt', 'plan'];
-      const hasSignificantChange = significantChanges.some((field) => updates[field] !== undefined);
-
-      if (hasSignificantChange) {
+      // Always emit an audit record for write operations to preserve a complete trail.
+      if (userId && typeof userId === 'string' && userId.trim() !== '') {
         await this.licenseRepository.createAuditEvent({
           type: 'license.updated',
           actorId: userId,
           entityId: licenseId,
           entityType: 'license',
           metadata: {
+            action: 'update',
+            actorRole: userRole || null,
+            updatedBy: userId,
+            timestamp: new Date().toISOString(),
             license_key: updatedLicense.key,
             changes: Object.keys(updates),
             previousStatus: existingLicense.status,
@@ -70,7 +103,7 @@ export class UpdateLicenseUseCase {
 
       return LicenseResponseDto.fromEntity(updatedLicense);
     } catch (error) {
-      throw new Error(`Failed to update license: ${error.message}`, { cause: error });
+      throw error;
     }
   }
 }

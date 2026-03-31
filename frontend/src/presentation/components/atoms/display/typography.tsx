@@ -691,7 +691,6 @@ export const Truncate = forwardRef<HTMLElement, TruncateProps>(
     },
     ref
   ) => {
-    const truncationClass = maxLines === 1 ? "truncate" : `line-clamp-${maxLines}`;
     const ellipsisClass = showEllipsis && maxLines > 1 ? "after:content-['" + ellipsis + "']" : "";
 
     return (
@@ -724,22 +723,26 @@ TruncateText.displayName = "TruncateText";
 /**
  * Multi-line truncation utilities
  */
-export const TruncateLines = {
-  2: forwardRef<HTMLElement, Omit<TruncateProps, "maxLines">>((props, ref) => (
-    <Truncate ref={ref} maxLines={2} {...props} />
-  )),
-  3: forwardRef<HTMLElement, Omit<TruncateProps, "maxLines">>((props, ref) => (
-    <Truncate ref={ref} maxLines={3} {...props} />
-  )),
-  4: forwardRef<HTMLElement, Omit<TruncateProps, "maxLines">>((props, ref) => (
-    <Truncate ref={ref} maxLines={4} {...props} />
-  )),
-};
+const TruncateLines2 = forwardRef<HTMLElement, Omit<TruncateProps, "maxLines">>(
+  (props, ref) => <Truncate ref={ref} maxLines={2} {...props} />,
+);
+TruncateLines2.displayName = "TruncateLines2";
 
-// Set display names
-TruncateLines[2].displayName = "TruncateLines2";
-TruncateLines[3].displayName = "TruncateLines3";
-TruncateLines[4].displayName = "TruncateLines4";
+const TruncateLines3 = forwardRef<HTMLElement, Omit<TruncateProps, "maxLines">>(
+  (props, ref) => <Truncate ref={ref} maxLines={3} {...props} />,
+);
+TruncateLines3.displayName = "TruncateLines3";
+
+const TruncateLines4 = forwardRef<HTMLElement, Omit<TruncateProps, "maxLines">>(
+  (props, ref) => <Truncate ref={ref} maxLines={4} {...props} />,
+);
+TruncateLines4.displayName = "TruncateLines4";
+
+export const TruncateLines = {
+  2: TruncateLines2,
+  3: TruncateLines3,
+  4: TruncateLines4,
+} as const;
 
 // Export variant types for external use
 export { typographyVariants };

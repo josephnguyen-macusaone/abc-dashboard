@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
@@ -62,7 +62,7 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           }
         }
       );
-    } catch (error) {
+    } catch {
       // Error already handled by toast.promise
     }
   };
@@ -149,6 +149,15 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           onClick={() => router.push('/forgot-password')}
         >
           <Typography variant="button-m" color="muted" className="hover:text-primary">Forgot your password?</Typography>
+        </Button>
+        <br />
+        <Button
+          type="button"
+          variant="ghost"
+          className="p-0 h-auto"
+          onClick={() => router.push('/signup')}
+        >
+          <Typography variant="button-m" color="muted" className="hover:text-primary">Need an account? Sign up</Typography>
         </Button>
       </div>
     </div>

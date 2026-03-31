@@ -30,7 +30,7 @@ describe('ManageExternalLicensesUseCase', () => {
       findByAppId: jest.fn(),
       findByEmail: jest.fn(),
       findByCountId: jest.fn(),
-      save: jest.fn(),
+      upsert: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     };
@@ -110,17 +110,17 @@ describe('ManageExternalLicensesUseCase', () => {
   });
 
   describe('createLicense', () => {
-    it('saves license via repository and returns created license', async () => {
+    it('upserts license via repository and returns created license', async () => {
       const licenseData = {
         appid: 'new-app',
         dba: 'New DBA',
         status: 1,
       };
-      mockRepository.save.mockResolvedValue({ ...licenseData, id: 'ext-new' });
+      mockRepository.upsert.mockResolvedValue({ ...licenseData, id: 'ext-new' });
 
       const result = await useCase.createLicense(licenseData);
 
-      expect(mockRepository.save).toHaveBeenCalledWith(licenseData);
+      expect(mockRepository.upsert).toHaveBeenCalledWith(licenseData);
       expect(result.id).toBe('ext-new');
       expect(result.appid).toBe('new-app');
     });

@@ -2,7 +2,12 @@
  * Get License Stats Use Case
  * Handles retrieving license statistics
  */
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+
 export class GetLicenseStatsUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   */
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
   }

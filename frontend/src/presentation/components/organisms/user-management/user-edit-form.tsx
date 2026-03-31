@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useUserStore } from '@/infrastructure/stores/user';
@@ -8,17 +7,16 @@ import { updateUserSchema, type UpdateUserFormData } from '@/shared/schemas';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
-import { USER_ROLE_LABELS, USER_ROLES } from '@/shared/constants';
+import { USER_ROLES } from '@/shared/constants';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Button } from '@/presentation/components/atoms/primitives/button';
-import { Input } from '@/presentation/components/atoms/forms/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
 import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
 import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Edit, X, Check } from 'lucide-react';
+import { Edit, X } from 'lucide-react';
 
 interface UserEditFormProps {
   user: User;
@@ -33,11 +31,10 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
   const isUpdating = formLoading;
 
   const {
-    register,
     handleSubmit,
     formState: { errors },
     setValue,
-    watch
+    watch,
   } = useForm<UpdateUserFormData>({
     resolver: zodResolver(updateUserSchema),
     defaultValues: {
@@ -48,8 +45,10 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
     }
   });
 
-  const selectedRole = watch('role');
-  const isActive = watch('isActive');
+  /* eslint-disable react-hooks/incompatible-library -- react-hook-form watch() for controlled Select fields */
+  const selectedRole = watch("role");
+  const isActive = watch("isActive");
+  /* eslint-enable react-hooks/incompatible-library */
 
   const onSubmit = async (data: UpdateUserFormData) => {
     try {
@@ -88,11 +87,9 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
       let errorMessage = 'Failed to update user';
       let errorCode = '';
       let errorCategory = '';
-      let errorDetails = '';
 
       if (err instanceof Error) {
         errorMessage = err.message;
-        errorDetails = err.stack || '';
       } else if (typeof err === 'object' && err !== null) {
         const errorObj = err as {
           message?: string; error?: string; code?: string; category?: string; details?: unknown;
@@ -102,7 +99,6 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         if (errorObj.error && typeof errorObj.error === 'string') errorMessage = errorObj.error;
         if (errorObj.code) errorCode = errorObj.code;
         if (errorObj.category) errorCategory = errorObj.category;
-        if (errorObj.details) errorDetails = JSON.stringify(errorObj.details);
         if (errorObj.response?.data?.message) errorMessage = errorObj.response.data.message;
         if (errorObj.response?.data?.error) errorMessage = errorObj.response.data.error;
         if (errorObj.response?.data?.code) errorCode = errorObj.response.data.code;

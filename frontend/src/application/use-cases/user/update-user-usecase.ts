@@ -99,6 +99,7 @@ export class UpdateUserUseCase {
     if (currentUser.id !== userId) {
       const canManage =
         currentUser.role === UserRole.ADMIN ||
+        (currentUser.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN) ||
         (currentUser.role === UserRole.MANAGER && targetUser.role === UserRole.STAFF);
 
       if (!canManage) {
@@ -122,9 +123,9 @@ export class UpdateUserUseCase {
         canPerformAdminActions: AuthDomainService.canPerformAdminActions(currentUser),
       });
 
-      // Only admins can change roles - basic check
-      if (currentUser.role !== UserRole.ADMIN) {
-        throw new Error('Only admins can change user roles');
+      // Only admins/accountants can change roles in client-side pre-check.
+      if (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.ACCOUNTANT) {
+        throw new Error('Only admins or accountants can change user roles');
       }
 
       // Skip detailed role change validation - let backend handle it

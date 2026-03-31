@@ -64,6 +64,9 @@ export const config = {
 
   // WebSocket real-time sync (Phase 2)
   WEBSOCKET_ENABLED: process.env.WEBSOCKET_ENABLED !== 'false',
+
+  // Logging: 'dev' = human-readable with colors; 'json' = one JSON line per log (for aggregators)
+  LOG_FORMAT: process.env.LOG_FORMAT || 'dev',
 };
 
 export default config;

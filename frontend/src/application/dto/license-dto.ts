@@ -32,16 +32,21 @@ export interface CreateLicenseDTO {
 export interface UpdateLicenseDTO {
   dba?: string;
   zip?: string;
+  startsAt?: string;
   status?: LicenseStatus;
   plan?: string;
   term?: LicenseTerm;
+  cancelDate?: string;
   seatsTotal?: number;
   lastPayment?: number;
   smsPurchased?: number;
+  smsSent?: number;
   agents?: number;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
+  /** Row version: must match server `updatedAt` when sending (optimistic concurrency). */
+  expectedUpdatedAt?: string;
 }
 
 /**
@@ -117,6 +122,7 @@ export interface LicenseResponseDTO {
   startsAt: string;
   status: LicenseStatus;
   cancelDate?: string;
+  dueDate?: string;
   plan: string;
   term: LicenseTerm;
   seatsTotal: number;
@@ -248,7 +254,7 @@ export interface PaginatedLicenseListDTO {
   };
   statistics?: LicenseStatisticsDTO;
   filters?: {
-    applied: Record<string, any>;
+    applied: Record<string, unknown>;
     available: {
       statuses: LicenseStatus[];
       plans: string[];
@@ -279,7 +285,7 @@ export interface LicenseValidationResultDTO {
  * License Bulk Operation Result DTO
  * Used for bulk operation responses
  */
-export interface BulkOperationResultDTO<T = any> {
+export interface BulkOperationResultDTO<T = unknown> {
   success: boolean;
   processed: number;
   successful: number;
@@ -292,7 +298,7 @@ export interface BulkOperationResultDTO<T = any> {
   }>;
   summary: {
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
 }
 
@@ -374,7 +380,7 @@ export interface LicenseImportResultDTO {
     row: number;
     field?: string;
     message: string;
-    data?: Record<string, any>;
+    data?: Record<string, unknown>;
   }>;
   preview?: LicenseResponseDTO[];
 }

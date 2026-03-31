@@ -273,7 +273,7 @@ export interface ActionsConfig<TData = unknown> {
   custom?: CustomActionConfig<TData>[];
 }
 
-export interface ActionConfig<TData = unknown> {
+export interface ActionConfig<_TData = unknown> {
   /** Action identifier */
   id: string;
 
@@ -365,7 +365,8 @@ export interface CustomActionConfig<TData = unknown> {
 export interface CustomActionRenderProps<TData = unknown> {
   data: TData[];
   selectedRows: TData[];
-  table: any; // TanStack Table instance
+  /** TanStack Table instance (typed loosely to avoid circular imports) */
+  table: import('@tanstack/react-table').Table<TData>;
 }
 
 export interface ExportConfig {
@@ -570,7 +571,7 @@ export interface DataDisplayCallbacks<TData = unknown> {
 /**
  * Helper type to infer data type from columns
  */
-export type InferDataType<T extends ColumnDef<any>[]> =
+export type InferDataType<T extends ColumnDef<unknown>[]> =
   T extends ColumnDef<infer D>[] ? D : never;
 
 /**

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { container } from '@/shared/di/container';
-import { User, UserListParams, PaginatedUserList, UserStats, CreateUserDTO, UpdateUserDTO } from '@/application/dto/user-dto';
+import { User, UserListParams, PaginatedUserList, CreateUserDTO, UpdateUserDTO } from '@/application/dto/user-dto';
 
 
 /**
@@ -70,7 +70,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     deleteUser: null as string | null,
   });
 
-  const executeWithErrorHandling = useCallback(async <T = any>(
+  const executeWithErrorHandling = useCallback(async <T = unknown>(
     operation: () => Promise<T>,
     operationName: keyof typeof loadingStates,
     errorMessage: string
@@ -96,7 +96,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       'getUsers',
       'Failed to load users'
     );
-  }, [executeWithErrorHandling]);
+  }, [executeWithErrorHandling, userService]);
 
   const createUser = useCallback(async (userData: CreateUserDTO): Promise<User> => {
     return executeWithErrorHandling(
@@ -104,7 +104,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       'createUser',
       'Failed to create user'
     );
-  }, [executeWithErrorHandling]);
+  }, [executeWithErrorHandling, userService]);
 
   const updateUser = useCallback(async (id: string, updates: UpdateUserDTO): Promise<User> => {
     return executeWithErrorHandling(
@@ -112,7 +112,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       'updateUser',
       'Failed to update user'
     );
-  }, [executeWithErrorHandling]);
+  }, [executeWithErrorHandling, userService]);
 
   const deleteUser = useCallback(async (id: string): Promise<void> => {
     return executeWithErrorHandling(
@@ -120,7 +120,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       'deleteUser',
       'Failed to delete user'
     );
-  }, [executeWithErrorHandling]);
+  }, [executeWithErrorHandling, userService]);
 
 
   const clearError = useCallback((operation: keyof UserContextType['error']) => {

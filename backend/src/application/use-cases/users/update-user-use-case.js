@@ -3,6 +3,7 @@
  * Handles user profile updates
  */
 import logger from '../../../shared/utils/logger.js';
+import { ROLES } from '../../../shared/constants/roles.js';
 import { UserResponseDto } from '../../dto/user/index.js';
 import {
   ValidationException,
@@ -10,7 +11,12 @@ import {
   InsufficientPermissionsException,
 } from '../../../domain/exceptions/domain.exception.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+
 export class UpdateUserUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   */
   constructor(userRepository) {
     this.userRepository = userRepository;
   }
@@ -25,8 +31,8 @@ export class UpdateUserUseCase {
     }
 
     // Admins can update anyone except other admins
-    if (updater.role === 'admin') {
-      if (targetUser.role === 'admin') {
+    if (updater.role === ROLES.ADMIN) {
+      if (targetUser.role === ROLES.ADMIN) {
         return {
           allowed: false,
           reason: 'Admins cannot update other admin accounts',
@@ -35,21 +41,32 @@ export class UpdateUserUseCase {
       return { allowed: true };
     }
 
-    // Managers can update staff users but not admins or other managers
-    if (updater.role === 'manager') {
-      if (targetUser.role === 'admin') {
+    // Accountants can update non-admin users
+    if (updater.role === ROLES.ACCOUNTANT) {
+      if (targetUser.role === ROLES.ADMIN) {
+        return {
+          allowed: false,
+          reason: 'Accountants cannot update admin accounts',
+        };
+      }
+      return { allowed: true };
+    }
+
+    // Managers can update staff users but not admins, accountants, or other managers
+    if (updater.role === ROLES.MANAGER) {
+      if (targetUser.role === ROLES.ADMIN) {
         return {
           allowed: false,
           reason: 'Managers cannot update admin accounts',
         };
       }
-      if (targetUser.role === 'manager') {
+      if (targetUser.role === ROLES.ACCOUNTANT || targetUser.role === ROLES.MANAGER) {
         return {
           allowed: false,
-          reason: 'Managers cannot update other managers',
+          reason: 'Managers cannot update peer or higher-privilege accounts',
         };
       }
-      if (targetUser.role === 'staff') {
+      if (targetUser.role === ROLES.STAFF) {
         return { allowed: true };
       }
     }
@@ -79,8 +96,8 @@ export class UpdateUserUseCase {
     }
 
     // Admin can edit status of manager and staff (not other admins)
-    if (updater.role === 'admin') {
-      if (targetUser.role === 'admin') {
+    if (updater.role === ROLES.ADMIN) {
+      if (targetUser.role === ROLES.ADMIN) {
         return {
           allowed: false,
           reason: 'Admins cannot change status of other admin accounts',
@@ -89,9 +106,20 @@ export class UpdateUserUseCase {
       return { allowed: true };
     }
 
+    // Accountant can edit status of any non-admin account
+    if (updater.role === ROLES.ACCOUNTANT) {
+      if (targetUser.role === ROLES.ADMIN) {
+        return {
+          allowed: false,
+          reason: 'Accountants cannot change status of admin accounts',
+        };
+      }
+      return { allowed: true };
+    }
+
     // Manager can only edit status of staff
-    if (updater.role === 'manager') {
-      if (targetUser.role === 'staff') {
+    if (updater.role === ROLES.MANAGER) {
+      if (targetUser.role === ROLES.STAFF) {
         return { allowed: true };
       }
       return {

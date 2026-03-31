@@ -1,6 +1,7 @@
 import { ExternalLicense } from '../../domain/entities/external-license-entity.js';
 import { IExternalLicenseRepository } from '../../domain/repositories/interfaces/i-external-license-repository.js';
 import { licenseSyncConfig } from '../config/license-sync-config.js';
+import { applyInternalMergePolicy } from '../../shared/utils/internal-license-external-sync-merge.js';
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
 import logger from '../../shared/utils/logger.js';
 
@@ -278,6 +279,14 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
         },
       }
     );
+  }
+
+  /**
+   * Compatibility alias used by some legacy paths.
+   * Delegates to upsert to keep one write behavior.
+   */
+  async save(licenseData) {
+    return this.upsert(licenseData);
   }
 
   async update(id, updates) {
@@ -1159,7 +1168,11 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
         for (const operation of operationBatch) {
           try {
             if (operation.type === 'update') {
-              const updateData = this._createExternalUpdateData(operation.externalLicense);
+              const rawUpdateData = this._createExternalUpdateData(operation.externalLicense);
+              const { updateData } = applyInternalMergePolicy(
+                rawUpdateData,
+                operation.internalLicense
+              );
               updateData.external_sync_status = 'synced';
               updateData.last_external_sync = new Date();
 
@@ -1462,7 +1475,8 @@ export class ExternalLicenseRepository extends IExternalLicenseRepository {
 
           if (internalLicense) {
             // Update existing internal license with external data - only update fields that external provides
-            const updateData = this._createExternalUpdateData(externalLicense);
+            const rawUpdateData = this._createExternalUpdateData(externalLicense);
+            const { updateData } = applyInternalMergePolicy(rawUpdateData, internalLicense);
             updateData.external_sync_status = 'synced';
             updateData.last_external_sync = new Date();
 

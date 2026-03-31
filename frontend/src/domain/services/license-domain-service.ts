@@ -1,11 +1,4 @@
-import {
-  License,
-  LicenseId,
-  Money,
-  DateRange,
-  CreateLicenseProps,
-  LicenseDomainEvent
-} from '@/domain/entities/license-entity';
+import { License, Money, CreateLicenseProps } from '@/domain/entities/license-entity';
 
 // Define domain types locally (active, cancel only)
 type LicenseStatus = 'active' | 'cancel';
@@ -191,7 +184,7 @@ export class LicenseDomainService {
 
     switch (operation) {
       case 'activate':
-        licenses.forEach((license, index) => {
+        licenses.forEach((license) => {
           if (!license.canBeActivated()) {
             errors.push(`License ${license.id.toString()} cannot be activated (current status: ${license.status})`);
           }
@@ -199,7 +192,7 @@ export class LicenseDomainService {
         break;
 
       case 'cancel':
-        licenses.forEach((license, index) => {
+        licenses.forEach((license) => {
           if (license.status === 'cancel') {
             errors.push(`License ${license.id.toString()} is already in terminal state: ${license.status}`);
           }
@@ -208,7 +201,7 @@ export class LicenseDomainService {
 
       case 'delete':
         // All licenses can be deleted, but check for active usage
-        licenses.forEach((license, index) => {
+        licenses.forEach((license) => {
           if (license.seatsUsed > 0) {
             errors.push(`License ${license.id.toString()} has ${license.seatsUsed} active users and cannot be deleted`);
           }

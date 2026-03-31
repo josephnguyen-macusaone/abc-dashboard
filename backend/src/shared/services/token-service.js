@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { config } from '../../infrastructure/config/config.js';
 import logger from '../utils/logger.js';
+import { ITokenService } from '../../application/interfaces/i-token-service.js';
 import {
   ValidationException,
   TokenExpiredException,
@@ -12,8 +13,9 @@ import {
  * Token Service
  * Handles JWT token generation and verification with comprehensive error handling
  */
-export class TokenService {
+export class TokenService extends ITokenService {
   constructor() {
+    super();
     this.correlationId = null;
     this.operationId = null;
     this.jwtSecret = config.JWT_SECRET;

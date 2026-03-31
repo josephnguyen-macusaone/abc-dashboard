@@ -62,6 +62,7 @@ async function fetchUserProfile(userProfileRepository, user) {
 
 export class AuthController extends BaseController {
   constructor(
+    signupUseCase,
     loginUseCase,
     refreshTokenUseCase,
     changePasswordUseCase,
@@ -73,6 +74,7 @@ export class AuthController extends BaseController {
     userRepository = null
   ) {
     super();
+    this.signupUseCase = signupUseCase;
     this.loginUseCase = loginUseCase;
     this.refreshTokenUseCase = refreshTokenUseCase;
     this.changePasswordUseCase = changePasswordUseCase;
@@ -83,6 +85,34 @@ export class AuthController extends BaseController {
     this.tokenService = tokenService;
     this.userProfileRepository = userProfileRepository;
     this.userRepository = userRepository;
+  }
+
+  async signup(req, res) {
+    let signupPayload = null;
+
+    try {
+      signupPayload = req.body;
+      AuthValidator.validateSignup(signupPayload);
+
+      const result = await this.executeUseCase(this.signupUseCase, signupPayload, {
+        operation: 'signup',
+        email: signupPayload.email,
+      });
+
+      setTokenCookie(res, result.tokens.accessToken);
+      setRefreshTokenCookie(res, result.tokens.refreshToken);
+
+      return res.created(result, 'Signup successful');
+    } catch (error) {
+      return this.handleError(error, req, res, {
+        operation: 'signup',
+        requestBody: {
+          email: signupPayload?.email || 'undefined',
+          role: signupPayload?.role || 'undefined',
+          password: '[REDACTED]',
+        },
+      });
+    }
   }
 
   async login(req, res) {

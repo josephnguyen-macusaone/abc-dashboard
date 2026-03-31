@@ -1,27 +1,27 @@
 #!/usr/bin/env node
 
 /**
- * Sync Test Connectivity Script
- * Tests connection to the external license API
+ * Sync Connectivity Check Script
+ * Checks connectivity to the external license API.
  */
 
 import { ExternalLicenseApiService } from '../../shared/services/external-license-api-service.js';
 import logger from '../../shared/utils/logger.js';
 
-async function testConnectivity() {
+async function checkSyncConnectivity() {
   try {
     const service = new ExternalLicenseApiService();
     const result = await service.testConnectivity();
 
     if (result.success) {
-      logger.info('Connectivity test passed', {
+      logger.info('Connectivity check passed', {
         success: result.success,
         message: result.message,
         details: result,
       });
       process.exit(0);
     } else {
-      logger.warn('Connectivity test failed', {
+      logger.warn('Connectivity check failed', {
         success: result.success,
         message: result.message,
         details: result,
@@ -29,7 +29,7 @@ async function testConnectivity() {
       process.exit(1);
     }
   } catch (error) {
-    logger.error('Connectivity test error', {
+    logger.error('Connectivity check error', {
       error: error.message,
       stack: error.stack,
     });
@@ -39,7 +39,7 @@ async function testConnectivity() {
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  testConnectivity();
+  checkSyncConnectivity();
 }
 
-export { testConnectivity };
+export { checkSyncConnectivity };

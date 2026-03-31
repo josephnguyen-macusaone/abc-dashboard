@@ -76,7 +76,7 @@ export function getThemeFromStorage(): ThemeType | null {
         return storageTheme as ThemeType;
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Clear corrupted data
     localStorage.removeItem('theme-storage');
   }

@@ -1,6 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+  useRef,
+  startTransition,
+} from 'react';
 import { THEMES, THEME_CONFIG } from '@/shared/constants';
 import {
   getThemeData,
@@ -64,8 +73,8 @@ interface ThemeProviderProps {
  */
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
-  defaultTheme = THEMES.LIGHT,
-  storageKey = 'theme-storage',
+  defaultTheme: _defaultTheme = THEMES.LIGHT,
+  storageKey: _storageKey = 'theme-storage',
   attribute = THEME_CONFIG.ATTRIBUTE,
   disableTransitionOnChange = false,
 }) => {
@@ -79,7 +88,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
           resolvedTheme: window.__THEME_DATA__.resolvedTheme as ResolvedTheme,
           source: window.__THEME_DATA__.source as ThemeData['source'],
         };
-      } catch (e) {
+      } catch (_e) {
         // Ignore script data errors and use utility function
       }
     }
@@ -171,22 +180,23 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   // Hydration and initial setup
   useEffect(() => {
-    // Mark as hydrated
-    setIsHydrated(true);
+    startTransition(() => {
+      setIsHydrated(true);
 
-    // Apply initial theme (in case it wasn't applied by the script)
-    applyTheme(themeData.resolvedTheme);
+      applyTheme(themeData.resolvedTheme);
 
-    // Sync with any changes that happened during SSR
-    const currentThemeData = getThemeData();
-    if (
-      currentThemeData.theme !== themeData.theme ||
-      currentThemeData.resolvedTheme !== themeData.resolvedTheme
-    ) {
-      setThemeData(currentThemeData);
-      applyTheme(currentThemeData.resolvedTheme);
-    }
-  }, [applyTheme]); // Remove themeData from deps to avoid loops
+      const currentThemeData = getThemeData();
+      if (
+        currentThemeData.theme !== themeData.theme ||
+        currentThemeData.resolvedTheme !== themeData.resolvedTheme
+      ) {
+        setThemeData(currentThemeData);
+        applyTheme(currentThemeData.resolvedTheme);
+      }
+    });
+    // Intentionally omit themeData: run once after mount; theme changes use other effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time hydration; theme updates handled elsewhere
+  }, [applyTheme]);
 
   // Cleanup transition timeout on unmount
   useEffect(() => {

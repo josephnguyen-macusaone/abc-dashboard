@@ -1,6 +1,6 @@
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { ROLE_DEFINITIONS, USER_ROLE_COLORS, type UserRoleType } from '@/shared/constants/auth';
-import { Shield, Users, User } from 'lucide-react';
+import { Shield, Users, User, Wrench, BriefcaseBusiness } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 
@@ -13,7 +13,10 @@ export interface UserRoleBadgeProps {
 
 const roleIcons: Record<UserRoleType, LucideIcon> = {
   admin: Shield,
+  accountant: BriefcaseBusiness,
   manager: Users,
+  tech: Wrench,
+  agent: User,
   staff: User,
 };
 
@@ -70,7 +73,7 @@ export function UserRoleBadge({
 }
 
 // Export role options with icons for use in filters/dropdowns
-export const USER_ROLE_OPTIONS_WITH_ICONS = Object.entries(ROLE_DEFINITIONS).map(([key, roleDef]) => ({
+export const USER_ROLE_OPTIONS_WITH_ICONS = Object.entries(ROLE_DEFINITIONS).map(([_key, roleDef]) => ({
   label: roleDef.displayName,
   value: roleDef.name,
   icon: roleIcons[roleDef.name] as React.FC<React.SVGProps<SVGSVGElement>>,

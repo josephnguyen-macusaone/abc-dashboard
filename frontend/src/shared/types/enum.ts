@@ -1,7 +1,10 @@
 export enum Role {
   ADMIN = 'admin',
+  ACCOUNTANT = 'accountant',
   MANAGER = 'manager',
-  STAFF = 'staff'
+  TECH = 'tech',
+  AGENT = 'agent',
+  STAFF = 'staff',
 }
 
 export enum SortBy {

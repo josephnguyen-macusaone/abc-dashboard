@@ -1,9 +1,13 @@
 import crypto from 'crypto';
 import { LicenseValidator } from '../../application/validators/license-validator.js';
-import { ValidationException } from '../../domain/exceptions/domain.exception.js';
+import {
+  ValidationException,
+  ConcurrentModificationException,
+} from '../../domain/exceptions/domain.exception.js';
 import { sendErrorResponse, formatCanonicalError } from '../../shared/http/error-responses.js';
 import logger from '../../shared/utils/logger.js';
 import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
+import { ROLES } from '../../shared/constants/roles.js';
 
 export class LicenseController {
   constructor(licenseService, licenseSyncScheduler = null, licenseRealtimeService = null) {
@@ -15,6 +19,12 @@ export class LicenseController {
   getLicenses = async (req, res) => {
     try {
       const query = LicenseValidator.validateListQuery(req.query);
+      if (req.user?.role === ROLES.AGENT && req.user?.id) {
+        query.filters = {
+          ...(query.filters || {}),
+          assignedUserId: req.user.id,
+        };
+      }
 
       logger.debug('License API request initiated', {
         correlationId: req.correlationId,
@@ -150,6 +160,16 @@ export class LicenseController {
 
   getLicenseById = async (req, res) => {
     try {
+      if (req.user?.role === ROLES.AGENT) {
+        const hasAssignment = await this.licenseService.licenseRepository.hasUserAssignment(
+          req.params.id,
+          req.user.id
+        );
+        if (!hasAssignment) {
+          return res.forbidden('You can only access licenses assigned to you');
+        }
+      }
+
       const license = await this.licenseService.getLicenseById(req.params.id);
       if (!license) {
         return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
@@ -167,6 +187,7 @@ export class LicenseController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       };
@@ -187,8 +208,10 @@ export class LicenseController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        expectedUpdatedAt: req.body?.expectedUpdatedAt || req.body?.updatedAt,
       };
 
       const updated = await this.licenseService.updateLicense(req.params.id, req.body, context);
@@ -200,6 +223,11 @@ export class LicenseController {
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
+      }
+      if (error instanceof ConcurrentModificationException) {
+        return sendErrorResponse(res, 'CONCURRENT_MODIFICATION', { resource: 'License' }, {
+          ...(error.additionalData || {}),
+        });
       }
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
@@ -237,6 +265,8 @@ export class LicenseController {
           'notes',
           'key',
           'product',
+          'expectedUpdatedAt',
+          'updatedAt',
         ];
 
         licensesToUpdate = req.body.map((license) => {
@@ -295,6 +325,11 @@ export class LicenseController {
     } catch (error) {
       if (error instanceof ValidationException) {
         return res.badRequest(error.message);
+      }
+      if (error instanceof ConcurrentModificationException) {
+        return sendErrorResponse(res, 'CONCURRENT_MODIFICATION', { resource: 'License' }, {
+          ...(error.additionalData || {}),
+        });
       }
       logger.error('Bulk update failed', {
         error: error.message,
@@ -393,6 +428,7 @@ export class LicenseController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       };

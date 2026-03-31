@@ -3,13 +3,19 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../shared/utils/logger.js';
+import { ROLES } from '../../../shared/constants/roles.js';
 import {
   ValidationException,
   ResourceNotFoundException,
   InsufficientPermissionsException,
 } from '../../../domain/exceptions/domain.exception.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+
 export class DeleteUserUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   */
   constructor(userRepository) {
     this.userRepository = userRepository;
   }
@@ -27,8 +33,8 @@ export class DeleteUserUseCase {
     }
 
     // Admins can delete anyone except other admins
-    if (deleter.role === 'admin') {
-      if (targetUser.role === 'admin') {
+    if (deleter.role === ROLES.ADMIN) {
+      if (targetUser.role === ROLES.ADMIN) {
         return {
           allowed: false,
           reason: 'Admin accounts cannot be deleted',
@@ -37,21 +43,32 @@ export class DeleteUserUseCase {
       return { allowed: true };
     }
 
-    // Managers can delete staff users but not admins or other managers
-    if (deleter.role === 'manager') {
-      if (targetUser.role === 'admin') {
+    // Accountants can delete non-admin users
+    if (deleter.role === ROLES.ACCOUNTANT) {
+      if (targetUser.role === ROLES.ADMIN) {
+        return {
+          allowed: false,
+          reason: 'Accountants cannot delete admin accounts',
+        };
+      }
+      return { allowed: true };
+    }
+
+    // Managers can delete staff users but not admins, accountants, or other managers
+    if (deleter.role === ROLES.MANAGER) {
+      if (targetUser.role === ROLES.ADMIN) {
         return {
           allowed: false,
           reason: 'Managers cannot delete admin accounts',
         };
       }
-      if (targetUser.role === 'manager') {
+      if (targetUser.role === ROLES.ACCOUNTANT || targetUser.role === ROLES.MANAGER) {
         return {
           allowed: false,
-          reason: 'Managers cannot delete other managers',
+          reason: 'Managers cannot delete peer or higher-privilege accounts',
         };
       }
-      if (targetUser.role === 'staff') {
+      if (targetUser.role === ROLES.STAFF) {
         return { allowed: true };
       }
     }

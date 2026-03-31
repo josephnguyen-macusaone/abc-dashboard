@@ -51,7 +51,7 @@ docker compose exec backend npm run seed
 # Or: make db-reset  (drop + migrate + seed)
 ```
 
-Build images: `docker compose build backend` or `make build`.
+Build images: `docker compose build backend` or `make build`. The backend image is built from **repo root** (so it can include `monitoring/` for Prometheus + Grafana) and runs the API, Prometheus, and Grafana in one container. Ports: 5001 (API), 9090 (Prometheus), 3030 (Grafana).
 
 ## PM2 (production, no Docker)
 
@@ -95,9 +95,20 @@ Use HTTPS and set `CLIENT_URL` to the frontend origin. See root DEPLOYMENT-GUIDE
 
 ## Health and monitoring
 
-- Health: `GET /api/v1/health`
-- Swagger: `/api-docs`
-- License sync status: `npm run sync:status` (or see `/api/v1/license-sync/*` if exposed)
+- **Health:** `GET /api/v1/health`
+- **Metrics (JSON):** `GET /api/v1/metrics`
+- **Metrics (Prometheus):** `GET /api/v1/metrics/prometheus` (for Grafana / Prometheus scraping)
+- **Swagger:** `/api-docs`
+- **License sync status:** `npm run sync:status` (or see `/api/v1/license-sync/*` if exposed)
+
+### Grafana and Prometheus (Docker)
+
+When running with `docker compose up`, Prometheus and Grafana are started for server health and deployment dashboards:
+
+- **Grafana:** http://localhost:3030 (default login: `admin` / `admin`; set `GRAFANA_ADMIN_PASSWORD` in production)
+- **Prometheus:** http://localhost:9090
+
+See repo root [monitoring/README.md](../../monitoring/README.md) for setup, metric reference, and optional env vars.
 
 ## Troubleshooting
 

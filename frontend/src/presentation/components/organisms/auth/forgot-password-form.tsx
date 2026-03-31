@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Button, Typography } from '@/presentation/components/atoms';
 import { InputField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
@@ -37,8 +37,6 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
     reset: resetForm,
   } = useForgotPasswordFormStore();
 
-  const [submitAttempted, setSubmitAttempted] = useState(false);
-
   // Real-time email validation
   const emailValidation = useMemo(() => {
     const email = formData.email;
@@ -66,13 +64,11 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
 
   const handleInputBlur = (field: keyof ForgotPasswordFormData) => {
     setTouched(field, true);
-    setSubmitAttempted(true); // Enable validation on blur
   };
 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitAttempted(true);
 
     if (!validateForm()) return;
 

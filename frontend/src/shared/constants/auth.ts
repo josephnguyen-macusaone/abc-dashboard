@@ -7,7 +7,10 @@
  */
 export const USER_ROLES = {
   ADMIN: 'admin',
+  ACCOUNTANT: 'accountant',
   MANAGER: 'manager',
+  TECH: 'tech',
+  AGENT: 'agent',
   STAFF: 'staff',
 } as const;
 
@@ -16,7 +19,10 @@ export const USER_ROLES = {
  */
 export const USER_ROLE_LABELS = {
   [USER_ROLES.ADMIN]: 'Administrator',
+  [USER_ROLES.ACCOUNTANT]: 'Accountant',
   [USER_ROLES.MANAGER]: 'Manager',
+  [USER_ROLES.TECH]: 'Tech',
+  [USER_ROLES.AGENT]: 'Agent',
   [USER_ROLES.STAFF]: 'Staff',
 } as const;
 
@@ -54,6 +60,21 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, readonly PermissionType[]> =
     USER_PERMISSIONS.VIEW_DASHBOARD,
     USER_PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
+  [USER_ROLES.ACCOUNTANT]: [
+    USER_PERMISSIONS.CREATE_USER,
+    USER_PERMISSIONS.READ_USER,
+    USER_PERMISSIONS.UPDATE_USER,
+    USER_PERMISSIONS.VIEW_DASHBOARD,
+    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
+  [USER_ROLES.TECH]: [
+    USER_PERMISSIONS.VIEW_DASHBOARD,
+    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
+  [USER_ROLES.AGENT]: [
+    USER_PERMISSIONS.VIEW_DASHBOARD,
+    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
+  ],
   [USER_ROLES.STAFF]: [
     USER_PERMISSIONS.UPDATE_USER, // Only own profile
     USER_PERMISSIONS.VIEW_DASHBOARD,
@@ -69,8 +90,18 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, readonly PermissionType[]> =
  * - Staff: cannot create any users
  */
 export const ROLE_CREATION_PERMISSIONS: Record<UserRoleType, readonly UserRoleType[]> = {
-  [USER_ROLES.ADMIN]: [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF],
+  [USER_ROLES.ADMIN]: [
+    USER_ROLES.ADMIN,
+    USER_ROLES.ACCOUNTANT,
+    USER_ROLES.MANAGER,
+    USER_ROLES.TECH,
+    USER_ROLES.AGENT,
+    USER_ROLES.STAFF,
+  ],
+  [USER_ROLES.ACCOUNTANT]: [USER_ROLES.TECH, USER_ROLES.AGENT],
   [USER_ROLES.MANAGER]: [USER_ROLES.STAFF],
+  [USER_ROLES.TECH]: [],
+  [USER_ROLES.AGENT]: [],
   [USER_ROLES.STAFF]: [],
 } as const;
 
@@ -82,7 +113,7 @@ export type PermissionType = typeof USER_PERMISSIONS[keyof typeof USER_PERMISSIO
 /**
  * Type for valid user roles (defined directly to avoid circular reference)
  */
-export type UserRoleType = 'admin' | 'manager' | 'staff';
+export type UserRoleType = 'admin' | 'accountant' | 'manager' | 'tech' | 'agent' | 'staff';
 
 /**
  * Role Definitions for UI display and management
@@ -99,6 +130,24 @@ export const ROLE_DEFINITIONS = {
     displayName: 'Manager',
     description: 'User management and oversight',
     color: 'manager' as const,
+  },
+  [USER_ROLES.ACCOUNTANT]: {
+    name: 'accountant' as UserRoleType,
+    displayName: 'Accountant',
+    description: 'License and finance operations',
+    color: 'accountant' as const,
+  },
+  [USER_ROLES.TECH]: {
+    name: 'tech' as UserRoleType,
+    displayName: 'Tech',
+    description: 'Technical license support operations',
+    color: 'tech' as const,
+  },
+  [USER_ROLES.AGENT]: {
+    name: 'agent' as UserRoleType,
+    displayName: 'Agent',
+    description: 'Assigned client and license operations',
+    color: 'agent' as const,
   },
   [USER_ROLES.STAFF]: {
     name: 'staff' as UserRoleType,
@@ -129,7 +178,10 @@ export const USER_STATUS_COLORS: Record<'active' | 'inactive', string> = {
  */
 export const USER_ROLE_COLORS: Record<UserRoleType, string> = {
   admin: 'bg-purple-100 text-purple-800 border-purple-300',
+  accountant: 'bg-amber-100 text-amber-800 border-amber-300',
   manager: 'bg-blue-100 text-blue-800 border-blue-300',
+  tech: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  agent: 'bg-indigo-100 text-indigo-800 border-indigo-300',
   staff: 'bg-emerald-100 text-emerald-800 border-emerald-300',
 };
 
@@ -139,8 +191,11 @@ export const USER_ROLE_COLORS: Record<UserRoleType, string> = {
  */
 export function canManageRole(managerRole: UserRoleType, targetRole: UserRoleType): boolean {
   const roleHierarchy: Record<UserRoleType, number> = {
-    admin: 3,
-    manager: 2,
+    admin: 6,
+    accountant: 5,
+    manager: 4,
+    tech: 3,
+    agent: 2,
     staff: 1,
   };
 
@@ -151,7 +206,14 @@ export function canManageRole(managerRole: UserRoleType, targetRole: UserRoleTyp
  * Type guard to check if a string is a valid user role
  */
 export function isValidUserRole(role: string | undefined): role is UserRoleType {
-  const validRoles: readonly string[] = [USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF];
+  const validRoles: readonly string[] = [
+    USER_ROLES.ADMIN,
+    USER_ROLES.ACCOUNTANT,
+    USER_ROLES.MANAGER,
+    USER_ROLES.TECH,
+    USER_ROLES.AGENT,
+    USER_ROLES.STAFF,
+  ];
   return role !== undefined && validRoles.includes(role);
 }
 
@@ -210,7 +272,11 @@ export const PermissionUtils = {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
 
-    // Manager can update staff only (not admins or other managers)
+    if (userRole === USER_ROLES.ACCOUNTANT) {
+      return targetUserRole !== USER_ROLES.ADMIN;
+    }
+
+    // Manager can update staff only (not admins, accountants, or other managers)
     if (userRole === USER_ROLES.MANAGER) {
       return targetUserRole === USER_ROLES.STAFF;
     }
@@ -335,6 +401,18 @@ export const PermissionUtils = {
    */
   isManager: (userRole: string | undefined): boolean => {
     return userRole === USER_ROLES.MANAGER;
+  },
+
+  isAccountant: (userRole: string | undefined): boolean => {
+    return userRole === USER_ROLES.ACCOUNTANT;
+  },
+
+  isTech: (userRole: string | undefined): boolean => {
+    return userRole === USER_ROLES.TECH;
+  },
+
+  isAgent: (userRole: string | undefined): boolean => {
+    return userRole === USER_ROLES.AGENT;
   },
 
   /**

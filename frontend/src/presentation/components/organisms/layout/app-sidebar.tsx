@@ -63,7 +63,7 @@ export function AppSidebar({
     handleResize(); // Initial check
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []); // Remove setMobile from deps since it's stable
+  }, [setMobile]);
 
   const effectiveWidth = getEffectiveWidth();
 

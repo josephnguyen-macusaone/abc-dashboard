@@ -67,7 +67,10 @@ export function AdminOnly({ children, fallback = null }: { children: ReactNode; 
  */
 export function ManagerOrHigher({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  const hasAccess = PermissionUtils.isAdmin(user?.role) || PermissionUtils.isManager(user?.role);
+  const hasAccess =
+    PermissionUtils.isAdmin(user?.role) ||
+    PermissionUtils.isAccountant(user?.role) ||
+    PermissionUtils.isManager(user?.role);
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;
 }

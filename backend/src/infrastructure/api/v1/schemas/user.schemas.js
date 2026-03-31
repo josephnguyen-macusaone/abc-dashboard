@@ -3,11 +3,18 @@
  * Joi schemas for user-related requests
  */
 import Joi from 'joi';
+import { ROLES } from '../../../../shared/constants/roles.js';
 
 // Ensure Joi is loaded properly
 if (!Joi) {
   throw new Error('Joi library failed to load');
 }
+
+const VALID_ROLE_VALUES = Object.values(ROLES);
+const VALID_ROLE_LIST = VALID_ROLE_VALUES.join(', ');
+const VALID_ROLE_PATTERN = new RegExp(
+  `^(${VALID_ROLE_VALUES.join('|')})(,(${VALID_ROLE_VALUES.join('|')}))*$`
+);
 
 export const userSchemas = {
   /**
@@ -103,12 +110,12 @@ export const userSchemas = {
     // Role filter - support single value, array, or comma-separated string
     role: Joi.alternatives()
       .try(
-        Joi.string().valid('admin', 'manager', 'staff'),
-        Joi.array().items(Joi.string().valid('admin', 'manager', 'staff')),
-        Joi.string().regex(/^admin|manager|staff(,admin|,manager|,staff)*$/)
+        Joi.string().valid(...VALID_ROLE_VALUES),
+        Joi.array().items(Joi.string().valid(...VALID_ROLE_VALUES)),
+        Joi.string().regex(VALID_ROLE_PATTERN)
       )
       .messages({
-        'any.only': 'Role must be one of: admin, manager, staff',
+        'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
         'array.includesOne': 'Role array must contain only valid roles',
         'string.pattern.base': 'Role must be comma-separated valid roles',
       }),
@@ -209,8 +216,8 @@ export const userSchemas = {
         'string.pattern.base': 'Phone number must be in valid format',
       }),
 
-    role: Joi.string().valid('admin', 'manager', 'staff').default('staff').messages({
-      'any.only': 'Role must be one of: admin, manager, staff',
+    role: Joi.string().valid(...VALID_ROLE_VALUES).default(ROLES.STAFF).messages({
+      'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
       'string.base': 'Role must be a string',
     }),
   }),
@@ -235,8 +242,8 @@ export const userSchemas = {
         'string.pattern.base': 'Phone number must be in valid format',
       }),
 
-    role: Joi.string().valid('admin', 'manager', 'staff').messages({
-      'any.only': 'Role must be one of: admin, manager, staff',
+    role: Joi.string().valid(...VALID_ROLE_VALUES).messages({
+      'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
     }),
 
     isActive: Joi.boolean().messages({
