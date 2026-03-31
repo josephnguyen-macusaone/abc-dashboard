@@ -8,8 +8,11 @@
 #   ./scripts/docker-db-reset-sync.sh --sync=10     # migrate:fresh + seed + sync max 10 pages
 #   ./scripts/docker-db-reset-sync.sh --sync-limit=10  # same + sync max 10 licenses (quick test)
 #
-# Flow: checks backend container is up → (--drop: terminate connections, drop DB, create, migrate) or migrate:fresh
+# Flow: (--drop: stop backend, terminate connections, drop DB, start backend, migrate) or migrate:fresh in backend
 #       → seed → (--sync: npm run sync:start). All commands run inside containers via docker compose exec.
+#
+# Note: With --drop, backend MUST be stopped before DROP DATABASE; otherwise Knex pools reconnect and DROP fails
+#       ("database is being accessed by other users").
 #
 # Requires .env at repo root with Docker-friendly DB host/port (backend runs inside Docker):
 #   POSTGRES_HOST=postgres
@@ -35,16 +38,51 @@ for arg in "$@"; do
   esac
 done
 
-if ! docker compose ps backend 2>/dev/null | grep -q Up; then
-  echo "Backend container is not running. Start stack first: docker compose up -d"
+if ! docker compose ps postgres 2>/dev/null | grep -q Up; then
+  echo "Postgres container is not running. Start stack first: docker compose up -d"
   exit 1
 fi
 
+if [ "$DO_DROP" != "1" ]; then
+  if ! docker compose ps backend 2>/dev/null | grep -q Up; then
+    echo "Backend container is not running. Start stack first: docker compose up -d"
+    exit 1
+  fi
+fi
+
+wait_backend_health() {
+  echo "Waiting for backend API after database recreate..."
+  for i in $(seq 1 30); do
+    if docker compose ps backend 2>/dev/null | grep -q Up; then
+      if docker compose exec backend curl -sf http://localhost:5000/api/v1/health >/dev/null 2>&1; then
+        echo "Backend is ready."
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  echo "Backend did not become ready after db drop. Try: make logs-backend"
+  return 1
+}
+
 if [ "$DO_DROP" = "1" ]; then
-  echo "Terminating connections to database..."
-  docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '\''"$POSTGRES_DB"'\'' AND pid <> pg_backend_pid();"'
+  echo "Stopping backend container (releases DB connections before DROP DATABASE)..."
+  docker compose stop backend >/dev/null 2>&1 || true
+
+  echo "Terminating remaining connections to database..."
+  docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '\''"$POSTGRES_DB"'\'' AND pid <> pg_backend_pid();"' || true
+
   echo "Dropping and recreating database..."
-  docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\";" -c "CREATE DATABASE \"$POSTGRES_DB\";"'
+  # WITH (FORCE): PostgreSQL 13+ — terminate sessions and drop (defense in depth after stop backend)
+  docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\" WITH (FORCE);" -c "CREATE DATABASE \"$POSTGRES_DB\";"'
+
+  echo "Starting backend container..."
+  docker compose start backend || docker compose up -d backend
+
+  if ! wait_backend_health; then
+    exit 1
+  fi
+
   echo "Running migrations..."
   if ! docker compose exec backend npm run migrate; then
     echo ""
