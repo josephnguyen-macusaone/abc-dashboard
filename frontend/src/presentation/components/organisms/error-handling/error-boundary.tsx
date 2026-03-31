@@ -529,10 +529,12 @@ function ErrorDetailsAccordion({
   );
 }
 
-export default {
+const errorBoundaryExports = {
   ErrorBoundary,
   withErrorBoundary,
   PageErrorBoundary,
   SectionErrorBoundary,
   ComponentErrorBoundary,
 };
+
+export default errorBoundaryExports;

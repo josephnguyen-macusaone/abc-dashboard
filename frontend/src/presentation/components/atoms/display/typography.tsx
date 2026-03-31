@@ -691,7 +691,6 @@ export const Truncate = forwardRef<HTMLElement, TruncateProps>(
     },
     ref
   ) => {
-    const truncationClass = maxLines === 1 ? "truncate" : `line-clamp-${maxLines}`;
     const ellipsisClass = showEllipsis && maxLines > 1 ? "after:content-['" + ellipsis + "']" : "";
 
     return (

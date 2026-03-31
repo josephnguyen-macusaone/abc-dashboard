@@ -273,7 +273,7 @@ export interface ActionsConfig<TData = unknown> {
   custom?: CustomActionConfig<TData>[];
 }
 
-export interface ActionConfig<TData = unknown> {
+export interface ActionConfig<_TData = unknown> {
   /** Action identifier */
   id: string;
 

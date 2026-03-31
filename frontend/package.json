@@ -15,6 +15,7 @@
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:ci": "eslint . --max-warnings 0",
     "codegen:types": "openapi-typescript ../backend/swagger-spec.json -o src/infrastructure/api/generated-types.d.ts",
     "codegen": "cd ../backend && npm run export:swagger && cd ../frontend && npm run codegen:types"
   },

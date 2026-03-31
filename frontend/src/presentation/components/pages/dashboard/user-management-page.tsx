@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { UserManagement } from '@/presentation/components/organisms/user-management';
@@ -46,7 +46,6 @@ export function UserManagementPage() {
   const { users, fetchUsers } = userStore;
   const userFilters = userStore.filters;
   const userPagination = userStore.pagination;
-  const userStats = userStore.stats;
   const loadingUsers = userStore.listLoading;
 
   // Prevent duplicate API calls in React Strict Mode

@@ -73,7 +73,7 @@ export function UserRoleBadge({
 }
 
 // Export role options with icons for use in filters/dropdowns
-export const USER_ROLE_OPTIONS_WITH_ICONS = Object.entries(ROLE_DEFINITIONS).map(([key, roleDef]) => ({
+export const USER_ROLE_OPTIONS_WITH_ICONS = Object.entries(ROLE_DEFINITIONS).map(([_key, roleDef]) => ({
   label: roleDef.displayName,
   value: roleDef.name,
   icon: roleIcons[roleDef.name] as React.FC<React.SVGProps<SVGSVGElement>>,

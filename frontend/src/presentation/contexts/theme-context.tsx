@@ -73,8 +73,8 @@ interface ThemeProviderProps {
  */
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
-  defaultTheme = THEMES.LIGHT,
-  storageKey = 'theme-storage',
+  defaultTheme: _defaultTheme = THEMES.LIGHT,
+  storageKey: _storageKey = 'theme-storage',
   attribute = THEME_CONFIG.ATTRIBUTE,
   disableTransitionOnChange = false,
 }) => {
@@ -88,7 +88,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
           resolvedTheme: window.__THEME_DATA__.resolvedTheme as ResolvedTheme,
           source: window.__THEME_DATA__.source as ThemeData['source'],
         };
-      } catch (e) {
+      } catch (_e) {
         // Ignore script data errors and use utility function
       }
     }
@@ -195,6 +195,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       }
     });
     // Intentionally omit themeData: run once after mount; theme changes use other effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time hydration; theme updates handled elsewhere
   }, [applyTheme]);
 
   // Cleanup transition timeout on unmount

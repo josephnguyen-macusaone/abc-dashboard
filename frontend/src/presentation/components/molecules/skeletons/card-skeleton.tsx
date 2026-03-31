@@ -1,4 +1,4 @@
-import { ShapeSkeleton, TextSkeleton, IconSkeleton } from '@/presentation/components/atoms';
+import { TextSkeleton, IconSkeleton } from '@/presentation/components/atoms';
 import { cn } from "@/shared/helpers";
 
 interface CardSkeletonProps {

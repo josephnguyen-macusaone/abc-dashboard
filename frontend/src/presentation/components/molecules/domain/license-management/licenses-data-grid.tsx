@@ -196,7 +196,7 @@ export function LicensesDataGrid({
     } finally {
       setIsSaving(false);
     }
-  }, [data, onSave, readOnly]);
+  }, [data, initialData, onSave, readOnly]);
 
   const handleReset = React.useCallback(() => {
     setData(initialData);

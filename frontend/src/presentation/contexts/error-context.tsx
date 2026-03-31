@@ -6,8 +6,6 @@ import { ApiExceptionDto } from '@/application/dto/api-dto';
 import { handleApiError as processApiError } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
 import { RetryUtils } from '@/shared/helpers/retry';
-import { ErrorLike } from '@/shared/types';
-
 /**
  * Error Context Type
  * Defines the contract for the error context
@@ -337,7 +335,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     toast.error(toastTitle, {
       description: userFriendlyMessage,
     });
-  }, [getUserFriendlyMessage, getErrorCategory]);
+  }, [getUserFriendlyMessage, getErrorCategory, toast]);
 
   const handleAuthError = useCallback((error: unknown) => {
     // Only log auth errors, don't show toast - forms handle their own error UI
@@ -355,7 +353,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     toast.error('Network Error', {
       description: 'Please check your connection and try again.'
     });
-  }, []);
+  }, [toast]);
 
   const handleError = useCallback((error: unknown, context: string = 'Error') => {
     logger.error(`General Error in ${context}:`, { error, context });
@@ -364,7 +362,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     toast.error(context, {
       description: 'An unexpected error occurred. Please try again.'
     });
-  }, []);
+  }, [toast]);
 
   const clearErrors = useCallback(() => {
     // This could be used to clear any global error states if needed
@@ -447,7 +445,7 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     } finally {
       setIsRecovering(false);
     }
-  }, [isRecovering, recoveryAttempts]);
+  }, [isRecovering, recoveryAttempts, isRecoverableError, toast]);
 
   const value: ErrorContextType = {
     handleError,

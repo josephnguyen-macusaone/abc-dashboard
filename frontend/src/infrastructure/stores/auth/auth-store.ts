@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from '@/domain/entities/user-entity';
 import { authApi } from '@/infrastructure/api/auth';
-import { httpClient } from '@/infrastructure/api/core/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import { getLoginErrorMessage } from '@/infrastructure/api/core/errors';

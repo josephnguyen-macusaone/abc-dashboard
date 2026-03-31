@@ -218,7 +218,6 @@ export function LicenseManagementPage() {
   }, []);
 
   const onDeleteRows = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by grid
     async (rows: LicenseRecord[], _indices: number[]) => {
       try {
         const ids = rows.map((row) => row.id);

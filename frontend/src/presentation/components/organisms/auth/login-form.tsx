@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
@@ -62,7 +62,7 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
           }
         }
       );
-    } catch (error) {
+    } catch {
       // Error already handled by toast.promise
     }
   };

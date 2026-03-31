@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Loading, Typography } from '@/presentation/components/atoms';
+import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useAuthStore } from '@/infrastructure/stores/auth';
@@ -31,8 +31,6 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
     errors,
     isSubmitting: isLoading,
     setFieldValue,
-    setFieldError,
-    clearFieldError,
     validateForm,
     reset: resetForm,
   } = useResetPasswordFormStore();
@@ -74,7 +72,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
           }
         }
       );
-    } catch (error) {
+    } catch {
       // Error already handled by toast.promise
     }
   };

@@ -627,8 +627,9 @@ export const useLicenseStore = create<LicenseState>()(
                 licensesToUpdate.push(license as Partial<LicenseRecord> & { id: number | string });
               } else {
                 // No valid ID or temp ID - treat as create
-                const { id, ...licenseWithoutId } = license; // Remove id field for create
-                licensesToCreate.push(licenseWithoutId);
+                const licenseWithoutId = { ...license } as Partial<LicenseRecord> & Record<string, unknown>;
+                delete licenseWithoutId.id;
+                licensesToCreate.push(licenseWithoutId as Partial<LicenseRecord>);
               }
             });
 
@@ -843,6 +844,7 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         deleteLicense: async (id: number | string) => {
+          void id;
           // TODO: Implement delete functionality in Clean Architecture use cases
           throw new Error('Delete functionality not yet implemented in Clean Architecture');
         },
@@ -1101,6 +1103,7 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         bulkDeleteLicenses: async (ids: (number | string)[]) => {
+          void ids;
           // TODO: Implement bulk delete functionality in Clean Architecture use cases
           throw new Error('Bulk delete functionality not yet implemented in Clean Architecture');
         },
@@ -1140,7 +1143,9 @@ export const useLicenseStore = create<LicenseState>()(
          */
         resetLicenseDataForRouteChange: () => {
           const current = get();
-          const { search: _s, searchField: _sf, ...restFilters } = current.filters;
+          const { search, searchField, ...restFilters } = current.filters;
+          void search;
+          void searchField;
           set({
             licenses: [],
             loading: false,

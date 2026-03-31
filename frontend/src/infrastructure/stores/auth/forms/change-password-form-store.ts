@@ -18,7 +18,7 @@ type ChangePasswordValidator = (
 ) => string | null;
 
 const validationRules: Record<string, ChangePasswordValidator> = {
-  currentPassword: (_value) => {
+  currentPassword: () => {
     // Only required if not a forced change (handled by component logic)
     return null; // Validation will be conditional in component
   },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardTemplate } from '@/presentation/components/templates/dashboard-template';
 import { Typography } from '@/presentation/components/atoms';

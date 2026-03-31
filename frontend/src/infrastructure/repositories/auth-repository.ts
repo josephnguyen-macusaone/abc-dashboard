@@ -1,5 +1,5 @@
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
-import { User, AuthResult, AuthTokens, UserRole } from '@/domain/entities/user-entity';
+import { User, AuthResult, AuthTokens } from '@/domain/entities/user-entity';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { authApi } from '@/infrastructure/api/auth';
 import { UserProfileDto } from '@/application/dto/api-dto';

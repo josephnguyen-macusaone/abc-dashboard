@@ -4,7 +4,6 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/helpers';
-import { Typography } from '@/presentation/components/atoms';
 
 interface BreadcrumbItem {
   name: string;
