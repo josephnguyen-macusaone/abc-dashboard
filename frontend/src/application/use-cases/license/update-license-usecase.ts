@@ -25,12 +25,13 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
   async execute(id: string, updates: UpdateLicenseDTO): Promise<License> {
     const correlationId = generateCorrelationId();
     const licenseId = new LicenseId(id);
+    const { expectedUpdatedAt: clientExpectedUpdatedAt, ...fieldUpdates } = updates;
 
     try {
       this.useCaseLogger.debug('Updating license', {
         correlationId,
         licenseId: id,
-        updates: Object.keys(updates),
+        updates: Object.keys(fieldUpdates),
         operation: 'update_license_start'
       });
 
@@ -40,6 +41,9 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
         throw new Error(`License with ID ${id} not found`);
       }
 
+      const concurrencyToken =
+        clientExpectedUpdatedAt ?? existingLicense.updatedAt?.toISOString();
+
       this.useCaseLogger.debug('Existing license found, validating updates', {
         correlationId,
         licenseId: id,
@@ -48,17 +52,17 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
       });
 
       // Validate status transition if status is being updated
-      if (updates.status && updates.status !== existingLicense.status) {
+      if (fieldUpdates.status && fieldUpdates.status !== existingLicense.status) {
         const transitionValidation = LicenseDomainService.validateStatusTransition(
           existingLicense.status,
-          updates.status
+          fieldUpdates.status
         );
         if (!transitionValidation.isValid) {
           this.useCaseLogger.warn('Invalid status transition', {
             correlationId,
             licenseId: id,
             from: existingLicense.status,
-            to: updates.status,
+            to: fieldUpdates.status,
             errors: transitionValidation.errors,
             operation: 'update_license_invalid_transition'
           });
@@ -66,45 +70,49 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
         }
       }
 
-      // Apply updates to domain entity
-      // Note: In a real implementation, the domain entity would have update methods
-      // For now, we'll create a new entity with updated values
-      const updatedLicenseData = {
-        ...existingLicense,
-        ...updates,
-        updatedAt: new Date()
-      };
+      const lastPaymentAmount = fieldUpdates.lastPayment ?? existingLicense.lastPayment.getAmount();
+      const agentsCostAmount = fieldUpdates.agentsCost ?? existingLicense.agentsCost.getAmount();
 
-      const lastPaymentAmount = updates.lastPayment ?? existingLicense.lastPayment.getAmount();
-      const agentsCostAmount = updates.agentsCost ?? existingLicense.agentsCost.getAmount();
+      const startsAt =
+        fieldUpdates.startsAt !== undefined
+          ? new Date(fieldUpdates.startsAt)
+          : existingLicense.startsAt;
+      const cancelDate =
+        fieldUpdates.cancelDate !== undefined
+          ? fieldUpdates.cancelDate
+            ? new Date(fieldUpdates.cancelDate)
+            : undefined
+          : existingLicense.cancelDate;
 
       const updatedLicense = new License(
         existingLicense.id,
-        updates.dba ?? existingLicense.dba,
-        updates.zip ?? existingLicense.zip,
-        existingLicense.startsAt,
-        updates.status ?? existingLicense.status,
-        updates.plan ?? existingLicense.plan,
-        updates.term ?? existingLicense.term,
-        updates.seatsTotal ?? existingLicense.seatsTotal,
+        fieldUpdates.dba ?? existingLicense.dba,
+        fieldUpdates.zip ?? existingLicense.zip,
+        startsAt,
+        fieldUpdates.status ?? existingLicense.status,
+        fieldUpdates.plan ?? existingLicense.plan,
+        fieldUpdates.term ?? existingLicense.term,
+        fieldUpdates.seatsTotal ?? existingLicense.seatsTotal,
         existingLicense.seatsUsed,
         new Money(lastPaymentAmount),
         new Date(),
-        updates.smsPurchased ?? existingLicense.smsPurchased,
-        existingLicense.smsSent,
-        updates.agents ?? existingLicense.agents,
-        updates.agentsName ?? existingLicense.agentsName,
+        fieldUpdates.smsPurchased ?? existingLicense.smsPurchased,
+        fieldUpdates.smsSent ?? existingLicense.smsSent,
+        fieldUpdates.agents ?? existingLicense.agents,
+        fieldUpdates.agentsName ?? existingLicense.agentsName,
         new Money(agentsCostAmount),
-        updates.notes ?? existingLicense.notes,
+        fieldUpdates.notes ?? existingLicense.notes,
         existingLicense.key,
         existingLicense.product,
-        existingLicense.cancelDate,
+        cancelDate,
         existingLicense.createdAt,
         new Date()
       );
 
-      // Save updated license
-      await this.licenseRepository.save(updatedLicense);
+      await this.licenseRepository.save(
+        updatedLicense,
+        concurrencyToken ? { expectedUpdatedAt: concurrencyToken } : undefined
+      );
 
       this.useCaseLogger.debug('License updated successfully', {
         correlationId,
@@ -118,7 +126,7 @@ export class UpdateLicenseUseCaseImpl implements UpdateLicenseUseCase {
       this.useCaseLogger.error('Failed to update license', {
         correlationId,
         licenseId: id,
-        updates: Object.keys(updates),
+        updates: Object.keys(fieldUpdates),
         operation: 'update_license_error',
         error: error instanceof Error ? error.message : String(error)
       });

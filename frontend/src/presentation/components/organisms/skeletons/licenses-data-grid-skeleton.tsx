@@ -1,4 +1,5 @@
 import { Skeleton } from "@/presentation/components/atoms/primitives/skeleton";
+import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
 import type { LicenseColumnId } from "@/shared/constants/license";
@@ -89,12 +90,13 @@ export function LicensesDataGridSkeleton({
 
       {/* Data Grid */}
       <div className="relative flex w-full flex-col">
-        <div
-          role="grid"
-          aria-label="Data grid"
-          className="relative grid select-none overflow-auto rounded-md border focus:outline-none bg-card"
-          style={{ maxHeight: `${height}px` }}
+        <ScrollArea
+          className="w-full rounded-md border bg-card"
+          style={{ height: `${height}px`, maxHeight: `${height}px` }}
+          viewportProps={{ role: "grid", "aria-label": "Data grid", tabIndex: 0 }}
+          viewportClassName="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
+          <div className="relative grid select-none">
           {/* Grid Header */}
           <div
             role="rowgroup"
@@ -176,7 +178,8 @@ export function LicensesDataGridSkeleton({
               </div>
             </div>
           )}
-        </div>
+          </div>
+        </ScrollArea>
 
         {/* Pagination - same layout and Skeleton classes as user skeleton */}
         {showPagination && (

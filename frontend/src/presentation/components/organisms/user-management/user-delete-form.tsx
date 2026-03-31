@@ -2,7 +2,6 @@
 
 import { useUserStore } from '@/infrastructure/stores/user';
 import { useToast } from '@/presentation/contexts/toast-context';
-import { useAuthStore } from '@/infrastructure/stores/auth';
 import { User } from '@/application/dto/user-dto';
 import { USER_ROLE_LABELS } from '@/shared/constants';
 
@@ -20,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/presentation/components/a
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { Typography } from '@/presentation/components/atoms';
 
-import { Trash2, AlertTriangle, UserX, Shield, Clock, Calendar, Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Trash2, AlertTriangle, UserX, Clock, Calendar, Mail, Loader2 } from 'lucide-react';
 
 interface UserDeleteFormProps {
   user: User | null;
@@ -38,7 +37,6 @@ export function UserDeleteForm({
   const deleteUser = useUserStore((s) => s.deleteUser);
   const formLoading = useUserStore((s) => s.formLoading);
   const { success, error } = useToast();
-  const currentUser = useAuthStore((s) => s.user);
   const isDeleting = formLoading;
 
   const handleDelete = async () => {
@@ -57,11 +55,9 @@ export function UserDeleteForm({
       let errorMessage = 'Failed to delete user';
       let errorCode = '';
       let errorCategory = '';
-      let errorDetails = '';
 
       if (err instanceof Error) {
         errorMessage = err.message;
-        errorDetails = err.stack || '';
       } else if (typeof err === 'object' && err !== null) {
         const errorObj = err as {
           message?: string; error?: string; code?: string; category?: string; details?: unknown;
@@ -71,7 +67,6 @@ export function UserDeleteForm({
         if (errorObj.error && typeof errorObj.error === 'string') errorMessage = errorObj.error;
         if (errorObj.code) errorCode = errorObj.code;
         if (errorObj.category) errorCategory = errorObj.category;
-        if (errorObj.details) errorDetails = JSON.stringify(errorObj.details);
         if (errorObj.response?.data?.message) errorMessage = errorObj.response.data.message;
         if (errorObj.response?.data?.error) errorMessage = errorObj.response.data.error;
         if (errorObj.response?.data?.code) errorCode = errorObj.response.data.code;
@@ -132,8 +127,6 @@ export function UserDeleteForm({
       .toUpperCase()
       .slice(0, 2);
   };
-
-  const isAdmin = user.role === 'admin';
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

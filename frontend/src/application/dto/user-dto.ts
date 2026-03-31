@@ -80,7 +80,10 @@ export interface UserSearchQuery {
 export interface UserStats {
   totalUsers: number;
   admin: number;
+  accountant: number;
   manager: number;
+  tech: number;
+  agent: number;
   staff: number;
 }
 
@@ -100,7 +103,10 @@ export interface PaginatedUserList {
   stats?: {
     total: number;
     admin: number;
+    accountant: number;
     manager: number;
+    tech: number;
+    agent: number;
     staff: number;
   };
 }

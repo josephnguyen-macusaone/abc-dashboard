@@ -3,13 +3,15 @@ import logger from '../utils/logger.js';
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 import { config } from '../../infrastructure/config/config.js';
 import crypto from 'crypto';
+import { IAuthService } from '../../application/interfaces/i-auth-service.js';
 
 /**
  * Authentication Service
  * Handles password hashing and verification with error handling
  */
-export class AuthService {
+export class AuthService extends IAuthService {
   constructor() {
+    super();
     this.saltRounds = Number.isInteger(config.BCRYPT_ROUNDS) ? config.BCRYPT_ROUNDS : 12;
     this.correlationId = null;
     this.operationId = null;

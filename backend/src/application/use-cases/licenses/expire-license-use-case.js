@@ -5,7 +5,14 @@
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+/** @typedef {import('../../interfaces/i-license-lifecycle-service.js').ILicenseLifecycleService} ILicenseLifecycleService */
+
 export class ExpireLicenseUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   * @param {ILicenseLifecycleService} licenseLifecycleService
+   */
   constructor(licenseRepository, licenseLifecycleService) {
     this.licenseRepository = licenseRepository;
     this.licenseLifecycleService = licenseLifecycleService;
@@ -163,6 +170,24 @@ export class ExpireLicenseUseCase {
       autoSuspended: true,
     });
 
+    await this.licenseRepository.createAuditEvent({
+      type: 'license.expired',
+      actorId: context.userId,
+      entityId: license.id,
+      entityType: 'license',
+      metadata: {
+        action: 'expire_suspend',
+        actorRole: context.userRole || null,
+        updatedBy: context.userId || null,
+        timestamp: new Date().toISOString(),
+        reason: suspensionReason,
+        previousStatus: license.status,
+        newStatus: 'expired',
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    });
+
     return updatedLicense;
   }
 
@@ -187,6 +212,22 @@ export class ExpireLicenseUseCase {
       appliedBy: context.userId,
     });
 
+    await this.licenseRepository.createAuditEvent({
+      type: 'license.expiration.grace_period',
+      actorId: context.userId,
+      entityId: license.id,
+      entityType: 'license',
+      metadata: {
+        action: 'expire_grace_period',
+        actorRole: context.userRole || null,
+        updatedBy: context.userId || null,
+        timestamp: new Date().toISOString(),
+        gracePeriodEnd: license.gracePeriodEnd,
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+    });
+
     // Return the license (status remains active during grace period)
     return license;
   }
@@ -209,6 +250,24 @@ export class ExpireLicenseUseCase {
       previousStatus: license.status,
       newStatus: 'expired',
       expiredBy: context.userId,
+    });
+
+    await this.licenseRepository.createAuditEvent({
+      type: 'license.expired',
+      actorId: context.userId,
+      entityId: license.id,
+      entityType: 'license',
+      metadata: {
+        action: 'expire_marked',
+        actorRole: context.userRole || null,
+        updatedBy: context.userId || null,
+        timestamp: new Date().toISOString(),
+        reason: expirationReason,
+        previousStatus: license.status,
+        newStatus: 'expired',
+      },
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
     });
 
     return updatedLicense;

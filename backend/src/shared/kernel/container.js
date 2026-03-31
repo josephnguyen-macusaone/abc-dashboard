@@ -17,6 +17,7 @@ import { LicenseLifecycleScheduler } from '../../infrastructure/jobs/license-lif
 import { LicenseSyncScheduler } from '../../infrastructure/jobs/license-sync-scheduler.js';
 import { LicenseRealtimeService } from '../../infrastructure/realtime/license-realtime-service.js';
 import { LoginUseCase } from '../../application/use-cases/auth/login-use-case.js';
+import { SignupUseCase } from '../../application/use-cases/auth/signup-use-case.js';
 import { RefreshTokenUseCase } from '../../application/use-cases/auth/refresh-token-use-case.js';
 import { UpdateProfileUseCase as AuthUpdateProfileUseCase } from '../../application/use-cases/auth/update-profile-use-case.js';
 import { ChangePasswordUseCase } from '../../application/use-cases/auth/change-password-use-case.js';
@@ -238,6 +239,14 @@ class Container {
     );
   }
 
+  async getSignupUseCase() {
+    return new SignupUseCase(
+      await this.getUserRepository(),
+      this.getAuthService(),
+      this.getTokenService()
+    );
+  }
+
   async getRefreshTokenUseCase() {
     return new RefreshTokenUseCase(await this.getUserRepository(), this.getTokenService());
   }
@@ -359,6 +368,7 @@ class Container {
 
   async getAuthController() {
     return new AuthController(
+      await this.getSignupUseCase(),
       await this.getLoginUseCase(),
       await this.getRefreshTokenUseCase(),
       await this.getChangePasswordUseCase(),
@@ -421,7 +431,8 @@ class Container {
       async () =>
         new ExternalLicenseController(
           await this.getSyncExternalLicensesUseCase(),
-          await this.getManageExternalLicensesUseCase()
+          await this.getManageExternalLicensesUseCase(),
+          await this.getLicenseRepository()
         )
     );
   }

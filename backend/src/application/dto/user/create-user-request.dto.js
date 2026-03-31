@@ -4,6 +4,7 @@
  */
 import { BaseDto } from '../common/base.dto.js';
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
+import { ROLES } from '../../../shared/constants/roles.js';
 
 export class CreateUserRequestDto extends BaseDto {
   constructor({
@@ -84,7 +85,7 @@ export class CreateUserRequestDto extends BaseDto {
       errors.push({ field: 'displayName', message: 'Display name is required' });
     }
 
-    const validRoles = ['admin', 'manager', 'staff'];
+    const validRoles = Object.values(ROLES);
     if (this.role && !validRoles.includes(this.role)) {
       errors.push({ field: 'role', message: `Role must be one of: ${validRoles.join(', ')}` });
     }

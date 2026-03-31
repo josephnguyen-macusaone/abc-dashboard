@@ -172,10 +172,18 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     }
   }, [columnVisibilityStorageKey]);
 
-  const effectiveColumnVisibility =
-    columnVisibilityStorageKey && Object.keys(storeColumnVisibility).length > 0
-      ? { ...(initialState?.columnVisibility ?? {}), ...storeColumnVisibility }
-      : columnVisibility;
+  const effectiveColumnVisibility = React.useMemo(
+    () =>
+      columnVisibilityStorageKey && Object.keys(storeColumnVisibility).length > 0
+        ? { ...(initialState?.columnVisibility ?? {}), ...storeColumnVisibility }
+        : columnVisibility,
+    [
+      columnVisibility,
+      columnVisibilityStorageKey,
+      initialState?.columnVisibility,
+      storeColumnVisibility,
+    ],
+  );
 
   const setColumnVisibility = React.useCallback<React.Dispatch<React.SetStateAction<VisibilityState>>>(
     (updaterOrValue) => {
@@ -344,6 +352,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
   );
 
+  /* eslint-disable react-hooks/incompatible-library -- TanStack Table table instance */
   const table = useReactTable({
     ...tableProps,
     columns,
@@ -389,6 +398,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       },
     } as TableMeta<TData>,
   });
+  /* eslint-enable react-hooks/incompatible-library */
 
   return { 
     table, 

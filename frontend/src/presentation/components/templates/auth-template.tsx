@@ -3,7 +3,7 @@
 import { cn } from '@/shared/helpers';
 import { ReactNode, useState, useEffect } from 'react';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
-import { Logo } from '@/presentation/components/atoms';
+import { Logo, ScrollArea } from '@/presentation/components/atoms';
 import { useTheme } from '@/presentation/contexts';
 
 interface AuthTemplateProps {
@@ -18,15 +18,17 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
 
   // Only show theme-dependent logo after hydration
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => {
+      setMounted(true);
+    }, 0);
   }, []);
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="relative flex h-screen min-h-0 w-full flex-col overflow-hidden bg-background">
       {/* Full background layer */}
-      <div className="fixed inset-0 bg-background z-0" />
+      <div className="fixed inset-0 z-0 bg-background" />
 
       {/* Curved brand background */}
-      <div className="fixed inset-0 pointer-events-none z-1">
+      <div className="pointer-events-none fixed inset-0 z-[1]">
         <svg
           className="w-full"
           style={{ height: '50vh' }}
@@ -42,27 +44,37 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
         </svg>
       </div>
 
-      <div className="w-full max-w-md space-y-8 relative z-10">
-        {/* Auth form container */}
-        <div className={cn(
-          'bg-card border border-border rounded-lg shadow-lg',
-          'px-6 py-8 sm:px-8'
-        )}>
-          <Logo
-            variant={mounted ? (theme === 'dark' ? 'dark' : 'light') : 'dark'}
-            width={160}
-            className="mx-auto"
-          />
+      <ScrollArea
+        className="relative z-10 min-h-0 min-w-0 flex-1"
+        viewportClassName="overflow-x-hidden"
+      >
+        {/* min-h-dvh: ensures the flex row is at least the visible viewport tall so justify-center
+            actually centers the card (ScrollArea’s inner wrapper does not always fill height). */}
+        <div className="flex min-h-dvh w-full flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
+          <div className="w-full max-w-md space-y-8">
+            <div
+              className={cn(
+                'rounded-lg border border-border bg-card shadow-lg',
+                'px-6 py-8 sm:px-8',
+              )}
+            >
+              <Logo
+                variant={mounted ? (theme === 'dark' ? 'dark' : 'light') : 'dark'}
+                width={160}
+                className="mx-auto"
+              />
 
-          <SectionErrorBoundary
-            fallbackTitle="Authentication Error"
-            fallbackMessage="There was a problem with the authentication form. Please try refreshing the page."
-            enableRetry={true}
-          >
-            {children}
-          </SectionErrorBoundary>
+              <SectionErrorBoundary
+                fallbackTitle="Authentication Error"
+                fallbackMessage="There was a problem with the authentication form. Please try refreshing the page."
+                enableRetry={true}
+              >
+                {children}
+              </SectionErrorBoundary>
+            </div>
+          </div>
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 };

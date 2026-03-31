@@ -4,6 +4,7 @@
 export * from './api';
 export * from './auth';
 export * from './license';
+export * from './license-capabilities';
 export * from './navigation';
 export * from './routes';
 export * from './ui';

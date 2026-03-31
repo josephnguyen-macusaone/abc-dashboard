@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, startTransition } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { LoadingOverlay } from '@/presentation/components/atoms';
 import { getRouteConfig, canAccessRoute, getDefaultRedirect } from '@/shared/constants';
@@ -30,7 +30,9 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
 
   // Mark component as mounted on client side
   useEffect(() => {
-    setHasMounted(true);
+    startTransition(() => {
+      setHasMounted(true);
+    });
   }, []);
 
   // Handle navigation effects in useEffect to avoid calling router during render

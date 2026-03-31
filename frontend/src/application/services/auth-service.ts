@@ -9,11 +9,8 @@ import {
 import { IAuthRepository } from '@/domain/repositories/i-auth-repository';
 import { AuthResult, User, AuthTokens } from '@/domain/entities/user-entity';
 import { useAuthStore } from '@/infrastructure/stores';
-import { CookieService } from '@/infrastructure/storage/cookie-service';
-import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 import { maskEmail } from '@/shared/helpers/mask-pii';
-import { getErrorMessage } from '@/infrastructure/api/core/errors';
 
 export interface AuthPorts {
   login: LoginUseCaseContract;
@@ -116,7 +113,6 @@ export class AuthService {
    */
   async refreshToken(): Promise<AuthTokens> {
     const correlationId = generateCorrelationId();
-    const authStore = useAuthStore.getState();
     const currentUser = await this.getCurrentUser();
 
     try {

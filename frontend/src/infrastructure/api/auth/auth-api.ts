@@ -1,6 +1,7 @@
 import { httpClient } from '@/infrastructure/api/core/client';
 import {
   LoginRequestDto,
+  SignupRequestDto,
   LoginResponseDto,
   AuthStatusResponseDto,
   ApiResponse,
@@ -18,6 +19,23 @@ import logger from '@/shared/helpers/logger';
  * Authentication API service
  */
 export class AuthApiService {
+  /**
+   * Signup user
+   */
+  static async signup(payload: SignupRequestDto): Promise<LoginResponseDto> {
+    try {
+      const response = await httpClient.post<ApiResponse<LoginResponseDto>>('/auth/signup', payload);
+
+      if (!response.data) {
+        throw new Error('Signup response missing data');
+      }
+
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   /**
    * Login user
    */
@@ -209,6 +227,7 @@ export class AuthApiService {
 
 // Export singleton instance methods for convenience
 export const authApi = {
+  signup: AuthApiService.signup,
   login: AuthApiService.login,
   getStatus: AuthApiService.getStatus,
   refreshToken: AuthApiService.refreshToken,

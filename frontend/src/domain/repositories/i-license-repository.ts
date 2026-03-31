@@ -63,9 +63,10 @@ export interface ILicenseRepository {
   count(specification: LicenseSpecification): Promise<number>;
 
   /**
-   * Save license (create or update)
+   * Save license (create or update).
+   * @param options.expectedUpdatedAt — for updates, send the `updatedAt` you loaded so the API can return 409 on conflicts.
    */
-  save(license: License): Promise<void>;
+  save(license: License, options?: { expectedUpdatedAt?: string }): Promise<void>;
 
   /**
    * Save multiple licenses

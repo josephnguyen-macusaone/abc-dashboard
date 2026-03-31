@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
+import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { cn } from "@/shared/helpers";
 
 interface DataTableSkeletonProps extends React.ComponentProps<"div"> {
@@ -37,7 +38,7 @@ export function DataTableSkeleton({
 
   return (
     <div
-      className={cn("flex w-full flex-col gap-4 overflow-auto", className)}
+      className={cn("flex w-full flex-col gap-4", className)}
       {...props}
     >
       <div
@@ -58,7 +59,7 @@ export function DataTableSkeleton({
           <Skeleton className="hidden h-8 w-20 rounded-md lg:block" />
         ) : null}
       </div>
-      <div className="overflow-x-auto rounded-md border">
+      <ScrollArea className="max-h-[min(70vh,36rem)] w-full rounded-md border">
         <Table>
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
@@ -100,7 +101,7 @@ export function DataTableSkeleton({
             ))}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
       {withPagination ? (
         <div className="flex flex-col gap-2.5">
           <div className="flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8">

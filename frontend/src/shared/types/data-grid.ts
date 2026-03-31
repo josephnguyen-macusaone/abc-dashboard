@@ -68,6 +68,8 @@ export interface UpdateCell {
 }
 
 declare module "@tanstack/react-table" {
+  // Type parameters must match names in data-table.ts / table-core or merges produce extra params (e.g. TableMeta<TData, _TData>).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     /** When true this column's cells are always read-only regardless of the table-level readOnly setting. */
@@ -75,6 +77,7 @@ declare module "@tanstack/react-table" {
     headerAlign?: CellAlign;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface TableMeta<TData extends RowData> {
     dataGridRef?: React.RefObject<HTMLElement | null>;
     cellMapRef?: React.RefObject<Map<string, HTMLDivElement>>;

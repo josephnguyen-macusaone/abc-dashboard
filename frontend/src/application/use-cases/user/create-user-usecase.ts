@@ -47,10 +47,12 @@ export class CreateUserUseCase {
         // Get the target role for permission checking
         const targetRole = AuthDomainService.getDefaultRole(userData.role);
 
-        // Permission check: Admin can create manager/staff, Manager only staff
+        // Permission check mirrors backend role-creation policy
         if (operator.role === UserRole.ADMIN) {
-          if (targetRole === UserRole.ADMIN) {
-            throw new Error('Admins can create managers or staff, not new admins');
+          // Admin can create any role
+        } else if (operator.role === UserRole.ACCOUNTANT) {
+          if (targetRole !== UserRole.TECH && targetRole !== UserRole.AGENT) {
+            throw new Error('Accountants can only create tech or agent accounts');
           }
         } else if (operator.role === UserRole.MANAGER) {
           if (targetRole !== UserRole.STAFF) {

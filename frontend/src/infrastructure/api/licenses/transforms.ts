@@ -116,6 +116,16 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     agentsName: typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '',
     agentsCost: Number(apiLicense.agentsCost ?? 0),
     notes: extractNotes(apiLicense.notes ?? apiLicense.Note),
+    createdAt: (() => {
+      const r = apiLicense as Record<string, unknown>;
+      const v = r.createdAt ?? r.created_at;
+      return v != null && v !== '' ? String(v) : undefined;
+    })(),
+    updatedAt: (() => {
+      const r = apiLicense as Record<string, unknown>;
+      const v = r.updatedAt ?? r.updated_at;
+      return v != null && v !== '' ? String(v) : undefined;
+    })(),
   };
 }
 

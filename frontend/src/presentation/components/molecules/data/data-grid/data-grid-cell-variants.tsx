@@ -24,7 +24,7 @@ import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-w
 import { LicenseStatusBadge } from "@/presentation/components/molecules/domain/license-management/badges";
 import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
-import type { CellAlign, CellVariantProps } from "@/types/data-grid";
+import type { CellAlign, CellSelectOption, CellVariantProps } from "@/types/data-grid";
 import type { LicenseStatus } from "@/types/license";
 
 export function ShortTextCell<TData>({
@@ -427,7 +427,8 @@ export function SelectCell<TData>({
   const [value, setValue] = React.useState(initialValue);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cellOpts = cell.column.columnDef.meta?.cell;
-  const options = cellOpts?.variant === "select" ? cellOpts.options : [];
+  const options: CellSelectOption[] =
+    cellOpts?.variant === "select" ? cellOpts.options : [];
 
   React.useEffect(() => {
     setValue(initialValue);
@@ -913,7 +914,8 @@ export function MultiSelectCell<TData>({
   const [selectedValues] = React.useState<string[]>(cellValue);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cellOpts = cell.column.columnDef.meta?.cell;
-  const options = cellOpts?.variant === "multi-select" ? cellOpts.options : [];
+  const options: CellSelectOption[] =
+    cellOpts?.variant === "multi-select" ? cellOpts.options : [];
 
   const displayLabels = selectedValues
     .map((val) => options.find((opt) => opt.value === val)?.label ?? val)

@@ -7,6 +7,8 @@
  * rebuild (e.g. restart dev server or rebuild Docker image) for changes to take effect.
  */
 
+import { warn } from '@/shared/helpers/logger';
+
 /** Env key for the API base URL (e.g. http://localhost:5000/api/v1) */
 export const API_URL_ENV_KEY = 'NEXT_PUBLIC_API_URL';
 
@@ -70,8 +72,9 @@ export function resolveApiBaseUrl(env: ApiEnv): string {
       return stripTrailingSlash(parsed.toString());
     } catch {
       if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-        console.warn(
-          `[api] Invalid API URL format: "${trimmed}". Using default: ${DEFAULT_API_BASE_URL}`
+        warn(
+          `[api] Invalid API URL format: "${trimmed}". Using default: ${DEFAULT_API_BASE_URL}`,
+          { category: 'api' },
         );
       }
       return stripTrailingSlash(DEFAULT_API_BASE_URL);
@@ -83,7 +86,7 @@ export function resolveApiBaseUrl(env: ApiEnv): string {
   }
 
   if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-    console.warn(`[api] API URL missing protocol: "${trimmed}". Assuming https://`);
+    warn(`[api] API URL missing protocol: "${trimmed}". Assuming https://`, { category: 'api' });
   }
   return stripTrailingSlash(`https://${trimmed}`);
 }

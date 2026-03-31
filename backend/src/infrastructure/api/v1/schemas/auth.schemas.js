@@ -10,6 +10,63 @@ if (!Joi) {
 }
 
 export const authSchemas = {
+  signup: Joi.object({
+    firstName: Joi.string().trim().min(1).max(50).required().messages({
+      'string.min': 'First name cannot be empty',
+      'string.max': 'First name cannot exceed 50 characters',
+      'any.required': 'First name is required',
+      'string.empty': 'First name cannot be empty',
+    }),
+    lastName: Joi.string().trim().min(1).max(50).required().messages({
+      'string.min': 'Last name cannot be empty',
+      'string.max': 'Last name cannot exceed 50 characters',
+      'any.required': 'Last name is required',
+      'string.empty': 'Last name cannot be empty',
+    }),
+    username: Joi.string()
+      .trim()
+      .min(3)
+      .max(30)
+      .pattern(/^[a-zA-Z0-9_]+$/)
+      .allow('', null)
+      .messages({
+        'string.min': 'Username must be at least 3 characters long if provided',
+        'string.max': 'Username cannot exceed 30 characters',
+        'string.pattern.base': 'Username can only contain letters, numbers, and underscores',
+      }),
+    email: Joi.string()
+      .email({ tlds: { allow: false } })
+      .required()
+      .messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required',
+        'string.empty': 'Email cannot be empty',
+      }),
+    password: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .required()
+      .messages({
+        'string.min': 'Password must be at least 8 characters long',
+        'string.max': 'Password cannot exceed 128 characters',
+        'string.pattern.base':
+          'Password must contain at least one lowercase letter, one uppercase letter, and one number',
+        'any.required': 'Password is required',
+        'string.empty': 'Password cannot be empty',
+      }),
+    role: Joi.string().valid('agent', 'tech', 'accountant').default('agent').messages({
+      'any.only': 'Role must be one of: agent, tech, accountant',
+      'string.base': 'Role must be a string',
+    }),
+    phone: Joi.string()
+      .pattern(/^\+?[1-9]\d{1,14}$/)
+      .allow('', null)
+      .messages({
+        'string.pattern.base': 'Phone number must be in valid format',
+      }),
+  }),
+
   /**
    * User login schema
    */

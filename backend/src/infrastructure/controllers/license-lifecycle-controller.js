@@ -40,6 +40,7 @@ export class LicenseLifecycleController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         reason: renewalOptions.reason || 'Manual renewal via API',
@@ -120,6 +121,7 @@ export class LicenseLifecycleController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         reason: reason || 'Manual extension via API',
@@ -169,6 +171,7 @@ export class LicenseLifecycleController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         reason: expirationOptions.reason || 'Manual expiration via API',
@@ -249,6 +252,7 @@ export class LicenseLifecycleController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         reason: reason || 'Manual reactivation via API',
@@ -297,6 +301,7 @@ export class LicenseLifecycleController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         reason: renewalOptions?.reason || 'Bulk renewal via API',
@@ -365,6 +370,7 @@ export class LicenseLifecycleController {
 
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
         reason: expirationOptions?.reason || 'Bulk expiration via API',

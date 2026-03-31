@@ -7,7 +7,7 @@ import {
   InsufficientPermissionsException,
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../shared/utils/logger.js';
-import { PERMISSIONS, hasPermission } from '../../shared/constants/roles.js';
+import { PERMISSIONS, ROLES, hasPermission } from '../../shared/constants/roles.js';
 import { UserValidator } from '../../application/validators/index.js';
 import { CreateUserRequestDto } from '../../application/dto/user/index.js';
 import { getUserQueryFilters } from '../middleware/user-management.middleware.js';
@@ -265,7 +265,7 @@ export class UserController {
         return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
 
-      if (newManager.role !== 'manager') {
+      if (newManager.role !== ROLES.MANAGER) {
         return sendErrorResponse(res, 'VALIDATION_FAILED', {
           details: 'Target user is not a manager',
         });

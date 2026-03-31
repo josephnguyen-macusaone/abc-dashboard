@@ -12,7 +12,6 @@ import { Typography, Button } from '@/presentation/components/atoms';
 import { InputField, FormField, PhoneField } from '@/presentation/components/molecules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
-import { isValidPhoneNumber } from 'react-phone-number-input';
 import { UserPlus, Loader2, X } from 'lucide-react';
 
 interface UserCreateFormProps {

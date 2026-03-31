@@ -293,6 +293,48 @@ export class LicenseRepository extends ILicenseRepository {
     );
   }
 
+  async updateWithExpectedUpdatedAt(id, updates, expectedUpdatedAt) {
+    return withTimeout(
+      async () => {
+        if (!expectedUpdatedAt) {
+          throw new Error('Expected updatedAt value is required');
+        }
+
+        if (updates.dba !== undefined && (!updates.dba || updates.dba.trim() === '')) {
+          updates.dba = 'Unknown Business';
+        }
+
+        if (updates.status === 'cancel' && !updates.cancelDate) {
+          updates.cancelDate = new Date();
+        }
+
+        const dbUpdates = this._toLicenseDbFormat(updates);
+        dbUpdates.updated_at = new Date();
+
+        const [updatedRow] = await this.db(this.licensesTable)
+          .where('id', id)
+          .andWhere('updated_at', '=', new Date(expectedUpdatedAt))
+          .update(dbUpdates)
+          .returning('*');
+
+        return updatedRow ? this._toLicenseEntity(updatedRow) : null;
+      },
+      TimeoutPresets.DATABASE,
+      'license_update_with_expected_updated_at',
+      {
+        correlationId: this.correlationId,
+        onTimeout: () => {
+          logger.error('License updateWithExpectedUpdatedAt timed out', {
+            correlationId: this.correlationId,
+            licenseId: id,
+            expectedUpdatedAt,
+            timeout: TimeoutPresets.DATABASE,
+          });
+        },
+      }
+    );
+  }
+
   async delete(id) {
     const result = await this.db(this.licensesTable).where('id', id).del();
     return result > 0;
@@ -401,6 +443,15 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   _applyLicenseAdvancedFilters(query, filters) {
+    if (filters.assignedUserId) {
+      query = query.whereIn(
+        'id',
+        this.db(this.assignmentsTable)
+          .select('license_id')
+          .where('user_id', filters.assignedUserId)
+          .where('status', 'assigned')
+      );
+    }
     if (filters.hasExternalData) {
       query = query.where((qb) => {
         qb.whereNotNull('appid').orWhereNotNull('countid');

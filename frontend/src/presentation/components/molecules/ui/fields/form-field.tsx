@@ -42,7 +42,8 @@ export function FormField({
   id,
   description
 }: FormFieldProps) {
-  const fieldId = id || React.useId();
+  const generatedId = React.useId();
+  const fieldId = id ?? generatedId;
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Set id on input elements after render
@@ -67,11 +68,22 @@ export function FormField({
       )}
 
       <div ref={containerRef} className="relative">
-        {React.cloneElement(children as React.ReactElement<any>, {
-          id: fieldId,
-          'aria-invalid': !!error,
-          'aria-describedby': error ? `${fieldId}-error` : description ? `${fieldId}-description` : undefined,
-        })}
+        {React.cloneElement(
+          children as React.ReactElement<{
+            id?: string;
+            'aria-invalid'?: boolean;
+            'aria-describedby'?: string;
+          }>,
+          {
+            id: fieldId,
+            'aria-invalid': !!error,
+            'aria-describedby': error
+              ? `${fieldId}-error`
+              : description
+                ? `${fieldId}-description`
+                : undefined,
+          },
+        )}
       </div>
 
       {description && !error && (

@@ -38,7 +38,6 @@ export function ChangePasswordForm({
     isSubmitting: isLoading,
     setFieldValue,
     setFieldError,
-    validateForm,
     reset: resetForm,
   } = useChangePasswordFormStore();
 

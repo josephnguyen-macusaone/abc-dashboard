@@ -4,7 +4,12 @@
  */
 import { ProfileDto } from '../../dto/profile/index.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-profile-repository.js').IUserProfileRepository} IUserProfileRepository */
+
 export class UpdateProfileUseCase {
+  /**
+   * @param {IUserProfileRepository} userProfileRepository
+   */
   constructor(userProfileRepository) {
     this.userProfileRepository = userProfileRepository;
   }

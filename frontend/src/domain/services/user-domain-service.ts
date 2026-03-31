@@ -29,6 +29,11 @@ export class UserDomainService {
       return targetUser.role !== UserRole.ADMIN;
     }
 
+    // Accountants can delete anyone except admins
+    if (deleter.role === UserRole.ACCOUNTANT) {
+      return targetUser.role !== UserRole.ADMIN;
+    }
+
     // Managers can only delete staff
     if (deleter.role === UserRole.MANAGER) {
       return targetUser.role === UserRole.STAFF;
@@ -61,11 +66,18 @@ export class UserDomainService {
   static canUserToggleActivation(toggler: User, targetUser: User, activate: boolean): boolean {
     if (activate) {
       // Activation permissions
-      return AuthDomainService.canPerformAdminActions(toggler) ||
-            (toggler.role === UserRole.MANAGER && targetUser.role === UserRole.STAFF);
+      return (
+        AuthDomainService.canPerformAdminActions(toggler) ||
+        (toggler.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN) ||
+        (toggler.role === UserRole.MANAGER && targetUser.role === UserRole.STAFF)
+      );
     } else {
-      // Deactivation permissions - only admins
-      return AuthDomainService.canPerformAdminActions(toggler) && targetUser.role !== UserRole.ADMIN;
+      // Deactivation permissions
+      return (
+        (AuthDomainService.canPerformAdminActions(toggler) ||
+          toggler.role === UserRole.ACCOUNTANT) &&
+        targetUser.role !== UserRole.ADMIN
+      );
     }
   }
 

@@ -9,7 +9,14 @@ import {
 } from '../../../domain/exceptions/domain.exception.js';
 import { TokensDto } from '../../dto/auth/index.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
+/** @typedef {import('../../interfaces/i-token-service.js').ITokenService} ITokenService */
+
 export class RefreshTokenUseCase {
+  /**
+   * @param {IUserRepository} userRepository
+   * @param {ITokenService} tokenService
+   */
   constructor(userRepository, tokenService) {
     this.userRepository = userRepository;
     this.tokenService = tokenService;

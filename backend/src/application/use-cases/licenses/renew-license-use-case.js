@@ -5,7 +5,14 @@
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+/** @typedef {import('../../interfaces/i-license-lifecycle-service.js').ILicenseLifecycleService} ILicenseLifecycleService */
+
 export class RenewLicenseUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   * @param {ILicenseLifecycleService} licenseLifecycleService
+   */
   constructor(licenseRepository, licenseLifecycleService) {
     this.licenseRepository = licenseRepository;
     this.licenseLifecycleService = licenseLifecycleService;

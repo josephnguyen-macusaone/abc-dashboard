@@ -6,7 +6,9 @@
 import { InsufficientPermissionsException } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../shared/utils/logger.js';
 import { ROLES } from '../../shared/constants/roles.js';
+import { getLicenseCapabilitiesForRole } from '../../shared/constants/license-capabilities.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
+import { isRoleModuleEnabled } from '../config/role-module-flags.js';
 
 /**
  * Check if user can create licenses
@@ -15,8 +17,7 @@ import { sendErrorResponse } from '../../shared/http/error-responses.js';
  * @return {boolean} - Whether creation is allowed
  */
 function canCreateLicense(currentUser) {
-  // Only admin can create licenses
-  return currentUser.role === ROLES.ADMIN;
+  return getLicenseCapabilitiesForRole(currentUser.role).canCreateLicense;
 }
 
 /**
@@ -26,8 +27,7 @@ function canCreateLicense(currentUser) {
  * @return {boolean} - Whether update is allowed
  */
 function canUpdateLicense(currentUser) {
-  // Admin can update licenses
-  return currentUser.role === ROLES.ADMIN;
+  return getLicenseCapabilitiesForRole(currentUser.role).canUpdateLicense;
 }
 
 /**
@@ -37,8 +37,15 @@ function canUpdateLicense(currentUser) {
  * @return {boolean} - Whether deletion is allowed
  */
 function canDeleteLicense(currentUser) {
-  // Only admin can delete licenses
-  return currentUser.role === ROLES.ADMIN;
+  return getLicenseCapabilitiesForRole(currentUser.role).canDeleteLicense;
+}
+
+function canAddSmsPayment(currentUser) {
+  return getLicenseCapabilitiesForRole(currentUser.role).canAddSmsPayment;
+}
+
+function canViewSmsPayments(currentUser) {
+  return getLicenseCapabilitiesForRole(currentUser.role).canViewSmsPayments;
 }
 
 /**
@@ -48,9 +55,7 @@ function canDeleteLicense(currentUser) {
  * @return {boolean} - Whether viewing is allowed
  */
 function canViewLicense(currentUser) {
-  // Admin and managers can view all licenses
-  // Staff can view their assigned licenses
-  return [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF].includes(currentUser.role);
+  return getLicenseCapabilitiesForRole(currentUser.role).canViewLicenses;
 }
 
 /**
@@ -77,7 +82,15 @@ export function checkLicenseCreationPermission() {
           userId: currentUser.id,
           userRole: currentUser.role,
         });
-        throw new InsufficientPermissionsException('Only administrators can create licenses');
+        throw new InsufficientPermissionsException(
+          'You do not have permission to create licenses'
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
+        );
       }
 
       next();
@@ -127,6 +140,15 @@ export function checkLicenseAccessPermission(operation) {
         case 'delete':
           hasPermission = canDeleteLicense(currentUser);
           break;
+        case 'sms_payment':
+          hasPermission = canAddSmsPayment(currentUser);
+          break;
+        case 'sms_history':
+          hasPermission = canViewSmsPayments(currentUser);
+          break;
+        case 'reset_license_id':
+          hasPermission = getLicenseCapabilitiesForRole(currentUser.role).canResetLicenseId;
+          break;
         default:
           hasPermission = false;
       }
@@ -140,6 +162,12 @@ export function checkLicenseAccessPermission(operation) {
         });
         throw new InsufficientPermissionsException(
           `You do not have permission to ${operation} licenses`
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
         );
       }
 
@@ -176,15 +204,20 @@ export function checkLicenseBulkOperationPermission() {
         throw new InsufficientPermissionsException('Authentication required');
       }
 
-      // Only admin can perform bulk operations
-      if (currentUser.role !== ROLES.ADMIN) {
+      if (!getLicenseCapabilitiesForRole(currentUser.role).canBulkOperate) {
         logger.warn('Unauthorized license bulk operation attempt', {
           correlationId: req.correlationId,
           userId: currentUser.id,
           userRole: currentUser.role,
         });
         throw new InsufficientPermissionsException(
-          'Only administrators can perform bulk license operations'
+          'You do not have permission to perform bulk license operations'
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
         );
       }
 

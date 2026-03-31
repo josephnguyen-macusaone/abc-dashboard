@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
-import { Badge } from "@/presentation/components/atoms/primitives/badge";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import {
   Popover,
@@ -49,7 +48,6 @@ export function DataGridRowHeightMenu<TData>({
   table,
   ...props
 }: DataGridRowHeightMenuProps<TData>) {
-  const id = React.useId();
   const labelId = React.useId();
   const descriptionId = React.useId();
   const [open, setOpen] = React.useState(false);

@@ -5,6 +5,8 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 
 export class AuthValidator {
+  static SIGNUP_ROLES = ['agent', 'tech', 'accountant'];
+
   /**
    * Validate login input
    * @param {Object} input - Login input data
@@ -21,6 +23,51 @@ export class AuthValidator {
 
     if (!input.password || typeof input.password !== 'string') {
       errors.push({ field: 'password', message: 'Password is required' });
+    }
+
+    if (errors.length > 0) {
+      throw new ValidationException(errors.map((e) => e.message).join(', '));
+    }
+
+    return true;
+  }
+
+  /**
+   * Validate signup input
+   * @param {Object} input - Signup input data
+   * @throws {ValidationException} If validation fails
+   */
+  static validateSignup(input) {
+    const errors = [];
+
+    if (!input.firstName || typeof input.firstName !== 'string' || input.firstName.trim().length < 1) {
+      errors.push({ field: 'firstName', message: 'First name is required' });
+    }
+
+    if (!input.lastName || typeof input.lastName !== 'string' || input.lastName.trim().length < 1) {
+      errors.push({ field: 'lastName', message: 'Last name is required' });
+    }
+
+    if (!input.email || typeof input.email !== 'string') {
+      errors.push({ field: 'email', message: 'Email is required' });
+    } else if (!this.isValidEmail(input.email)) {
+      errors.push({ field: 'email', message: 'Invalid email format' });
+    }
+
+    if (!input.password || typeof input.password !== 'string') {
+      errors.push({ field: 'password', message: 'Password is required' });
+    } else {
+      const passwordValidation = this.validatePassword(input.password);
+      if (!passwordValidation.isValid) {
+        errors.push(...passwordValidation.errors.map((msg) => ({ field: 'password', message: msg })));
+      }
+    }
+
+    if (input.role && !AuthValidator.SIGNUP_ROLES.includes(input.role)) {
+      errors.push({
+        field: 'role',
+        message: `Role must be one of: ${AuthValidator.SIGNUP_ROLES.join(', ')}`,
+      });
     }
 
     if (errors.length > 0) {

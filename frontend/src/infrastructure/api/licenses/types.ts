@@ -194,6 +194,8 @@ export interface InternalLicenseUpdatePayload {
   agents?: number;
   agentsCost?: number;
   agentsName?: string;
+  expectedUpdatedAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
 

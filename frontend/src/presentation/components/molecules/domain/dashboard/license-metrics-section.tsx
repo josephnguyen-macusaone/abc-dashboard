@@ -5,7 +5,6 @@ import { StatsCards } from '@/presentation/components/molecules/domain/user-mana
 import { LicenseMetricsSkeleton } from '@/presentation/components/organisms';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { useLicenseStore, selectLicenseFilters, selectDashboardMetrics, selectDashboardMetricsLoading } from '@/infrastructure/stores/license';
-import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 import type { LicenseRecord } from '@/types';
 import type { StatsCardConfig } from '@/presentation/components/molecules/domain/user-management';
 import {
@@ -153,9 +152,8 @@ export function LicenseMetricsSection({
   }, [
     dateRange,
     errorWithDescription,
+    filters,
     filtersForApi,
-    filters?.startsAtFrom,
-    filters?.startsAtTo,
     licenses,
     storeMetrics,
     storeMetricsLoading,

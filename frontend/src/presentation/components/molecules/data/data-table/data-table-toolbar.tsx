@@ -185,10 +185,10 @@ function DataTableToolbarFilter<TData>({
   );
 
   // Sync local state with column filter value when it changes externally (e.g., reset button)
+  const columnFilterValue = (column.getFilterValue() as string) ?? "";
   React.useEffect(() => {
-    const filterValue = (column.getFilterValue() as string) ?? "";
-    setSearchValue(filterValue);
-  }, [column.getFilterValue()]);
+    setSearchValue(columnFilterValue);
+  }, [column, columnFilterValue]);
 
   const onFilterRender = React.useCallback(() => {
     if (!columnMeta?.variant) return null;

@@ -7,7 +7,14 @@ import { LicenseListResponseDto, LicenseResponseDto } from '../../dto/license/in
 import { PaginationDto } from '../../dto/common/index.js';
 import logger from '../../../shared/utils/logger.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+/** @typedef {import('../../../domain/repositories/interfaces/i-external-license-repository.js').IExternalLicenseRepository} IExternalLicenseRepository */
+
 export class GetLicensesUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   * @param {IExternalLicenseRepository | null} [externalLicenseRepository=null]
+   */
   constructor(licenseRepository, externalLicenseRepository = null) {
     this.licenseRepository = licenseRepository;
     this.externalLicenseRepository = externalLicenseRepository;

@@ -1,4 +1,4 @@
-import { ShapeSkeleton, TextSkeleton, IconSkeleton } from '@/presentation/components/atoms';
+import { TextSkeleton, IconSkeleton } from '@/presentation/components/atoms';
 import { cn } from "@/shared/helpers";
 
 interface CardSkeletonProps {
@@ -44,7 +44,7 @@ export function CardSkeleton({
           />
 
           {/* Trend indicator */}
-          {(showTrend || (isDetailed && Math.random() > 0.5)) && (
+          {(showTrend || isDetailed) && (
             <TextSkeleton
               variant="caption"
               width="12"

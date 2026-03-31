@@ -20,7 +20,14 @@ export const updateUserSchema = z
         message: 'Phone number must be in valid format',
       }),
     role: z
-      .enum([USER_ROLES.ADMIN, USER_ROLES.MANAGER, USER_ROLES.STAFF])
+      .enum([
+        USER_ROLES.ADMIN,
+        USER_ROLES.ACCOUNTANT,
+        USER_ROLES.MANAGER,
+        USER_ROLES.TECH,
+        USER_ROLES.AGENT,
+        USER_ROLES.STAFF,
+      ])
       .optional(),
     isActive: z.boolean().optional(),
   })

@@ -5,6 +5,18 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -27,6 +39,18 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       "no-console": "off",
+    },
+  },
+  // Node-style config and tests: CommonJS `require` is expected
+  {
+    files: [
+      "jest.config.js",
+      "jest.setup.js",
+      "next.config.ts",
+      "tests/**/*.{js,jsx,ts,tsx}",
+    ],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ]);

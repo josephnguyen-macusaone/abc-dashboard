@@ -3,6 +3,7 @@
 import { Typography } from '@/presentation/components/atoms';
 import { Crown, Shield, Users } from 'lucide-react';
 import { USER_ROLES } from '@/shared/constants';
+import { cn } from '@/shared/helpers';
 
 // Generic stats configuration interface
 export interface StatsCardConfig {
@@ -60,56 +61,79 @@ export function StatsCards({
   };
 
   return (
-    <div className={`grid ${gridCols[columns]} gap-4 ${className || ''}`}>
+    <div className={cn('grid items-stretch gap-4', gridCols[columns], className)}>
       {stats.map((stat) => {
         const IconComponent = stat.icon;
+        const valueText = isLoading ? '...' : String(stat.value);
         return (
           <div
             key={stat.id}
-            className={`
-              group bg-card border border-border rounded-lg p-4
-              hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/5 hover:via-primary/10 hover:to-primary/5
-              hover:shadow-sm
-              transition-all duration-300 ease-out
-              min-w-0 overflow-hidden
-              ${stat.onClick ? 'cursor-pointer ring-0 hover:ring-1 hover:ring-primary/20' : ''}
-            `}
+            className={cn(
+              'group flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card p-4',
+              'transition-all duration-300 ease-out hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/5 hover:via-primary/10 hover:to-primary/5 hover:shadow-sm',
+              stat.onClick && 'cursor-pointer ring-0 hover:ring-1 hover:ring-primary/20',
+            )}
             onClick={stat.onClick}
           >
-            <div className="flex items-center justify-between mb-1">
-              <Typography variant="label-s" color="muted" className="text-muted-foreground font-medium">
+            <div className="mb-1 flex min-h-[2.75rem] shrink-0 items-start justify-between gap-2">
+              <Typography
+                variant="label-s"
+                color="muted"
+                lineClamp={2}
+                title={stat.label}
+                className="min-w-0 flex-1 font-medium text-muted-foreground"
+              >
                 {stat.label}
               </Typography>
-              <div className="p-1.5 rounded-full bg-muted/20 group-hover:bg-primary/10 transition-colors duration-300">
-                <IconComponent className={`h-4 w-4 transition-colors duration-300 ${stat.color || 'text-primary'} ${stat.hoverColor ? `group-hover:${stat.hoverColor}` : 'group-hover:text-primary/80'}`} />
+              <div className="shrink-0 rounded-full bg-muted/20 p-1.5 transition-colors duration-300 group-hover:bg-primary/10">
+                <IconComponent
+                  className={cn(
+                    'h-4 w-4 shrink-0 transition-colors duration-300',
+                    stat.color || 'text-primary',
+                    stat.hoverColor ? `group-hover:${stat.hoverColor}` : 'group-hover:text-primary/80',
+                  )}
+                />
               </div>
             </div>
             <Typography
               variant="display-m"
               weight="bold"
               lineHeight="none"
-              className="text-foreground group-hover:text-primary transition-colors duration-300 break-words"
+              truncate
+              title={isLoading ? undefined : valueText}
+              className="min-h-9 min-w-0 max-w-full tabular-nums text-foreground transition-colors duration-300 group-hover:text-primary"
             >
-              {isLoading ? '...' : stat.value}
+              {valueText}
             </Typography>
-            {stat.trend && (
-              <div className="flex items-center gap-1 mt-2.5">
-                <span className={`text-body-xs ${stat.trend.direction === 'up' ? 'text-green-600' :
-                  stat.trend.direction === 'down' ? 'text-red-600' :
-                    'text-foreground'
-                  }`}>
+            {stat.trend ? (
+              <div
+                className="mt-2.5 flex min-h-5 min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5"
+                title={
+                  stat.trend.label
+                    ? `${formatTrendValue(Math.abs(stat.trend.value))}% ${stat.trend.label}`
+                    : undefined
+                }
+              >
+                <span
+                  className={cn(
+                    'shrink-0 text-body-xs',
+                    stat.trend.direction === 'up' && 'text-green-600',
+                    stat.trend.direction === 'down' && 'text-red-600',
+                    stat.trend.direction === 'neutral' && 'text-foreground',
+                  )}
+                >
                   {stat.trend.direction === 'up' && '↗ '}
                   {stat.trend.direction === 'down' && '↘ '}
                   {stat.trend.direction === 'neutral' && '→ '}
                   {formatTrendValue(Math.abs(stat.trend.value))}%
                 </span>
-                {stat.trend.label && (
-                  <span className="text-body-xs text-foreground/70">
+                {stat.trend.label ? (
+                  <span className="min-w-0 flex-1 truncate text-body-xs text-foreground/70">
                     {stat.trend.label}
                   </span>
-                )}
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}

@@ -17,6 +17,7 @@ import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePag
 import { ApiExceptionDto } from "@/application/dto/api-dto";
 import { parseLocalDateString, toLocalDateString } from "@/shared/helpers/date-utils";
 import type { LicenseRecord } from "@/types";
+import { getLicenseCapabilities } from "@/shared/constants/license-capabilities";
 
 // Helper function to check if error should be shown to user
 const shouldShowError = (error: unknown): boolean => {
@@ -29,6 +30,8 @@ const shouldShowError = (error: unknown): boolean => {
 
 export function LicenseManagementPage() {
   const currentUser = useAuthStore((s) => s.user);
+  const capabilities = getLicenseCapabilities(currentUser?.role);
+  const isReadOnly = !capabilities.canCreateLicense && !capabilities.canUpdateLicense;
 
   const licenses = useLicenseStore(selectLicenses);
   const isLoading = useLicenseStore(selectLicenseLoading);
@@ -217,7 +220,6 @@ export function LicenseManagementPage() {
   }, []);
 
   const onDeleteRows = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by grid
     async (rows: LicenseRecord[], _indices: number[]) => {
       try {
         const ids = rows.map((row) => row.id);
@@ -335,9 +337,10 @@ export function LicenseManagementPage() {
       licenses={licenses}
       isLoading={isLoading && licenses.length === 0}
       onLoadLicenses={loadLicenses}
-      onSaveLicenses={onSave}
-      onAddLicense={onAddRow}
-      onDeleteLicenses={onDeleteRows}
+      onSaveLicenses={isReadOnly ? undefined : onSave}
+      onAddLicense={capabilities.canCreateLicense ? onAddRow : undefined}
+      onDeleteLicenses={capabilities.canDeleteLicense ? onDeleteRows : undefined}
+      isReadOnly={isReadOnly}
       dateRange={dateRange}
       onDateRangeChange={onDateRangeChange}
       onQueryChange={handleQueryChange}

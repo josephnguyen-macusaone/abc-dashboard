@@ -1,5 +1,4 @@
 import { LicenseRecord } from '@/types';
-import { licenseApiService } from '@/application/services/license-services';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**

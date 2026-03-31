@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { User } from '@/domain/entities/user-entity';
 import { authApi } from '@/infrastructure/api/auth';
-import { httpClient } from '@/infrastructure/api/core/client';
 import { CookieService } from '@/infrastructure/storage/cookie-service';
 import { LocalStorageService } from '@/infrastructure/storage/local-storage-service';
 import { getLoginErrorMessage } from '@/infrastructure/api/core/errors';
@@ -27,6 +26,15 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
+  signup: (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    role: 'agent' | 'tech' | 'accountant';
+    username?: string;
+    phone?: string;
+  }) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -126,6 +134,62 @@ export const useAuthStore = create<AuthState>()(
               }
             } catch (error) {
               storeLogger.error('Error initializing auth', { error: error instanceof Error ? error.message : String(error) });
+            } finally {
+              set({ isLoading: false });
+            }
+          },
+
+          signup: async (payload) => {
+            try {
+              set({ isLoading: true });
+
+              const authResult = await authApi.signup(payload);
+
+              // Token stored in HttpOnly cookie by backend - no client storage
+              set({ token: null });
+
+              const tokenManager = createTokenManager(
+                () => get().refreshToken(),
+                {
+                  onTokenExpired: () => get().handleAuthFailure(),
+                  onTokenRefreshed: () => { /* token in cookie */ }
+                }
+              );
+              set({ tokenManager });
+              tokenManager.schedulePeriodicRefresh(55);
+
+              // Fetch complete profile data to normalize client state
+              try {
+                const profileData = await authApi.getProfile();
+                const completeUser = User.fromObject({
+                  ...profileData,
+                  lastLogin: new Date(),
+                  updatedAt: new Date()
+                });
+
+                set({ user: completeUser });
+                CookieService.setUser(completeUser);
+                LocalStorageService.setUser(completeUser);
+                set({ isAuthenticated: true });
+              } catch (profileError) {
+                const basicUser = User.fromObject({
+                  ...authResult.user,
+                  lastLogin: new Date(),
+                  updatedAt: new Date()
+                });
+
+                set({ user: basicUser });
+                CookieService.setUser(basicUser);
+                LocalStorageService.setUser(basicUser);
+                set({ isAuthenticated: true });
+
+                storeLogger.warn('Profile fetch failed after signup, using signup data', {
+                  error: profileError instanceof Error ? profileError.message : String(profileError)
+                });
+              }
+            } catch (error: unknown) {
+              const errorMessage = getLoginErrorMessage(error);
+              throw new Error(errorMessage);
             } finally {
               set({ isLoading: false });
             }

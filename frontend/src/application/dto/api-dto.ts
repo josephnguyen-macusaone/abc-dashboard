@@ -3,16 +3,22 @@ export interface ApiErrorDto {
   message: string;
   code?: string;
   status?: number;
-  details?: any;
+  details?: unknown;
 }
 
 export class ApiExceptionDto extends Error {
   public readonly code?: string;
   public readonly status?: number;
-  public readonly details?: any;
+  public readonly details?: unknown;
   public authHandled?: boolean; // Indicates if auth error was handled automatically (mutable for client to set)
 
-  constructor(message: string, code?: string, status?: number, details?: any, authHandled?: boolean) {
+  constructor(
+    message: string,
+    code?: string,
+    status?: number,
+    details?: unknown,
+    authHandled?: boolean,
+  ) {
     super(message);
     this.name = 'ApiException';
     this.code = code;
@@ -27,7 +33,7 @@ import { UserRole } from '@/domain/entities/user-entity';
 import { SortBy, SortOrder } from '@/types';
 
 // API Response Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -57,9 +63,20 @@ export interface LoginRequestDto {
   password: string;
 }
 
+export interface SignupRequestDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: 'agent' | 'tech' | 'accountant';
+  username?: string;
+  phone?: string;
+}
+
 export interface LoginResponseDto {
   user: UserDto;
   tokens: AuthTokensDto;
+  requiresPasswordChange?: boolean;
 }
 
 
@@ -130,7 +147,10 @@ export interface UsersListResponseDto {
   stats?: {
     total: number;
     admin: number;
+    accountant: number;
     manager: number;
+    tech: number;
+    agent: number;
     staff: number;
   };
 }
@@ -155,7 +175,10 @@ export interface GetUsersQueryParamsDto {
 export interface UserStatsResponseDto {
   totalUsers: number;
   admin: number;
+  accountant: number;
   manager: number;
+  tech: number;
+  agent: number;
   staff: number;
 }
 

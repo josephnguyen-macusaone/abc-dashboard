@@ -25,7 +25,7 @@ jest.mock('next/navigation', () => ({
 // Mock Next.js dynamic imports
 jest.mock('next/dynamic', () => ({
   __esModule: true,
-  default: (importFunc, options = {}) => {
+  default: (importFunc, _options = {}) => {
     const Component = () => null
     Component.displayName = 'DynamicComponent'
     Component.preload = jest.fn()

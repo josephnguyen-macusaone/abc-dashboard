@@ -32,6 +32,11 @@ export function canAccessUser(currentUser, targetUser) {
     return true;
   }
 
+  // Accountant can access all users
+  if (currentUser.role === ROLES.ACCOUNTANT) {
+    return true;
+  }
+
   // Manager can only access their assigned staff
   if (currentUser.role === ROLES.MANAGER) {
     return targetUser.managedBy === currentUser.id;
@@ -137,8 +142,8 @@ export function checkUserAccessPermission(operation = 'read') {
         return res.error('Authentication required', 401);
       }
 
-      // Admin can access all operations
-      if (currentUser.role === ROLES.ADMIN) {
+      // Admin/accountant can access all operations
+      if (currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.ACCOUNTANT) {
         return next();
       }
 
@@ -234,8 +239,8 @@ export function getAvailableRolesForCreation(userRole) {
 export function getUserQueryFilters(currentUser, _queryParams = {}) {
   const filters = {};
 
-  // Admin sees all users - no additional permission filters needed
-  if (currentUser.role === ROLES.ADMIN) {
+  // Admin/accountant see all users - no additional permission filters needed
+  if (currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.ACCOUNTANT) {
     return filters;
   }
 
@@ -245,8 +250,8 @@ export function getUserQueryFilters(currentUser, _queryParams = {}) {
     return filters;
   }
 
-  // Staff sees nothing (should not reach user management)
-  if (currentUser.role === ROLES.STAFF) {
+  // Tech/agent/staff see nothing (should not reach user management)
+  if ([ROLES.TECH, ROLES.AGENT, ROLES.STAFF].includes(currentUser.role)) {
     // Return empty result by setting impossible condition
     filters._id = null;
     return filters;

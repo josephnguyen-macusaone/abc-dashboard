@@ -248,7 +248,7 @@ export const useDashboardMetrics = (params?: {
  * Hook for license analytics.
  * @deprecated Analytics not yet on license store. Use useLicenseStore for other license data.
  */
-export const useLicenseAnalytics = (params?: {
+export const useLicenseAnalytics = (_params?: {
   month?: number;
   year?: number;
   startDate?: string;
@@ -303,7 +303,7 @@ export const useLicenseLifecycle = () => {
  * Hook for license lifecycle status (single license).
  * @deprecated Lifecycle status not yet on license store. Use useLicenseStore for license data.
  */
-export const useLicenseLifecycleStatus = (licenseId?: string) => {
+export const useLicenseLifecycleStatus = (_licenseId?: string) => {
   return {
     lifecycleStatus: null as unknown,
     loading: false,

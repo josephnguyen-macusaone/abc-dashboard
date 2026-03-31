@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/presentation/components/atoms';
 import { InputField, TextAreaField, PhoneField } from '@/presentation/components/molecules';
 import { useAuthStore } from '@/infrastructure/stores/auth';
@@ -39,7 +39,6 @@ export function ProfileUpdateForm({ initialData, onSuccess, onCancel, className 
     errors,
     isSubmitting: isLoading,
     setFieldValue,
-    setFieldError,
     validateForm,
     reset: resetForm,
   } = useProfileUpdateFormStore();

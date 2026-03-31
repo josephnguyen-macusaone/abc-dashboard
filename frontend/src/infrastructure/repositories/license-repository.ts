@@ -119,8 +119,8 @@ export class LicenseRepository implements ILicenseRepository {
       const product = apiLicense.product as string | undefined;
       const cancelDate = apiLicense.cancelDate as string | undefined;
       const raw = apiLicense as Record<string, unknown>;
-      const createdAt = raw.createdAt as string | undefined;
-      const updatedAt = raw.updatedAt as string | undefined;
+      const createdAt = (raw.createdAt ?? raw.created_at) as string | undefined;
+      const updatedAt = (raw.updatedAt ?? raw.updated_at) as string | undefined;
       return License.fromPersistence({
         id: String(apiLicense.id ?? ''),
         key,
@@ -168,9 +168,11 @@ export class LicenseRepository implements ILicenseRepository {
       plan: license.plan,
       term: license.term,
       dueDate: license.dueDate?.toISOString(),
+      cancelDate: license.cancelDate?.toISOString(),
       seatsTotal: license.seatsTotal,
       lastPayment: license.lastPayment.getAmount(),
       smsPurchased: license.smsPurchased,
+      smsSent: license.smsSent,
       agents: license.agents,
       agentsName: license.agentsName,
       agentsCost: license.agentsCost.getAmount(),
@@ -380,9 +382,12 @@ export class LicenseRepository implements ILicenseRepository {
     return result.total;
   }
 
-  async save(license: License): Promise<void> {
+  async save(license: License, options?: { expectedUpdatedAt?: string }): Promise<void> {
     try {
-      const apiData = this.mapDomainToApiLicense(license);
+      const apiData: Record<string, unknown> = { ...this.mapDomainToApiLicense(license) };
+      if (options?.expectedUpdatedAt) {
+        apiData.expectedUpdatedAt = options.expectedUpdatedAt;
+      }
       await this.apiClient.updateLicense(license.id.toString(), apiData);
 
       // Clear cache for this license
@@ -400,7 +405,7 @@ export class LicenseRepository implements ILicenseRepository {
     // For now, save licenses one by one
     // In a real implementation, this would use a bulk update API
     for (const license of licenses) {
-      await this.save(license);
+      await this.save(license, undefined);
     }
   }
 

@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
+import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { USER_COLUMN_WIDTHS } from "@/shared/constants/user";
 import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
@@ -35,7 +36,7 @@ export function UserDataTableSkeleton({
   ...props
 }: UserDataTableSkeletonProps) {
   return (
-    <div className={cn("flex w-full flex-col gap-4 overflow-auto", className)} {...props}>
+    <div className={cn("flex w-full flex-col gap-4", className)} {...props}>
       {/* Toolbar - matches DataTableToolbar (no dateRangeFilter: search + filters + children + View) */}
       <div
         role="toolbar"
@@ -58,8 +59,8 @@ export function UserDataTableSkeleton({
         </div>
       </div>
 
-      {/* Table - matches DataTable (overflow-x-auto rounded-md border, th !p-0, header content with padding) */}
-      <div className="overflow-x-auto rounded-md border">
+      {/* Table - matches DataTable (ScrollArea + rounded-md border) */}
+      <ScrollArea className="max-h-[min(70vh,36rem)] w-full rounded-md border">
         <Table>
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
@@ -113,7 +114,7 @@ export function UserDataTableSkeleton({
             ))}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
 
       {/* Pagination - matches TablePagination */}
       <div className="flex flex-col gap-2.5">

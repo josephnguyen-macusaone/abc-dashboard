@@ -4,7 +4,12 @@
  */
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
+
 export class DeleteLicenseUseCase {
+  /**
+   * @param {ILicenseRepository} licenseRepository
+   */
   constructor(licenseRepository) {
     this.licenseRepository = licenseRepository;
   }
@@ -16,7 +21,7 @@ export class DeleteLicenseUseCase {
    * @returns {Promise<boolean>} Success status
    */
   async execute(licenseId, context = {}) {
-    const { userId, ipAddress, userAgent } = context;
+    const { userId, userRole, ipAddress, userAgent } = context;
 
     try {
       // Get existing license
@@ -43,6 +48,10 @@ export class DeleteLicenseUseCase {
         entityId: licenseId,
         entityType: 'license',
         metadata: {
+          action: 'delete',
+          actorRole: userRole || null,
+          updatedBy: userId || null,
+          timestamp: new Date().toISOString(),
           license_key: existingLicense.key,
           product: existingLicense.product,
           plan: existingLicense.plan,

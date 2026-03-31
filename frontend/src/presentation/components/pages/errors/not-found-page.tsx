@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms';
-import { Home, ArrowLeft, FileQuestion } from 'lucide-react';
+import { FileQuestion } from 'lucide-react';
 import { AuthTemplate } from '@/presentation/components/templates/auth-template';
 import { Typography } from '@/presentation/components/atoms';
 
