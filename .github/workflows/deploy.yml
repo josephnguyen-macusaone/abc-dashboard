@@ -198,6 +198,29 @@ jobs:
             echo "Author: $COMMIT_AUTHOR  Time: \$(date)"
             echo "=========================================="
 
+            echo "Disk usage before cleanup:"
+            df -h /
+            echo "Docker volumes before deploy (read-only snapshot):"
+            docker volume ls
+
+            echo "Pruning only safe Docker artifacts (no volumes)..."
+            # IMPORTANT: Do NOT use --volumes. Database/data volumes must be preserved.
+            docker image prune -af || true
+            docker builder prune -af || true
+            docker container prune -f || true
+            docker network prune -f || true
+
+            echo "Disk usage after cleanup:"
+            df -h /
+
+            FREE_KB=\$(df -Pk / | awk 'NR==2 {print \$4}')
+            MIN_FREE_KB=\$((2 * 1024 * 1024)) # 2 GB
+            if [ "\$FREE_KB" -lt "\$MIN_FREE_KB" ]; then
+              echo "ERROR: Not enough disk space after safe cleanup (< 2GB free)."
+              echo "Aborting deploy to protect running services and data volumes."
+              exit 1
+            fi
+
             # Tag currently-running images as :rollback before swapping
             echo "Tagging current images as :rollback..."
             docker tag abc-license-backend:latest abc-license-backend:rollback 2>/dev/null || true
@@ -206,6 +229,7 @@ jobs:
             echo "Loading new images..."
             docker load < dist/backend.tar.gz
             docker load < dist/frontend.tar.gz
+            rm -f dist/backend.tar.gz dist/frontend.tar.gz
 
             echo "Verifying images..."
             docker images | grep abc-license | head -6
@@ -231,6 +255,8 @@ jobs:
 
             echo "Container status:"
             docker compose ps
+            echo "Docker volumes after deploy (read-only snapshot):"
+            docker volume ls
 
             echo "Deployment complete!"
           ENDSSH
