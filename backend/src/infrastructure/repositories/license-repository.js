@@ -1387,7 +1387,10 @@ export class LicenseRepository extends ILicenseRepository {
           .where('expires_at', '<=', upperBound)
           .where('expires_at', '>', lowerBound)
           .whereNotIn('status', ['expired', 'revoked', 'cancel'])
-          .whereRaw('NOT (renewal_reminders_sent::jsonb ? ?)', [reminderType])
+          // Use @> with a JSON array to avoid Knex placeholder conflicts with the jsonb '?' operator.
+          .whereRaw("NOT COALESCE(renewal_reminders_sent::jsonb, '[]'::jsonb) @> ?::jsonb", [
+            JSON.stringify([reminderType]),
+          ])
           .orderBy('expires_at', 'asc');
 
         return licenseRows.map((row) => this._toLicenseEntity(row));

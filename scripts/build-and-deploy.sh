@@ -19,6 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 DIST_DIR="${DIST_DIR:-${REPO_ROOT}/dist}"
+TARGET_PLATFORM="${TARGET_PLATFORM:-linux/amd64}"
 
 SERVER_HOST="${ABC_SERVER:-155.138.245.11}"
 SERVER_USER="${ABC_SERVER_USER:-root}"
@@ -51,6 +52,10 @@ if [ ! -f "${REPO_ROOT}/.env" ]; then
 fi
 
 mkdir -p "$DIST_DIR"
+
+# Ensure images match server architecture (Vultr host is amd64).
+export DOCKER_DEFAULT_PLATFORM="$TARGET_PLATFORM"
+log "Using Docker platform: ${DOCKER_DEFAULT_PLATFORM}"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 if [ "$DEPLOY_ONLY" = false ]; then
