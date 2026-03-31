@@ -216,10 +216,13 @@ export const userSchemas = {
         'string.pattern.base': 'Phone number must be in valid format',
       }),
 
-    role: Joi.string().valid(...VALID_ROLE_VALUES).default(ROLES.STAFF).messages({
-      'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
-      'string.base': 'Role must be a string',
-    }),
+    role: Joi.string()
+      .valid(...VALID_ROLE_VALUES)
+      .default(ROLES.STAFF)
+      .messages({
+        'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
+        'string.base': 'Role must be a string',
+      }),
   }),
 
   /**
@@ -242,9 +245,11 @@ export const userSchemas = {
         'string.pattern.base': 'Phone number must be in valid format',
       }),
 
-    role: Joi.string().valid(...VALID_ROLE_VALUES).messages({
-      'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
-    }),
+    role: Joi.string()
+      .valid(...VALID_ROLE_VALUES)
+      .messages({
+        'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
+      }),
 
     isActive: Joi.boolean().messages({
       'boolean.base': 'isActive must be a boolean',

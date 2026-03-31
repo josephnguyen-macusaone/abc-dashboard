@@ -7,6 +7,14 @@ import { ValidationException } from '../../domain/exceptions/domain.exception.js
 export class AuthValidator {
   static SIGNUP_ROLES = ['agent', 'tech', 'accountant'];
 
+  static pushRequiredStringError(errors, input, field, message) {
+    if (!input[field] || typeof input[field] !== 'string' || input[field].trim().length < 1) {
+      errors.push({ field, message });
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Validate login input
    * @param {Object} input - Login input data
@@ -40,13 +48,8 @@ export class AuthValidator {
   static validateSignup(input) {
     const errors = [];
 
-    if (!input.firstName || typeof input.firstName !== 'string' || input.firstName.trim().length < 1) {
-      errors.push({ field: 'firstName', message: 'First name is required' });
-    }
-
-    if (!input.lastName || typeof input.lastName !== 'string' || input.lastName.trim().length < 1) {
-      errors.push({ field: 'lastName', message: 'Last name is required' });
-    }
+    this.pushRequiredStringError(errors, input, 'firstName', 'First name is required');
+    this.pushRequiredStringError(errors, input, 'lastName', 'Last name is required');
 
     if (!input.email || typeof input.email !== 'string') {
       errors.push({ field: 'email', message: 'Email is required' });
@@ -59,7 +62,9 @@ export class AuthValidator {
     } else {
       const passwordValidation = this.validatePassword(input.password);
       if (!passwordValidation.isValid) {
-        errors.push(...passwordValidation.errors.map((msg) => ({ field: 'password', message: msg })));
+        errors.push(
+          ...passwordValidation.errors.map((msg) => ({ field: 'password', message: msg }))
+        );
       }
     }
 

@@ -1085,7 +1085,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License reset successfully
    */
-  router.post('/licenses/reset', checkLicenseAccessPermission('reset_license_id'), controller.resetLicense);
+  router.post(
+    '/licenses/reset',
+    checkLicenseAccessPermission('reset_license_id'),
+    controller.resetLicense
+  );
 
   /**
    * @swagger
@@ -1182,7 +1186,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: SMS payments retrieved successfully
    */
-  router.get('/sms-payments', checkLicenseAccessPermission('sms_history'), controller.getSmsPayments);
+  router.get(
+    '/sms-payments',
+    checkLicenseAccessPermission('sms_history'),
+    controller.getSmsPayments
+  );
 
   /**
    * @swagger
@@ -1203,7 +1211,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: SMS payment added successfully
    */
-  router.post('/add-sms-payment', checkLicenseAccessPermission('sms_payment'), controller.addSmsPayment);
+  router.post(
+    '/add-sms-payment',
+    checkLicenseAccessPermission('sms_payment'),
+    controller.addSmsPayment
+  );
 
   /**
    * @swagger
@@ -1246,7 +1258,11 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License analytics retrieved successfully
    */
-  router.get('/license-analytic', checkLicenseAccessPermission('read'), controller.getLicenseAnalytics);
+  router.get(
+    '/license-analytic',
+    checkLicenseAccessPermission('read'),
+    controller.getLicenseAnalytics
+  );
 
   return router;
 };
