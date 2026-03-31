@@ -75,7 +75,9 @@ const NO_CAPABILITIES = {
 };
 
 export function getLicenseCapabilitiesForRole(role) {
-  if (!role) return NO_CAPABILITIES;
+  if (!role) {
+    return NO_CAPABILITIES;
+  }
   return LICENSE_ROLE_CAPABILITIES[role] ?? NO_CAPABILITIES;
 }
 

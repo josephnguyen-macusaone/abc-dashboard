@@ -225,9 +225,14 @@ export class LicenseController {
         return res.badRequest(error.message);
       }
       if (error instanceof ConcurrentModificationException) {
-        return sendErrorResponse(res, 'CONCURRENT_MODIFICATION', { resource: 'License' }, {
-          ...(error.additionalData || {}),
-        });
+        return sendErrorResponse(
+          res,
+          'CONCURRENT_MODIFICATION',
+          { resource: 'License' },
+          {
+            ...(error.additionalData || {}),
+          }
+        );
       }
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
@@ -327,9 +332,14 @@ export class LicenseController {
         return res.badRequest(error.message);
       }
       if (error instanceof ConcurrentModificationException) {
-        return sendErrorResponse(res, 'CONCURRENT_MODIFICATION', { resource: 'License' }, {
-          ...(error.additionalData || {}),
-        });
+        return sendErrorResponse(
+          res,
+          'CONCURRENT_MODIFICATION',
+          { resource: 'License' },
+          {
+            ...(error.additionalData || {}),
+          }
+        );
       }
       logger.error('Bulk update failed', {
         error: error.message,

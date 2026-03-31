@@ -8,7 +8,11 @@ import { ROLES } from '../../shared/constants/roles.js';
  * Handles HTTP requests for external license management
  */
 export class ExternalLicenseController {
-  constructor(syncExternalLicensesUseCase, manageExternalLicensesUseCase, licenseRepository = null) {
+  constructor(
+    syncExternalLicensesUseCase,
+    manageExternalLicensesUseCase,
+    licenseRepository = null
+  ) {
     this.syncExternalLicensesUseCase = syncExternalLicensesUseCase;
     this.manageExternalLicensesUseCase = manageExternalLicensesUseCase;
     this.licenseRepository = licenseRepository;
@@ -153,10 +157,147 @@ export class ExternalLicenseController {
       throw new ValidationException('License not found for provided appid/countid');
     }
 
-    const hasAssignment = await this.licenseRepository.hasUserAssignment(internalLicense.id, req.user.id);
+    const hasAssignment = await this.licenseRepository.hasUserAssignment(
+      internalLicense.id,
+      req.user.id
+    );
     if (!hasAssignment) {
       throw new ValidationException('You can only access SMS operations for assigned licenses');
     }
+  }
+
+  getExternalListOptions(req) {
+    return {
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+      filters: {
+        ...(req.query.search ? { search: req.query.search } : {}),
+        ...(req.query.status ? { status: req.query.status } : {}),
+        ...(req.query.dba ? { dba: req.query.dba } : {}),
+      },
+      sortBy: req.query.sortBy || 'updated_at',
+      sortOrder: req.query.sortOrder || 'desc',
+    };
+  }
+
+  async syncBeforeExternalList(req, syncFirst) {
+    if (!syncFirst) {
+      return;
+    }
+    logger.info('External licenses getLicenses: syncing from external API first', {
+      correlationId: req.correlationId,
+      userId: req.user?.id,
+    });
+    try {
+      await this.syncExternalLicensesUseCase.execute({
+        syncToInternalOnly: false,
+        comprehensive: true,
+      });
+    } catch (syncError) {
+      logger.warn('Sync before getLicenses failed, returning existing DB data', {
+        correlationId: req.correlationId,
+        error: syncError.message,
+      });
+    }
+  }
+
+  filterAgentScopedLicenses(req, scopedLicenses) {
+    const normalizedSearch = String(req.query.search || '')
+      .trim()
+      .toLowerCase();
+    const normalizedStatus = req.query.status ? String(req.query.status).toLowerCase() : '';
+
+    return scopedLicenses.filter((license) => {
+      const matchesSearch = !normalizedSearch
+        ? true
+        : String(license.dba || '')
+            .toLowerCase()
+            .includes(normalizedSearch) ||
+          String(license.appid || '')
+            .toLowerCase()
+            .includes(normalizedSearch) ||
+          String(license.emailLicense || '')
+            .toLowerCase()
+            .includes(normalizedSearch);
+      if (!matchesSearch) {
+        return false;
+      }
+      if (!normalizedStatus) {
+        return true;
+      }
+      const s = String(license.status ?? '').toLowerCase();
+      return s === normalizedStatus;
+    });
+  }
+
+  paginateLicenses(list, options) {
+    const offset = (options.page - 1) * options.limit;
+    return list.slice(offset, offset + options.limit);
+  }
+
+  async getAgentScopedExternalResult(req, repo, options) {
+    const assigned = await this.licenseRepository.findLicenses({
+      page: 1,
+      limit: 10000,
+      filters: { assignedUserId: req.user.id },
+    });
+    const appids = (assigned?.licenses || []).map((item) => item.appid || item.key).filter(Boolean);
+    const byAppid = await repo.findByAppIds(appids);
+    const scopedLicenses = byAppid instanceof Map ? Array.from(byAppid.values()) : [];
+    const filtered = this.filterAgentScopedLicenses(req, scopedLicenses);
+    const paginated = this.paginateLicenses(filtered, options);
+    return { licenses: paginated, total: filtered.length };
+  }
+
+  async getExternalListResult(req, repo, options) {
+    const isAgent = req.user?.role === ROLES.AGENT;
+    if (!isAgent || !this.licenseRepository) {
+      return {
+        isAgent,
+        result: await repo.findLicenses(options),
+      };
+    }
+    return {
+      isAgent,
+      result: await this.getAgentScopedExternalResult(req, repo, options),
+    };
+  }
+
+  async destroyKnexConnection(db) {
+    if (!db) {
+      return;
+    }
+    try {
+      await db.destroy();
+    } catch (_e) {
+      // Ignore destroy errors
+    }
+  }
+
+  ensureResetLicensePermission(req) {
+    if (![ROLES.ADMIN, ROLES.TECH].includes(req.user?.role)) {
+      throw new ValidationException('Only admin and tech can reset license IDs');
+    }
+  }
+
+  async recordResetLicenseAudit(req, { appid, email, result }) {
+    this.logOperation(req, 'external_reset_license_id', {
+      appid: appid ?? null,
+      email: email ?? null,
+    });
+    await this.createExternalAuditEvent(req, {
+      type: 'license.external_reset',
+      entityId: await this.resolveLicenseIdForAudit({
+        id: result?.id,
+        appid: appid ?? result?.appid,
+        countid: result?.countid,
+      }),
+      metadata: this.buildAuditMetadata(req, 'external_reset', {
+        appid: appid ?? result?.appid ?? null,
+        email: email ?? null,
+        countid: result?.countid ?? null,
+      }),
+    });
   }
 
   // ========================================================================
@@ -301,25 +442,7 @@ export class ExternalLicenseController {
     let db;
     try {
       const syncFirst = req.query.syncFirst === 'true';
-
-      if (syncFirst) {
-        logger.info('External licenses getLicenses: syncing from external API first', {
-          correlationId: req.correlationId,
-          userId: req.user?.id,
-        });
-        try {
-          await this.syncExternalLicensesUseCase.execute({
-            syncToInternalOnly: false,
-            comprehensive: true,
-          });
-        } catch (syncError) {
-          logger.warn('Sync before getLicenses failed, returning existing DB data', {
-            correlationId: req.correlationId,
-            error: syncError.message,
-          });
-          // Continue to return list from DB (may have stale total)
-        }
-      }
+      await this.syncBeforeExternalList(req, syncFirst);
 
       logger.debug('External licenses getLicenses called');
 
@@ -330,56 +453,11 @@ export class ExternalLicenseController {
 
       db = knex(getKnexConfig());
       const repo = new ExternalLicenseRepository(db);
-
-      const options = {
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 10,
-        filters: {
-          ...(req.query.search ? { search: req.query.search } : {}),
-          ...(req.query.status ? { status: req.query.status } : {}),
-          ...(req.query.dba ? { dba: req.query.dba } : {}),
-        },
-        sortBy: req.query.sortBy || 'updated_at',
-        sortOrder: req.query.sortOrder || 'desc',
-      };
-      const isAgent = req.user?.role === ROLES.AGENT;
-      let result;
-      if (!isAgent || !this.licenseRepository) {
-        result = await repo.findLicenses(options);
-      } else {
-        const assigned = await this.licenseRepository.findLicenses({
-          page: 1,
-          limit: 10000,
-          filters: { assignedUserId: req.user.id },
-        });
-        const appids = (assigned?.licenses || [])
-          .map((item) => item.appid || item.key)
-          .filter(Boolean);
-        const byAppid = await repo.findByAppIds(appids);
-        const scopedLicenses = byAppid instanceof Map ? Array.from(byAppid.values()) : [];
-        const normalizedSearch = String(req.query.search || '').trim().toLowerCase();
-        const normalizedStatus = req.query.status ? String(req.query.status).toLowerCase() : '';
-        const filtered = scopedLicenses.filter((license) => {
-          const matchesSearch = !normalizedSearch
-            ? true
-            : String(license.dba || '').toLowerCase().includes(normalizedSearch) ||
-              String(license.appid || '').toLowerCase().includes(normalizedSearch) ||
-              String(license.emailLicense || '').toLowerCase().includes(normalizedSearch);
-          if (!matchesSearch) return false;
-          if (!normalizedStatus) return true;
-          const s = String(license.status ?? '').toLowerCase();
-          return s === normalizedStatus;
-        });
-        const offset = (options.page - 1) * options.limit;
-        const paginated = filtered.slice(offset, offset + options.limit);
-        result = {
-          licenses: paginated,
-          total: filtered.length,
-        };
-      }
+      const options = this.getExternalListOptions(req);
+      const { isAgent, result } = await this.getExternalListResult(req, repo, options);
       logger.debug('External licenses repository call completed', { hasResult: !!result });
-
-      await db.destroy();
+      await this.destroyKnexConnection(db);
+      db = null;
 
       const total = result.total || 0;
       const totalPages = Math.ceil(total / options.limit);
@@ -405,14 +483,7 @@ export class ExternalLicenseController {
         },
       });
     } catch (error) {
-      // Make sure to close DB connection on error too
-      if (db) {
-        try {
-          await db.destroy();
-        } catch (_e) {
-          // Ignore destroy errors
-        }
-      }
+      await this.destroyKnexConnection(db);
 
       logger.error('Failed to get external licenses via API', {
         correlationId: req.correlationId,
@@ -1044,8 +1115,10 @@ export class ExternalLicenseController {
    */
   resetLicense = async (req, res) => {
     try {
-      if (![ROLES.ADMIN, ROLES.TECH].includes(req.user?.role)) {
-        return res.forbidden('Only admin and tech can reset license IDs');
+      try {
+        this.ensureResetLicensePermission(req);
+      } catch (permissionError) {
+        return res.forbidden(permissionError.message);
       }
 
       const { appid, email } = req.body;
@@ -1058,24 +1131,7 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.resetLicense({ appid, email });
-      this.logOperation(req, 'external_reset_license_id', {
-        appid: appid ?? null,
-        email: email ?? null,
-      });
-      const auditEntityId = await this.resolveLicenseIdForAudit({
-        id: result?.id,
-        appid: appid ?? result?.appid,
-        countid: result?.countid,
-      });
-      await this.createExternalAuditEvent(req, {
-        type: 'license.external_reset',
-        entityId: auditEntityId,
-        metadata: this.buildAuditMetadata(req, 'external_reset', {
-          appid: appid ?? result?.appid ?? null,
-          email: email ?? null,
-          countid: result?.countid ?? null,
-        }),
-      });
+      await this.recordResetLicenseAudit(req, { appid, email, result });
 
       return res.success(result, 'License reset successfully');
     } catch (error) {

@@ -5,7 +5,6 @@
 
 import { InsufficientPermissionsException } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../shared/utils/logger.js';
-import { ROLES } from '../../shared/constants/roles.js';
 import { getLicenseCapabilitiesForRole } from '../../shared/constants/license-capabilities.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import { isRoleModuleEnabled } from '../config/role-module-flags.js';
@@ -82,9 +81,7 @@ export function checkLicenseCreationPermission() {
           userId: currentUser.id,
           userRole: currentUser.role,
         });
-        throw new InsufficientPermissionsException(
-          'You do not have permission to create licenses'
-        );
+        throw new InsufficientPermissionsException('You do not have permission to create licenses');
       }
 
       if (!isRoleModuleEnabled(currentUser.role)) {
