@@ -1085,7 +1085,7 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       200:
    *         description: License reset successfully
    */
-  router.post('/licenses/reset', checkLicenseAccessPermission('update'), controller.resetLicense);
+  router.post('/licenses/reset', checkLicenseAccessPermission('reset_license_id'), controller.resetLicense);
 
   /**
    * @swagger

@@ -6,6 +6,7 @@
 import { InsufficientPermissionsException } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../shared/utils/logger.js';
 import { ROLES } from '../../shared/constants/roles.js';
+import { getLicenseCapabilitiesForRole } from '../../shared/constants/license-capabilities.js';
 import { sendErrorResponse } from '../../shared/http/error-responses.js';
 import { isRoleModuleEnabled } from '../config/role-module-flags.js';
 
@@ -16,8 +17,7 @@ import { isRoleModuleEnabled } from '../config/role-module-flags.js';
  * @return {boolean} - Whether creation is allowed
  */
 function canCreateLicense(currentUser) {
-  // Admin, accountant, and tech can create licenses
-  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.TECH].includes(currentUser.role);
+  return getLicenseCapabilitiesForRole(currentUser.role).canCreateLicense;
 }
 
 /**
@@ -27,8 +27,7 @@ function canCreateLicense(currentUser) {
  * @return {boolean} - Whether update is allowed
  */
 function canUpdateLicense(currentUser) {
-  // Admin, accountant, and tech can update licenses
-  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.TECH].includes(currentUser.role);
+  return getLicenseCapabilitiesForRole(currentUser.role).canUpdateLicense;
 }
 
 /**
@@ -38,20 +37,15 @@ function canUpdateLicense(currentUser) {
  * @return {boolean} - Whether deletion is allowed
  */
 function canDeleteLicense(currentUser) {
-  // Only admin and accountant can delete licenses
-  return [ROLES.ADMIN, ROLES.ACCOUNTANT].includes(currentUser.role);
+  return getLicenseCapabilitiesForRole(currentUser.role).canDeleteLicense;
 }
 
 function canAddSmsPayment(currentUser) {
-  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT].includes(
-    currentUser.role
-  );
+  return getLicenseCapabilitiesForRole(currentUser.role).canAddSmsPayment;
 }
 
 function canViewSmsPayments(currentUser) {
-  return [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT].includes(
-    currentUser.role
-  );
+  return getLicenseCapabilitiesForRole(currentUser.role).canViewSmsPayments;
 }
 
 /**
@@ -61,15 +55,7 @@ function canViewSmsPayments(currentUser) {
  * @return {boolean} - Whether viewing is allowed
  */
 function canViewLicense(currentUser) {
-  // All known roles can view licenses; assignment-level filtering is handled at query/use-case level
-  return [
-    ROLES.ADMIN,
-    ROLES.ACCOUNTANT,
-    ROLES.MANAGER,
-    ROLES.TECH,
-    ROLES.AGENT,
-    ROLES.STAFF,
-  ].includes(currentUser.role);
+  return getLicenseCapabilitiesForRole(currentUser.role).canViewLicenses;
 }
 
 /**
@@ -160,6 +146,9 @@ export function checkLicenseAccessPermission(operation) {
         case 'sms_history':
           hasPermission = canViewSmsPayments(currentUser);
           break;
+        case 'reset_license_id':
+          hasPermission = getLicenseCapabilitiesForRole(currentUser.role).canResetLicenseId;
+          break;
         default:
           hasPermission = false;
       }
@@ -215,8 +204,7 @@ export function checkLicenseBulkOperationPermission() {
         throw new InsufficientPermissionsException('Authentication required');
       }
 
-      // Only admin and accountant can perform bulk operations
-      if (![ROLES.ADMIN, ROLES.ACCOUNTANT].includes(currentUser.role)) {
+      if (!getLicenseCapabilitiesForRole(currentUser.role).canBulkOperate) {
         logger.warn('Unauthorized license bulk operation attempt', {
           correlationId: req.correlationId,
           userId: currentUser.id,

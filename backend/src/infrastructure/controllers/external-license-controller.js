@@ -71,6 +71,18 @@ export class ExternalLicenseController {
     };
   }
 
+  logOperation(req, action, extra = {}) {
+    logger.info('external_license_operation', {
+      correlationId: req.correlationId,
+      userId: req.user?.id ?? null,
+      userRole: req.user?.role ?? null,
+      action,
+      method: req.method,
+      path: req.path,
+      ...extra,
+    });
+  }
+
   async resolveLicenseIdForAudit({ id, appid, countid }) {
     if (!this.licenseRepository) {
       return null;
@@ -322,18 +334,62 @@ export class ExternalLicenseController {
       const options = {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 10,
-        filters: {},
-        sortBy: 'updated_at',
-        sortOrder: 'desc',
+        filters: {
+          ...(req.query.search ? { search: req.query.search } : {}),
+          ...(req.query.status ? { status: req.query.status } : {}),
+          ...(req.query.dba ? { dba: req.query.dba } : {}),
+        },
+        sortBy: req.query.sortBy || 'updated_at',
+        sortOrder: req.query.sortOrder || 'desc',
       };
-
-      const result = await repo.findLicenses(options);
+      const isAgent = req.user?.role === ROLES.AGENT;
+      let result;
+      if (!isAgent || !this.licenseRepository) {
+        result = await repo.findLicenses(options);
+      } else {
+        const assigned = await this.licenseRepository.findLicenses({
+          page: 1,
+          limit: 10000,
+          filters: { assignedUserId: req.user.id },
+        });
+        const appids = (assigned?.licenses || [])
+          .map((item) => item.appid || item.key)
+          .filter(Boolean);
+        const byAppid = await repo.findByAppIds(appids);
+        const scopedLicenses = byAppid instanceof Map ? Array.from(byAppid.values()) : [];
+        const normalizedSearch = String(req.query.search || '').trim().toLowerCase();
+        const normalizedStatus = req.query.status ? String(req.query.status).toLowerCase() : '';
+        const filtered = scopedLicenses.filter((license) => {
+          const matchesSearch = !normalizedSearch
+            ? true
+            : String(license.dba || '').toLowerCase().includes(normalizedSearch) ||
+              String(license.appid || '').toLowerCase().includes(normalizedSearch) ||
+              String(license.emailLicense || '').toLowerCase().includes(normalizedSearch);
+          if (!matchesSearch) return false;
+          if (!normalizedStatus) return true;
+          const s = String(license.status ?? '').toLowerCase();
+          return s === normalizedStatus;
+        });
+        const offset = (options.page - 1) * options.limit;
+        const paginated = filtered.slice(offset, offset + options.limit);
+        result = {
+          licenses: paginated,
+          total: filtered.length,
+        };
+      }
       logger.debug('External licenses repository call completed', { hasResult: !!result });
 
       await db.destroy();
 
       const total = result.total || 0;
       const totalPages = Math.ceil(total / options.limit);
+
+      this.logOperation(req, 'external_licenses_list', {
+        page: options.page,
+        limit: options.limit,
+        total,
+        isAgentScoped: isAgent,
+      });
 
       return res.json({
         success: true,
@@ -745,6 +801,10 @@ export class ExternalLicenseController {
       });
 
       const results = await this.manageExternalLicensesUseCase.bulkUpdateLicenses(updates);
+      this.logOperation(req, 'external_bulk_update', {
+        requested: updates.length,
+        updated: results.length,
+      });
 
       logger.info('Bulk update of external licenses completed via API', {
         correlationId: req.correlationId,
@@ -998,6 +1058,10 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.resetLicense({ appid, email });
+      this.logOperation(req, 'external_reset_license_id', {
+        appid: appid ?? null,
+        email: email ?? null,
+      });
       const auditEntityId = await this.resolveLicenseIdForAudit({
         id: result?.id,
         appid: appid ?? result?.appid,
@@ -1109,6 +1173,12 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.getSmsPayments(options);
+      this.logOperation(req, 'external_get_sms_payments', {
+        appid: options.appid ?? null,
+        countid: options.countid ?? null,
+        page: options.page,
+        limit: options.limit,
+      });
 
       return res.success(result, 'SMS payments retrieved successfully');
     } catch (error) {
@@ -1145,6 +1215,11 @@ export class ExternalLicenseController {
       });
 
       const result = await this.manageExternalLicensesUseCase.addSmsPayment(paymentData);
+      this.logOperation(req, 'external_add_sms_payment', {
+        appid: paymentData?.appid ?? null,
+        countid: paymentData?.countid ?? null,
+        amount: paymentData?.amount ?? null,
+      });
 
       return res.success(result, 'SMS payment added successfully');
     } catch (error) {

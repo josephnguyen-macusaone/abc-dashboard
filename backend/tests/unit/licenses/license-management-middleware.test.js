@@ -56,7 +56,7 @@ describe('license-management permissions', () => {
     expect(resAgent.statusCode).toBe(403);
   });
 
-  it('allows sms endpoints for agent/tech/accountant', () => {
+  it('allows sms history for agent/tech/accountant and sms payment for agent/accountant', () => {
     const smsHistory = checkLicenseAccessPermission('sms_history');
     const smsPayment = checkLicenseAccessPermission('sms_payment');
 
@@ -64,23 +64,29 @@ describe('license-management permissions', () => {
       const nextHistory = jest.fn();
       smsHistory({ user: { role } }, buildRes(), nextHistory);
       expect(nextHistory).toHaveBeenCalled();
+    }
 
+    for (const role of [ROLES.AGENT, ROLES.ACCOUNTANT]) {
       const nextPayment = jest.fn();
       smsPayment({ user: { role } }, buildRes(), nextPayment);
       expect(nextPayment).toHaveBeenCalled();
     }
+
+    const resTechPayment = buildRes();
+    smsPayment({ user: { role: ROLES.TECH } }, resTechPayment, jest.fn());
+    expect(resTechPayment.statusCode).toBe(403);
   });
 
-  it('allows bulk only for admin/accountant', () => {
+  it('allows bulk only for admin', () => {
     const middleware = checkLicenseBulkOperationPermission();
 
     const nextAdmin = jest.fn();
     middleware({ user: { role: ROLES.ADMIN } }, buildRes(), nextAdmin);
     expect(nextAdmin).toHaveBeenCalled();
 
-    const nextAccountant = jest.fn();
-    middleware({ user: { role: ROLES.ACCOUNTANT } }, buildRes(), nextAccountant);
-    expect(nextAccountant).toHaveBeenCalled();
+    const resAccountant = buildRes();
+    middleware({ user: { role: ROLES.ACCOUNTANT } }, resAccountant, jest.fn());
+    expect(resAccountant.statusCode).toBe(403);
 
     const resTech = buildRes();
     middleware({ user: { role: ROLES.TECH } }, resTech, jest.fn());

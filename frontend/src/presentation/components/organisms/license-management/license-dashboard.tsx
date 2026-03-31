@@ -32,6 +32,7 @@ import {
 } from '@/infrastructure/stores/license';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { FEATURE_FLAGS } from '@/shared/constants/feature-flags';
+import { getLicenseCapabilities } from '@/shared/constants/license-capabilities';
 
 import type { DashboardMetricsAlertItem } from '@/infrastructure/api/licenses/types';
 import type { LicenseStatus } from '@/types';
@@ -113,6 +114,7 @@ export const LicenseDashboard: React.FC = () => {
   const smsPaymentsError = useLicenseStore(selectSmsPaymentsError);
   const smsTotals = useLicenseStore(selectSmsTotals);
   const currentUser = useAuthStore((s) => s.user);
+  const capabilities = getLicenseCapabilities(currentUser?.role);
   const isAgent = currentUser?.role === 'agent' && FEATURE_FLAGS.agentModule;
   const isTech = currentUser?.role === 'tech' && FEATURE_FLAGS.techModule;
   const isAccountant = currentUser?.role === 'accountant' && FEATURE_FLAGS.accountantModule;
@@ -140,6 +142,7 @@ export const LicenseDashboard: React.FC = () => {
   };
 
   const handleBulkStatusUpdate = async (newStatus: string) => {
+    if (!capabilities.canUpdateLicense) return;
     if (selectedLicenses.length === 0) return;
     try {
       await bulkUpdateByIdentifiers({ appids: selectedLicenses }, { status: newStatus });
@@ -173,6 +176,7 @@ export const LicenseDashboard: React.FC = () => {
   };
 
   const handleAddSmsPayment = async () => {
+    if (!capabilities.canAddSmsBalance) return;
     const appid = smsAppId.trim();
     const amount = Number(smsAmount);
     if (!appid || Number.isNaN(amount) || amount <= 0) return;
@@ -186,6 +190,7 @@ export const LicenseDashboard: React.FC = () => {
   };
 
   const handleResetLicenseId = async () => {
+    if (!capabilities.canResetLicenseId) return;
     const appid = techResetAppId.trim();
     const email = techResetEmail.trim();
     if (!appid && !email) return;
@@ -195,6 +200,7 @@ export const LicenseDashboard: React.FC = () => {
   };
 
   const handleTechDateAdjustment = async () => {
+    if (!(capabilities.canAdjustActivateDate || capabilities.canAdjustComingExpired)) return;
     const appid = techAdjustAppId.trim();
     if (!appid) return;
     const updates: Record<string, unknown> = {};
@@ -207,6 +213,7 @@ export const LicenseDashboard: React.FC = () => {
   };
 
   const handleAccountantAdjustment = async () => {
+    if (!capabilities.canUpdateLicense) return;
     const appid = accountantAdjustAppId.trim();
     if (!appid) return;
     const updates: Record<string, unknown> = {};
@@ -233,10 +240,12 @@ export const LicenseDashboard: React.FC = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add License
-          </Button>
+          {capabilities.canCreateLicense && (
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add License
+            </Button>
+          )}
         </div>
       </div>
 
@@ -466,7 +475,7 @@ export const LicenseDashboard: React.FC = () => {
               </Button>
             </div>
 
-            {selectedLicenses.length > 0 && (
+            {capabilities.canUpdateLicense && selectedLicenses.length > 0 && (
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-muted-foreground">
                   {selectedLicenses.length} selected
@@ -630,6 +639,7 @@ export const LicenseDashboard: React.FC = () => {
                         <TableHead className="w-12">
                           <input
                             type="checkbox"
+                            disabled={!capabilities.canUpdateLicense}
                             checked={selectedLicenses.length === licenses.length}
                             onChange={(e) => {
                               if (e.target.checked) {
@@ -655,6 +665,7 @@ export const LicenseDashboard: React.FC = () => {
                           <TableCell>
                             <input
                               type="checkbox"
+                              disabled={!capabilities.canUpdateLicense}
                               checked={selectedLicenses.includes(String(license.key ?? license.id))}
                               onChange={(e) =>
                                 handleLicenseSelect(String(license.key ?? license.id), e.target.checked)

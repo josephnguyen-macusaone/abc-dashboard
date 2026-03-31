@@ -1,5 +1,6 @@
 import { Home, Users, FileSpreadsheet } from 'lucide-react';
 import { PermissionUtils, USER_ROLES } from './auth';
+import { getLicenseCapabilities } from './license-capabilities';
 import type { NavigationItem } from '@/presentation/components/molecules';
 
 /**
@@ -10,6 +11,7 @@ export function getNavigationItems(userRole?: string): NavigationItem[] {
   const baseItems: NavigationItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
   ];
+  const licenseCapabilities = getLicenseCapabilities(userRole);
 
   // Admin navigation (full system access)
   if (PermissionUtils.canManageSystem(userRole)) {
@@ -31,6 +33,7 @@ export function getNavigationItems(userRole?: string): NavigationItem[] {
 
   // Roles focused on license operations
   if (
+    licenseCapabilities.canViewLicenses ||
     userRole === USER_ROLES.ACCOUNTANT ||
     userRole === USER_ROLES.TECH ||
     userRole === USER_ROLES.AGENT

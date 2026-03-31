@@ -86,7 +86,6 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
       USER_ROLES.MANAGER,
       USER_ROLES.TECH,
       USER_ROLES.AGENT,
-      USER_ROLES.STAFF,
     ],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
