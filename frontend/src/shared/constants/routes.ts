@@ -80,13 +80,9 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Dashboard',
     description: 'System dashboard and overview',
     requireAuth: true,
-    allowedRoles: [
-      USER_ROLES.ADMIN,
-      USER_ROLES.ACCOUNTANT,
-      USER_ROLES.MANAGER,
-      USER_ROLES.TECH,
-      USER_ROLES.AGENT,
-    ],
+    // String literals used instead of USER_ROLES.* to prevent Turbopack (Next.js 16)
+    // from tree-shaking infrequently-referenced role constants in the Edge middleware bundle.
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -96,7 +92,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Users',
     description: 'User management',
     requireAuth: true,
-    allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.ACCOUNTANT, USER_ROLES.MANAGER],
+    allowedRoles: ['admin', 'accountant', 'manager'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -106,14 +102,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Licenses',
     description: 'License management',
     requireAuth: true,
-    allowedRoles: [
-      USER_ROLES.ADMIN,
-      USER_ROLES.ACCOUNTANT,
-      USER_ROLES.MANAGER,
-      USER_ROLES.TECH,
-      USER_ROLES.AGENT,
-      USER_ROLES.STAFF,
-    ],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -123,14 +112,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Profile',
     description: 'Manage your profile',
     requireAuth: true,
-    allowedRoles: [
-      USER_ROLES.ADMIN,
-      USER_ROLES.ACCOUNTANT,
-      USER_ROLES.MANAGER,
-      USER_ROLES.TECH,
-      USER_ROLES.AGENT,
-      USER_ROLES.STAFF,
-    ],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -140,14 +122,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Edit Profile',
     description: 'Update your profile information',
     requireAuth: true,
-    allowedRoles: [
-      USER_ROLES.ADMIN,
-      USER_ROLES.ACCOUNTANT,
-      USER_ROLES.MANAGER,
-      USER_ROLES.TECH,
-      USER_ROLES.AGENT,
-      USER_ROLES.STAFF,
-    ],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -157,14 +132,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Change Password',
     description: 'Update your password',
     requireAuth: true,
-    allowedRoles: [
-      USER_ROLES.ADMIN,
-      USER_ROLES.ACCOUNTANT,
-      USER_ROLES.MANAGER,
-      USER_ROLES.TECH,
-      USER_ROLES.AGENT,
-      USER_ROLES.STAFF,
-    ],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -232,13 +200,14 @@ export function getNavigationRoutes(userRole?: string): RouteConfig[] {
 export function getDefaultRedirect(userRole?: string): string {
   if (!userRole) return ROUTES.LOGIN;
 
+  // String literals used instead of USER_ROLES.* to prevent Turbopack tree-shaking.
   switch (userRole) {
-    case USER_ROLES.ADMIN:
-    case USER_ROLES.ACCOUNTANT:
-    case USER_ROLES.MANAGER:
-    case USER_ROLES.TECH:
-    case USER_ROLES.AGENT:
-    case USER_ROLES.STAFF:
+    case 'admin':
+    case 'accountant':
+    case 'manager':
+    case 'tech':
+    case 'agent':
+    case 'staff':
       return ROUTES.DASHBOARD;
     default:
       return ROUTES.PROFILE;
