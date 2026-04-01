@@ -101,7 +101,7 @@ export function DataTableDateRangeFilter({
           ) : (
             <Calendar className="size-4 shrink-0" />
           )}
-          <span className="hidden sm:inline text-button-s font-normal">{title}</span>
+          {!hasRange && <span className="hidden sm:inline text-button-s font-normal">{title}</span>}
           {hasRange && labelText && (
             <span className="min-w-0 flex-1 truncate text-button-s font-normal sm:flex-initial sm:max-w-none">
               {labelText}

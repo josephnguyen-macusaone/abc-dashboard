@@ -91,6 +91,9 @@ temp/
 logs/
 *.log
 
+# PostgreSQL custom-format dumps (scripts/db-backup.sh); may contain full DB contents
+backups/postgres/*.dump
+
 # OS generated files
 .DS_Store
 .DS_Store?

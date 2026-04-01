@@ -7,9 +7,83 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LicenseRecord } from "@/types";
 import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
+import type { LicenseCapabilities } from "@/shared/constants/license-capabilities";
 import { STATUS_OPTIONS, TERM_OPTIONS } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
 
-export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
+export interface GetLicenseGridColumnsOptions {
+  capabilities?: LicenseCapabilities;
+  /** When false, omit the Activity (audit) column. Default true. */
+  includeAuditColumn?: boolean;
+}
+
+/** Core business columns: read-only when the role cannot edit them (e.g. Tech: dates only). */
+const LICENSE_GRID_CORE_FIELD_IDS = new Set<string>([
+  "dba",
+  "zip",
+  "term",
+  "lastPayment",
+  "notes",
+  "agents",
+  "agentsName",
+  "agentsCost",
+  "smsSent",
+]);
+
+function isLicenseGridColumnReadOnlyForRole(
+  columnId: string,
+  caps: LicenseCapabilities,
+): boolean {
+  switch (columnId) {
+    case "startsAt":
+      return !caps.canAdjustActivateDate;
+    case "status":
+      return !caps.canToggleLicenseStatus;
+    case "plan":
+      return !caps.canAdjustPackage;
+    case "dueDate":
+      return !caps.canAdjustComingExpired;
+    case "smsPurchased":
+    case "smsBalance":
+      return !caps.canAddSmsBalance;
+    default:
+      return false;
+  }
+}
+
+function applyLicenseGridRbacToColumns(
+  columns: ColumnDef<LicenseRecord>[],
+  caps?: LicenseCapabilities,
+): ColumnDef<LicenseRecord>[] {
+  if (!caps) return columns;
+  return columns.map((col) => {
+    const id = String(
+      col.id ?? ("accessorKey" in col ? (col.accessorKey as string) : ""),
+    );
+    const rbacReadOnly = isLicenseGridColumnReadOnlyForRole(id, caps);
+    const prevCell = col.meta?.cell;
+    if (!prevCell) return col;
+    const prevReadOnly = prevCell.readOnly ?? false;
+
+    const coreReadOnly =
+      !caps.canEditLicenseCoreGridFields &&
+      LICENSE_GRID_CORE_FIELD_IDS.has(id);
+
+    if (!rbacReadOnly && !prevReadOnly && !coreReadOnly) return col;
+
+    return {
+      ...col,
+      meta: {
+        ...col.meta,
+        cell: {
+          ...prevCell,
+          readOnly: prevReadOnly || rbacReadOnly || coreReadOnly,
+        },
+      },
+    };
+  });
+}
+
+function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
   return [
     {
       id: "dba",
@@ -75,7 +149,7 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableSorting: false,
       filterFn: (row, id, value) => {
         const plan = row.getValue(id) as string;
-        const modules = plan ? plan.split(',').map((s) => s.trim()) : [];
+        const modules = plan ? plan.split(",").map((s) => s.trim()) : [];
         if (Array.isArray(value)) {
           return value.some((v) => modules.includes(v));
         }
@@ -220,6 +294,56 @@ export function getLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
         cell: { variant: "short-text" as const },
       },
     },
+    {
+      id: "createdBy",
+      accessorKey: "createdBy",
+      header: "Created by",
+      ...LICENSE_COLUMN_WIDTHS.createdBy,
+      enableSorting: false,
+      enableColumnFilter: false,
+      meta: {
+        label: "Created by",
+        cell: { variant: "short-text" as const, readOnly: true },
+      },
+    },
+    {
+      id: "updatedBy",
+      accessorKey: "updatedBy",
+      header: "Updated by",
+      ...LICENSE_COLUMN_WIDTHS.updatedBy,
+      enableSorting: false,
+      enableColumnFilter: false,
+      meta: {
+        label: "Updated by",
+        cell: { variant: "short-text" as const, readOnly: true },
+      },
+    },
   ];
 }
 
+export function getLicenseGridColumns(
+  options?: GetLicenseGridColumnsOptions,
+): ColumnDef<LicenseRecord>[] {
+  const includeAuditColumn = options?.includeAuditColumn !== false;
+  const base = applyLicenseGridRbacToColumns(
+    buildBaseLicenseGridColumns(),
+    options?.capabilities,
+  );
+  if (!includeAuditColumn) return base;
+  return [
+    ...base,
+    {
+      id: "auditHistory",
+      accessorKey: "id",
+      header: "Activity",
+      enableColumnFilter: false,
+      enableSorting: false,
+      ...LICENSE_COLUMN_WIDTHS.auditHistory,
+      meta: {
+        label: "Activity",
+        headerAlign: "center" as const,
+        cell: { variant: "audit-history" as const, readOnly: true },
+      },
+    },
+  ];
+}

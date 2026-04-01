@@ -1,7 +1,11 @@
 import express from 'express';
 import logger from '../../shared/utils/logger.js';
 import { awilixContainer } from '../../shared/kernel/container.js';
-import { validateRequest } from '../middleware/validation-middleware.js';
+import {
+  validateRequest,
+  validateQuery,
+  validateParams,
+} from '../middleware/validation-middleware.js';
 import { licenseSchemas } from '../api/v1/schemas/license.schemas.js';
 import {
   checkLicenseCreationPermission,
@@ -409,10 +413,49 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
+  /**
+   * @swagger
+   * /licenses/{id}/audit-events:
+   *   get:
+   *     summary: Paginated license audit events (Web DB)
+   *     tags: [Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           default: 1
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 100
+   *           default: 50
+   *     responses:
+   *       200:
+   *         description: Audit events for the license
+   */
+  router.get(
+    '/:id/audit-events',
+    checkLicenseAccessPermission('read'),
+    validateParams(licenseSchemas.licenseId),
+    validateQuery(licenseSchemas.licenseAuditEventsQuery),
+    controller.getLicenseAuditEvents
+  );
+
   router.get(
     '/:id',
     checkLicenseAccessPermission('read'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     controller.getLicenseById
   );
 
@@ -629,7 +672,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.put(
     '/:id',
     checkLicenseAccessPermission('update'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     validateRequest(licenseSchemas.updateLicense),
     controller.updateLicense
   );
@@ -1032,7 +1075,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.delete(
     '/:id',
     checkLicenseAccessPermission('delete'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     controller.deleteLicense
   );
 
@@ -1060,7 +1103,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.get(
     '/:id/lifecycle-status',
     checkLicenseAccessPermission('read'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.getLifecycleStatus
   );
 
@@ -1109,7 +1152,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.post(
     '/:id/renew',
     checkLicenseAccessPermission('update'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.renewLicense
   );
 
@@ -1148,7 +1191,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.get(
     '/:id/renew-preview',
     checkLicenseAccessPermission('read'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.getRenewalPreview
   );
 
@@ -1194,7 +1237,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.post(
     '/:id/extend',
     checkLicenseAccessPermission('update'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.extendLicense
   );
 
@@ -1237,7 +1280,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.post(
     '/:id/expire',
     checkLicenseAccessPermission('update'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.expireLicense
   );
 
@@ -1269,7 +1312,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.get(
     '/:id/expire-preview',
     checkLicenseAccessPermission('read'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.getExpirationPreview
   );
 
@@ -1309,7 +1352,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
   router.post(
     '/:id/reactivate',
     checkLicenseAccessPermission('update'),
-    validateRequest(licenseSchemas.licenseId, 'params'),
+    validateParams(licenseSchemas.licenseId),
     lifecycleController.reactivateLicense
   );
 

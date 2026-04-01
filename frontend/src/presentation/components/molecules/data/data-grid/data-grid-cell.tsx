@@ -5,6 +5,7 @@ import * as React from "react";
 
 import {
   AgentsNameCell,
+  AuditHistoryCell,
   CheckboxCell,
   DateCell,
   LicenseStatusCell,
@@ -93,6 +94,9 @@ function DataGridCellImpl<TData>({
       break;
     case "agents-name":
       Comp = AgentsNameCell;
+      break;
+    case "audit-history":
+      Comp = AuditHistoryCell;
       break;
     default:
       Comp = ShortTextCell;

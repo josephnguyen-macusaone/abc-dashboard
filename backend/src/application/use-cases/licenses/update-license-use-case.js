@@ -114,11 +114,11 @@ export class UpdateLicenseUseCase {
     const { userId, userRole, ipAddress, userAgent, expectedUpdatedAt } = context;
     const existingLicense = await this.ensureLicenseCanBeUpdated(licenseId, updates);
     const { safeUpdates, concurrencyToken } = this.sanitizeUpdates(updates, expectedUpdatedAt);
-    const updatedLicense = await this.persistUpdate(
-      licenseId,
-      { ...safeUpdates, updatedBy: userId },
-      concurrencyToken
-    );
+    const dataWithAudit =
+      userId && typeof userId === 'string' && userId.trim() !== ''
+        ? { ...safeUpdates, updatedBy: userId }
+        : { ...safeUpdates };
+    const updatedLicense = await this.persistUpdate(licenseId, dataWithAudit, concurrencyToken);
     await this.emitUpdateAudit({
       userId,
       userRole,

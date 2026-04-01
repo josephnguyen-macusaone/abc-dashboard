@@ -60,6 +60,7 @@ interface AuthState {
   scheduleTokenRefresh: () => void;
   getTokenStats: () => TokenManagerStats | null;
   handleAuthFailure: () => Promise<void>;
+  validateSession: (options?: { timeoutMs?: number; onNetworkError?: 'allow' | 'logout' }) => Promise<boolean>;
   /** True if current token is expired (or missing). Used to enforce consistent logout on protected routes. */
   isTokenExpired: () => boolean;
 }
@@ -87,17 +88,24 @@ export const useAuthStore = create<AuthState>()(
           // Initialize auth state (HttpOnly cookies: always verify via getProfile)
           // Never trust persisted state without verifying the HttpOnly cookie is still valid.
           initialize: async () => {
+            const INIT_PROFILE_TIMEOUT_MS = 3500;
+            const startedAt = Date.now();
             try {
               set({ isLoading: true });
 
               const storedUser = CookieService.getUser() || LocalStorageService.getUser();
               if (storedUser) {
                 set({ user: storedUser });
+              } else {
+                // Fast path for URL-bypass while logged out: don't block app boot on a
+                // potentially slow profile call when there is no persisted auth context.
+                set({ user: null, isAuthenticated: false, isLoading: false });
+                return;
               }
 
               // Token is in HttpOnly cookie - verify via getProfile
               try {
-                const profileData = await authApi.getProfile();
+                const profileData = await authApi.getProfile(INIT_PROFILE_TIMEOUT_MS);
                 const user = User.fromObject(profileData as unknown as Record<string, unknown>);
                 set({ user, isAuthenticated: true });
                 CookieService.setUser(user);
@@ -135,6 +143,9 @@ export const useAuthStore = create<AuthState>()(
             } catch (error) {
               storeLogger.error('Error initializing auth', { error: error instanceof Error ? error.message : String(error) });
             } finally {
+              storeLogger.debug('Auth initialize completed', {
+                durationMs: Date.now() - startedAt,
+              });
               set({ isLoading: false });
             }
           },
@@ -481,7 +492,54 @@ export const useAuthStore = create<AuthState>()(
 
             // Redirect to login if in browser
             if (typeof window !== 'undefined') {
+              sessionStorage.setItem('auth_logout_reason', 'session_expired');
               window.location.href = '/login';
+            }
+          },
+
+          // Validate current session against backend when entering protected routes.
+          // With HttpOnly cookies we can't inspect JWT expiry on client, so this is
+          // the source of truth for deciding whether to keep or end a session.
+          validateSession: async (options): Promise<boolean> => {
+            const timeoutMs = options?.timeoutMs ?? 3000;
+            const onNetworkError = options?.onNetworkError ?? 'allow';
+            const startedAt = Date.now();
+            const state = get();
+            if (!state.isAuthenticated) return false;
+
+            try {
+              const profileData = await authApi.getProfile(timeoutMs);
+              const user = User.fromObject(profileData as unknown as Record<string, unknown>);
+              set({ user, isAuthenticated: true });
+              CookieService.setUser(user);
+              LocalStorageService.setUser(user);
+              storeLogger.debug('Session validation succeeded', {
+                timeoutMs,
+                durationMs: Date.now() - startedAt,
+              });
+              return true;
+            } catch (error: unknown) {
+              const status = (error as { status?: number })?.status;
+              const isAuthError = status === 401 || status === 403;
+
+              if (isAuthError) {
+                await get().handleAuthFailure();
+                return false;
+              }
+
+              if (onNetworkError === 'logout') {
+                await get().handleAuthFailure();
+                return false;
+              }
+
+              // For transient network/server issues, keep current session state.
+              storeLogger.debug('Session validation skipped due to non-auth error', {
+                status,
+                timeoutMs,
+                durationMs: Date.now() - startedAt,
+                error: error instanceof Error ? error.message : String(error),
+              });
+              return true;
             }
           },
 

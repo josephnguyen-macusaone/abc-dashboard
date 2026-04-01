@@ -12,6 +12,12 @@ import { container } from '@/shared/di/container';
 import { httpClient } from '@/infrastructure/api/core/client';
 import { useAuthStore } from '@/infrastructure/stores/auth/auth-store';
 import { transformApiLicenseToRecord } from '@/infrastructure/api/licenses/transforms';
+import { createLicenseApiClient } from '@/infrastructure/api/licenses/api-client';
+
+const INTERNAL_LICENSE_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const licenseApiClient = createLicenseApiClient();
 
 /**
  * License filters are shared between Dashboard and License Management page.
@@ -1136,9 +1142,25 @@ export const useLicenseStore = create<LicenseState>()(
         },
 
         bulkDeleteLicenses: async (ids: (number | string)[]) => {
-          void ids;
-          // TODO: Implement bulk delete functionality in Clean Architecture use cases
-          throw new Error('Bulk delete functionality not yet implemented in Clean Architecture');
+          const idStrs = ids.map((id) => String(id));
+          const serverIds = idStrs.filter((id) => INTERNAL_LICENSE_ID_RE.test(id));
+          set({ loading: true, error: null });
+          try {
+            if (serverIds.length > 0) {
+              await licenseApiClient.bulkDeleteInternalLicenseIds(serverIds);
+            }
+            set((state) => ({
+              licenses: state.licenses.filter((l) => !idStrs.includes(String(l.id))),
+              selectedLicenses: state.selectedLicenses.filter((id) => !idStrs.includes(String(id))),
+              loading: false,
+            }));
+          } catch (error) {
+            const apiError = error instanceof ApiExceptionDto ? error : handleApiError(error);
+            const errorMessage = getErrorMessage(error);
+            set({ error: errorMessage, loading: false });
+            storeLogger.error('Bulk delete failed', { error: apiError.message });
+            throw error;
+          }
         },
 
         setFilters: (filters: LicenseFilters) => {

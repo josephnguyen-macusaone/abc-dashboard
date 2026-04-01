@@ -169,6 +169,17 @@ export class LocalStorageService {
     this.removeToken();
     this.removeUser();
     this.removeRefreshToken();
+    if (typeof window === 'undefined') return;
+
+    try {
+      localStorage.removeItem('auth-storage');
+      sessionStorage.removeItem('auth_redirecting');
+      sessionStorage.removeItem('auth_logout_reason');
+    } catch (error) {
+      LocalStorageService.logger.warn('Failed to clear persisted auth/session flags', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 
   /**

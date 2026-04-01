@@ -340,6 +340,7 @@ export function LicenseManagementPage() {
       onSaveLicenses={isReadOnly ? undefined : onSave}
       onAddLicense={capabilities.canCreateLicense ? onAddRow : undefined}
       onDeleteLicenses={capabilities.canDeleteLicense ? onDeleteRows : undefined}
+      licenseCapabilities={capabilities}
       isReadOnly={isReadOnly}
       dateRange={dateRange}
       onDateRangeChange={onDateRangeChange}

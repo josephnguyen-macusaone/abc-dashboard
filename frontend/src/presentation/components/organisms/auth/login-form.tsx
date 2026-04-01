@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { InputField, FormField } from '@/presentation/components/molecules';
@@ -37,6 +37,18 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
 
   // Local UI state (minimal)
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const reason = sessionStorage.getItem('auth_logout_reason');
+    if (reason !== 'session_expired') return;
+
+    toast.info('Session expired', {
+      description: 'Please sign in again to continue.',
+      duration: 5000,
+    });
+    sessionStorage.removeItem('auth_logout_reason');
+  }, [toast]);
 
   const handleInputChange = (field: keyof LoginFormData, value: string) => {
     setFieldValue(field, value);

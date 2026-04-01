@@ -13,6 +13,11 @@ export interface LicenseCapabilities {
   canAdjustPackage: boolean;
   canAddSmsBalance: boolean;
   canViewSmsPaymentHistory: boolean;
+  /**
+   * License grid: edit DBA, zip, term, fees, agents, notes, SMS sent, etc.
+   * When false (e.g. Tech), persisted rows are limited to date fields; draft (`temp-*`) rows stay editable for new requests.
+   */
+  canEditLicenseCoreGridFields: boolean;
 }
 
 const NO_CAPABILITIES: LicenseCapabilities = {
@@ -28,6 +33,7 @@ const NO_CAPABILITIES: LicenseCapabilities = {
   canAdjustPackage: false,
   canAddSmsBalance: false,
   canViewSmsPaymentHistory: false,
+  canEditLicenseCoreGridFields: false,
 };
 
 export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities> = {
@@ -44,6 +50,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: true,
     canAddSmsBalance: true,
     canViewSmsPaymentHistory: true,
+    canEditLicenseCoreGridFields: true,
   },
   [USER_ROLES.MANAGER]: {
     canViewLicenses: true,
@@ -58,6 +65,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: true,
     canAddSmsBalance: true,
     canViewSmsPaymentHistory: true,
+    canEditLicenseCoreGridFields: true,
   },
   [USER_ROLES.AGENT]: {
     canViewLicenses: true,
@@ -72,6 +80,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: false,
     canAddSmsBalance: true,
     canViewSmsPaymentHistory: true,
+    canEditLicenseCoreGridFields: false,
   },
   [USER_ROLES.TECH]: {
     canViewLicenses: true,
@@ -86,6 +95,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: false,
     canAddSmsBalance: false,
     canViewSmsPaymentHistory: true,
+    canEditLicenseCoreGridFields: false,
   },
   [USER_ROLES.ACCOUNTANT]: {
     canViewLicenses: true,
@@ -100,6 +110,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: true,
     canAddSmsBalance: true,
     canViewSmsPaymentHistory: true,
+    canEditLicenseCoreGridFields: true,
   },
   [USER_ROLES.STAFF]: NO_CAPABILITIES,
 };
@@ -107,12 +118,4 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
 export function getLicenseCapabilities(userRole?: string): LicenseCapabilities {
   if (!userRole) return NO_CAPABILITIES;
   return LICENSE_ROLE_CAPABILITIES[userRole as UserRoleType] ?? NO_CAPABILITIES;
-}
-
-export function isApiFirstLicenseRole(userRole?: string): boolean {
-  return (
-    userRole === USER_ROLES.AGENT ||
-    userRole === USER_ROLES.TECH ||
-    userRole === USER_ROLES.ACCOUNTANT
-  );
 }

@@ -12,7 +12,10 @@ import { useDataTable } from "@/presentation/hooks";
 import { Typography } from "@/presentation/components/atoms";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { SearchBar } from "@/presentation/components/molecules";
-import { getLicenseTableColumns } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
+import {
+  getLicenseTableColumns,
+} from "@/presentation/components/molecules/domain/license-management/license-table-columns";
+import { LicenseAuditHistoryDialog } from "@/presentation/components/molecules/domain/license-management/license-audit-history-dialog";
 import type { LicenseRecord } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useDataTableStore } from "@/infrastructure/stores/user";
@@ -49,7 +52,15 @@ export function LicensesDataTable({
   dateRange,
   onDateRangeChange,
 }: LicensesDataTableProps) {
-  const columns = useMemo(() => getLicenseTableColumns(), []);
+  const [auditTarget, setAuditTarget] = useState<LicenseRecord | null>(null);
+
+  const columns = useMemo(
+    () =>
+      getLicenseTableColumns({
+        onOpenAuditHistory: (license) => setAuditTarget(license),
+      }),
+    []
+  );
 
   const [currentPageSize, setCurrentPageSize] = useState(20);
   const [searchField, setSearchField] = useState<'dba' | 'agentsName' | 'zip'>('dba');
@@ -78,6 +89,8 @@ export function LicensesDataTable({
         agentsName: true,
         agentsCost: true,
         notes: true,
+        createdBy: false,
+        updatedBy: false,
       },
     },
     manualPagination: !!onQueryChange,
@@ -421,7 +434,16 @@ export function LicensesDataTable({
       )
     ) : undefined;
 
+  const auditLicenseId =
+    auditTarget && typeof auditTarget.id === "string" ? auditTarget.id : "";
+  const auditLabel =
+    auditTarget?.dba?.trim() ||
+    (typeof auditTarget?.key === "string" ? auditTarget.key.trim() : "") ||
+    auditLicenseId ||
+    "License";
+
   return (
+    <>
     <DataTable
       table={table}
       emptyState={emptyStateContent}
@@ -509,6 +531,15 @@ export function LicensesDataTable({
         initialFilterValues={manualFilterValues}
       />
     </DataTable>
+    <LicenseAuditHistoryDialog
+      open={Boolean(auditTarget && auditLicenseId)}
+      onOpenChange={(next) => {
+        if (!next) setAuditTarget(null);
+      }}
+      licenseId={auditLicenseId}
+      licenseLabel={auditLabel}
+    />
+    </>
   );
 }
 

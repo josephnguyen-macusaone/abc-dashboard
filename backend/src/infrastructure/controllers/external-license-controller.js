@@ -87,6 +87,37 @@ export class ExternalLicenseController {
     });
   }
 
+  handleExternalApiError(res, error) {
+    if (error instanceof ValidationException) {
+      const message = error.message || 'Validation failed';
+      if (message.includes('assigned licenses')) {
+        return res.forbidden(message);
+      }
+      return res.badRequest(message);
+    }
+
+    const message = String(error?.message || '');
+    const statusMatch = message.match(/^HTTP\s+(\d{3})\s*:/i);
+    if (statusMatch) {
+      const statusCode = Number.parseInt(statusMatch[1], 10);
+      if (statusCode === 400) {
+        return res.badRequest(message);
+      }
+      if (statusCode === 401 || statusCode === 403) {
+        return res.forbidden(message);
+      }
+      if (statusCode === 404) {
+        return res.notFound(message);
+      }
+    }
+
+    if (message === 'License not found') {
+      return res.notFound(message);
+    }
+
+    return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+  }
+
   async resolveLicenseIdForAudit({ id, appid, countid }) {
     if (!this.licenseRepository) {
       return null;
@@ -166,6 +197,63 @@ export class ExternalLicenseController {
     }
   }
 
+  async getAssignedExternalAppIdsForAgent(req) {
+    if (req.user?.role !== ROLES.AGENT || !this.licenseRepository || !req.user?.id) {
+      return null;
+    }
+    const assigned = await this.licenseRepository.findLicenses({
+      page: 1,
+      limit: 10000,
+      filters: { assignedUserId: req.user.id },
+    });
+    return new Set(
+      (assigned?.licenses || [])
+        .map((item) =>
+          String(item.appid || item.key || '')
+            .trim()
+            .toLowerCase()
+        )
+        .filter(Boolean)
+    );
+  }
+
+  async ensureAgentExternalLicenseAccess(
+    req,
+    externalLicense,
+    reason = 'You can only access licenses assigned to you'
+  ) {
+    if (req.user?.role !== ROLES.AGENT) {
+      return;
+    }
+    if (!externalLicense) {
+      throw new ValidationException('License not found');
+    }
+    const appid = String(externalLicense.appid || '')
+      .trim()
+      .toLowerCase();
+    if (!appid) {
+      throw new ValidationException(reason);
+    }
+    const assignedAppIds = await this.getAssignedExternalAppIdsForAgent(req);
+    if (!assignedAppIds || !assignedAppIds.has(appid)) {
+      throw new ValidationException(reason);
+    }
+  }
+
+  async withExternalRepository(callback) {
+    const { ExternalLicenseRepository } =
+      await import('../repositories/external-license-repository.js');
+    const knex = (await import('knex')).default;
+    const { getKnexConfig } = await import('../config/database.js');
+    const db = knex(getKnexConfig());
+    try {
+      const repo = new ExternalLicenseRepository(db);
+      return await callback(repo);
+    } finally {
+      await this.destroyKnexConnection(db);
+    }
+  }
+
   getExternalListOptions(req) {
     return {
       page: parseInt(req.query.page) || 1,
@@ -177,6 +265,36 @@ export class ExternalLicenseController {
       },
       sortBy: req.query.sortBy || 'updated_at',
       sortOrder: req.query.sortOrder || 'desc',
+    };
+  }
+
+  createAgentStatsPayload(licenses, daysThreshold = 30) {
+    const now = new Date();
+    const soon = new Date();
+    soon.setDate(soon.getDate() + daysThreshold);
+
+    const totalLicenses = licenses.length;
+    const active = licenses.filter(
+      (l) => String(l.status) === '1' || String(l.status).toLowerCase() === 'active'
+    ).length;
+    const expired = licenses.filter(
+      (l) => l.coming_expired && new Date(l.coming_expired) < now
+    ).length;
+    const expiringSoon = licenses.filter((l) => {
+      if (!l.coming_expired) {
+        return false;
+      }
+      const exp = new Date(l.coming_expired);
+      return exp >= now && exp <= soon;
+    }).length;
+
+    return {
+      totalLicenses,
+      active,
+      expired,
+      expiringSoon,
+      pendingSync: 0,
+      failedSync: 0,
     };
   }
 
@@ -519,8 +637,13 @@ export class ExternalLicenseController {
         });
       }
 
+      await this.ensureAgentExternalLicenseAccess(req, license);
+
       return res.success({ license }, 'License retrieved successfully');
     } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.forbidden(error.message);
+      }
       logger.error('Failed to get license by ID via API', {
         correlationId: req.correlationId,
         licenseId: req.params.id,
@@ -548,8 +671,13 @@ export class ExternalLicenseController {
         });
       }
 
+      await this.ensureAgentExternalLicenseAccess(req, license);
+
       return res.success({ license }, 'License retrieved successfully');
     } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.forbidden(error.message);
+      }
       logger.error('Failed to get license by appid via API', {
         correlationId: req.correlationId,
         appid: req.params.appid,
@@ -579,8 +707,13 @@ export class ExternalLicenseController {
         });
       }
 
+      await this.ensureAgentExternalLicenseAccess(req, license);
+
       return res.success({ license }, 'License retrieved successfully');
     } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.forbidden(error.message);
+      }
       logger.error('Failed to get license by email via API', {
         correlationId: req.correlationId,
         email: req.params.email,
@@ -608,8 +741,13 @@ export class ExternalLicenseController {
         });
       }
 
+      await this.ensureAgentExternalLicenseAccess(req, license);
+
       return res.success({ license }, 'License retrieved successfully');
     } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.forbidden(error.message);
+      }
       logger.error('Failed to get license by countid via API', {
         correlationId: req.correlationId,
         countid: req.params.countid,
@@ -760,7 +898,20 @@ export class ExternalLicenseController {
    */
   getLicenseStats = async (req, res) => {
     try {
-      const stats = await this.manageExternalLicensesUseCase.getLicenseStats();
+      let stats;
+      if (req.user?.role === ROLES.AGENT) {
+        stats = await this.withExternalRepository(async (repo) => {
+          const options = this.getExternalListOptions(req);
+          const scoped = await this.getAgentScopedExternalResult(req, repo, {
+            ...options,
+            page: 1,
+            limit: 10000,
+          });
+          return this.createAgentStatsPayload(scoped.licenses || []);
+        });
+      } else {
+        stats = await this.manageExternalLicensesUseCase.getLicenseStats();
+      }
 
       return res.success({ stats }, 'License statistics retrieved successfully');
     } catch (error) {
@@ -780,7 +931,29 @@ export class ExternalLicenseController {
   getExpiringLicenses = async (req, res) => {
     try {
       const daysThreshold = parseInt(req.query.days) || 30;
-      const licenses = await this.manageExternalLicensesUseCase.getExpiringLicenses(daysThreshold);
+      let licenses;
+      if (req.user?.role === ROLES.AGENT) {
+        licenses = await this.withExternalRepository(async (repo) => {
+          const options = this.getExternalListOptions(req);
+          const scoped = await this.getAgentScopedExternalResult(req, repo, {
+            ...options,
+            page: 1,
+            limit: 10000,
+          });
+          const now = new Date();
+          const soon = new Date();
+          soon.setDate(soon.getDate() + daysThreshold);
+          return (scoped.licenses || []).filter((license) => {
+            if (!license.coming_expired) {
+              return false;
+            }
+            const exp = new Date(license.coming_expired);
+            return exp >= now && exp <= soon;
+          });
+        });
+      } else {
+        licenses = await this.manageExternalLicensesUseCase.getExpiringLicenses(daysThreshold);
+      }
 
       return res.success(
         { licenses, count: licenses.length },
@@ -803,7 +976,23 @@ export class ExternalLicenseController {
    */
   getExpiredLicenses = async (req, res) => {
     try {
-      const licenses = await this.manageExternalLicensesUseCase.getExpiredLicenses();
+      let licenses;
+      if (req.user?.role === ROLES.AGENT) {
+        licenses = await this.withExternalRepository(async (repo) => {
+          const options = this.getExternalListOptions(req);
+          const scoped = await this.getAgentScopedExternalResult(req, repo, {
+            ...options,
+            page: 1,
+            limit: 10000,
+          });
+          const now = new Date();
+          return (scoped.licenses || []).filter(
+            (license) => license.coming_expired && new Date(license.coming_expired) < now
+          );
+        });
+      } else {
+        licenses = await this.manageExternalLicensesUseCase.getExpiredLicenses();
+      }
 
       return res.success(
         { licenses, count: licenses.length },
@@ -826,9 +1015,25 @@ export class ExternalLicenseController {
   getLicensesByOrganization = async (req, res) => {
     try {
       const { dba } = req.params;
-      const licenses = await this.manageExternalLicensesUseCase.getLicensesByOrganization(
-        decodeURIComponent(dba)
-      );
+      const decodedDba = decodeURIComponent(dba);
+      let licenses;
+      if (req.user?.role === ROLES.AGENT) {
+        licenses = await this.withExternalRepository(async (repo) => {
+          const options = this.getExternalListOptions(req);
+          const scoped = await this.getAgentScopedExternalResult(req, repo, {
+            ...options,
+            page: 1,
+            limit: 10000,
+          });
+          return (scoped.licenses || []).filter((license) =>
+            String(license.dba || '')
+              .toLowerCase()
+              .includes(decodedDba.toLowerCase())
+          );
+        });
+      } else {
+        licenses = await this.manageExternalLicensesUseCase.getLicensesByOrganization(decodedDba);
+      }
 
       return res.success(
         { licenses, count: licenses.length },
@@ -1143,7 +1348,7 @@ export class ExternalLicenseController {
         userId: req.user?.id,
       });
 
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+      return this.handleExternalApiError(res, error);
     }
   };
 
@@ -1238,19 +1443,13 @@ export class ExternalLicenseController {
 
       return res.success(result, 'SMS payments retrieved successfully');
     } catch (error) {
-      if (error instanceof ValidationException) {
-        if (error.message.includes('assigned licenses')) {
-          return res.forbidden(error.message);
-        }
-        return res.badRequest(error.message);
-      }
       logger.error('Get SMS payments failed via API', {
         correlationId: req.correlationId,
         error: error.message,
         userId: req.user?.id,
       });
 
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+      return this.handleExternalApiError(res, error);
     }
   };
 
@@ -1279,19 +1478,13 @@ export class ExternalLicenseController {
 
       return res.success(result, 'SMS payment added successfully');
     } catch (error) {
-      if (error instanceof ValidationException) {
-        if (error.message.includes('assigned licenses')) {
-          return res.forbidden(error.message);
-        }
-        return res.badRequest(error.message);
-      }
       logger.error('Add SMS payment failed via API', {
         correlationId: req.correlationId,
         error: error.message,
         userId: req.user?.id,
       });
 
-      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+      return this.handleExternalApiError(res, error);
     }
   };
 
@@ -1315,7 +1508,30 @@ export class ExternalLicenseController {
         userId: req.user?.id,
       });
 
-      const result = await this.manageExternalLicensesUseCase.getLicenseAnalytics(options);
+      let result;
+      if (req.user?.role === ROLES.AGENT) {
+        result = await this.withExternalRepository(async (repo) => {
+          const listOptions = this.getExternalListOptions(req);
+          const scoped = await this.getAgentScopedExternalResult(req, repo, {
+            ...listOptions,
+            page: 1,
+            limit: 10000,
+          });
+          const licenses = scoped.licenses || [];
+          const stats = this.createAgentStatsPayload(licenses);
+          return {
+            summary: {
+              totalLicenses: stats.totalLicenses,
+              activeLicenses: stats.active,
+              expiredLicenses: stats.expired,
+              expiringSoonLicenses: stats.expiringSoon,
+            },
+            licenses,
+          };
+        });
+      } else {
+        result = await this.manageExternalLicensesUseCase.getLicenseAnalytics(options);
+      }
 
       return res.success(result, 'License analytics retrieved successfully');
     } catch (error) {

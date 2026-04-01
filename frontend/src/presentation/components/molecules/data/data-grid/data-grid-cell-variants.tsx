@@ -19,13 +19,17 @@ import {
 import { Calendar } from "@/presentation/components/atoms/primitives/calendar";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Input } from "@/presentation/components/atoms/forms/input";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, History, X } from "lucide-react";
 import { TooltipWrapper } from "@/presentation/components/molecules/ui/tooltip-wrapper";
 import { LicenseStatusBadge } from "@/presentation/components/molecules/domain/license-management/badges";
 import { getRowHeightValue } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
 import type { CellAlign, CellSelectOption, CellVariantProps } from "@/types/data-grid";
 import type { LicenseStatus } from "@/types/license";
+import type { LicenseRecord } from "@/types";
+
+const LICENSE_ROW_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function ShortTextCell<TData>({
   cell,
@@ -70,7 +74,7 @@ export function ShortTextCell<TData>({
 
   const onWrapperKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (isEditing) {
+      if (isEditing && !readOnly) {
         if (event.key === "Enter") {
           event.preventDefault();
           const currentValue = cellRef.current?.textContent ?? "";
@@ -100,8 +104,14 @@ export function ShortTextCell<TData>({
           setValue(initialValue);
           cellRef.current?.blur();
         }
+      } else if (isEditing && readOnly) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          tableMeta?.onCellEditingStop?.();
+        }
       } else if (
         isFocused &&
+        !readOnly &&
         event.key.length === 1 &&
         !event.ctrlKey &&
         !event.metaKey
@@ -121,11 +131,11 @@ export function ShortTextCell<TData>({
         });
       }
     },
-    [isEditing, isFocused, initialValue, tableMeta, rowIndex, columnId],
+    [isEditing, isFocused, initialValue, readOnly, tableMeta, rowIndex, columnId],
   );
 
   React.useEffect(() => {
-    if (isEditing && cellRef.current) {
+    if (isEditing && !readOnly && cellRef.current) {
       cellRef.current.focus();
 
       if (!cellRef.current.textContent && value) {
@@ -141,7 +151,7 @@ export function ShortTextCell<TData>({
         selection?.addRange(range);
       }
     }
-  }, [isEditing, value]);
+  }, [isEditing, readOnly, value]);
 
   const cellMeta = cell.column.columnDef.meta?.cell as { align?: CellAlign } | undefined;
   const align = cellMeta?.align;
@@ -152,7 +162,7 @@ export function ShortTextCell<TData>({
         ? "justify-center text-center"
         : undefined;
 
-  const displayValue = !isEditing ? (value ?? "") : "";
+  const displayValue = !isEditing || readOnly ? (value ?? "") : "";
   const fullValue = String(initialValue ?? "");
   const contentHeight = Math.max(
     getRowHeightValue(tableMeta?.rowHeight ?? "medium") - 24,
@@ -163,7 +173,7 @@ export function ShortTextCell<TData>({
     <div
       role="textbox"
       data-slot="grid-cell-content"
-      contentEditable={isEditing}
+      contentEditable={isEditing && !readOnly}
       tabIndex={-1}
       ref={cellRef}
       onBlur={onBlur}
@@ -260,7 +270,7 @@ export function NumberCell<TData>({
 
   const onWrapperKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (isEditing) {
+      if (isEditing && !readOnly) {
         if (event.key === "Enter") {
           event.preventDefault();
           const numValue = value === "" ? null : Number(value);
@@ -282,7 +292,12 @@ export function NumberCell<TData>({
           setValue(String(initialValue ?? ""));
           inputRef.current?.blur();
         }
-      } else if (isFocused) {
+      } else if (isEditing && readOnly) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          tableMeta?.onCellEditingStop?.();
+        }
+      } else if (isFocused && !readOnly) {
         if (event.key === "Backspace") {
           setValue("");
         } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
@@ -290,15 +305,15 @@ export function NumberCell<TData>({
         }
       }
     },
-    [isEditing, isFocused, initialValue, tableMeta, rowIndex, columnId, value],
+    [isEditing, isFocused, initialValue, readOnly, tableMeta, rowIndex, columnId, value],
   );
 
   React.useEffect(() => {
-    if (isEditing && inputRef.current) {
+    if (isEditing && !readOnly && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
-  }, [isEditing]);
+  }, [isEditing, readOnly]);
 
   return (
     <DataGridCellWrapper<TData>
@@ -313,7 +328,7 @@ export function NumberCell<TData>({
       onKeyDown={onWrapperKeyDown}
       className="justify-end text-end"
     >
-      {isEditing ? (
+      {isEditing && !readOnly ? (
         <input
           ref={inputRef}
           type="number"
@@ -497,11 +512,11 @@ export function SelectCell<TData>({
       onKeyDown={onWrapperKeyDown}
       className={alignClass}
     >
-      {isEditing ? (
+      {isEditing && !readOnly ? (
         <Select
           value={value}
           onValueChange={onValueChange}
-          open={isEditing}
+          open={isEditing && !readOnly}
           onOpenChange={onOpenChange}
         >
           <SelectTrigger className={cn("size-full min-w-0 border-none p-0 shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden", align === "end" ? "items-center justify-end" : align === "center" ? "items-center justify-center" : "items-center justify-start", textAlignClass)}>
@@ -603,11 +618,11 @@ export function LicenseStatusCell<TData>({
       onKeyDown={onWrapperKeyDown}
       className={alignClass}
     >
-      {isEditing ? (
+      {isEditing && !readOnly ? (
         <Select
           value={value}
           onValueChange={onValueChange}
-          open={isEditing}
+          open={isEditing && !readOnly}
           onOpenChange={onOpenChange}
         >
           <SelectTrigger className={cn("size-full min-w-0 items-center border-none p-0 shadow-none focus-visible:ring-0 dark:bg-transparent [&_svg]:hidden", triggerAlignClass, textAlignClass)}>
@@ -703,6 +718,7 @@ export function DateCell<TData>({
 
   const onInputKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (readOnly) return;
       if (event.key === "Enter") {
         event.preventDefault();
         // Try to parse the input as a date
@@ -720,7 +736,7 @@ export function DateCell<TData>({
         tableMeta?.onCellEditingStop?.();
       }
     },
-    [tableMeta, rowIndex, columnId, value],
+    [readOnly, tableMeta, rowIndex, columnId, value],
   );
 
   const onOpenChange = React.useCallback(
@@ -786,7 +802,7 @@ export function DateCell<TData>({
       className={wrapperAlignClass}
     >
       <div className={cn("flex size-full min-w-0 overflow-hidden items-center", innerJustifyClass)}>
-        <Popover open={isEditing} onOpenChange={onOpenChange}>
+        <Popover open={isEditing && !readOnly} onOpenChange={onOpenChange}>
           <PopoverAnchor asChild>
             <span
               data-slot="grid-cell-content"
@@ -799,7 +815,7 @@ export function DateCell<TData>({
               {formatDateForDisplay(value) || "—"}
             </span>
           </PopoverAnchor>
-          {isEditing && (
+          {isEditing && !readOnly && (
             <PopoverContent
               data-grid-cell-editor=""
               align="start"
@@ -1296,3 +1312,52 @@ export function AgentsNameCell<TData>({
   );
 }
 
+export function AuditHistoryCell<TData>({
+  cell,
+  tableMeta,
+  rowIndex,
+  columnId,
+  isEditing,
+  isFocused,
+  isSelected,
+}: CellVariantProps<TData>) {
+  const row = cell.row.original as LicenseRecord;
+  const id = row.id;
+  const canOpen = typeof id === "string" && LICENSE_ROW_UUID_RE.test(id);
+  const label = row.dba?.trim() || String(id ?? "");
+
+  return (
+    <DataGridCellWrapper<TData>
+      cell={cell}
+      tableMeta={tableMeta}
+      rowIndex={rowIndex}
+      columnId={columnId}
+      isEditing={isEditing}
+      isFocused={isFocused}
+      isSelected={isSelected}
+    >
+      <div className="flex h-full w-full items-center justify-center px-0.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 shrink-0"
+          aria-label="View activity log"
+          title={canOpen ? "Activity log" : "Save the license to view activity"}
+          disabled={!canOpen || !tableMeta?.onOpenLicenseAuditHistory}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!canOpen || !tableMeta?.onOpenLicenseAuditHistory) return;
+            tableMeta.onOpenLicenseAuditHistory({
+              licenseId: String(id),
+              label,
+            });
+          }}
+        >
+          <History className="size-4" />
+        </Button>
+      </div>
+    </DataGridCellWrapper>
+  );
+}

@@ -150,6 +150,9 @@ export const LICENSE_COLUMN_WIDTHS = {
   agentsName: { size: 280, minSize: 130 },
   agentsCost: { size: 160, minSize: 120 },
   notes: { size: 300, minSize: 100 },
+  createdBy: { size: 160, minSize: 100 },
+  updatedBy: { size: 160, minSize: 100 },
+  auditHistory: { size: 52, minSize: 44 },
 } as const;
 
 export type LicenseColumnId = keyof typeof LICENSE_COLUMN_WIDTHS;

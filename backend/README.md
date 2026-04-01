@@ -442,9 +442,9 @@ When you start the API with `npm run dev` or `npm start`, the **license sync sch
 From the **repo root** (not `backend/`), with the stack running (`docker compose up -d`), you can reset the database, re-seed, and optionally run a full license sync in one go:
 
 ```bash
-./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
-./scripts/docker-db-reset-sync.sh --drop      # drop DB, create, migrate + seed
-./scripts/docker-db-reset-sync.sh --drop --sync   # same + license sync (npm run sync:start)
+./scripts/db-reset.sh              # migrate:fresh + seed
+./scripts/db-reset.sh --drop      # drop DB, create, migrate + seed
+./scripts/db-reset.sh --drop --sync   # same + license sync (npm run sync:start)
 ```
 
 Requires the `backend` and `postgres` containers to be up. See [scripts/README.md](../scripts/README.md) for deploy and DB usage.

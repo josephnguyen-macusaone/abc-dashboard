@@ -51,6 +51,9 @@ export type CellOpts =
       options?: CellSelectOption[];
     }
   | {
+      variant: "audit-history";
+    }
+  | {
       variant: "url";
     }
   | {
@@ -144,6 +147,11 @@ declare module "@tanstack/react-table" {
     onPasteDialogOpenChange?: (open: boolean) => void;
     onPasteWithExpansion?: () => void;
     onPasteWithoutExpansion?: () => void;
+    /** License grid: open activity / audit history for a persisted row */
+    onOpenLicenseAuditHistory?: (payload: {
+      licenseId: string;
+      label: string;
+    }) => void;
   }
 }
 

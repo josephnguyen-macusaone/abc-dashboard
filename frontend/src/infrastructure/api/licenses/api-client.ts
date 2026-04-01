@@ -14,6 +14,8 @@ import type {
   BulkDeleteResponse,
   LicensesRequiringAttentionResponse,
   InternalLicenseListResponse,
+  LicenseAuditEventsResponse,
+  LicenseAuditEventsData,
 } from './types';
 import { transformApiLicenseToRecord } from './transforms';
 import { httpClient } from '@/infrastructure/api/core/client';
@@ -68,6 +70,24 @@ export class LicenseApiClient implements ILicenseApiClient {
     return this.client.get<LicenseGetResponse>(`/licenses/${id}`);
   }
 
+  async getLicenseAuditEvents(
+    licenseId: string,
+    params?: { page?: number; limit?: number }
+  ): Promise<LicenseAuditEventsData> {
+    const qs = buildQueryString({
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 50,
+    });
+    const response = await this.client.get<LicenseAuditEventsResponse>(
+      `/licenses/${encodeURIComponent(licenseId)}/audit-events${qs}`
+    );
+    const body = response as LicenseAuditEventsResponse;
+    if (!body?.data) {
+      return { events: [], total: 0, page: 1, totalPages: 0 };
+    }
+    return body.data;
+  }
+
   async updateLicense(id: string, updates: InternalLicenseUpdatePayload): Promise<LicenseGetResponse> {
     return this.client.put<LicenseGetResponse>(`/licenses/${id}`, updates);
   }
@@ -94,6 +114,12 @@ export class LicenseApiClient implements ILicenseApiClient {
     countids?: number[];
   }): Promise<BulkDeleteResponse> {
     return this.client.delete<BulkDeleteResponse>('/licenses/bulk', { data: identifiers } as unknown);
+  }
+
+  async bulkDeleteInternalLicenseIds(ids: string[]): Promise<BulkDeleteResponse> {
+    return this.client.delete<BulkDeleteResponse>('/licenses/bulk', {
+      data: { ids },
+    } as unknown);
   }
 
   async getLicenseSyncStatus(): Promise<LicenseSyncStatusResponse> {

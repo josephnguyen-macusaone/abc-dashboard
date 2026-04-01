@@ -157,9 +157,9 @@ const transports = [
   }),
 ];
 
-// Add rotating file transports in non-test environments.
-// Logs rotate daily, capped at 20 MB per file, kept for 14 days.
-if (config.NODE_ENV !== 'test') {
+// Optional rotating file transports (LOG_TO_FILE=true). Default off — rely on stdout / Docker logs.
+// When enabled: daily rotation, 20 MB per file, 14 days retention.
+if (config.LOG_TO_FILE && config.NODE_ENV !== 'test') {
   const fileFormat = useJsonFormat ? jsonFormat : customFormat;
   const rotateBase = {
     dirname: 'logs',

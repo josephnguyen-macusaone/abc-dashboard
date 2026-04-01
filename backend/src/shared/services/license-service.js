@@ -143,9 +143,10 @@ export class LicenseService extends ILicenseService {
   /**
    * Bulk create licenses
    * @param {Array} licensesData - Array of license data
-   * @returns {Promise<Array>} Created licenses
+   * @param {Object} [context] - Request context (userId, userRole, ipAddress, userAgent). When set, used for audit and createdBy; else falls back to payload createdBy/updatedBy.
+   * @returns {Promise<{ createdLicenses: Array, errors: Array }>}
    */
-  async bulkCreateLicenses(licensesData) {
+  async bulkCreateLicenses(licensesData, context = {}) {
     const createdLicenses = [];
     const errors = [];
     const startTime = Date.now();
@@ -161,11 +162,16 @@ export class LicenseService extends ILicenseService {
     // Process each license using the proper create use case for validation and audit
     for (const [index, licenseData] of licensesData.entries()) {
       try {
-        // Extract userId - only use if it's a valid string
-        // For bulk operations from frontend/sync, this is typically undefined
-        const userId = licenseData.createdBy || licenseData.updatedBy;
-        const validUserId =
-          userId && typeof userId === 'string' && userId.trim() !== '' ? userId : undefined;
+        const actorFromRequest =
+          context.userId && typeof context.userId === 'string' && context.userId.trim() !== ''
+            ? context.userId
+            : undefined;
+        const fromPayload = licenseData.createdBy || licenseData.updatedBy;
+        const validFromPayload =
+          fromPayload && typeof fromPayload === 'string' && fromPayload.trim() !== ''
+            ? fromPayload
+            : undefined;
+        const validUserId = actorFromRequest || validFromPayload;
 
         // Remove createdBy/updatedBy from licenseData to prevent FK violations
         // The use case will handle setting these based on context
@@ -173,6 +179,9 @@ export class LicenseService extends ILicenseService {
 
         const createdLicense = await this.createLicenseUseCase.execute(cleanLicenseData, {
           userId: validUserId,
+          userRole: context.userRole,
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
         });
 
         createdLicenses.push(createdLicense);
@@ -218,9 +227,10 @@ export class LicenseService extends ILicenseService {
   /**
    * Bulk update licenses
    * @param {Array} updates - Array of license updates
+   * @param {Object} [context] - Authenticated request context (userId, userRole, ipAddress, userAgent) for updatedBy + audit
    * @returns {Promise<Array>} Updated licenses
    */
-  async bulkUpdateLicenses(updates) {
+  async bulkUpdateLicenses(updates, context = {}) {
     const updatedLicenses = [];
     const errors = [];
     const conflicts = [];
@@ -245,13 +255,16 @@ export class LicenseService extends ILicenseService {
           continue;
         }
 
-        // Merge existing data with updates
-        const licenseData = { ...existingLicense, ...data };
+        const actorUserId =
+          context.userId && typeof context.userId === 'string' && context.userId.trim() !== ''
+            ? context.userId
+            : undefined;
 
-        // Use the update use case for proper validation and audit logging
-        const userId = licenseData.updatedBy;
         const updatedLicense = await this.updateLicenseUseCase.execute(existingLicense.id, data, {
-          userId,
+          userId: actorUserId,
+          userRole: context.userRole,
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
           expectedUpdatedAt: data?.expectedUpdatedAt || data?.updatedAt,
         });
 
@@ -322,10 +335,11 @@ export class LicenseService extends ILicenseService {
   /**
    * Bulk delete licenses by IDs
    * @param {string[]} ids - License IDs to delete
+   * @param {Object} [context] - Request context for bulk-delete audit rows
    * @returns {Promise<number>} Number of licenses deleted
    */
-  async bulkDelete(ids) {
-    return this.licenseRepository.bulkDelete(ids);
+  async bulkDelete(ids, context = {}) {
+    return this.licenseRepository.bulkDelete(ids, context);
   }
 
   /**

@@ -148,9 +148,12 @@ export class AuthApiService {
   /**
    * Get user profile (complete profile data from auth endpoint)
    */
-  static async getProfile(): Promise<UserProfileDto> {
+  static async getProfile(timeoutMs?: number): Promise<UserProfileDto> {
     try {
-      const response = await httpClient.get<ApiResponse<{ user: UserProfileDto; isAuthenticated: boolean }>>('/auth/profile');
+      const response = await httpClient.get<ApiResponse<{ user: UserProfileDto; isAuthenticated: boolean }>>(
+        '/auth/profile',
+        timeoutMs ? { timeout: timeoutMs } : undefined
+      );
 
       if (!response.data) {
         throw new Error('Get profile response missing data');

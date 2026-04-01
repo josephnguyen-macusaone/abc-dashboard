@@ -1,7 +1,7 @@
 # ABC Dashboard – Makefile
 # Run from repo root. Requires .env (see docs/DEPLOYMENT-GUIDE.md).
 
-.PHONY: help deploy deploy-sync up up-backend down down-volumes build db-reset db-reset-sync sync-10 wait-backend logs-backend
+.PHONY: help deploy deploy-sync up up-backend down down-volumes build db-reset db-reset-sync sync-10 wait-backend logs-backend backup
 
 # Default target
 help:
@@ -9,7 +9,7 @@ help:
 	@echo ""
 	@echo "  make deploy            Drop DB, (re)build backend, start backend (+ deps), migrate, seed"
 	@echo "  make deploy-sync       Same as deploy + full license sync"
-	@echo "  make up                Start full stack (uses scripts/docker-compose-up.sh for enc: password)"
+	@echo "  make up                Start full stack (scripts/deploy.sh for enc: password)"
 	@echo "  make up-backend        Start backend only (+ postgres, redis, etc.)"
 	@echo "  make down              Stop stack"
 	@echo "  make down-volumes      Stop + remove volumes (fix enc: password mismatch)"
@@ -19,6 +19,7 @@ help:
 	@echo "  make sync-10           Sync only, 10 pages (no DB reset; stack must be running)"
 	@echo "  make wait-backend      Wait until backend is up (used by deploy)"
 	@echo "  make logs-backend      Backend container logs (debug unhealthy backend)"
+	@echo "  make backup            PostgreSQL logical backup → backups/postgres/ (stack must be up)"
 	@echo ""
 	@echo "If backend is unhealthy: run 'make logs-backend'. See docs/DEPLOYMENT-GUIDE.md (Docker / DB password)."
 	@echo ""
@@ -34,11 +35,11 @@ deploy-sync: down build up-backend wait-backend
 
 # Start stack (handles POSTGRES_PASSWORD=enc: via scripts)
 up:
-	@./scripts/docker-compose-up.sh up -d
+	@./scripts/deploy.sh up -d
 
 # Start backend only (+ deps: postgres, redis, etc.)
 up-backend:
-	@./scripts/docker-compose-up.sh up -d backend
+	@./scripts/deploy.sh up -d backend
 
 # Stop stack
 down:
@@ -69,16 +70,16 @@ wait-backend:
 	echo "Backend did not become ready. Common cause: PostgreSQL password mismatch."; \
 	echo "  • Run: make logs-backend"; \
 	echo "  • If you see 'password authentication failed': see docs/DEPLOYMENT-GUIDE.md (Docker / database)."; \
-	echo "  • If using POSTGRES_PASSWORD=enc:..., start with: ./scripts/docker-compose-up.sh up -d"; \
+	echo "  • If using POSTGRES_PASSWORD=enc:..., start with: ./scripts/deploy.sh up -d"; \
 	exit 1
 
 # Drop DB, migrate, seed (requires stack running)
 db-reset:
-	@./scripts/docker-db-reset-sync.sh --drop
+	@./scripts/db-reset.sh --drop
 
 # Drop DB, migrate, seed, then license sync. Full sync by default; SYNC=10 for quick test (10 pages).
 db-reset-sync:
-	@./scripts/docker-db-reset-sync.sh --drop $(if $(SYNC),--sync=$(SYNC),--sync)
+	@./scripts/db-reset.sh --drop $(if $(SYNC),--sync=$(SYNC),--sync)
 
 # Run license sync: 10 pages only (no DB reset; stack must be running; 20 rows/page ≈ 200 licenses)
 sync-10:
@@ -87,3 +88,7 @@ sync-10:
 # Show backend logs (debug when backend is unhealthy)
 logs-backend:
 	@docker compose logs backend
+
+# Postgres custom-format dump (see scripts/db-backup.sh)
+backup:
+	@./scripts/db-backup.sh

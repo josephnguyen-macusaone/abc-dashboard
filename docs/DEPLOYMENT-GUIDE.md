@@ -6,7 +6,9 @@ Single source for production deployment, Docker/local operations, and troublesho
 
 ## Table of contents
 
-1. [Deployment](#1-deployment) – Prerequisites, GitHub Secrets, deploy flow, verify, manual fallback, rotate secrets, security
+1. [Deployment](#1-deployment) – Prerequisites, GitHub Secrets, deploy flow, verify, manual fallback, rotate secrets, security  
+   - [Backend logging (Docker)](#backend-logging-docker)  
+   - [PostgreSQL backups](#postgresql-backups)
 2. [Troubleshooting & runbook](#2-troubleshooting--runbook) – Docker/DB, frontend build, backend, CI/CD, quick reference
 
 ---
@@ -95,7 +97,7 @@ git push origin main
 gh run watch
 ```
 
-**Automatic steps:** Build images → save to .tar.gz → transfer to server → load & `docker compose up -d` → health checks.
+**Automatic steps:** Build images → save to `.tar.gz` → transfer to server → load images → run **pending** DB migrations (`docker compose run --entrypoint node … migrate.js`, not the full backend entrypoint) → **`./scripts/deploy.sh up -d`** (handles `POSTGRES_PASSWORD=enc:` if used) → health checks.
 
 ---
 
@@ -114,9 +116,9 @@ ssh root@<SERVER_IP> 'cd /root/abc-dashboard && docker compose logs -f --tail=10
 If CI/CD fails:
 
 ```bash
-./scripts/build-and-save.sh
+./scripts/deploy.sh build-save
 scp dist/*.tar.gz root@<SERVER_IP>:/root/abc-dashboard/dist/
-ssh root@<SERVER_IP> 'cd /root/abc-dashboard && ./scripts/load-and-run.sh'
+ssh root@<SERVER_IP> 'cd /root/abc-dashboard && ./scripts/deploy.sh load'
 ```
 
 ---
@@ -157,6 +159,96 @@ git push origin main
 
 ---
 
+## Backend logging (Docker)
+
+**Default behavior:** The API logs to **standard output only** (no rotating files under `backend/logs` unless you opt in). In production, treat **`docker compose logs`** (and your host or cloud log driver) as the primary log store.
+
+**View recent API logs on the server**
+
+```bash
+cd /root/abc-dashboard   # or your app directory
+docker compose logs -f --tail=200 backend
+```
+
+**Structured logs for aggregators (Datadog, CloudWatch, etc.)**
+
+In repo root `.env` (or Compose env):
+
+```env
+LOG_FORMAT=json
+```
+
+Redeploy or recreate the backend container so the variable is applied.
+
+**Optional file logs on disk**
+
+If you need Winston daily files (e.g. local debugging):
+
+1. Set `LOG_TO_FILE=true` in `.env`.
+2. For Docker, mount a host directory so files persist and are easy to inspect, for example add under the `backend` service in `docker-compose.yml`:
+
+   ```yaml
+   volumes:
+     - ./backend/logs:/app/logs
+   ```
+
+Files are rotated (daily, size-capped, 14-day retention) as configured in `backend/src/infrastructure/config/logger.js`. Tests (`NODE_ENV=test`) never write log files.
+
+**Compose variables** (already wired in `docker-compose.yml`): `LOG_FORMAT` (default `dev`), `LOG_TO_FILE` (default `false`).
+
+---
+
+## PostgreSQL backups
+
+**Script:** [`scripts/db-backup.sh`](../scripts/db-backup.sh) — logical backup using `pg_dump -Fc` (custom format) from the running **`postgres`** Compose service.
+
+**Requirements**
+
+- Run from the **repository root** (where `docker-compose.yml` and `.env` live). The script **sources `.env`**, so `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`, and `COMPOSE_FILE` set there apply automatically.
+- Stack must be **up** and `postgres` reachable (`docker compose exec postgres true` must succeed).
+- Works with **plain** or **`enc:`** passwords as long as Postgres was started the same way as the app (see [encrypted DB password](#docker-db-password-auth)); the container’s `POSTGRES_PASSWORD` is what `pg_dump` uses.
+
+**Run once**
+
+```bash
+cd /root/abc-dashboard
+./scripts/db-backup.sh
+```
+
+Default output directory: **`backups/postgres/`**, files named `abc_dashboard-YYYYMMDD-HHMMSS.dump` (UTC). The directory is created if missing. Dump files are listed in `.gitignore` — **do not commit them** (they contain a full copy of the database).
+
+**Environment variables**
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `BACKUP_DIR` | `<repo>/backups/postgres` | Where to write `.dump` files |
+| `BACKUP_RETENTION_DAYS` | `14` | Delete matching dumps older than this many days; set to `0` to disable deletion |
+| `COMPOSE_FILE` | _(unset)_ | Optional alternate Compose file, e.g. `COMPOSE_FILE=docker-compose.prod.yml` |
+
+**Cron example (daily, 02:30 UTC)**
+
+```cron
+30 2 * * * cd /root/abc-dashboard && ./scripts/db-backup.sh >>/var/log/abc-pg-backup.log 2>&1
+```
+
+**Off-site / durability**
+
+Copy dumps to object storage or another host; encrypt at rest if they leave the server. Verify restores in a **non-production** environment periodically (`pg_restore` behavior depends on whether you replace an empty DB or clean an existing one — see comments in the script header).
+
+**Restore (reference only — test before using on production data)**
+
+With the stack running and a target database prepared per your recovery plan:
+
+```bash
+docker compose exec -i -T postgres sh -c \
+  'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' \
+  < backups/postgres/your-backup.dump
+```
+
+Adjust options (`--clean`, target DB) to match PostgreSQL docs and your RTO/RPO process. See also [scripts/README.md](../scripts/README.md).
+
+---
+
 # 2. Troubleshooting & runbook
 
 Quick reference for common build and runtime issues.
@@ -167,7 +259,7 @@ Quick reference for common build and runtime issues.
 
 ### "password authentication failed for user \"abc_user\"" {#docker-db-password-auth}
 
-**Where:** Backend container (e.g. `./scripts/docker-db-reset-sync.sh` or `docker compose exec backend npm run migrate`).
+**Where:** Backend container (e.g. `./scripts/db-reset.sh` or `docker compose exec backend npm run migrate`).
 
 **Cause:** Postgres and backend use different passwords. Common when `.env` has `POSTGRES_PASSWORD=enc:...` but the stack was started with `docker compose up -d` (so Postgres got the literal `enc:...` while the backend decrypts and uses the real password).
 
@@ -186,7 +278,7 @@ Then:
 ```bash
 docker compose down -v
 docker compose up -d
-./scripts/docker-db-reset-sync.sh --drop   # if needed
+./scripts/db-reset.sh --drop   # if needed
 ```
 
 **Fix B – Keep encrypted password**
@@ -194,15 +286,15 @@ docker compose up -d
 Always start the stack so Postgres receives the **decrypted** password:
 
 ```bash
-./scripts/load-and-run.sh --start-only up -d
+./scripts/deploy.sh up -d
 ```
 
 If the DB user was already created with the wrong password:
 
 ```bash
 docker compose down -v
-./scripts/load-and-run.sh --start-only up -d
-./scripts/docker-db-reset-sync.sh --drop   # if needed
+./scripts/deploy.sh up -d
+./scripts/db-reset.sh --drop   # if needed
 ```
 
 **Summary**
@@ -210,7 +302,7 @@ docker compose down -v
 | .env value | How to start | Postgres gets | Backend uses |
 |------------|--------------|---------------|--------------|
 | `POSTGRES_PASSWORD=abc_password` | `docker compose up -d` | abc_password | abc_password ✓ |
-| `POSTGRES_PASSWORD=enc:...` | `./scripts/load-and-run.sh --start-only up -d` | decrypted | decrypted ✓ |
+| `POSTGRES_PASSWORD=enc:...` | `./scripts/deploy.sh up -d` | decrypted | decrypted ✓ |
 | `POSTGRES_PASSWORD=enc:...` | `docker compose up -d` | literal enc:... | decrypted ✗ (mismatch) |
 
 See also [scripts/README.md](../scripts/README.md) for encrypted DB password and script usage.
@@ -219,12 +311,12 @@ See also [scripts/README.md](../scripts/README.md) for encrypted DB password and
 
 ### Server: Full DB reset (drop, migrate, seed, sync) {#server-db-reset}
 
-Use this when you want to **drop the database, run migrations, seed data, and run the external license sync** on the server. The server has the app directory (e.g. `/root/abc-dashboard`) with `docker-compose.yml`, `.env`, and the **scripts** from the repo (`scripts/load-and-run.sh`, `scripts/docker-db-reset-sync.sh`). Images are already loaded (from CI/CD or manual transfer).
+Use this when you want to **drop the database, run migrations, seed data, and run the external license sync** on the server. The server app directory (e.g. `/root/abc-dashboard`) needs `docker-compose.yml`, `.env`, and **`scripts/deploy.sh`**, **`scripts/db-reset.sh`**. Images are already loaded (from CI/CD or manual transfer). From your laptop you can run **`SERVER_HOST=... ./scripts/db-reset.sh remote`** (optional `--copy-script`) instead of the steps below.
 
 **Prerequisites on server**
 
-- App directory: `docker-compose.yml`, `.env`, `scripts/load-and-run.sh`, `scripts/docker-db-reset-sync.sh`
-- Backend image must include `backend/scripts/resolve-db-password-for-docker.js` if you use encrypted DB password (so `load-and-run.sh --start-only` can set `POSTGRES_PASSWORD_PLAIN`)
+- **`scripts/deploy.sh`** — includes embedded Node logic for `POSTGRES_PASSWORD=enc:` (no separate `scripts/resolve-db-password-for-docker.js` file)
+- **`scripts/db-reset.sh`** — local reset on the server; **`db-reset.sh remote`** is for running the flow over SSH from a dev machine
 
 **Plan (encrypted DB password: `POSTGRES_PASSWORD=enc:...`)**
 
@@ -239,12 +331,12 @@ Use this when you want to **drop the database, run migrations, seed data, and ru
    ```
 3. Start the stack so Postgres gets the **decrypted** password (required when using `enc:`):
    ```bash
-   ./scripts/load-and-run.sh --start-only up -d
+   ./scripts/deploy.sh up -d
    ```
 4. Wait for the backend to be healthy (e.g. 15–30 seconds), then run drop + migrate + seed + sync:
    ```bash
    sleep 15
-   ./scripts/docker-db-reset-sync.sh --drop --sync
+   ./scripts/db-reset.sh --drop --sync
    ```
 5. Sync can take several minutes (many pages). When it finishes, the DB has fresh schema, seed users, and licenses from the external API.
 
@@ -255,7 +347,7 @@ If `.env` has a plain `POSTGRES_PASSWORD=...` (no `enc:`):
 1. SSH and `cd /root/abc-dashboard`.
 2. Optional full reset of data: `docker compose down -v` then `docker compose up -d`. Otherwise leave the stack up.
 3. Wait for backend: `sleep 15`.
-4. Run: `./scripts/docker-db-reset-sync.sh --drop --sync`.
+4. Run: `./scripts/db-reset.sh --drop --sync`.
 
 **If you don’t have the scripts on the server**
 
@@ -276,7 +368,7 @@ docker compose exec backend npm run seed
 docker compose exec backend npm run sync:start
 ```
 
-When using an encrypted password, start the stack with `./scripts/load-and-run.sh --start-only up -d` (or ensure Postgres was given the decrypted password) before running these commands; otherwise migrations will fail with password authentication errors.
+When using an encrypted password, start the stack with `./scripts/deploy.sh up -d` (or ensure Postgres was given the decrypted password) before running these commands; otherwise migrations will fail with password authentication errors.
 
 ---
 
@@ -286,7 +378,7 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 
 **Check:** `.env` at repo root: `POSTGRES_HOST=postgres`, `POSTGRES_PORT=5432` for Docker; `docker compose ps` (postgres healthy).
 
-**Fix:** Correct `.env`, then `docker compose up -d` or `./scripts/load-and-run.sh --start-only up -d` when using encrypted password.
+**Fix:** Correct `.env`, then `docker compose up -d` or `./scripts/deploy.sh up -d` when using encrypted password.
 
 ---
 
@@ -294,7 +386,7 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 
 **Cause:** DB not migrated or out of date.
 
-**Fix:** Run migrations (and optionally drop + seed): `./scripts/docker-db-reset-sync.sh --drop`. If you see password auth errors, use [Fix A or B](#password-authentication-failed-for-user-abc_user) above.
+**Fix:** Run migrations (and optionally drop + seed): `./scripts/db-reset.sh --drop`. If you see password auth errors, use [Fix A or B](#password-authentication-failed-for-user-abc_user) above.
 
 ---
 
@@ -351,6 +443,12 @@ When using an encrypted password, start the stack with `./scripts/load-and-run.s
 **Check:** GitHub Actions logs; server connectivity and secrets (`SERVER_SSH_KEY`, `POSTGRES_PASSWORD`, etc.).
 
 **Fix:** Ensure all required secrets are set (see [GitHub Secrets](#github-secrets-18-required)) and the server can run `docker compose` and health checks. See [.github/workflows/deploy.yml](../.github/workflows/deploy.yml).
+
+### Deploy hangs on “Running database migrations” / Grafana logs
+
+**Cause (fixed in current workflow):** The backend image `ENTRYPOINT` starts Prometheus, Grafana, and the API. A bare `docker compose run … backend node …/migrate.js` used to ignore that command and start the full stack in the one-off container, which looked like a hang until the step timed out.
+
+**Fix:** The workflow uses `--entrypoint node` for the migration step and `./scripts/deploy.sh up -d` to start the stack. If you run migrations manually on the server, use the same pattern or `docker compose exec` into an **already running** backend and run migrate there.
 
 ---
 
