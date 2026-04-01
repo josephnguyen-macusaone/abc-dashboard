@@ -375,6 +375,7 @@ export class UserRepository extends IUserRepository {
         avatarUrl: userRow.avatar_url,
         phone: userRow.phone,
         isActive: userRow.is_active || false,
+        emailVerified: userRow.email_verified ?? false,
         isFirstLogin: userRow.is_first_login ?? true,
         requiresPasswordChange: userRow.requires_password_change || false,
         langKey: userRow.lang_key || 'en',
@@ -418,6 +419,9 @@ export class UserRepository extends IUserRepository {
     if (data.isActive !== undefined) {
       dbData.is_active = data.isActive;
     }
+    if (data.emailVerified !== undefined) {
+      dbData.email_verified = data.emailVerified;
+    }
     if (data.isFirstLogin !== undefined) {
       dbData.is_first_login = data.isFirstLogin;
     }
@@ -438,6 +442,19 @@ export class UserRepository extends IUserRepository {
     }
 
     return dbData;
+  }
+
+  /**
+   * Activate a user and mark their email as verified in a single update.
+   * @param {string} userId
+   */
+  async updateEmailVerification(userId) {
+    const [userRow] = await this.db(this.tableName)
+      .where('id', userId)
+      .update({ is_active: true, email_verified: true, updated_at: new Date() })
+      .returning('*');
+
+    return userRow ? this._toEntity(userRow) : null;
   }
 
   // ── Refresh token revocation ─────────────────────────────────────────────

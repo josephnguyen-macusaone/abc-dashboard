@@ -1,4 +1,3 @@
-import { UserAuthDto, TokensDto, LoginResponseDto } from '../../dto/auth/index.js';
 import {
   ValidationException,
   EmailAlreadyExistsException,
@@ -8,6 +7,7 @@ import { ROLES } from '../../../shared/constants/roles.js';
 /** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
 /** @typedef {import('../../interfaces/i-auth-service.js').IAuthService} IAuthService */
 /** @typedef {import('../../interfaces/i-token-service.js').ITokenService} ITokenService */
+/** @typedef {import('../../../shared/services/email-service.js').EmailService} IEmailService */
 
 const SIGNUP_ROLES = [ROLES.AGENT, ROLES.TECH, ROLES.ACCOUNTANT];
 
@@ -33,11 +33,13 @@ export class SignupUseCase {
    * @param {IUserRepository} userRepository
    * @param {IAuthService} authService
    * @param {ITokenService} tokenService
+   * @param {IEmailService} emailService
    */
-  constructor(userRepository, authService, tokenService) {
+  constructor(userRepository, authService, tokenService, emailService) {
     this.userRepository = userRepository;
     this.authService = authService;
     this.tokenService = tokenService;
+    this.emailService = emailService;
   }
 
   async execute({ firstName, lastName, email, password, role, username, phone }) {
@@ -62,7 +64,8 @@ export class SignupUseCase {
       displayName,
       role: selectedRole,
       phone: phone || null,
-      isActive: true,
+      isActive: false,
+      emailVerified: false,
       isFirstLogin: false,
       requiresPasswordChange: false,
       langKey: 'en',
@@ -70,24 +73,20 @@ export class SignupUseCase {
       createdBy: null,
     });
 
-    const accessToken = this.tokenService.generateAccessToken({
-      userId: createdUser.id,
-      email: createdUser.email,
-      role: createdUser.role,
-      isActive: createdUser.isActive,
-      requiresPasswordChange: false,
-    });
-    const refreshToken = this.tokenService.generateRefreshToken({ userId: createdUser.id });
+    const verificationToken = this.tokenService.generateEmailVerificationToken(
+      createdUser.id,
+      createdUser.email
+    );
 
-    const tokenHash = this.tokenService.hashToken(refreshToken);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await this.userRepository.storeRefreshToken(createdUser.id, tokenHash, expiresAt);
+    await this.emailService.sendEmailVerification(
+      createdUser.email,
+      createdUser.displayName,
+      verificationToken
+    );
 
-    return new LoginResponseDto({
-      user: UserAuthDto.fromEntity(createdUser),
-      tokens: new TokensDto({ accessToken, refreshToken }),
-      requiresPasswordChange: false,
-    });
+    return {
+      message: 'Account created. Please check your email and click the verification link to activate your account.',
+    };
   }
 
   _validateRole(role) {

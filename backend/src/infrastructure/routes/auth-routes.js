@@ -88,6 +88,19 @@ export function createAuthRoutes(authController) {
     authController.signup.bind(authController)
   );
 
+  const verifyEmailLimiter = createRateLimit(
+    15 * 60 * 1000,
+    10,
+    'Too many verification attempts, please try again later.'
+  );
+
+  router.post(
+    '/verify-email',
+    verifyEmailLimiter,
+    validateRequest(authSchemas.verifyEmail),
+    authController.verifyEmail.bind(authController)
+  );
+
   /**
    * @swagger
    * /auth/login:

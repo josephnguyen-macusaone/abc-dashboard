@@ -57,9 +57,26 @@ export class EmailService extends IEmailService {
     }
   }
 
-  // Email verification disabled (admin-managed accounts)
-  async sendEmailVerification() {
-    throw new Error('Email verification is disabled for admin-managed accounts');
+  /**
+   * Send email verification link to a newly self-registered user.
+   * @param {string} to - Recipient email
+   * @param {string} displayName - User's display name
+   * @param {string} verificationToken - Signed JWT for email verification
+   */
+  async sendEmailVerification(to, displayName, verificationToken) {
+    const verifyUrl = `${config.CLIENT_URL}/verify-email?token=${verificationToken}`;
+
+    const { subject, html, text } = renderEmailTemplate('emailVerification', {
+      displayName,
+      verifyUrl,
+    });
+
+    return executeWithDegradation(
+      'email_service',
+      () => this.sendEmail(to, subject, html, {}, { text, templateName: 'emailVerification' }),
+      (error) => this.handleEmailDegradation('verification_email', { to, subject }, error),
+      { operation: 'sendEmailVerification', to, correlationId: this.correlationId }
+    );
   }
 
   /**

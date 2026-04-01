@@ -20,17 +20,17 @@ import logger from '@/shared/helpers/logger';
  */
 export class AuthApiService {
   /**
-   * Signup user
+   * Signup user — returns a message; no tokens are issued until email is verified.
    */
-  static async signup(payload: SignupRequestDto): Promise<LoginResponseDto> {
+  static async signup(payload: SignupRequestDto): Promise<{ message: string }> {
     try {
-      const response = await httpClient.post<ApiResponse<LoginResponseDto>>('/auth/signup', payload);
+      const response = await httpClient.post<ApiResponse<{ message: string }>>('/auth/signup', payload);
 
       if (!response.data) {
         throw new Error('Signup response missing data');
       }
 
-      return response.data;
+      return response.data as unknown as { message: string };
     } catch (error) {
       throw error;
     }

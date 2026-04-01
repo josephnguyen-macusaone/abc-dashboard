@@ -86,6 +86,41 @@ ${data.managerName ? `Manager: ${data.managerName}` : ''}
     `,
   }),
 
+  emailVerification: (data) => ({
+    subject: 'Verify your email – ABC Dashboard',
+    html: `
+      <div style="${baseStyles}; padding: 24px;">
+        <div style="${cardStyles}">
+          <h2 style="margin: 0 0 8px 0; font-size: 22px;">Verify your email address</h2>
+          <p style="margin: 0 0 16px 0; color: #475569;">Hi ${data.displayName}, thanks for signing up! Click the button below to confirm your email address and activate your account.</p>
+
+          <div style="text-align:center; margin:24px 0;">
+            <a href="${data.verifyUrl}" style="${buttonStyles}">Verify Email Address</a>
+          </div>
+
+          <p style="margin:0 0 8px 0; color:#94a3b8; font-size:13px;">This link expires in 24 hours.</p>
+          <p style="margin:0; color:#94a3b8; font-size:13px;">If you didn't create an account, you can safely ignore this email.</p>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-top:16px; word-break:break-all;">
+            <p style="margin:0; color:#64748b; font-size:12px;">Or copy this link into your browser:</p>
+            <p style="margin:4px 0 0 0; color:#475569; font-size:12px; font-family:monospace;">${data.verifyUrl}</p>
+          </div>
+        </div>
+      </div>
+    `,
+    text: `
+Verify your email address
+
+Hi ${data.displayName}, thanks for signing up for ABC Dashboard!
+
+Click the link below to verify your email and activate your account:
+${data.verifyUrl}
+
+This link expires in 24 hours.
+If you didn't create an account, you can safely ignore this email.
+    `,
+  }),
+
   passwordReset: (data) => ({
     subject: 'Reset your password – ABC Dashboard',
     html: `

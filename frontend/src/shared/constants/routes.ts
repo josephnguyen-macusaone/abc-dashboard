@@ -26,6 +26,7 @@ export const ROUTES = {
   SIGNUP: '/signup',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
+  VERIFY_EMAIL: '/verify-email',
 
   // Protected routes
   DASHBOARD: '/dashboard',
@@ -72,6 +73,13 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     path: ROUTES.RESET_PASSWORD,
     title: 'Reset Password',
     description: 'Set a new password',
+    requireAuth: false,
+  },
+
+  [ROUTES.VERIFY_EMAIL]: {
+    path: ROUTES.VERIFY_EMAIL,
+    title: 'Verify Email',
+    description: 'Confirm your email address',
     requireAuth: false,
   },
 
@@ -147,6 +155,7 @@ export const AUTH_ROUTES = [
   ROUTES.SIGNUP,
   ROUTES.FORGOT_PASSWORD,
   ROUTES.RESET_PASSWORD,
+  ROUTES.VERIFY_EMAIL,
 ];
 
 /**

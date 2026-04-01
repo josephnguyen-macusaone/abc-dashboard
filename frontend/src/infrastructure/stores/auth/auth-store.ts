@@ -34,7 +34,8 @@ interface AuthState {
     role: 'agent' | 'tech' | 'accountant';
     username?: string;
     phone?: string;
-  }) => Promise<void>;
+  }) => Promise<{ message: string }>;
+  verifyEmail: (token: string) => Promise<{ message: string }>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -153,51 +154,22 @@ export const useAuthStore = create<AuthState>()(
           signup: async (payload) => {
             try {
               set({ isLoading: true });
+              const result = await authApi.signup(payload);
+              // Backend no longer returns tokens — account is inactive pending email verification.
+              return { message: result.message ?? 'Check your email to verify your account.' };
+            } catch (error: unknown) {
+              const errorMessage = getLoginErrorMessage(error);
+              throw new Error(errorMessage);
+            } finally {
+              set({ isLoading: false });
+            }
+          },
 
-              const authResult = await authApi.signup(payload);
-
-              // Token stored in HttpOnly cookie by backend - no client storage
-              set({ token: null });
-
-              const tokenManager = createTokenManager(
-                () => get().refreshToken(),
-                {
-                  onTokenExpired: () => get().handleAuthFailure(),
-                  onTokenRefreshed: () => { /* token in cookie */ }
-                }
-              );
-              set({ tokenManager });
-              tokenManager.schedulePeriodicRefresh(55);
-
-              // Fetch complete profile data to normalize client state
-              try {
-                const profileData = await authApi.getProfile();
-                const completeUser = User.fromObject({
-                  ...profileData,
-                  lastLogin: new Date(),
-                  updatedAt: new Date()
-                });
-
-                set({ user: completeUser });
-                CookieService.setUser(completeUser);
-                LocalStorageService.setUser(completeUser);
-                set({ isAuthenticated: true });
-              } catch (profileError) {
-                const basicUser = User.fromObject({
-                  ...authResult.user,
-                  lastLogin: new Date(),
-                  updatedAt: new Date()
-                });
-
-                set({ user: basicUser });
-                CookieService.setUser(basicUser);
-                LocalStorageService.setUser(basicUser);
-                set({ isAuthenticated: true });
-
-                storeLogger.warn('Profile fetch failed after signup, using signup data', {
-                  error: profileError instanceof Error ? profileError.message : String(profileError)
-                });
-              }
+          verifyEmail: async (token: string) => {
+            try {
+              set({ isLoading: true });
+              const result = await authApi.verifyEmail(token);
+              return { message: result.message ?? 'Email verified. You can now log in.' };
             } catch (error: unknown) {
               const errorMessage = getLoginErrorMessage(error);
               throw new Error(errorMessage);

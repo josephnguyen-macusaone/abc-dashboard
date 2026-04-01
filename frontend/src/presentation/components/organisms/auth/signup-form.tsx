@@ -85,11 +85,13 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
     event.preventDefault();
     if (!validateForm()) return;
 
+    const email = formData.email.trim();
+
     await toast.promise(
       signup({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        email: formData.email.trim(),
+        email,
         password: formData.password,
         role: formData.role,
         username: formData.username.trim() || undefined,
@@ -99,8 +101,8 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
         loading: 'Creating account...',
         success: () => {
           onSuccess?.();
-          router.push('/dashboard');
-          return 'Account created successfully';
+          router.push(`/verify-email?pending=true&email=${encodeURIComponent(email)}`);
+          return 'Account created! Check your email to verify.';
         },
         error: (error: unknown) =>
           (error as { message?: string })?.message || 'Signup failed. Please try again.',
