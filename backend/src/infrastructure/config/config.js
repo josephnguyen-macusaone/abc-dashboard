@@ -3,6 +3,13 @@ import { resolveDbPassword } from './resolve-db-password.js';
 // Resolve DB password once (supports plain or enc:<hex> from encryptToHex with context 'db_password')
 const resolvedDbPassword = resolveDbPassword(process.env.POSTGRES_PASSWORD || 'abc_password');
 
+const clientUrl = process.env.CLIENT_URL || '';
+const explicitCookieDomain = process.env.COOKIE_DOMAIN;
+const isLocalhostClientUrl = clientUrl.includes('localhost') || clientUrl.includes('127.0.0.1');
+// Chrome rejects/ignores Domain=localhost; use host-only cookies in local dev.
+const resolvedCookieDomain =
+  explicitCookieDomain && explicitCookieDomain !== 'localhost' ? explicitCookieDomain : undefined;
+
 // Environment configuration
 export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -26,15 +33,13 @@ export const config = {
   JWT_ISSUER: process.env.JWT_ISSUER || 'abc-dashboard',
 
   // HttpOnly cookie config (for token storage)
-  // Use localhost when CLIENT_URL is localhost so cookie is shared across ports (3000/5001)
-  COOKIE_DOMAIN:
-    process.env.COOKIE_DOMAIN ||
-    ((process.env.CLIENT_URL || '').includes('localhost') ? 'localhost' : undefined),
+  // For localhost, keep host-only cookies (no Domain attribute).
+  COOKIE_DOMAIN: isLocalhostClientUrl ? undefined : resolvedCookieDomain,
   // Secure=true only over HTTPS; localhost uses HTTP so cookies would not be sent
   COOKIE_SECURE:
     process.env.COOKIE_SECURE !== undefined
       ? process.env.COOKIE_SECURE === 'true'
-      : process.env.NODE_ENV === 'production' && (process.env.CLIENT_URL || '').startsWith('https'),
+      : process.env.NODE_ENV === 'production' && clientUrl.startsWith('https'),
   COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE || 'lax',
   JWT_EMAIL_VERIFICATION_EXPIRES_IN: process.env.JWT_EMAIL_VERIFICATION_EXPIRES_IN || '24h', // Email verification expiration
   JWT_PASSWORD_RESET_EXPIRES_IN: process.env.JWT_PASSWORD_RESET_EXPIRES_IN || '10m', // Password reset expiration
@@ -67,6 +72,8 @@ export const config = {
 
   // Logging: 'dev' = human-readable with colors; 'json' = one JSON line per log (for aggregators)
   LOG_FORMAT: process.env.LOG_FORMAT || 'dev',
+  // Winston DailyRotateFile under logs/ — default off (use docker compose logs / central logging in prod)
+  LOG_TO_FILE: process.env.LOG_TO_FILE === 'true',
 };
 
 export default config;

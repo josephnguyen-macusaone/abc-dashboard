@@ -140,6 +140,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
         <InputField
           label="Email"
           type="email"
+          autoComplete="off"
           placeholder="Enter your email address"
           value={formData.email}
           onChange={(event) => onFieldChange('email', event.target.value)}

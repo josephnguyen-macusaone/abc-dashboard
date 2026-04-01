@@ -252,8 +252,7 @@ export function getUserQueryFilters(currentUser, _queryParams = {}) {
 
   // Tech/agent/staff see nothing (should not reach user management)
   if ([ROLES.TECH, ROLES.AGENT, ROLES.STAFF].includes(currentUser.role)) {
-    // Return empty result by setting impossible condition
-    filters._id = null;
+    filters.__emptyUserList = true;
     return filters;
   }
 

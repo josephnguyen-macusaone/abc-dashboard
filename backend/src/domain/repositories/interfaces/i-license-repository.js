@@ -237,11 +237,12 @@ export class ILicenseRepository {
   }
 
   /**
-   * Bulk delete licenses
+   * Bulk delete licenses (with optional audit context for license_audit_events)
    * @param {string[]} ids - Array of license IDs
+   * @param {Object} [auditContext] - { userId?, userRole?, ipAddress?, userAgent? }
    * @returns {Promise<number>} Number of deleted licenses
    */
-  async bulkDelete(ids) {
+  async bulkDelete(ids, auditContext) {
     throw new Error('bulkDelete not implemented');
   }
 

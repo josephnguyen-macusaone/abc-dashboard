@@ -5,8 +5,9 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { CircleDashed, Briefcase, CalendarRange } from "lucide-react";
+import { CircleDashed, Briefcase, CalendarRange, History } from "lucide-react";
 import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
+import { Button } from "@/presentation/components/atoms/primitives/button";
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
 import { LicenseStatusBadge, LICENSE_PLAN_OPTIONS_WITH_ICONS } from "@/presentation/components/molecules/domain/license-management/badges";
 import { LICENSE_COLUMN_WIDTHS, PLAN_MODULE_OPTIONS as PLAN_MODULE_OPTIONS_FROM_CONSTANTS } from "@/shared/constants/license";
@@ -33,9 +34,18 @@ export const TERM_OPTIONS = [
   { label: "Yearly", value: "yearly" },
 ];
 
+const LICENSE_ROW_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
-  return [
+export interface LicenseTableColumnsOptions {
+  onOpenAuditHistory?: (license: LicenseRecord) => void;
+}
+
+export function getLicenseTableColumns(
+  options?: LicenseTableColumnsOptions
+): ColumnDef<LicenseRecord>[] {
+  const onOpenAuditHistory = options?.onOpenAuditHistory;
+  const columns: ColumnDef<LicenseRecord>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -434,6 +444,76 @@ export function getLicenseTableColumns(): ColumnDef<LicenseRecord>[] {
         placeholder: "Search notes...",
       },
     },
+    {
+      id: "createdBy",
+      accessorKey: "createdBy",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label="Created by" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {(row.getValue("createdBy") as string | undefined)?.trim() || "—"}
+        </span>
+      ),
+      ...LICENSE_COLUMN_WIDTHS.createdBy,
+      enableSorting: false,
+      meta: {
+        label: "Created by",
+      },
+    },
+    {
+      id: "updatedBy",
+      accessorKey: "updatedBy",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label="Updated by" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {(row.getValue("updatedBy") as string | undefined)?.trim() || "—"}
+        </span>
+      ),
+      ...LICENSE_COLUMN_WIDTHS.updatedBy,
+      enableSorting: false,
+      meta: {
+        label: "Updated by",
+      },
+    },
   ];
+
+  if (onOpenAuditHistory) {
+    columns.push({
+      id: "auditHistory",
+      header: () => <span className="sr-only">Activity</span>,
+      cell: ({ row }) => {
+        const id = row.original.id;
+        const canOpen = typeof id === "string" && LICENSE_ROW_UUID_RE.test(id);
+        return (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            aria-label="View activity log"
+            title={canOpen ? "Activity log" : "Save the license to view activity"}
+            disabled={!canOpen}
+            onClick={() => {
+              if (!canOpen) return;
+              onOpenAuditHistory(row.original);
+            }}
+          >
+            <History className="size-4" />
+          </Button>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+      ...LICENSE_COLUMN_WIDTHS.auditHistory,
+      meta: {
+        label: "Activity",
+      },
+    });
+  }
+
+  return columns;
 }
 

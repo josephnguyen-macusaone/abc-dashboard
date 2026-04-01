@@ -32,7 +32,7 @@ EMAIL_FROM=...
 REDIS_URL=redis://...   # optional
 ```
 
-For encrypted DB password (`POSTGRES_PASSWORD=enc:...`), start the stack with `./scripts/docker-compose-up.sh` or `./scripts/load-and-run.sh --start-only` so Postgres gets the decrypted value. See [../../scripts/README.md](../../scripts/README.md) and root DEPLOYMENT-GUIDE.
+For encrypted DB password (`POSTGRES_PASSWORD=enc:...`), start the stack with `./scripts/deploy.sh up -d` so Postgres gets the decrypted value. See [../../scripts/README.md](../../scripts/README.md) and root DEPLOYMENT-GUIDE.
 
 ## Docker
 
@@ -40,7 +40,7 @@ From repo root:
 
 ```bash
 docker compose up -d
-# Or: make up  (uses scripts/docker-compose-up.sh for enc: password)
+# Or: make up  (uses scripts/deploy.sh for enc: password)
 ```
 
 Backend runs in `backend` container; DB in `postgres`. Migrate and seed:
@@ -114,7 +114,7 @@ See repo root [monitoring/README.md](../../monitoring/README.md) for setup, metr
 
 **Database connection failed**
 
-- Check `POSTGRES_*` / `DATABASE_URL`. If using Docker, ensure Postgres and backend use the same password (plain or decrypted from `enc:`). Start stack with `./scripts/docker-compose-up.sh` when using encrypted password.
+- Check `POSTGRES_*` / `DATABASE_URL`. If using Docker, ensure Postgres and backend use the same password (plain or decrypted from `enc:`). Start stack with `./scripts/deploy.sh up -d` when using encrypted password.
 - See root [DEPLOYMENT-GUIDE.md](../../docs/DEPLOYMENT-GUIDE.md) (Troubleshooting → Docker / database).
 
 **App won’t start**

@@ -38,5 +38,9 @@ export interface LicenseRecord {
   /** ISO timestamp from API for optimistic concurrency */
   createdAt?: string;
   updatedAt?: string;
+  /** Display label from API (created_by / user snapshot) */
+  createdBy?: string;
+  /** Display label from API (updated_by / user snapshot) */
+  updatedBy?: string;
 }
 

@@ -167,15 +167,26 @@ export class UserRepository extends IUserRepository {
       toDate.setUTCHours(23, 59, 59, 999);
       query = query.where('updated_at', '<=', toDate);
     }
+    // last_login_at lives on user_profiles, not users
     if (filters.lastLoginFrom) {
       const fromDate = new Date(filters.lastLoginFrom);
       fromDate.setUTCHours(0, 0, 0, 0);
-      query = query.where('last_login_at', '>=', fromDate);
+      query = query.whereExists(
+        this.db('user_profiles')
+          .select(this.db.raw('1'))
+          .whereColumn('user_profiles.user_id', 'users.id')
+          .where('user_profiles.last_login_at', '>=', fromDate)
+      );
     }
     if (filters.lastLoginTo) {
       const toDate = new Date(filters.lastLoginTo);
       toDate.setUTCHours(23, 59, 59, 999);
-      query = query.where('last_login_at', '<=', toDate);
+      query = query.whereExists(
+        this.db('user_profiles')
+          .select(this.db.raw('1'))
+          .whereColumn('user_profiles.user_id', 'users.id')
+          .where('user_profiles.last_login_at', '<=', toDate)
+      );
     }
     return query;
   }
@@ -202,6 +213,9 @@ export class UserRepository extends IUserRepository {
   }
 
   _applyUserListFilters(query, filters) {
+    if (filters.__emptyUserList) {
+      return query.whereRaw('1 = 0');
+    }
     query = this._applyUserSearchFilter(query, filters);
     query = this._applyUserFieldFilters(query, filters);
     query = this._applyUserDateFilters(query, filters);
@@ -224,13 +238,17 @@ export class UserRepository extends IUserRepository {
     let query = this.db(this.tableName);
     query = this._applyUserListFilters(query, filters);
 
+    const listQuery = query.clone();
+    const isLastLoginSort = sortColumn === 'last_login_at';
+    const orderedQuery = isLastLoginSort
+      ? listQuery
+          .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+          .select('users.*')
+          .orderBy('user_profiles.last_login_at', sortOrder)
+      : listQuery.select('users.*').orderBy(`users.${sortColumn}`, sortOrder);
+
     const [users, stats] = await Promise.all([
-      query
-        .clone()
-        .select('users.*')
-        .orderBy(`users.${sortColumn}`, sortOrder)
-        .offset(offset)
-        .limit(limit),
+      orderedQuery.offset(offset).limit(limit),
       this.getUserStats(filters),
     ]);
 
@@ -346,25 +364,28 @@ export class UserRepository extends IUserRepository {
       throw new Error('User row is null or undefined');
     }
 
-    return new User({
-      id: userRow.id,
-      username: userRow.username,
-      hashedPassword: userRow.hashed_password,
-      email: userRow.email,
-      displayName: userRow.display_name,
-      role: userRow.role,
-      avatarUrl: userRow.avatar_url,
-      phone: userRow.phone,
-      isActive: userRow.is_active || false,
-      isFirstLogin: userRow.is_first_login ?? true,
-      requiresPasswordChange: userRow.requires_password_change || false,
-      langKey: userRow.lang_key || 'en',
-      managedBy: userRow.managed_by,
-      createdBy: userRow.created_by,
-      createdAt: userRow.created_at,
-      updatedAt: userRow.updated_at,
-      lastModifiedBy: userRow.last_modified_by,
-    });
+    return new User(
+      {
+        id: userRow.id,
+        username: userRow.username,
+        hashedPassword: userRow.hashed_password,
+        email: userRow.email,
+        displayName: userRow.display_name,
+        role: userRow.role,
+        avatarUrl: userRow.avatar_url,
+        phone: userRow.phone,
+        isActive: userRow.is_active || false,
+        isFirstLogin: userRow.is_first_login ?? true,
+        requiresPasswordChange: userRow.requires_password_change || false,
+        langKey: userRow.lang_key || 'en',
+        managedBy: userRow.managed_by,
+        createdBy: userRow.created_by,
+        createdAt: userRow.created_at,
+        updatedAt: userRow.updated_at,
+        lastModifiedBy: userRow.last_modified_by,
+      },
+      { skipValidation: true }
+    );
   }
 
   /**

@@ -9,6 +9,79 @@ import logger from '../../shared/utils/logger.js';
 import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
 import { ROLES } from '../../shared/constants/roles.js';
 
+/** Fields allowed in PATCH /licenses/bulk array body (`lastActive` is sync-only). */
+const BULK_UPDATE_UPDATABLE_FIELDS = [
+  'dba',
+  'zip',
+  'startsAt',
+  'status',
+  'plan',
+  'term',
+  'dueDate',
+  'seatsTotal',
+  'seatsUsed',
+  'cancelDate',
+  'lastPayment',
+  'smsPurchased',
+  'smsSent',
+  'smsBalance',
+  'agents',
+  'agentsName',
+  'agentsCost',
+  'notes',
+  'key',
+  'product',
+  'expectedUpdatedAt',
+  'updatedAt',
+];
+
+/**
+ * Normalize bulk update body to `{ id, updates }[]`.
+ * @param {object|Array} body
+ * @returns {Array<{ id: string, updates: object }>}
+ */
+function parseBulkUpdatePayload(body) {
+  if (body?.updates && Array.isArray(body.updates)) {
+    return body.updates;
+  }
+  if (Array.isArray(body)) {
+    const licensesToUpdate = body.map((license) => {
+      const updates = {};
+      BULK_UPDATE_UPDATABLE_FIELDS.forEach((field) => {
+        if (license[field] !== undefined) {
+          updates[field] = license[field];
+        }
+      });
+      return { id: license.id, updates };
+    });
+    licensesToUpdate.forEach((item, index) => {
+      if (!item.id) {
+        throw new ValidationException(`License at index ${index} is missing required 'id' field`);
+      }
+      if (!item.updates || Object.keys(item.updates).length === 0) {
+        throw new ValidationException(`License at index ${index} has no valid fields to update`);
+      }
+    });
+    return licensesToUpdate;
+  }
+  throw new ValidationException(
+    'Invalid request format. Expected array of licenses or object with updates property'
+  );
+}
+
+/** @param {import('express').Request} req */
+function resolveLicenseAuditPagination(req) {
+  const pageParsed = Number.parseInt(String(req.query.page ?? '1'), 10);
+  const page =
+    req.validatedQuery?.page ?? (Number.isFinite(pageParsed) && pageParsed >= 1 ? pageParsed : 1);
+  const limitParsed = Number.parseInt(String(req.query.limit ?? '50'), 10);
+  const limitRaw =
+    req.validatedQuery?.limit ??
+    (Number.isFinite(limitParsed) && limitParsed >= 1 ? limitParsed : 50);
+  const limit = Math.min(Math.max(1, limitRaw), 100);
+  return { page, limit };
+}
+
 export class LicenseController {
   constructor(licenseService, licenseSyncScheduler = null, licenseRealtimeService = null) {
     this.licenseService = licenseService;
@@ -181,6 +254,44 @@ export class LicenseController {
     }
   };
 
+  getLicenseAuditEvents = async (req, res) => {
+    try {
+      const licenseId = req.params.id;
+
+      if (req.user?.role === ROLES.AGENT) {
+        const hasAssignment = await this.licenseService.licenseRepository.hasUserAssignment(
+          licenseId,
+          req.user.id
+        );
+        if (!hasAssignment) {
+          return res.forbidden('You can only access licenses assigned to you');
+        }
+      }
+
+      const licenseEntity = await this.licenseService.licenseRepository.findById(licenseId);
+      if (!licenseEntity) {
+        return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
+      }
+
+      const { page, limit } = resolveLicenseAuditPagination(req);
+
+      const result = await this.licenseService.getAuditEvents(licenseId, { page, limit });
+      const events = result.events.map((e) => (typeof e.toJSON === 'function' ? e.toJSON() : e));
+
+      return res.success(
+        {
+          events,
+          total: result.total,
+          page: result.page,
+          totalPages: result.totalPages,
+        },
+        'License audit events retrieved successfully'
+      );
+    } catch {
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  };
+
   createLicense = async (req, res) => {
     try {
       LicenseValidator.validateCreateInput(req.body);
@@ -241,72 +352,15 @@ export class LicenseController {
   bulkUpdate = async (req, res) => {
     let licensesToUpdate = [];
     try {
-      // Extract the licenses to update based on the format
-      if (req.body.updates && Array.isArray(req.body.updates)) {
-        // Structured format
-        licensesToUpdate = req.body.updates;
-      } else if (Array.isArray(req.body)) {
-        // Direct array format - transform to structured format
-        // Only include fields that are actually updatable
-        // lastActive is intentionally excluded: only the external sync process may update it.
-        const updatableFields = [
-          'dba',
-          'zip',
-          'startsAt',
-          'status',
-          'plan',
-          'term',
-          'dueDate',
-          'seatsTotal',
-          'seatsUsed',
-          'cancelDate',
-          'lastPayment',
-          'smsPurchased',
-          'smsSent',
-          'smsBalance',
-          'agents',
-          'agentsName',
-          'agentsCost',
-          'notes',
-          'key',
-          'product',
-          'expectedUpdatedAt',
-          'updatedAt',
-        ];
+      licensesToUpdate = parseBulkUpdatePayload(req.body);
 
-        licensesToUpdate = req.body.map((license) => {
-          const updates = {};
-          updatableFields.forEach((field) => {
-            if (license[field] !== undefined) {
-              updates[field] = license[field];
-            }
-          });
-          return {
-            id: license.id,
-            updates,
-          };
-        });
-
-        // Validate that each license has an ID and at least one field to update
-        licensesToUpdate.forEach((item, index) => {
-          if (!item.id) {
-            throw new ValidationException(
-              `License at index ${index} is missing required 'id' field`
-            );
-          }
-          if (!item.updates || Object.keys(item.updates).length === 0) {
-            throw new ValidationException(
-              `License at index ${index} has no valid fields to update`
-            );
-          }
-        });
-      } else {
-        throw new ValidationException(
-          'Invalid request format. Expected array of licenses or object with updates property'
-        );
-      }
-
-      const updated = await this.licenseService.bulkUpdateLicenses(licensesToUpdate);
+      const bulkContext = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+      const updated = await this.licenseService.bulkUpdateLicenses(licensesToUpdate, bulkContext);
 
       const message =
         updated.length === licensesToUpdate.length
@@ -382,8 +436,7 @@ export class LicenseController {
         throw new ValidationException('No licenses provided for creation');
       }
 
-      // Add audit fields. Use null for createdBy/updatedBy so the insert does not require
-      // the authenticated user to exist in the users table (avoids FK violation on licenses_created_by_foreign).
+      // Strip client-supplied createdBy/updatedBy; bulkCreateLicenses applies req.user via context for FK + license_audit_events.
       const licensesWithAudit = licensesToCreate.map((license) => ({
         ...license,
         createdBy: undefined,
@@ -391,8 +444,16 @@ export class LicenseController {
         seatsUsed: license.seatsUsed || 0, // Ensure seatsUsed is set
       }));
 
-      const { createdLicenses, errors } =
-        await this.licenseService.bulkCreateLicenses(licensesWithAudit);
+      const bulkContext = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+      const { createdLicenses, errors } = await this.licenseService.bulkCreateLicenses(
+        licensesWithAudit,
+        bulkContext
+      );
 
       if (this.licenseRealtimeService?.emitDataChanged && createdLicenses.length > 0) {
         this.licenseRealtimeService.emitDataChanged({
@@ -455,7 +516,13 @@ export class LicenseController {
   bulkDelete = async (req, res) => {
     try {
       LicenseValidator.validateIdsArray(req.body);
-      const deletedCount = await this.licenseService.bulkDelete(req.body.ids);
+      const bulkContext = {
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+      const deletedCount = await this.licenseService.bulkDelete(req.body.ids, bulkContext);
 
       if (this.licenseRealtimeService?.emitDataChanged && deletedCount > 0) {
         this.licenseRealtimeService.emitDataChanged({
@@ -477,6 +544,7 @@ export class LicenseController {
     try {
       const context = {
         userId: req.user?.id,
+        userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       };
@@ -495,6 +563,12 @@ export class LicenseController {
   getDashboardMetrics = async (req, res) => {
     try {
       const query = LicenseValidator.validateListQuery(req.query);
+      if (req.user?.role === ROLES.AGENT && req.user?.id) {
+        query.filters = {
+          ...(query.filters || {}),
+          assignedUserId: req.user.id,
+        };
+      }
       const dateRange = {};
       if (req.query.startsAtFrom) {
         dateRange.startsAtFrom = decodeURIComponent(req.query.startsAtFrom);

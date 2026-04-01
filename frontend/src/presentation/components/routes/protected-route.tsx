@@ -22,11 +22,11 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
-  const isTokenExpired = useAuthStore((s) => s.isTokenExpired);
-  const handleAuthFailure = useAuthStore((s) => s.handleAuthFailure);
+  const validateSession = useAuthStore((s) => s.validateSession);
 
   // Track if component has mounted on client to prevent hydration mismatch
   const [hasMounted, setHasMounted] = useState(false);
+  const [isValidatingSession, setIsValidatingSession] = useState(false);
 
   // Mark component as mounted on client side
   useEffect(() => {
@@ -37,48 +37,62 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
 
   // Handle navigation effects in useEffect to avoid calling router during render
   useEffect(() => {
-    // Only run navigation logic on client side after mounting
-    if (!hasMounted || isLoading) return;
+    let isCancelled = false;
 
-    // Get route configuration
-    const routeConfig = getRouteConfig(pathname);
+    async function validateAndNavigate() {
+      // Only run navigation logic on client side after mounting
+      if (!hasMounted || isLoading) return;
 
-    // If no route config or route doesn't require auth, no navigation needed
-    if (!routeConfig || !routeConfig.requireAuth) return;
+      // Get route configuration
+      const routeConfig = getRouteConfig(pathname);
 
-    // If authenticated but token is expired, handle auth failure so user is logged out
-    // consistently on any protected route (dashboard, licenses, users) instead of only
-    // when a page happens to make an API call that returns 401
-    if (isAuthenticated && isTokenExpired()) {
-      void handleAuthFailure();
-      return;
-    }
+      // If no route config or route doesn't require auth, no navigation needed
+      if (!routeConfig || !routeConfig.requireAuth) return;
 
-    // Check if user can access this route
-    const hasAccess = canAccessRoute(pathname, user?.role);
-
-    if (!hasAccess) {
-      // If user is not authenticated, redirect to login
-      if (!isAuthenticated) {
-        // Only redirect if we're not already on the login page
-        if (pathname !== '/login') {
-          router.replace('/login');
+      // Validate cookie-backed session with backend to avoid stale persisted auth causing
+      // protected routes to render and hang in loading when token/cookie already expired.
+      if (isAuthenticated) {
+        setIsValidatingSession(true);
+        const hasValidSession = await validateSession({
+          timeoutMs: 3000,
+          onNetworkError: 'logout',
+        });
+        if (!isCancelled) {
+          setIsValidatingSession(false);
         }
-        return;
+        if (!hasValidSession) return;
       }
 
-      // User is authenticated but doesn't have permission - redirect based on role
-      const redirectPath = getDefaultRedirect(user?.role);
-      router.push(redirectPath);
-      return;
+      // Check if user can access this route
+      const hasAccess = canAccessRoute(pathname, user?.role);
+
+      if (!hasAccess) {
+        // If user is not authenticated, redirect to login
+        if (!isAuthenticated) {
+          // Only redirect if we're not already on the login page
+          if (pathname !== '/login') {
+            router.replace('/login');
+          }
+          return;
+        }
+
+        // User is authenticated but doesn't have permission - redirect based on role
+        const redirectPath = getDefaultRedirect(user?.role);
+        router.push(redirectPath);
+        return;
+      }
     }
 
-    // Check if user needs additional verification (removed email verification)
-  }, [router, pathname, user, isAuthenticated, isLoading, hasMounted, isTokenExpired, handleAuthFailure]);
+    void validateAndNavigate();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [router, pathname, user?.role, isAuthenticated, isLoading, hasMounted, validateSession]);
 
   // During server-side rendering or initial client load, always show loading
   // This ensures server and client render the same initial state
-  if (!hasMounted || isLoading) {
+  if (!hasMounted || isLoading || isValidatingSession) {
     return <LoadingOverlay text="Loading..." />;
   }
 

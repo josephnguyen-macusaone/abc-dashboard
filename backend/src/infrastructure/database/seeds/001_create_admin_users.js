@@ -74,6 +74,15 @@ export async function seed(knex) {
   });
 
   await ensureUser({
+    username: 'tech_smoke',
+    email: 'tech.smoke@abcsalon.us',
+    password: 'TechSmoke123!',
+    displayName: 'Tech Smoke Tester',
+    role: 'tech',
+    phone: '+1-555-0112',
+  });
+
+  await ensureUser({
     username: 'accountant',
     email: 'accountant@abcsalon.us',
     password: 'Accountant123!',
@@ -83,11 +92,29 @@ export async function seed(knex) {
   });
 
   await ensureUser({
+    username: 'account_smoke',
+    email: 'account.smoke@abcsalon.us',
+    password: 'AccountSmoke123!',
+    displayName: 'Account Smoke Tester',
+    role: 'accountant',
+    phone: '+1-555-0113',
+  });
+
+  await ensureUser({
     username: 'agent',
     email: 'agent@abcsalon.us',
     password: 'Agent123!',
     displayName: 'Agent User',
     role: 'agent',
     phone: '+1-555-0104',
+  });
+
+  await ensureUser({
+    username: 'agent_smoke',
+    email: 'agent.smoke@abcsalon.us',
+    password: 'AgentSmoke123!',
+    displayName: 'Agent Smoke Tester',
+    role: 'agent',
+    phone: '+1-555-0114',
   });
 }

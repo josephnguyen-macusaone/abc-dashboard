@@ -18,7 +18,9 @@ import { Button } from "@/presentation/components/atoms/primitives/button";
 import { Typography } from "@/presentation/components/atoms";
 import { SearchBar } from "@/presentation/components/molecules";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
+import { LicenseAuditHistoryDialog } from "@/presentation/components/molecules/domain/license-management/license-audit-history-dialog";
 import { getLicenseGridColumns } from "./license-grid-columns";
+import type { LicenseCapabilities } from "@/shared/constants/license-capabilities";
 import {
   STATUS_OPTIONS,
   PLAN_MODULE_OPTIONS,
@@ -35,6 +37,8 @@ interface LicensesDataGridProps {
   data: LicenseRecord[];
   isLoading?: boolean;
   readOnly?: boolean;
+  /** Per-field edit restrictions when the grid is not globally read-only */
+  licenseCapabilities?: LicenseCapabilities;
   height?: number;
   className?: string;
   onSave?: (data: LicenseRecord[]) => Promise<void>;
@@ -64,6 +68,7 @@ export function LicensesDataGrid({
   data: initialData,
   isLoading = false,
   readOnly = false,
+  licenseCapabilities,
   height = 1200,
   className,
   onSave,
@@ -129,7 +134,26 @@ export function LicensesDataGrid({
     setData(initialData);
   }, [initialData, dataIdentity, hasChanges, useComplexSync]);
 
-  const columns = React.useMemo(() => getLicenseGridColumns(), []);
+  const [auditDialog, setAuditDialog] = React.useState<{
+    licenseId: string;
+    label: string;
+  } | null>(null);
+
+  const columns = React.useMemo(
+    () =>
+      getLicenseGridColumns({
+        capabilities: licenseCapabilities,
+        includeAuditColumn: true,
+      }),
+    [licenseCapabilities],
+  );
+
+  const onOpenLicenseAuditHistory = React.useCallback(
+    (payload: { licenseId: string; label: string }) => {
+      setAuditDialog(payload);
+    },
+    [],
+  );
 
   const handleDataChange = React.useCallback((newData: LicenseRecord[]) => {
     setData(newData);
@@ -257,6 +281,9 @@ export function LicensesDataGrid({
         agentsName: true,
         agentsCost: true,
         notes: true,
+        createdBy: false,
+        updatedBy: false,
+        auditHistory: true,
       },
     },
     onDataChange: handleDataChange,
@@ -271,7 +298,7 @@ export function LicensesDataGrid({
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
     manualFiltering: !!onQueryChange, // Enable server-side filtering when onQueryChange provided
-    meta: {},
+    meta: { onOpenLicenseAuditHistory },
   });
 
   // Track changes manually (adapted from licenses-data-table.tsx)
@@ -555,6 +582,14 @@ export function LicensesDataGrid({
 
   return (
     <div className={className}>
+      <LicenseAuditHistoryDialog
+        open={auditDialog != null}
+        onOpenChange={(open) => {
+          if (!open) setAuditDialog(null);
+        }}
+        licenseId={auditDialog?.licenseId ?? ""}
+        licenseLabel={auditDialog?.label ?? ""}
+      />
       <div className="space-y-5">
         {/* Toolbar: same layout as DataTableToolbar (dashboard license data-table) */}
         <div

@@ -479,6 +479,12 @@ export const licenseSchemas = {
     }),
   }),
 
+  /** GET /licenses/:id/audit-events */
+  licenseAuditEventsQuery: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(50),
+  }),
+
   /**
    * Update external license schema (PUT /api/v1/external-licenses/:id)
    * External API shape: dba, zip, status (0|1), license_type, monthlyFee, smsBalance, Note, ActivateDate, Coming_expired

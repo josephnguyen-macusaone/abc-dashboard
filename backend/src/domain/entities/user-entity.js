@@ -5,25 +5,33 @@ import { ROLES } from '../../shared/constants/roles.js';
  * Represents the core business concept of a User
  */
 export class User {
-  constructor({
-    id,
-    username,
-    hashedPassword,
-    email,
-    displayName,
-    role,
-    avatarUrl,
-    phone,
-    isActive,
-    isFirstLogin,
-    requiresPasswordChange,
-    langKey,
-    managedBy,
-    createdBy,
-    createdAt,
-    updatedAt,
-    lastModifiedBy,
-  }) {
+  /**
+   * @param {object} props - User fields
+   * @param {{ skipValidation?: boolean }} [options] - Set skipValidation when rehydrating from DB so legacy rows cannot break list/read APIs
+   */
+  constructor(
+    {
+      id,
+      username,
+      hashedPassword,
+      email,
+      displayName,
+      role,
+      avatarUrl,
+      phone,
+      isActive,
+      isFirstLogin,
+      requiresPasswordChange,
+      langKey,
+      managedBy,
+      createdBy,
+      createdAt,
+      updatedAt,
+      lastModifiedBy,
+    },
+    options = {}
+  ) {
+    const { skipValidation = false } = options;
     this.id = id;
     this.username = username;
     this.hashedPassword = hashedPassword;
@@ -42,7 +50,9 @@ export class User {
     this.updatedAt = updatedAt;
     this.lastModifiedBy = lastModifiedBy;
 
-    this.validate();
+    if (!skipValidation) {
+      this.validate();
+    }
   }
 
   /**

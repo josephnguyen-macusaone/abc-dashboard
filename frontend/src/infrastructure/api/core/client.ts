@@ -161,12 +161,8 @@ class HttpClient {
           details: errorResponse.details,
         });
 
-        // Handle 403 (Forbidden) - treat as auth failure, no refresh attempt
-        if (error.response?.status === 403 && !this.authFailureHandled) {
-          await this.handleAuthFailure();
-          errorResponse.authHandled = true;
-          return Promise.reject(errorResponse);
-        }
+        // 403 Forbidden = authenticated but not allowed (RBAC, ownership, etc.). Do not logout.
+        // Only 401 / failed refresh indicates invalid session.
 
         // Handle 401 errors with automatic token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -315,10 +311,14 @@ class HttpClient {
 
       // Redirect to login page if in browser
       if (typeof window !== 'undefined') {
+        const isOnLoginPage = window.location.pathname === '/login';
+        if (isOnLoginPage) return;
+
         // Prevent multiple rapid redirects by checking if already redirecting
         const redirectingKey = 'auth_redirecting';
         if (!sessionStorage.getItem(redirectingKey)) {
           sessionStorage.setItem(redirectingKey, 'true');
+          sessionStorage.setItem('auth_logout_reason', 'session_expired');
           this.httpLogger.info('Redirecting to login page', {
             category: 'api-auth',
           });

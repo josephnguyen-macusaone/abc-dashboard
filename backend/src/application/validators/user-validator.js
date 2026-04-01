@@ -7,6 +7,7 @@ import { ROLES } from '../../shared/constants/roles.js';
 
 const SORTABLE_FIELDS = [
   'createdAt',
+  'updatedAt',
   'username',
   'email',
   'displayName',

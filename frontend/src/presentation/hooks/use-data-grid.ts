@@ -15,6 +15,7 @@ import {
   type TableState,
   type Updater,
   useReactTable,
+  type Table,
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
@@ -48,7 +49,16 @@ const HORIZONTAL_PAGE_SIZE = 5;
 
 const MIN_COLUMN_SIZE = 88;
 const MAX_COLUMN_SIZE = 800;
-const NON_NAVIGABLE_COLUMN_IDS = ["select", "actions"];
+const NON_NAVIGABLE_COLUMN_IDS = ["select", "actions", "auditHistory"];
+
+function isDataGridColumnCellReadOnly<TData>(
+  table: Table<TData> | null | undefined,
+  columnId: string,
+): boolean {
+  if (!table) return false;
+  const column = table.getColumn(columnId);
+  return column?.columnDef.meta?.cell?.readOnly === true;
+}
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
@@ -404,12 +414,16 @@ function useDataGrid<TData>({
 
       const updateArray = Array.isArray(updates) ? updates : [updates];
 
-      if (updateArray.length === 0) return;
+      const currentTable = tableRef.current;
+      const filteredUpdates = updateArray.filter(
+        (u) => !isDataGridColumnCellReadOnly(currentTable, u.columnId),
+      );
+
+      if (filteredUpdates.length === 0) return;
 
       // Set flag to indicate we're processing a data update
       store.setState("isProcessingDataUpdate", true);
 
-      const currentTable = tableRef.current;
       const currentData = propsRef.current.data;
       const rows = currentTable?.getRowModel().rows;
 
@@ -418,7 +432,7 @@ function useDataGrid<TData>({
         Array<Omit<UpdateCell, "rowIndex">>
       >();
 
-      for (const update of updateArray) {
+      for (const update of filteredUpdates) {
         if (!rows || !currentTable) {
           const existingUpdates = rowUpdatesMap.get(update.rowIndex) ?? [];
           existingUpdates.push({
@@ -1088,6 +1102,7 @@ function useDataGrid<TData>({
   const onCellEditingStart = React.useCallback(
     (rowIndex: number, columnId: string) => {
       if (propsRef.current.readOnly) return;
+      if (isDataGridColumnCellReadOnly(tableRef.current, columnId)) return;
 
       store.batch(() => {
         store.setState("focusedCell", { rowIndex, columnId });

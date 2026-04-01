@@ -1,6 +1,19 @@
 import type { LicenseRecord } from '@/types';
 import type { LicenseApiRow } from './types';
 
+function pickAuditUserLabel(value: unknown): string | undefined {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null) {
+    const o = value as Record<string, unknown>;
+    for (const k of ['email', 'userEmail', 'username', 'name', 'fullName', 'id']) {
+      const x = o[k];
+      if (typeof x === 'string' && x.length > 0) return x;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Extract notes as a simple string from API response.
  */
@@ -126,6 +139,14 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
       const v = r.updatedAt ?? r.updated_at;
       return v != null && v !== '' ? String(v) : undefined;
     })(),
+    createdBy: pickAuditUserLabel(
+      (apiLicense as Record<string, unknown>).createdBy ??
+        (apiLicense as Record<string, unknown>).created_by,
+    ),
+    updatedBy: pickAuditUserLabel(
+      (apiLicense as Record<string, unknown>).updatedBy ??
+        (apiLicense as Record<string, unknown>).updated_by,
+    ),
   };
 }
 

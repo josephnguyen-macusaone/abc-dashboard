@@ -11,6 +11,7 @@ import type {
   BulkCreateResponse,
   BulkDeleteResponse,
   LicensesRequiringAttentionResponse,
+  LicenseAuditEventsData,
 } from '@/infrastructure/api/licenses/types';
 
 export interface LicenseListResult {
@@ -28,6 +29,10 @@ export interface LicenseListResult {
 export interface ILicenseApiClient {
   getLicenses(params?: GetLicensesParams): Promise<LicenseListResult>;
   getLicense(id: string): Promise<LicenseGetResponse>;
+  getLicenseAuditEvents(
+    licenseId: string,
+    params?: { page?: number; limit?: number }
+  ): Promise<LicenseAuditEventsData>;
   updateLicense(id: string, updates: InternalLicenseUpdatePayload): Promise<LicenseGetResponse>;
   bulkCreateLicenses(licenses: InternalLicenseUpdatePayload[]): Promise<BulkCreateResponse>;
   bulkUpdateLicenses(updates: {
@@ -36,6 +41,8 @@ export interface ILicenseApiClient {
   }): Promise<BulkUpdateResponse>;
   bulkUpdateInternalLicenses(updates: Array<{ id: string; [key: string]: unknown }>): Promise<unknown[]>;
   bulkDeleteLicenses(identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }): Promise<BulkDeleteResponse>;
+  /** Internal dashboard: DELETE /licenses/bulk with `{ ids: string[] }` */
+  bulkDeleteInternalLicenseIds(ids: string[]): Promise<BulkDeleteResponse>;
   getLicenseSyncStatus(): Promise<LicenseSyncStatusResponse>;
   triggerSync(): Promise<void>;
   getDashboardMetrics(params?: Record<string, unknown>): Promise<unknown>;

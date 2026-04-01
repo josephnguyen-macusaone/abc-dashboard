@@ -8,14 +8,14 @@ Next.js + Node/Express license management platform.
 ```bash
 export DOCKER_BUILDKIT=1
 docker compose up -d
+# If .env uses POSTGRES_PASSWORD=enc:... use instead:
+# ./scripts/deploy.sh up -d
 
-# Access
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:5000/api/v1
-# Database: localhost:5433
+# Access (see docker-compose.yml for host ports)
+# Frontend / backend URLs depend on published ports in your .env
 ```
 
-**Production deploy:** [QUICK-START.md](./QUICK-START.md) (CI/CD via GitHub Actions)
+**Production deploy:** [docs/DEPLOYMENT-GUIDE.md](./docs/DEPLOYMENT-GUIDE.md) (CI/CD on `main`)
 
 ---
 
@@ -59,8 +59,8 @@ docker compose exec backend npm run seed:fresh
 docker compose exec postgres psql -U abc_user -d abc_dashboard
 
 # Reset DB + seed (+ optional license sync) – from repo root
-./scripts/docker-db-reset-sync.sh              # migrate:fresh + seed
-./scripts/docker-db-reset-sync.sh --drop --sync   # drop DB, migrate, seed, then sync licenses
+./scripts/db-reset.sh              # migrate:fresh + seed
+./scripts/db-reset.sh --drop --sync   # drop DB, migrate, seed, then sync licenses
 ```
 
 ### Building
@@ -74,7 +74,13 @@ docker compose build --no-cache     # Clean build
 ### Deployment
 
 - **Auto:** Push to `main` or `develop` (triggers CI/CD)
-- **Manual:** `./scripts/build-and-save.sh` → transfer → `./scripts/load-and-run.sh` (see [QUICK-START.md](./QUICK-START.md))
+- **Manual:** `./scripts/deploy.sh build-save` → transfer → on server `./scripts/deploy.sh load` (or `./scripts/deploy.sh push`)
+- **Operations (logging, DB backups, troubleshooting):** [docs/DEPLOYMENT-GUIDE.md](./docs/DEPLOYMENT-GUIDE.md)
+
+### Logs and database backups
+
+- **API logs:** Default is **stdout** (`docker compose logs -f backend`). Optional file logs: `LOG_TO_FILE=true` (see deployment guide).
+- **PostgreSQL:** `./scripts/db-backup.sh` from repo root while Compose is up; outputs under `backups/postgres/`. See [docs/DEPLOYMENT-GUIDE.md](./docs/DEPLOYMENT-GUIDE.md#postgresql-backups).
 
 ---
 
@@ -98,7 +104,7 @@ docker compose build --no-cache     # Clean build
 abc-dashboard/
 ├── backend/           # Node.js API (Express, PostgreSQL)
 ├── frontend/          # Next.js app (React, TypeScript)
-├── scripts/           # Deploy scripts (build-and-save, load-and-run)
+├── scripts/           # deploy.sh, db-reset.sh, db-backup.sh
 ├── .github/workflows/ # CI/CD (deploy.yml)
 └── docker-compose.yml # Services (postgres, backend, frontend)
 ```

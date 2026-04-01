@@ -113,6 +113,7 @@ export function FormField({
 
 export interface InputFieldProps extends Omit<FormFieldProps, 'children'> {
   type?: string;
+  autoComplete?: string;
   placeholder?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -131,6 +132,7 @@ export function InputField({
   required,
   className,
   type = 'text',
+  autoComplete,
   placeholder,
   value,
   onChange,
@@ -163,6 +165,7 @@ export function InputField({
         )}
         <Input
           type={type}
+          autoComplete={autoComplete}
           placeholder={placeholder}
           value={value}
           onChange={onChange}

@@ -245,14 +245,13 @@ jobs:
               echo "LICENSE_SYNC_ENABLED=false" >> .env
             fi
 
-            echo "Ensuring logs directory is writable by container user (uid 1001)..."
-            mkdir -p backend/logs && chown -R 1001:1001 backend/logs
-
+            # Backend image ENTRYPOINT always starts Prometheus + Grafana + API; it ignores
+            # extra args. Override entrypoint so only migrate runs (no duplicate Grafana stack).
             echo "Running database migrations..."
-            timeout 10m docker compose run --rm -T -e NODE_ENV=production backend node src/infrastructure/scripts/migrate.js
+            timeout 10m docker compose run --rm -T -e NODE_ENV=production --entrypoint node backend src/infrastructure/scripts/migrate.js
 
             echo "Starting services..."
-            timeout 5m docker compose up -d
+            timeout 5m ./scripts/deploy.sh up -d
 
             echo "Waiting for services to stabilize..."
             sleep 15
@@ -291,7 +290,7 @@ jobs:
               echo "Backend health check timed out — rolling back..."
               docker tag abc-license-backend:rollback abc-license-backend:latest
               docker tag abc-license-frontend:rollback abc-license-frontend:latest
-              docker compose up -d
+              ./scripts/deploy.sh up -d
               echo "Rollback triggered. Exiting with error."
               exit 1
             fi
@@ -342,5 +341,5 @@ jobs:
           echo "  cd /root/abc-dashboard"
           echo "  docker tag abc-license-backend:rollback abc-license-backend:latest"
           echo "  docker tag abc-license-frontend:rollback abc-license-frontend:latest"
-          echo "  docker compose up -d"
+          echo "  ./scripts/deploy.sh up -d"
           exit 1

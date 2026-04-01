@@ -93,6 +93,35 @@ export interface LicenseGetResponse {
   data: { license: InternalLicenseRow } | InternalLicenseRow;
 }
 
+/** GET /licenses/:id/audit-events — event shape from backend entity toJSON() */
+export interface LicenseAuditEventDto {
+  id: string;
+  type: string;
+  actorId?: string | null;
+  entityId: string;
+  entityType: string;
+  metadata: Record<string, unknown>;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+  description?: string;
+  category?: string;
+  action?: string;
+}
+
+export interface LicenseAuditEventsData {
+  events: LicenseAuditEventDto[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface LicenseAuditEventsResponse {
+  success: boolean;
+  message?: string;
+  data: LicenseAuditEventsData;
+}
+
 // =============================================================================
 // Sync status
 // =============================================================================

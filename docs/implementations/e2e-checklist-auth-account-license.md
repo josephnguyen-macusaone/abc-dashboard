@@ -23,10 +23,10 @@ Run for Agent, Tech, Accountant:
 
 - [ ] Signup success with valid payload.
 - [ ] Signup rejects invalid/missing required fields.
-- [ ] Login success with valid credentials.
-- [ ] Login fails with wrong password.
-- [ ] Protected routes are blocked when unauthenticated.
-- [ ] Logout invalidates session.
+- [x] Login success with valid credentials. (API verified for Agent/Tech/Accountant on 2026-04-01)
+- [x] Login fails with wrong password. (API verified)
+- [x] Protected routes are blocked when unauthenticated. (API verified: `/external-licenses` returns 401)
+- [x] Logout invalidates session.
 - [ ] Password reset flow works (request + reset + relogin).
 
 ## 2) Account/profile flow
@@ -41,8 +41,8 @@ Run for Agent, Tech, Accountant:
 
 ### Agent
 
-- [ ] Can view only assigned licenses (read-only behavior).
-- [ ] Cannot create/update/delete license.
+- [x] Can view only assigned licenses (read-only behavior). (Server-side scoping + ownership checks verified in controller paths)
+- [x] Cannot create/update/delete license. (API verified for restricted operations returning 403)
 - [ ] Can view SMS balance.
 - [ ] Can view SMS payment history.
 - [ ] Cannot access Tech/Accountant-only actions.
@@ -50,7 +50,7 @@ Run for Agent, Tech, Accountant:
 ### Tech
 
 - [ ] Can submit/add license where allowed by API flow.
-- [ ] Can reset license ID.
+- [x] Can reset license ID. (API verified; invalid appid now returns 404 instead of 500)
 - [ ] Can adjust activate date.
 - [ ] Can adjust coming-expired date.
 - [ ] Cannot perform Accountant-only restricted actions.
@@ -61,7 +61,7 @@ Run for Agent, Tech, Accountant:
 - [ ] Can adjust coming-expired.
 - [ ] Can deactivate/activate.
 - [ ] Can add license.
-- [ ] Can add SMS balance.
+- [x] Can add SMS balance. (API verified; invalid appid now returns 404 instead of 500)
 - [ ] Can adjust package.
 
 ## 4) License + SMS behavior (API-first roles)

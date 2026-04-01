@@ -11,22 +11,10 @@
  * - No dynamic content injection
  */
 export function ThemeScript({ nonce }: { nonce?: string }) {
-  // Minimal inline script - just calls a secure function
-  const inlineScript = `
+  // Execute before hydration to avoid theme flash and script-tag hydration warnings.
+  const initThemeScript = `
     (function() {
       try {
-        // Call secure theme initialization
-        window.__initTheme();
-      } catch (e) {
-        // Secure fallback
-        document.documentElement.setAttribute('data-theme', 'light');
-      }
-    })();
-  `;
-
-  // Secure theme initialization function (defined separately)
-  const initThemeScript = `
-    window.__initTheme = function() {
       // Valid theme values - hardcoded for security
       const VALID_THEMES = ['light', 'dark', 'system'];
       const LIGHT_THEME = 'light';
@@ -97,24 +85,28 @@ export function ThemeScript({ nonce }: { nonce?: string }) {
         resolvedTheme: resolvedTheme,
         source: getCookie('theme') ? 'cookie' : 'localStorage'
       };
-    };
+      } catch (e) {
+        const root = document.documentElement;
+        root.setAttribute('data-theme', 'light');
+        root.classList.remove('dark');
+        root.classList.add('light');
+        window.__THEME_DATA__ = {
+          theme: 'light',
+          resolvedTheme: 'light',
+          source: 'fallback'
+        };
+      }
+    })();
   `;
 
   return (
-    <>
-      <script
-        nonce={nonce}
-        dangerouslySetInnerHTML={{
-          __html: initThemeScript,
-        }}
-      />
-      <script
-        nonce={nonce}
-        dangerouslySetInnerHTML={{
-          __html: inlineScript,
-        }}
-      />
-    </>
+    <script
+      id="theme-init"
+      nonce={nonce}
+      dangerouslySetInnerHTML={{
+        __html: initThemeScript,
+      }}
+    />
   );
 }
 

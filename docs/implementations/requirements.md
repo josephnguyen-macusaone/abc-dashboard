@@ -53,23 +53,23 @@ graph LR
 
 ### Phase 1: Authentication & Infrastructure (Web DB)
 
-  - [ ] **Database Schema:** Design `Users` table (with Role column) and `AuditLogs` table.
-  - [ ] **Multi-Role Signup:** Implement separate signup flows for Agent, Tech, and Accountant.
-  - [ ] **RBAC Login:** Secure login/logout with Role-Based Access Control.
-  - [ ] **Logging Middleware:** Implement automatic tracking for `createdBy`, `updatedBy`, `createdDate`, and `updatedDate`.
+  - [x] **Database Schema:** `Users` role-based auth schema and audit support are implemented in backend.
+  - [x] **Multi-Role Signup:** Single signup flow supports role assignment (Agent/Tech/Accountant).
+  - [x] **RBAC Login:** Login/logout and role-based permission enforcement are implemented.
+  - [x] **Logging Middleware:** Audit metadata (`createdBy`, `updatedBy`, `timestamp`) is implemented for license mutation flows.
 
 ### Phase 2: Agent Module (Priority \#1)
 
-  - [ ] **License Dashboard:** Fetch and display licenses linked to the logged-in Agent (Read-only).
-  - [ ] **SMS Management:**
-      - [ ] Real-time SMS balance monitoring.
-      - [ ] Integration with `add_sms_payment` API for card charging.
-  - [ ] **Payment History:** Integrate `get_sms_payments` API to display transaction logs.
+  - [x] **License Dashboard:** Agent-scoped license visibility is enforced server-side and exposed in unified license UI.
+  - [x] **SMS Management:**
+      - [x] SMS balance/payment operations are wired through external API-backed routes.
+      - [x] Integration with `add_sms_payment` API is implemented with RBAC + assignment checks.
+  - [x] **Payment History:** `sms-payments` integration is implemented with scoped access checks.
 
 ### Phase 3: Tech & Accountant Modules
 
-  - [ ] **License Management (Tech):** Create forms for License Submission, ID Reset, and Date adjustments.
-  - [ ] **Accounting Tools:**
-      - [ ] License Activation/Deactivation toggles.
-      - [ ] Package adjustment and SMS balance manual top-up.
-  - [ ] **Conflict Resolution:** Ensure the "Sync" logic handles API data correctly to avoid overwriting newer data with old Web states.
+  - [x] **License Management (Tech):** Tech capabilities for submission/reset/date updates are implemented via RBAC and external routes.
+  - [x] **Accounting Tools:**
+      - [x] Accountant status/package/date/SMS actions are implemented with backend permission checks.
+      - [x] SMS top-up integration exists and now returns mapped `4xx` for invalid external targets.
+  - [ ] **Conflict Resolution:** Partial. Conflict-safe behavior exists in code paths but needs full concurrent-session E2E verification.

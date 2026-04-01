@@ -942,9 +942,58 @@ export class LicenseRepository extends ILicenseRepository {
     return updatedLicenses;
   }
 
-  async bulkDelete(ids) {
-    const result = await this.db(this.licensesTable).whereIn('id', ids).del();
-    return result;
+  /**
+   * Delete many licenses in one transaction, writing license.deleted audit rows first (Web DB audit trail).
+   * @param {string[]} ids
+   * @param {Object} [auditContext]
+   * @param {string} [auditContext.userId]
+   * @param {string} [auditContext.userRole]
+   * @param {string} [auditContext.ipAddress]
+   * @param {string} [auditContext.userAgent]
+   * @returns {Promise<number>} Deleted row count
+   */
+  async bulkDelete(ids, auditContext = {}) {
+    const uniqueIds = [...new Set((ids || []).map(String).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return 0;
+    }
+
+    const { userId, userRole, ipAddress, userAgent } = auditContext;
+    const actorId =
+      userId && typeof userId === 'string' && userId.trim() !== '' ? userId.trim() : null;
+
+    return this.db.transaction(async (trx) => {
+      const rows = await trx(this.licensesTable).whereIn('id', uniqueIds).select('*');
+      const now = new Date();
+      const ts = now.toISOString();
+
+      for (const row of rows) {
+        const license = this._toLicenseEntity(row);
+        await trx(this.auditEventsTable).insert({
+          id: trx.raw('gen_random_uuid()'),
+          type: 'license.deleted',
+          actor_id: actorId,
+          entity_id: license.id,
+          entity_type: 'license',
+          metadata: JSON.stringify({
+            action: 'delete',
+            source: 'bulk',
+            actorRole: userRole || null,
+            updatedBy: actorId,
+            timestamp: ts,
+            license_key: license.key,
+            product: license.product,
+            plan: license.plan,
+            status: license.status,
+          }),
+          ip_address: ipAddress || null,
+          user_agent: userAgent || null,
+          created_at: now,
+        });
+      }
+
+      return trx(this.licensesTable).whereIn('id', uniqueIds).del();
+    });
   }
 
   async findExpiredLicenses() {

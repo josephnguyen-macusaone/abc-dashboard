@@ -7,6 +7,7 @@ import { LicensesDataGridSkeleton } from '@/presentation/components/organisms';
 import { cn } from '@/shared/helpers';
 import type { LicenseRecord } from '@/types';
 import type { User } from '@/domain/entities/user-entity';
+import type { LicenseCapabilities } from '@/shared/constants/license-capabilities';
 
 // Dynamically import heavy data grid component for better code splitting
 const LicensesDataGrid = dynamic(
@@ -68,6 +69,8 @@ interface LicenseManagementProps {
   className?: string;
   /** Disable mutation actions and editing affordances */
   isReadOnly?: boolean;
+  /** Per-field grid restrictions (Tech vs Accountant, etc.) */
+  licenseCapabilities?: LicenseCapabilities;
 }
 
 export function LicenseManagement({
@@ -85,6 +88,7 @@ export function LicenseManagement({
   dataSourceKey,
   className,
   isReadOnly = false,
+  licenseCapabilities,
 }: LicenseManagementProps) {
   // Reload licenses handler (called after operations)
   const handleLoadLicenses = useCallback(async () => {
@@ -171,6 +175,7 @@ export function LicenseManagement({
         data={licenses}
         isLoading={isLoading}
         readOnly={isReadOnly}
+        licenseCapabilities={licenseCapabilities}
         onSave={handleSave}
         onAddRow={handleAddRow}
         onDeleteRows={handleDeleteRows}
