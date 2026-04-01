@@ -17,6 +17,17 @@ import {
   SecurityViolationException,
   RateLimitExceededException,
   DataIntegrityViolationException,
+  EmailAlreadyExistsException,
+  AccountLockedException,
+  TokenExpiredException,
+  InvalidTokenException,
+  InvalidRefreshTokenException,
+  InvalidEmailFormatException,
+  PasswordTooWeakException,
+  RequiredFieldMissingException,
+  InvalidFieldValueException,
+  ResourceAlreadyExistsException,
+  BusinessRuleViolationException,
 } from '../../domain/exceptions/domain.exception.js';
 
 const DOMAIN_EXCEPTION_HANDLERS = [
@@ -31,6 +42,17 @@ const DOMAIN_EXCEPTION_HANDLERS = [
   [SecurityViolationException, '_handleSecurityViolationError'],
   [RateLimitExceededException, '_handleRateLimitError'],
   [DataIntegrityViolationException, '_handleDataIntegrityError'],
+  [EmailAlreadyExistsException, '_handleEmailAlreadyExistsError'],
+  [AccountLockedException, '_handleAccountLockedError'],
+  [TokenExpiredException, '_handleTokenExpiredError'],
+  [InvalidTokenException, '_handleInvalidTokenError'],
+  [InvalidRefreshTokenException, '_handleInvalidTokenError'],
+  [InvalidEmailFormatException, '_handleValidationError'],
+  [PasswordTooWeakException, '_handleValidationError'],
+  [RequiredFieldMissingException, '_handleValidationError'],
+  [InvalidFieldValueException, '_handleValidationError'],
+  [ResourceAlreadyExistsException, '_handleResourceAlreadyExistsError'],
+  [BusinessRuleViolationException, '_handleBusinessRuleViolationError'],
 ];
 
 const DOMAIN_EXCEPTION_CLASSES = new Set([
@@ -45,6 +67,17 @@ const DOMAIN_EXCEPTION_CLASSES = new Set([
   SecurityViolationException,
   RateLimitExceededException,
   DataIntegrityViolationException,
+  EmailAlreadyExistsException,
+  AccountLockedException,
+  TokenExpiredException,
+  InvalidTokenException,
+  InvalidRefreshTokenException,
+  InvalidEmailFormatException,
+  PasswordTooWeakException,
+  RequiredFieldMissingException,
+  InvalidFieldValueException,
+  ResourceAlreadyExistsException,
+  BusinessRuleViolationException,
 ]);
 
 export class BaseController {
@@ -197,6 +230,32 @@ export class BaseController {
 
   _handleDataIntegrityError(error, res) {
     return sendErrorResponse(res, 'DATA_INTEGRITY_VIOLATION');
+  }
+
+  _handleEmailAlreadyExistsError(_error, res) {
+    return sendErrorResponse(res, 'EMAIL_ALREADY_EXISTS');
+  }
+
+  _handleAccountLockedError(error, res) {
+    const retryAfter = error.additionalData?.retryAfter || 60;
+    res.set('Retry-After', retryAfter);
+    return sendErrorResponse(res, 'ACCOUNT_LOCKED', {}, { retryAfter });
+  }
+
+  _handleTokenExpiredError(error, res) {
+    return sendErrorResponse(res, 'TOKEN_EXPIRED', {}, { customMessage: error.message });
+  }
+
+  _handleInvalidTokenError(error, res) {
+    return sendErrorResponse(res, 'INVALID_TOKEN', {}, { customMessage: error.message });
+  }
+
+  _handleResourceAlreadyExistsError(_error, res) {
+    return sendErrorResponse(res, 'RESOURCE_ALREADY_EXISTS');
+  }
+
+  _handleBusinessRuleViolationError(error, res) {
+    return sendErrorResponse(res, 'BUSINESS_RULE_VIOLATION', {}, { customMessage: error.message });
   }
 
   _handleDatabaseError(error, res) {
