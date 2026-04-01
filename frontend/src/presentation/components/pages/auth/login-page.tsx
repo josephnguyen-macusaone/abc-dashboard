@@ -1,15 +1,21 @@
-'use client';
+'use client'; 
 
+import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/presentation/components/organisms/auth/login-form';
 import { AuthTemplate } from '@/presentation/components/templates';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 
 function LoginPage() {
+  const router = useRouter();
+
   const handleLoginSuccess = () => {
-    // Use full-page navigation instead of router.push() to avoid a Next.js App Router
-    // RSC conflict: after login the middleware redirects the /login page RSC (307) while
-    // router.push concurrently navigates to /dashboard, causing one RSC fetch to abort
-    // with a NetworkError. A hard navigation sidesteps both conflicts cleanly.
-    window.location.replace('/dashboard');
+    const currentUser = useAuthStore.getState().user;
+
+    if (!currentUser) {
+      return router.push('/dashboard');
+    }
+
+    return router.push('/dashboard');
   };
 
   return (
