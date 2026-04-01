@@ -45,7 +45,7 @@ export function VerifyEmailPage() {
                 <Mail className="h-10 w-10 text-orange-500" />
               </div>
             </div>
-            <Typography variant="h3" className="font-semibold">
+            <Typography variant="title-l" className="font-semibold">
               Check your email
             </Typography>
             <Typography variant="body-m" color="muted">
@@ -82,7 +82,7 @@ export function VerifyEmailPage() {
                 <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
               </div>
             </div>
-            <Typography variant="h3" className="font-semibold">
+            <Typography variant="title-l" className="font-semibold">
               Verifying your email…
             </Typography>
             <Typography variant="body-m" color="muted">
@@ -98,7 +98,7 @@ export function VerifyEmailPage() {
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
             </div>
-            <Typography variant="h3" className="font-semibold">
+            <Typography variant="title-l" className="font-semibold">
               Email verified!
             </Typography>
             <Typography variant="body-m" color="muted">
@@ -121,7 +121,7 @@ export function VerifyEmailPage() {
                 <XCircle className="h-10 w-10 text-destructive" />
               </div>
             </div>
-            <Typography variant="h3" className="font-semibold">
+            <Typography variant="title-l" className="font-semibold">
               Verification failed
             </Typography>
             <Typography variant="body-m" color="muted">
