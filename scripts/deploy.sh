@@ -111,7 +111,7 @@ cmd_load() {
     exit 0
   fi
   export_postgres_plain
-  exec docker compose up -d
+  exec docker compose up -d --force-recreate
 }
 
 cmd_build_save() {
