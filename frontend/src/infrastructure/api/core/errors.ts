@@ -66,12 +66,9 @@ export function handleApiError(error: unknown): ApiExceptionDto {
     ? (error as { message: string }).message
     : 'An unexpected error occurred';
 
-  return new ApiExceptionDto(
-    errorMessage,
-    'UNKNOWN_ERROR',
-    0,
-    error
-  );
+  // Do not use status 0 here: getLoginErrorMessage treats status 0 like a network failure.
+  // Plain Error / unexpected throws are not "can't reach server".
+  return new ApiExceptionDto(errorMessage, 'UNKNOWN_ERROR', undefined, error);
 }
 
 /**
@@ -98,8 +95,12 @@ export const LOGIN_SERVER_UNREACHABLE_MESSAGE =
  */
 export function getLoginErrorMessage(error: unknown): string {
   const apiException = handleApiError(error);
-  if (apiException.status === 404 || apiException.code === 'NETWORK_ERROR' || apiException.status === 0) {
+  // Only real network-layer failures: do not map UNKNOWN_ERROR (previously status 0) here.
+  if (apiException.code === 'NETWORK_ERROR') {
     return LOGIN_SERVER_UNREACHABLE_MESSAGE;
+  }
+  if (apiException.status === 404) {
+    return 'The API returned 404 (not found). If you use a reverse proxy, ensure requests to /api/v1 are forwarded to the backend.';
   }
   return apiException.message;
 }

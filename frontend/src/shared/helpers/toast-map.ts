@@ -7,7 +7,7 @@ type ToastCategory = 'auth' | 'network' | 'validation' | 'generic';
 
 function categorize(status?: number, code?: string): ToastCategory {
   if (status === 401 || status === 403 || code?.toString().toLowerCase().includes('auth')) return 'auth';
-  if (status === 0) return 'network';
+  if (status === 0 || code === 'NETWORK_ERROR') return 'network';
   if (status === 400 || code?.toString().toLowerCase().includes('validation')) return 'validation';
   return 'generic';
 }

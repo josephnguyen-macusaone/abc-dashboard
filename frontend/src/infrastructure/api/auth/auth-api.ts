@@ -23,17 +23,14 @@ export class AuthApiService {
    * Signup user — returns a message; no tokens are issued until email is verified.
    */
   static async signup(payload: SignupRequestDto): Promise<{ message: string }> {
-    try {
-      const response = await httpClient.post<ApiResponse<{ message: string }>>('/auth/signup', payload);
-
-      if (!response.data) {
-        throw new Error('Signup response missing data');
-      }
-
-      return response.data as unknown as { message: string };
-    } catch (error) {
-      throw error;
+    const body = await httpClient.post<ApiResponse<{ message: string }>>('/auth/signup', payload);
+    const fromData = body.data?.message;
+    const fromEnvelope = typeof body.message === 'string' ? body.message : undefined;
+    const message = fromData || fromEnvelope;
+    if (!message) {
+      throw new Error('Signup response missing message');
     }
+    return { message };
   }
 
   /**
@@ -108,17 +105,14 @@ export class AuthApiService {
    * Verify email with JWT token
    */
   static async verifyEmail(token: string): Promise<{ user: UserDto; message: string }> {
-    try {
-      const response = await httpClient.post<ApiResponse<{ user: UserDto; message: string }>>('/auth/verify-email', { token });
-
-      if (!response.data) {
-        throw new Error('Email verification response missing data');
-      }
-
-      return response.data;
-    } catch (error) {
-      throw error;
+    const body = await httpClient.post<ApiResponse<{ user: UserDto; message: string }>>('/auth/verify-email', {
+      token,
+    });
+    const data = body.data;
+    if (!data?.user || typeof data.message !== 'string') {
+      throw new Error('Email verification response was incomplete');
     }
+    return data;
   }
 
 
