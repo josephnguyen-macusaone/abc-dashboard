@@ -85,7 +85,8 @@ export class SignupUseCase {
     );
 
     return {
-      message: 'Account created. Please check your email and click the verification link to activate your account.',
+      message:
+        'Account created. Please check your email and click the verification link to activate your account.',
     };
   }
 

@@ -25,7 +25,9 @@ export class VerifyEmailUseCase {
       payload = this.tokenService.verifyEmailVerificationToken(token);
     } catch (error) {
       if (error.message.includes('expired')) {
-        throw new TokenExpiredException('Verification link has expired. Please sign up again or request a new link.');
+        throw new TokenExpiredException(
+          'Verification link has expired. Please sign up again or request a new link.'
+        );
       }
       throw new InvalidTokenException('Invalid verification link.');
     }
