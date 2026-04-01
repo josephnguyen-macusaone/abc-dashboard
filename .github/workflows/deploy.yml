@@ -251,7 +251,7 @@ jobs:
             timeout 10m docker compose run --rm -T -e NODE_ENV=production --entrypoint node backend src/infrastructure/scripts/migrate.js
 
             echo "Starting services..."
-            timeout 5m ./scripts/deploy.sh up -d
+            timeout 5m ./scripts/deploy.sh up -d --force-recreate
 
             echo "Waiting for services to stabilize..."
             sleep 15
