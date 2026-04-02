@@ -39,6 +39,12 @@ interface AdminDashboardProps {
   tableTitle?: string;
   tableDescription?: string;
   metricsAudience?: LicenseMetricsAudience;
+  /**
+   * When true, skip setting a default date range on first mount.
+   * Use for agent/staff views where all assigned licenses should be visible
+   * regardless of their activation month.
+   */
+  skipDefaultDateRange?: boolean;
 }
 
 export function AdminDashboard({
@@ -48,6 +54,7 @@ export function AdminDashboard({
   tableTitle,
   tableDescription,
   metricsAudience = 'admin',
+  skipDefaultDateRange = false,
 }: AdminDashboardProps) {
   // Use Zustand store for license data (single source of truth for list + metrics date filter)
   const licensesFromStore = useLicenseStore(selectLicenses);
@@ -223,8 +230,13 @@ export function AdminDashboard({
       return;
     }
 
-    // First mount only: no date set yet, set default to current month (first and last day)
+    // First mount only: no date set yet.
+    // For agent/staff views, skip the month filter so all assigned licenses are visible.
     hasInitializedDateRef.current = true;
+    if (skipDefaultDateRange) {
+      runParallelFetch({});
+      return;
+    }
     const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
