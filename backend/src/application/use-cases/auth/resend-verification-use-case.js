@@ -41,7 +41,10 @@ export class ResendVerificationUseCase {
     }
 
     try {
-      const verificationToken = this.tokenService.generateEmailVerificationToken(user.id, user.email);
+      const verificationToken = this.tokenService.generateEmailVerificationToken(
+        user.id,
+        user.email
+      );
       await this.emailService.sendEmailVerification(
         user.email,
         user.displayName || user.email.split('@')[0],

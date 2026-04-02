@@ -3,6 +3,25 @@ import { IUserRepository } from '../../domain/repositories/interfaces/i-user-rep
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
 import logger from '../../shared/utils/logger.js';
 
+/** camelCase user field → DB column; optional transform when writing */
+const USER_DB_FIELD_MAPPINGS = [
+  ['username', 'username', (v) => v.toLowerCase()],
+  ['hashedPassword', 'hashed_password'],
+  ['email', 'email', (v) => v.toLowerCase()],
+  ['displayName', 'display_name'],
+  ['role', 'role'],
+  ['avatarUrl', 'avatar_url'],
+  ['phone', 'phone'],
+  ['isActive', 'is_active'],
+  ['emailVerified', 'email_verified'],
+  ['isFirstLogin', 'is_first_login'],
+  ['requiresPasswordChange', 'requires_password_change'],
+  ['langKey', 'lang_key'],
+  ['managedBy', 'managed_by'],
+  ['createdBy', 'created_by'],
+  ['lastModifiedBy', 'last_modified_by'],
+];
+
 /**
  * User Repository Implementation
  * Implements the IUserRepository interface using PostgreSQL with Knex
@@ -394,53 +413,13 @@ export class UserRepository extends IUserRepository {
    */
   _toDbFormat(data) {
     const dbData = {};
-
-    if (data.username !== undefined) {
-      dbData.username = data.username.toLowerCase();
+    for (const entry of USER_DB_FIELD_MAPPINGS) {
+      const [camelKey, snakeKey, transform] = entry;
+      if (data[camelKey] !== undefined) {
+        const raw = data[camelKey];
+        dbData[snakeKey] = transform ? transform(raw) : raw;
+      }
     }
-    if (data.hashedPassword !== undefined) {
-      dbData.hashed_password = data.hashedPassword;
-    }
-    if (data.email !== undefined) {
-      dbData.email = data.email.toLowerCase();
-    }
-    if (data.displayName !== undefined) {
-      dbData.display_name = data.displayName;
-    }
-    if (data.role !== undefined) {
-      dbData.role = data.role;
-    }
-    if (data.avatarUrl !== undefined) {
-      dbData.avatar_url = data.avatarUrl;
-    }
-    if (data.phone !== undefined) {
-      dbData.phone = data.phone;
-    }
-    if (data.isActive !== undefined) {
-      dbData.is_active = data.isActive;
-    }
-    if (data.emailVerified !== undefined) {
-      dbData.email_verified = data.emailVerified;
-    }
-    if (data.isFirstLogin !== undefined) {
-      dbData.is_first_login = data.isFirstLogin;
-    }
-    if (data.requiresPasswordChange !== undefined) {
-      dbData.requires_password_change = data.requiresPasswordChange;
-    }
-    if (data.langKey !== undefined) {
-      dbData.lang_key = data.langKey;
-    }
-    if (data.managedBy !== undefined) {
-      dbData.managed_by = data.managedBy;
-    }
-    if (data.createdBy !== undefined) {
-      dbData.created_by = data.createdBy;
-    }
-    if (data.lastModifiedBy !== undefined) {
-      dbData.last_modified_by = data.lastModifiedBy;
-    }
-
     return dbData;
   }
 

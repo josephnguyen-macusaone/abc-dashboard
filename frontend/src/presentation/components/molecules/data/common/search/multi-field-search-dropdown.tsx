@@ -138,7 +138,7 @@ export function MultiFieldSearchDropdown({
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 rounded-r-none border-r px-3 hover:bg-muted"
+            className="h-8 rounded-r-none border-r px-3 hover:bg-muted"
           >
             <span className="text-sm font-medium">
               {isAllFields ? 'All Fields' : currentField?.label}
@@ -178,7 +178,7 @@ export function MultiFieldSearchDropdown({
           value={localValue}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleValueChange(e.target.value)}
           placeholder={currentPlaceholder}
-          className="h-9 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 pl-3 pr-20"
+          className="h-8 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 pl-3 pr-20"
         />
 
         {/* Search Icon or Loading Indicator */}

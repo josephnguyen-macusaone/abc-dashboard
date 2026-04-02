@@ -353,6 +353,8 @@ export function LicensesDataGrid({
       GRID_VERTICAL_PADDING_PX;
     const minPx = 200;
     return Math.min(Math.max(contentPx, minPx), viewportCapPx);
+    // TanStack `table` ref is stable; pagination / page row count are not inferred as deps — keep primitives below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- height must update when pageIndex, pageSize, or data changes
   }, [
     heightFromProps,
     gridState.table,

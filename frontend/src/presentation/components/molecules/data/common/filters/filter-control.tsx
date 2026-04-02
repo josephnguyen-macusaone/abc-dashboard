@@ -104,7 +104,7 @@ function TextFilter({
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={filter.description}
-        className="h-9"
+        className="h-8"
       />
     </div>
   );
@@ -130,7 +130,7 @@ function SelectFilter({
         </Typography>
       )}
       <Select value={value || ''} onValueChange={onChange}>
-        <SelectTrigger id={filter.id} className="h-9">
+        <SelectTrigger id={filter.id} className="h-8">
           <SelectValue placeholder="Select an option" />
         </SelectTrigger>
         <SelectContent>
@@ -242,7 +242,7 @@ function DateRangeFilter({
                 id={`${filter.id}-from`}
                 variant="outline"
                 className={cn(
-                  'w-full justify-start text-left font-normal h-9',
+                  'w-full justify-start text-left font-normal h-8',
                   !dateRange.from && 'text-muted-foreground'
                 )}
               >
@@ -272,7 +272,7 @@ function DateRangeFilter({
                 id={`${filter.id}-to`}
                 variant="outline"
                 className={cn(
-                  'w-full justify-start text-left font-normal h-9',
+                  'w-full justify-start text-left font-normal h-8',
                   !dateRange.to && 'text-muted-foreground'
                 )}
               >
@@ -350,7 +350,7 @@ function NumberRangeFilter({
             value={numberRange.min ?? ''}
             onChange={handleMinChange}
             placeholder="Min"
-            className="h-9"
+            className="h-8"
           />
         </div>
 
@@ -364,7 +364,7 @@ function NumberRangeFilter({
             value={numberRange.max ?? ''}
             onChange={handleMaxChange}
             placeholder="Max"
-            className="h-9"
+            className="h-8"
           />
         </div>
       </div>
