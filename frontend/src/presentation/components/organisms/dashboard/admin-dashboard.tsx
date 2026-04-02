@@ -45,6 +45,11 @@ interface AdminDashboardProps {
    * regardless of their activation month.
    */
   skipDefaultDateRange?: boolean;
+  /**
+   * When true, hide the date range picker from the license table toolbar.
+   * Use for agent/staff views where filtering by activation date makes no sense.
+   */
+  hideDateRange?: boolean;
 }
 
 export function AdminDashboard({
@@ -55,6 +60,7 @@ export function AdminDashboard({
   tableDescription,
   metricsAudience = 'admin',
   skipDefaultDateRange = false,
+  hideDateRange = false,
 }: AdminDashboardProps) {
   // Use Zustand store for license data (single source of truth for list + metrics date filter)
   const licensesFromStore = useLicenseStore(selectLicenses);
@@ -328,8 +334,9 @@ export function AdminDashboard({
           pageCount={pageCount}
           totalRows={totalCount}
           onQueryChange={licensesProp ? undefined : handleQueryChange}
-          dateRange={dateRange}
-          onDateRangeChange={range => handleDateRangeChange(range ? { range } : null)}
+          dateRange={hideDateRange ? undefined : dateRange}
+          onDateRangeChange={hideDateRange ? undefined : (range => handleDateRangeChange(range ? { range } : null))}
+          hideDateRange={hideDateRange}
         />
       </Suspense>
     </div>

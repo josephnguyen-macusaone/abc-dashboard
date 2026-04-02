@@ -41,6 +41,8 @@ interface LicensesDataTableProps {
   dateRange?: { from?: Date; to?: Date } | null;
   /** Callback when date range changes */
   onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
+  /** When true, hides the date range picker entirely (e.g. agent view where date is irrelevant) */
+  hideDateRange?: boolean;
 }
 
 export function LicensesDataTable({
@@ -51,6 +53,7 @@ export function LicensesDataTable({
   onQueryChange,
   dateRange,
   onDateRangeChange,
+  hideDateRange = false,
 }: LicensesDataTableProps) {
   const [auditTarget, setAuditTarget] = useState<LicenseRecord | null>(null);
 
@@ -184,11 +187,11 @@ export function LicensesDataTable({
     // Check table column filters
     const hasTableFilters = tableState.columnFilters && tableState.columnFilters.length > 0;
 
-    // Check date range filter
-    const hasDateRange = !!(dateRange?.from || dateRange?.to);
+    // Check date range filter (only relevant when the picker is visible)
+    const hasDateRange = !hideDateRange && !!(dateRange?.from || dateRange?.to);
 
     return hasSearchFilters || hasManualFilters || hasTableFilters || hasDateRange;
-  }, [appliedSearchValue, manualFilterValues, table, dateRange]);
+  }, [appliedSearchValue, manualFilterValues, table, dateRange, hideDateRange]);
 
   // Reset button should show if there's any filter activity or when no results with filters
   const shouldShowResetButton = hasActiveFilters || (hasPerformedFiltering && data.length === 0);
@@ -452,7 +455,7 @@ export function LicensesDataTable({
       <DataTableToolbar
         table={table}
         dateRangeFilter={
-          onDateRangeChange ? (
+          !hideDateRange && onDateRangeChange ? (
             <DataTableDateRangeFilter
               value={dateRange ?? null}
               onDateRangeChange={onDateRangeChange}
