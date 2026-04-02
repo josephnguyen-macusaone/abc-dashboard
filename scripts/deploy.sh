@@ -147,7 +147,7 @@ cmd_upgrade_from_dist() {
     src/infrastructure/scripts/migrate.js
 
   echo "[deploy upgrade-dist] Starting stack..."
-  "$REPO_ROOT/scripts/deploy.sh" up -d --force-recreate
+  bash "$REPO_ROOT/scripts/deploy.sh" up -d --force-recreate
 }
 
 cmd_build_save() {

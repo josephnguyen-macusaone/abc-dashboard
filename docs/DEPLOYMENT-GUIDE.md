@@ -97,7 +97,7 @@ git push origin main
 gh run watch
 ```
 
-**Automatic steps:** Build images → save to `.tar.gz` → transfer to server → ensure **`LICENSE_SYNC_ENABLED=false`** in **`.env`** → **`./scripts/deploy.sh upgrade-dist --rm-dist`** (load both archives from `dist/`, remove them to save disk, run **pending** migrations via `docker compose run --entrypoint node … migrate.js`, then **`./scripts/deploy.sh up -d --force-recreate`**) → health checks.
+**Automatic steps:** Build images → save to `.tar.gz` → **SCP `scripts/deploy.sh`** to `/root/abc-dashboard/scripts/` (so the server always has the script, even if the droplet never had a full `git` checkout) → transfer image tarballs → on server: ensure **`LICENSE_SYNC_ENABLED=false`** in **`.env`** → **`bash ./scripts/deploy.sh upgrade-dist --rm-dist`** (load both archives from `dist/`, remove them to save disk, run **pending** migrations via `docker compose run --entrypoint node … migrate.js`, then **`./scripts/deploy.sh up -d --force-recreate`**) → health checks.
 
 **Commands:** **`upgrade-dist`** is the single server path for “new images in `dist/` → DB current → stack up” (same sequence **`push`** runs after SCP). **`load`** alone only loads and optionally runs **`compose up`** immediately—**no migrate**—so prefer **`upgrade-dist`** for production. **`load --no-start`** is still useful if you need to load images without starting or to split steps manually.
 
