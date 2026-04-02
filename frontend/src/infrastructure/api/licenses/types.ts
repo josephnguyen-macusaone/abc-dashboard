@@ -452,6 +452,13 @@ export interface MetricsMetadata {
   appliedFilters: boolean;
 }
 
+export interface AgentSmsStats {
+  smsPurchased: number;
+  smsSent: number;
+  smsBalance: number;
+  agentsCost: number;
+}
+
 export interface DashboardMetrics {
   totalActiveLicenses: MetricWithTrend;
   newLicensesThisMonth: MetricWithTrend;
@@ -461,6 +468,7 @@ export interface DashboardMetrics {
   agentHeavyLicenses: SimpleMetric;
   highRiskLicenses: MetricWithTrend;
   estimatedNextMonthIncome: MetricWithTrend;
+  agentSmsStats?: AgentSmsStats;
   metadata: MetricsMetadata;
 }
 

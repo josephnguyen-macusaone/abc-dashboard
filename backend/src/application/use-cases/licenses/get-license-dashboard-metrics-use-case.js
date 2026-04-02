@@ -144,6 +144,12 @@ export class GetLicenseDashboardMetricsUseCase {
         value: estimatedNextPeriod,
         trend: { value: 10, direction: 'up', label: 'projected' },
       },
+      agentSmsStats: {
+        smsPurchased: target.smsPurchased,
+        smsSent: target.smsSent,
+        smsBalance: target.smsBalance,
+        agentsCost: target.agentsCost,
+      },
       metadata: {
         currentPeriod: {
           start: targetPeriodStart.toISOString(),

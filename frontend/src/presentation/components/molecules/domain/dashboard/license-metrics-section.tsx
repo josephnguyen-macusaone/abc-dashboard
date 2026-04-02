@@ -15,6 +15,7 @@ import {
   type LicenseDashboardMetric,
   type LicenseMetricsAudience,
 } from '@/application/use-cases';
+import type { DashboardMetrics } from '@/infrastructure/api/licenses/types';
 import type { LicenseMetricsFilters } from '@/application/use-cases/license/get-license-stats-usecase';
 import { container } from '@/shared/di/container';
 import { logger } from '@/shared/helpers';
@@ -95,8 +96,10 @@ export function LicenseMetricsSection({
   // Use store metrics when available (from parallel dashboard fetch) to avoid duplicate API call
   // Must match all filter fields that affect metrics (date, search, status, plan, term)
   useEffect(() => {
+    // Agents read agentSmsStats from storeMetrics — still need storeMetricsLoading to resolve
+    // so we track the loading state but skip the standalone metrics API fetch.
     if (isAgent) {
-      setIsLoadingMetrics(false);
+      setIsLoadingMetrics(storeMetricsLoading);
       return;
     }
 
@@ -184,12 +187,39 @@ export function LicenseMetricsSection({
   // Transform business metrics to UI components
   const stats = useMemo(() => {
     if (isAgent) {
-      return transformMetricsToStatsCards(buildAgentPortfolioMetricsFromLicenses(licenses));
+      // Build base metrics from client-side license list (provides Plan Mix)
+      const baseMetrics = buildAgentPortfolioMetricsFromLicenses(licenses);
+      // Override the 4 SMS/cost cards with date-scoped API aggregate when available
+      const apiStats = (storeMetrics as DashboardMetrics | null)?.agentSmsStats;
+      if (apiStats) {
+        const numberFormatter = new Intl.NumberFormat('en-US');
+        const currencyFormatter = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
+        const overrideIds = new Set([
+          'agent-sms-purchased',
+          'agent-sms-sent',
+          'agent-sms-balance',
+          'agent-agents-cost',
+        ]);
+        const apiOverrides: LicenseDashboardMetric[] = [
+          { id: 'agent-sms-purchased', label: 'SMS Purchased', value: numberFormatter.format(apiStats.smsPurchased) },
+          { id: 'agent-sms-sent',      label: 'SMS Sent',      value: numberFormatter.format(apiStats.smsSent) },
+          { id: 'agent-sms-balance',   label: 'SMS Balance',   value: numberFormatter.format(apiStats.smsBalance) },
+          { id: 'agent-agents-cost',   label: 'Agents Cost',   value: currencyFormatter.format(apiStats.agentsCost) },
+        ];
+        const planMix = baseMetrics.filter(m => !overrideIds.has(m.id));
+        return transformMetricsToStatsCards([...apiOverrides, ...planMix]);
+      }
+      return transformMetricsToStatsCards(baseMetrics);
     }
     return transformMetricsToStatsCards(metrics);
-  }, [isAgent, licenses, metrics]);
+  }, [isAgent, licenses, metrics, storeMetrics]);
 
-  const effectiveLoading = isAgent ? isLoading : isLoading || isLoadingMetrics;
+  const effectiveLoading = isLoading || isLoadingMetrics;
   const gridColumns = isAgent ? 5 : 4;
   const skeletonCardCount = isAgent ? 5 : 8;
 

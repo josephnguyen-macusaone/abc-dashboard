@@ -551,7 +551,10 @@ export class LicenseRepository extends ILicenseRepository {
           [sevenDaysAgo]
         ),
         this.db.raw('COALESCE(SUM(last_payment), 0)                       AS income'),
-        this.db.raw('COALESCE(SUM(sms_sent), 0)::int                      AS sms_sent')
+        this.db.raw('COALESCE(SUM(sms_sent), 0)::int                      AS sms_sent'),
+        this.db.raw('COALESCE(SUM(sms_purchased), 0)::int                 AS sms_purchased'),
+        this.db.raw('COALESCE(SUM(sms_balance), 0)::numeric               AS sms_balance'),
+        this.db.raw('COALESCE(SUM(agents_cost), 0)::numeric               AS agents_cost')
       )
       .first();
 
@@ -574,6 +577,9 @@ export class LicenseRepository extends ILicenseRepository {
       highRisk: row?.high_risk ?? 0,
       income: parseFloat(row?.income ?? 0),
       smsSent: row?.sms_sent ?? 0,
+      smsPurchased: row?.sms_purchased ?? 0,
+      smsBalance: parseFloat(row?.sms_balance ?? 0),
+      agentsCost: parseFloat(row?.agents_cost ?? 0),
     };
   }
 
