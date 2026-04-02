@@ -1,4 +1,4 @@
-'use client';
+'use client'; 
 
 import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/presentation/components/organisms/auth/login-form';

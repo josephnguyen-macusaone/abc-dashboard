@@ -57,14 +57,16 @@ export class CircuitBreaker {
   }
 
   /**
-   * Handle failed operation. 429 (rate limit) is not counted so the circuit does not open
-   * and the client can retry after Retry-After.
+   * Handle failed operation. Only 5xx server errors count toward opening the circuit.
+   * 4xx client errors (bad input, duplicate email, auth failures, etc.) are not server
+   * failures and must not trip the circuit breaker.
    */
   private onFailure(error?: unknown): void {
     const status = error && typeof error === 'object' && 'status' in error
       ? (error as { status: number }).status
       : undefined;
-    if (status === 429) return;
+    // Skip non-server errors: defined 4xx status codes are client mistakes, not outages.
+    if (status !== undefined && status < 500) return;
 
     this.failures++;
     this.lastFailureTime = Date.now();

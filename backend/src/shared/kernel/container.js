@@ -24,6 +24,7 @@ import { ChangePasswordUseCase } from '../../application/use-cases/auth/change-p
 import { RequestPasswordResetUseCase } from '../../application/use-cases/auth/request-password-reset-use-case.js';
 import { RequestPasswordResetWithGeneratedPasswordUseCase } from '../../application/use-cases/auth/request-password-reset-with-generated-password-use-case.js';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password-use-case.js';
+import { VerifyEmailUseCase } from '../../application/use-cases/auth/verify-email-use-case.js';
 import { GetUsersUseCase } from '../../application/use-cases/users/get-users-use-case.js';
 import { CreateUserUseCase } from '../../application/use-cases/users/create-user-use-case.js';
 import { UpdateUserUseCase } from '../../application/use-cases/users/update-user-use-case.js';
@@ -160,6 +161,10 @@ class Container {
               success: false,
               message: 'Email service not configured',
             }),
+            sendEmailVerification: async (to, _displayName, token) => {
+              logger.warn(`[DEV] Email verification for ${to}: token=${token.slice(0, 20)}...`);
+              return { success: true, message: 'Dev mode: verification email logged' };
+            },
             correlationId: null,
             setCorrelationId: () => {},
           };
@@ -243,8 +248,13 @@ class Container {
     return new SignupUseCase(
       await this.getUserRepository(),
       this.getAuthService(),
-      this.getTokenService()
+      this.getTokenService(),
+      this.getEmailService()
     );
+  }
+
+  async getVerifyEmailUseCase() {
+    return new VerifyEmailUseCase(await this.getUserRepository(), this.getTokenService());
   }
 
   async getRefreshTokenUseCase() {
@@ -377,7 +387,8 @@ class Container {
       await this.getResetPasswordUseCase(),
       this.getTokenService(),
       await this.getUserProfileRepository(),
-      await this.getUserRepository()
+      await this.getUserRepository(),
+      await this.getVerifyEmailUseCase()
     );
   }
 

@@ -59,14 +59,20 @@ export class AccountLockedException extends DomainException {
 }
 
 export class TokenExpiredException extends DomainException {
-  constructor() {
+  constructor(message) {
     super('TOKEN_EXPIRED');
+    if (message) {
+      this.message = message;
+    }
   }
 }
 
 export class InvalidTokenException extends DomainException {
-  constructor() {
+  constructor(message) {
     super('INVALID_TOKEN');
+    if (message) {
+      this.message = message;
+    }
   }
 }
 

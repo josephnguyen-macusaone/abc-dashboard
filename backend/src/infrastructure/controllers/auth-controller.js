@@ -17,6 +17,9 @@ import {
   ValidationException,
   ResourceNotFoundException,
   InvalidRefreshTokenException,
+  InvalidTokenException,
+  TokenExpiredException,
+  BusinessRuleViolationException,
 } from '../../domain/exceptions/domain.exception.js';
 import { trackFailedLogin, resetFailedAttempts } from '../api/v1/middleware/security.middleware.js';
 
@@ -71,7 +74,8 @@ export class AuthController extends BaseController {
     resetPasswordUseCase,
     tokenService,
     userProfileRepository,
-    userRepository = null
+    userRepository = null,
+    verifyEmailUseCase = null
   ) {
     super();
     this.signupUseCase = signupUseCase;
@@ -85,6 +89,7 @@ export class AuthController extends BaseController {
     this.tokenService = tokenService;
     this.userProfileRepository = userProfileRepository;
     this.userRepository = userRepository;
+    this.verifyEmailUseCase = verifyEmailUseCase;
   }
 
   async signup(req, res) {
@@ -99,10 +104,7 @@ export class AuthController extends BaseController {
         email: signupPayload.email,
       });
 
-      setTokenCookie(res, result.tokens.accessToken);
-      setRefreshTokenCookie(res, result.tokens.refreshToken);
-
-      return res.created(result, 'Signup successful');
+      return res.created(result, result.message);
     } catch (error) {
       return this.handleError(error, req, res, {
         operation: 'signup',
@@ -112,6 +114,32 @@ export class AuthController extends BaseController {
           password: '[REDACTED]',
         },
       });
+    }
+  }
+
+  async verifyEmail(req, res) {
+    try {
+      const { token } = req.body;
+
+      if (!this.verifyEmailUseCase) {
+        return sendErrorResponse(res, 'SERVICE_UNAVAILABLE');
+      }
+
+      const result = await this.verifyEmailUseCase.execute({ token });
+
+      return res.success(result, result.message);
+    } catch (error) {
+      if (
+        error instanceof InvalidTokenException ||
+        error instanceof TokenExpiredException ||
+        error instanceof BusinessRuleViolationException ||
+        error instanceof ResourceNotFoundException
+      ) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Email verification error:', error);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }
 

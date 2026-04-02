@@ -20,6 +20,7 @@ export class User {
       avatarUrl,
       phone,
       isActive,
+      emailVerified,
       isFirstLogin,
       requiresPasswordChange,
       langKey,
@@ -41,6 +42,7 @@ export class User {
     this.avatarUrl = avatarUrl;
     this.phone = phone;
     this.isActive = isActive || false;
+    this.emailVerified = emailVerified ?? false;
     this.isFirstLogin = isFirstLogin ?? true;
     this.requiresPasswordChange = requiresPasswordChange || false;
     this.langKey = langKey || 'en';
@@ -160,7 +162,7 @@ export class User {
   }
 
   /**
-   * Activate user account (after email verification)
+   * Activate user account after email verification.
    */
   activate() {
     if (this.isActive) {
@@ -168,6 +170,7 @@ export class User {
     }
 
     this.isActive = true;
+    this.emailVerified = true;
 
     return {
       type: 'UserActivated',

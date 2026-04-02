@@ -273,8 +273,8 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    // Check if user needs email verification
-    if (isAuthenticated && user && !user.isActive) {
+    // Check if user needs email verification (skip if already on /verify-email)
+    if (isAuthenticated && user && !user.isActive && pathname !== '/verify-email') {
       logger.security('Unverified user access attempt', {
         correlationId,
         pathname,

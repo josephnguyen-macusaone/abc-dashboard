@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -68,10 +68,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        uses: docker/setup-buildx-action@v3
 
       - name: Create .env file for build
         run: |
@@ -251,7 +251,7 @@ jobs:
             timeout 10m docker compose run --rm -T -e NODE_ENV=production --entrypoint node backend src/infrastructure/scripts/migrate.js
 
             echo "Starting services..."
-            timeout 5m ./scripts/deploy.sh up -d
+            timeout 5m ./scripts/deploy.sh up -d --force-recreate
 
             echo "Waiting for services to stabilize..."
             sleep 15

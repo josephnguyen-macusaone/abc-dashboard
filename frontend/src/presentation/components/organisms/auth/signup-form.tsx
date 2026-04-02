@@ -85,27 +85,31 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
     event.preventDefault();
     if (!validateForm()) return;
 
-    await toast.promise(
-      signup({
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        role: formData.role,
-        username: formData.username.trim() || undefined,
-        phone: formData.phone.trim() || undefined,
-      }),
-      {
-        loading: 'Creating account...',
-        success: () => {
-          onSuccess?.();
-          router.push('/dashboard');
-          return 'Account created successfully';
-        },
-        error: (error: unknown) =>
-          (error as { message?: string })?.message || 'Signup failed. Please try again.',
-      }
-    );
+    const email = formData.email.trim();
+
+    try {
+      await toast.promise(
+        signup({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email,
+          password: formData.password,
+          role: formData.role,
+          username: formData.username.trim() || undefined,
+          phone: formData.phone.trim() || undefined,
+        }),
+        {
+          loading: 'Creating account...',
+          success: 'Account created! Check your email to verify.',
+          error: (error: unknown) =>
+            (error as { message?: string })?.message || 'Signup failed. Please try again.',
+        }
+      );
+      onSuccess?.();
+      window.location.replace(`/verify-email?pending=true&email=${encodeURIComponent(email)}`);
+    } catch {
+      // Error is already shown by the toast
+    }
   }
 
   return (

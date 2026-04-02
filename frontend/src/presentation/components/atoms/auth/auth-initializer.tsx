@@ -16,7 +16,9 @@ export function AuthInitializer({ children }: { children: React.ReactNode }) {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   useEffect(() => {
-    initialize();
+    void initialize().catch(() => {
+      // initialize() is written to resolve; this only guards third-party / future throws
+    });
   }, [initialize]);
 
   if (isLoading) {
