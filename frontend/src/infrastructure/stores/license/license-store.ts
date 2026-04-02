@@ -457,38 +457,12 @@ export const useLicenseStore = create<LicenseState>()(
               currentLicenseCount: get().licenses.length
             });
 
-            const role = useAuthStore.getState().user?.role;
-            const isApiFirstRole =
-              role === 'agent' || role === 'tech' || role === 'accountant';
-
-            const response = isApiFirstRole
-              ? await (async () => {
-                  const external = await httpClient.get<{
-                    data?: unknown[];
-                    meta?: {
-                      page?: number;
-                      limit?: number;
-                      total?: number;
-                      totalPages?: number;
-                    };
-                  }>('/external-licenses', { params: apiParams });
-                  const rows = Array.isArray(external?.data) ? external.data : [];
-                  const mapped = rows.map((row) =>
-                    transformApiLicenseToRecord(row as import('@/infrastructure/api/licenses/types').LicenseApiRow),
-                  );
-                  return {
-                    data: mapped,
-                    pagination: {
-                      page: external?.meta?.page ?? (Number(apiParams.page) || 1),
-                      limit: external?.meta?.limit ?? (Number(apiParams.limit) || 20),
-                      total: external?.meta?.total ?? mapped.length,
-                      totalPages:
-                        external?.meta?.totalPages ??
-                        Math.ceil((external?.meta?.total ?? mapped.length) / (external?.meta?.limit ?? (Number(apiParams.limit) || 20))),
-                    },
-                  };
-                })()
-              : await container.licenseManagementService.getLicenses(apiParams);
+            // Always use the internal /licenses endpoint for all roles.
+            // The backend already scopes results for agents via assignedUserId,
+            // and enriches data from the external repository inline.
+            // The /external-licenses endpoint only contains records synced from
+            // Mac Pay and misses internally-managed licences (e.g. cancelled ones).
+            const response = await container.licenseManagementService.getLicenses(apiParams);
 
             storeLogger.debug('License fetch response received', {
               hasData: !!response?.data,
