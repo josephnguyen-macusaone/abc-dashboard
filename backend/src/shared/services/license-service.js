@@ -17,6 +17,9 @@ import {
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../utils/logger.js';
 
+const LICENSE_BULK_UPDATE_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class LicenseService extends ILicenseService {
   constructor(licenseRepository, userRepository, externalLicenseRepository = null) {
     super();
@@ -225,6 +228,46 @@ export class LicenseService extends ILicenseService {
   }
 
   /**
+   * Resolve license by UUID id or by license key (non-UUID string).
+   * @param {string} id
+   * @returns {Promise<object|undefined>}
+   */
+  async _findLicenseForBulkUpdate(id) {
+    let existing = await this.licenseRepository.findById(id);
+    if (!existing && typeof id === 'string' && !LICENSE_BULK_UPDATE_UUID_REGEX.test(id)) {
+      existing = await this.licenseRepository.findByKey(id);
+    }
+    return existing;
+  }
+
+  /**
+   * @param {Object} context
+   * @returns {string|undefined}
+   */
+  _actorUserIdFromContext(context) {
+    const { userId } = context;
+    return userId && typeof userId === 'string' && userId.trim() !== '' ? userId : undefined;
+  }
+
+  /**
+   * @returns {Promise<{ ok: true, license: object } | { notFound: true }>}
+   */
+  async _executeOneBulkLicenseUpdate(id, data, context) {
+    const existing = await this._findLicenseForBulkUpdate(id);
+    if (!existing) {
+      return { notFound: true };
+    }
+    const license = await this.updateLicenseUseCase.execute(existing.id, data, {
+      userId: this._actorUserIdFromContext(context),
+      userRole: context.userRole,
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+      expectedUpdatedAt: data?.expectedUpdatedAt || data?.updatedAt,
+    });
+    return { ok: true, license };
+  }
+
+  /**
    * Bulk update licenses
    * @param {Array} updates - Array of license updates
    * @param {Object} [context] - Authenticated request context (userId, userRole, ipAddress, userAgent) for updatedBy + audit
@@ -236,39 +279,14 @@ export class LicenseService extends ILicenseService {
     const conflicts = [];
     const startTime = Date.now();
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-    // Process each update using the proper update use case for validation and audit
     for (const [index, { id, updates: data }] of updates.entries()) {
       try {
-        // Resolve id to license: accept UUID or license key (e.g. from external API)
-        let existingLicense = await this.licenseRepository.findById(id);
-        if (!existingLicense && typeof id === 'string' && !uuidRegex.test(id)) {
-          existingLicense = await this.licenseRepository.findByKey(id);
-        }
-        if (!existingLicense) {
-          errors.push({
-            index,
-            key: id,
-            error: 'License not found',
-          });
+        const result = await this._executeOneBulkLicenseUpdate(id, data, context);
+        if (result.notFound) {
+          errors.push({ index, key: id, error: 'License not found' });
           continue;
         }
-
-        const actorUserId =
-          context.userId && typeof context.userId === 'string' && context.userId.trim() !== ''
-            ? context.userId
-            : undefined;
-
-        const updatedLicense = await this.updateLicenseUseCase.execute(existingLicense.id, data, {
-          userId: actorUserId,
-          userRole: context.userRole,
-          ipAddress: context.ipAddress,
-          userAgent: context.userAgent,
-          expectedUpdatedAt: data?.expectedUpdatedAt || data?.updatedAt,
-        });
-
-        updatedLicenses.push(updatedLicense);
+        updatedLicenses.push(result.license);
       } catch (error) {
         if (error instanceof ConcurrentModificationException) {
           conflicts.push({
@@ -283,14 +301,7 @@ export class LicenseService extends ILicenseService {
           key: id,
           error: error.message,
         });
-
-        errors.push({
-          index,
-          key: id,
-          error: error.message,
-        });
-
-        // Continue with other updates instead of failing the whole batch
+        errors.push({ index, key: id, error: error.message });
       }
     }
 

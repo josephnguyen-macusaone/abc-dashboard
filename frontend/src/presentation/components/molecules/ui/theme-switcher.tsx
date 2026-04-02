@@ -18,7 +18,7 @@ export function ThemeSwitcher() {
         variant="ghost"
         size="icon"
         onClick={toggleTheme}
-        className="h-9 w-9"
+        className="h-8 w-8"
         aria-label={tooltipText}
       >
         <Icon

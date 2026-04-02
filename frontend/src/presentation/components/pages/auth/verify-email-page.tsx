@@ -28,15 +28,22 @@ export function VerifyEmailPage() {
   useEffect(() => {
     if (!token) return;
 
-    setState('verifying');
+    let cancelled = false;
     verifyEmail(token)
-      .then(() => setState('success'))
+      .then(() => {
+        if (!cancelled) setState('success');
+      })
       .catch((err: unknown) => {
-        setErrorMessage(
-          (err as { message?: string })?.message ?? 'Verification failed. The link may have expired.'
-        );
-        setState('error');
+        if (!cancelled) {
+          setErrorMessage(
+            (err as { message?: string })?.message ?? 'Verification failed. The link may have expired.'
+          );
+          setState('error');
+        }
       });
+    return () => {
+      cancelled = true;
+    };
   }, [token, verifyEmail]);
 
   async function onResendVerification() {

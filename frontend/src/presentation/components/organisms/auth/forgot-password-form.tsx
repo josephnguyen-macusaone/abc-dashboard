@@ -30,13 +30,14 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
   const [emailHydrated, setEmailHydrated] = useState(false);
 
   useEffect(() => {
-    if (!sentFromUrl || typeof window === 'undefined') {
-      setStoredEmail(null);
+    queueMicrotask(() => {
+      if (!sentFromUrl || typeof window === 'undefined') {
+        setStoredEmail(null);
+      } else {
+        setStoredEmail(sessionStorage.getItem(FORGOT_PASSWORD_EMAIL_STORAGE_KEY));
+      }
       setEmailHydrated(true);
-      return;
-    }
-    setStoredEmail(sessionStorage.getItem(FORGOT_PASSWORD_EMAIL_STORAGE_KEY));
-    setEmailHydrated(true);
+    });
   }, [sentFromUrl]);
 
   const requestPasswordReset = useAuthStore((state) => state.requestPasswordReset);

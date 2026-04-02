@@ -86,7 +86,8 @@ export const ERROR_LIST = {
 
   EMAIL_NOT_VERIFIED: {
     statusCode: 403,
-    message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+    message:
+      'Please verify your email before logging in. Check your inbox for the verification link.',
     category: 'authentication',
   },
 

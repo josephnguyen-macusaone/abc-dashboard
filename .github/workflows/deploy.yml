@@ -12,6 +12,9 @@ jobs:
   test:
     name: Lint & Test
     runs-on: ubuntu-latest
+    env:
+      # Opt in to Node 24 for JS-based actions (e.g. checkout) before runner default flips
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     services:
       postgres:
@@ -35,7 +38,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
