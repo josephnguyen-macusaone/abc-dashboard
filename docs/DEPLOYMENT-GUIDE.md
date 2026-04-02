@@ -97,7 +97,9 @@ git push origin main
 gh run watch
 ```
 
-**Automatic steps:** Build images → save to `.tar.gz` → transfer to server → load images → run **pending** DB migrations (`docker compose run --entrypoint node … migrate.js`, not the full backend entrypoint) → **`./scripts/deploy.sh up -d`** (handles `POSTGRES_PASSWORD=enc:` if used) → health checks.
+**Automatic steps:** Build images → save to `.tar.gz` → transfer to server → ensure **`LICENSE_SYNC_ENABLED=false`** in **`.env`** → **`./scripts/deploy.sh upgrade-dist --rm-dist`** (load both archives from `dist/`, remove them to save disk, run **pending** migrations via `docker compose run --entrypoint node … migrate.js`, then **`./scripts/deploy.sh up -d --force-recreate`**) → health checks.
+
+**Commands:** **`upgrade-dist`** is the single server path for “new images in `dist/` → DB current → stack up” (same sequence **`push`** runs after SCP). **`load`** alone only loads and optionally runs **`compose up`** immediately—**no migrate**—so prefer **`upgrade-dist`** for production. **`load --no-start`** is still useful if you need to load images without starting or to split steps manually.
 
 ---
 
@@ -118,7 +120,7 @@ If CI/CD fails:
 ```bash
 ./scripts/deploy.sh build-save
 scp dist/*.tar.gz root@<SERVER_IP>:/root/abc-dashboard/dist/
-ssh root@<SERVER_IP> 'cd /root/abc-dashboard && ./scripts/deploy.sh load'
+ssh root@<SERVER_IP> 'cd /root/abc-dashboard && ./scripts/deploy.sh upgrade-dist --rm-dist'
 ```
 
 ---

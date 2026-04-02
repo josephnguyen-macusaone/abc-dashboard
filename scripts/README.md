@@ -2,7 +2,7 @@
 
 | Script | Purpose |
 |--------|---------|
-| **`deploy.sh`** | Compose + images + remote push: **`up -d`**, **`down`**, any `docker compose` args (handles `enc:`). Subcommands **`build-save`**, **`load`** (optional **`--no-start`**), **`push`** (optional **`--build-only`** / **`--deploy-only`**). Password decrypt is **embedded Node** (no `scripts/resolve-db-password-for-docker.js`). |
+| **`deploy.sh`** | Compose + images + remote push: **`up -d`**, **`down`**, any `docker compose` args (handles `enc:`). Subcommands **`build-save`**, **`load`** (optional **`--no-start`**), **`upgrade-dist`** (optional **`--rm-dist`**: load `dist/*.tar.gz` → migrate → **`up -d --force-recreate`**), **`push`** (SCP then remote **`upgrade-dist`**). Password decrypt is **embedded Node**. |
 | **`db-reset.sh`** | Local: migrate, seed, external license sync; optional **`--drop`**. **`remote`**: SSH to server and run the same (optional **`--copy-script`**). |
 | **`db-backup.sh`** | Postgres `pg_dump`; see [docs/DEPLOYMENT-GUIDE.md](../docs/DEPLOYMENT-GUIDE.md#postgresql-backups). |
 
@@ -23,5 +23,6 @@ With **`POSTGRES_PASSWORD=enc:`**, use **`./scripts/deploy.sh`** instead of plai
 ./scripts/deploy.sh push
 SERVER_HOST=x DEPLOY_SSH_KEY=~/.ssh/id_ed25519 ./scripts/deploy.sh push --deploy-only
 
-./scripts/deploy.sh load
+./scripts/deploy.sh upgrade-dist --rm-dist   # on server after SCP (same as CI)
+./scripts/deploy.sh load                     # load + up only (no migrate)
 ```

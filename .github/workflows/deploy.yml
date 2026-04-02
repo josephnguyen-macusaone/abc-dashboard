@@ -233,14 +233,6 @@ jobs:
             docker tag abc-license-backend:latest abc-license-backend:rollback 2>/dev/null || true
             docker tag abc-license-frontend:latest abc-license-frontend:rollback 2>/dev/null || true
 
-            echo "Loading new images..."
-            timeout 15m docker load < dist/backend.tar.gz
-            timeout 10m docker load < dist/frontend.tar.gz
-            rm -f dist/backend.tar.gz dist/frontend.tar.gz
-
-            echo "Verifying images..."
-            docker images | grep abc-license | head -6
-
             echo "Ensuring LICENSE_SYNC_ENABLED=false..."
             if grep -q '^LICENSE_SYNC_ENABLED=' .env 2>/dev/null; then
               sed -i.bak 's/^LICENSE_SYNC_ENABLED=.*/LICENSE_SYNC_ENABLED=false/' .env
@@ -248,13 +240,12 @@ jobs:
               echo "LICENSE_SYNC_ENABLED=false" >> .env
             fi
 
-            # Backend image ENTRYPOINT always starts Prometheus + Grafana + API; it ignores
-            # extra args. Override entrypoint so only migrate runs (no duplicate Grafana stack).
-            echo "Running database migrations..."
-            timeout 10m docker compose run --rm -T -e NODE_ENV=production --entrypoint node backend src/infrastructure/scripts/migrate.js
+            # load dist/*.tar.gz → migrate → deploy.sh up (same as ./scripts/deploy.sh push on server)
+            echo "Running deploy.sh upgrade-dist --rm-dist (load → migrate → up)..."
+            timeout 40m ./scripts/deploy.sh upgrade-dist --rm-dist
 
-            echo "Starting services..."
-            timeout 5m ./scripts/deploy.sh up -d --force-recreate
+            echo "Verifying images..."
+            docker images | grep abc-license | head -6
 
             echo "Waiting for services to stabilize..."
             sleep 15

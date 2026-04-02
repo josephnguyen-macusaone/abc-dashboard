@@ -4,8 +4,9 @@
 #   ./scripts/deploy.sh up -d                    # same as docker compose (sets POSTGRES_PASSWORD_PLAIN)
 #   ./scripts/deploy.sh down
 #   ./scripts/deploy.sh load [--no-start]        # docker load dist/*.tar.gz [+ up -d]
+#   ./scripts/deploy.sh upgrade-dist [--rm-dist]  # load → migrate → up (CI / production)
 #   ./scripts/deploy.sh build-save               # build images → dist/*.tar.gz
-#   ./scripts/deploy.sh push [--build-only|--deploy-only]   # SCP + remote load
+#   ./scripts/deploy.sh push [--build-only|--deploy-only]   # SCP + remote upgrade-dist
 #   ./scripts/deploy.sh _print-pg-password       # internal: stdout = plain password (for backend/scripts delegate)
 set -euo pipefail
 
@@ -90,28 +91,63 @@ export_postgres_plain() {
   }
 }
 
+_load_dist_archives() {
+  local dist="${DIST_DIR:-$REPO_ROOT/dist}"
+  for f in backend frontend; do
+    [[ -f "$dist/$f.tar.gz" ]] || {
+      echo "ERROR: missing $dist/$f.tar.gz" >&2
+      exit 1
+    }
+  done
+  echo "[deploy] Loading archives from $dist ..."
+  docker load <"$dist/backend.tar.gz"
+  docker load <"$dist/frontend.tar.gz"
+}
+
 cmd_load() {
   NO_START=false
   if [[ "${1:-}" == "--no-start" ]]; then
     NO_START=true
     shift
   fi
-  DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
-  for f in backend frontend; do
-    [[ -f "$DIST_DIR/$f.tar.gz" ]] || {
-      echo "ERROR: missing $DIST_DIR/$f.tar.gz" >&2
-      exit 1
-    }
-  done
-  echo "[deploy load] Loading from $DIST_DIR ..."
-  docker load <"$DIST_DIR/backend.tar.gz"
-  docker load <"$DIST_DIR/frontend.tar.gz"
+  _load_dist_archives
   if [[ "$NO_START" == true ]]; then
     echo "[deploy load] Done (no start)."
     exit 0
   fi
   export_postgres_plain
   exec docker compose up -d --force-recreate
+}
+
+# Load dist/*.tar.gz, run pending DB migrations, then compose up (handles enc: via deploy.sh up).
+cmd_upgrade_from_dist() {
+  RM_DIST=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --rm-dist) RM_DIST=true ;;
+      *)
+        echo "Unknown option: $1" >&2
+        echo "Usage: $0 upgrade-dist [--rm-dist]" >&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
+
+  _load_dist_archives
+
+  local dist="${DIST_DIR:-$REPO_ROOT/dist}"
+  if [[ "$RM_DIST" == true ]]; then
+    rm -f "$dist/backend.tar.gz" "$dist/frontend.tar.gz"
+    echo "[deploy upgrade-dist] Removed dist archives."
+  fi
+
+  echo "[deploy upgrade-dist] Running database migrations..."
+  docker compose run --rm -T -e NODE_ENV=production --entrypoint node backend \
+    src/infrastructure/scripts/migrate.js
+
+  echo "[deploy upgrade-dist] Starting stack..."
+  "$REPO_ROOT/scripts/deploy.sh" up -d --force-recreate
 }
 
 cmd_build_save() {
@@ -207,8 +243,8 @@ cmd_push() {
     ssh_cmd "mkdir -p ${REMOTE_DIR}/dist"
     scp_file "$TAR" "${REMOTE_DIR}/dist/$f.tar.gz"
   done
-  log "Remote: deploy.sh load"
-  ssh_cmd "cd ${REMOTE_DIR} && ./scripts/deploy.sh load"
+  log "Remote: deploy.sh upgrade-dist (load → migrate → up)"
+  ssh_cmd "cd ${REMOTE_DIR} && ./scripts/deploy.sh upgrade-dist"
   log "Push finished."
 }
 
@@ -219,8 +255,12 @@ Usage: ./scripts/deploy.sh <command> [args]
   ./scripts/deploy.sh up -d              # docker compose with enc: support
   ./scripts/deploy.sh down
   ./scripts/deploy.sh load [--no-start]
+  ./scripts/deploy.sh upgrade-dist [--rm-dist]
   ./scripts/deploy.sh build-save
   ./scripts/deploy.sh push [--build-only|--deploy-only]
+
+  upgrade-dist: load dist/*.tar.gz, migrate, then up -d --force-recreate (matches CI after SCP).
+  push: SCP tarballs then runs upgrade-dist on the server (not plain load).
 
 Env (push): SERVER_HOST or ABC_SERVER, DEPLOY_SSH_KEY, optional REMOTE_DIR, SERVER_USER
 EOF
@@ -235,6 +275,10 @@ case "${1:-}" in
   load)
     shift
     cmd_load "$@"
+    ;;
+  upgrade-dist)
+    shift
+    cmd_upgrade_from_dist "$@"
     ;;
   build-save)
     cmd_build_save
