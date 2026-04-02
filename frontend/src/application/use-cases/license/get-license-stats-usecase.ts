@@ -105,31 +105,25 @@ export function buildAgentPortfolioMetricsFromLicenses(licenses: LicenseRecord[]
   let smsSent = 0;
   let smsBalance = 0;
   let agentsCost = 0;
-  const planCounts = new Map<string, number>();
 
   for (const row of licenses) {
     smsPurchased += toSafeNumber(row.smsPurchased);
     smsSent += toSafeNumber(row.smsSent);
     smsBalance += toSafeNumber(row.smsBalance);
     agentsCost += toSafeNumber(row.agentsCost);
-    const raw = (row.plan ?? '').trim();
-    const key = raw.length > 0 ? raw : '(unspecified)';
-    planCounts.set(key, (planCounts.get(key) ?? 0) + 1);
   }
 
-  let planValue = '—';
-  if (licenses.length > 0 && planCounts.size > 0) {
-    const sorted = [...planCounts.entries()].sort(
-      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-    );
-    const [topPlan, topCount] = sorted[0];
-    if (planCounts.size === 1) {
-      planValue = topPlan === '(unspecified)' ? '—' : topPlan;
-    } else {
-      const label = topPlan === '(unspecified)' ? 'Unspecified' : topPlan;
-      planValue = `${label} · ${topCount} lic. (+${planCounts.size - 1} other plan${planCounts.size > 2 ? 's' : ''})`;
-    }
+  // Derive "current plan" from active licenses first, then fall back to any license.
+  const activePlans = new Set<string>();
+  const allPlans = new Set<string>();
+  for (const row of licenses) {
+    const raw = (row.plan ?? '').trim();
+    if (!raw) continue;
+    if (row.status === 'active') activePlans.add(raw);
+    allPlans.add(raw);
   }
+  const planSet = activePlans.size > 0 ? activePlans : allPlans;
+  const planValue = planSet.size > 0 ? [...planSet].sort().join(', ') : '—';
 
   return [
     {
