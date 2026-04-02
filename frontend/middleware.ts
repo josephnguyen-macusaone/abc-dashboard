@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ROUTE_CONFIGS, canAccessRoute, getDefaultRedirect, isAuthRoute } from '@/shared/constants/routes';
+import {
+  ROUTES,
+  getRouteConfig,
+  canAccessRoute,
+  getDefaultRedirect,
+  getRoleDashboardPath,
+  isAuthRoute,
+} from '@/shared/constants/routes';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 
 /**
@@ -220,14 +227,7 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  // Match the most specific route (longest path that matches) so e.g. /profile/edit
-  // matches PROFILE_EDIT, not PROFILE or HOME. Sort by path length descending.
-  const sortedConfigs = Object.values(ROUTE_CONFIGS).sort(
-    (a, b) => b.path.length - a.path.length
-  );
-  const routeConfig = sortedConfigs.find(config =>
-    pathname === config.path || pathname.startsWith(config.path + '/')
-  );
+  const routeConfig = getRouteConfig(pathname);
 
   middlewareLogger.debug('Route protection check', {
     pathname,
@@ -294,6 +294,21 @@ export function middleware(request: NextRequest) {
       userId: user?.id,
       userRole: user?.role
     });
+  }
+
+  // Canonical dashboard URL: /dashboard → role-specific path (after auth + verification checks above)
+  if (
+    pathname === ROUTES.DASHBOARD &&
+    isAuthenticated &&
+    user?.isActive !== false &&
+    user?.role
+  ) {
+    const target = getRoleDashboardPath(user.role);
+    if (target !== ROUTES.DASHBOARD) {
+      const response = NextResponse.redirect(new URL(target, request.url));
+      applySecurityHeaders(response, { noStore: true });
+      return response;
+    }
   }
 
   // Redirect authenticated users away from auth pages

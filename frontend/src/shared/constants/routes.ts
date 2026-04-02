@@ -28,8 +28,12 @@ export const ROUTES = {
   RESET_PASSWORD: '/reset-password',
   VERIFY_EMAIL: '/verify-email',
 
-  // Protected routes
+  // Protected routes — role-specific dashboards (edit one route without affecting others)
   DASHBOARD: '/dashboard',
+  DASHBOARD_ADMIN: '/dashboard/admin',
+  DASHBOARD_AGENT: '/dashboard/agent',
+  DASHBOARD_TECH: '/dashboard/tech',
+  DASHBOARD_ACCOUNTANT: '/dashboard/accountant',
   USERS: '/users',
   LICENSES: '/licenses',
   PROFILE: '/profile',
@@ -86,13 +90,53 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
   [ROUTES.DASHBOARD]: {
     path: ROUTES.DASHBOARD,
     title: 'Dashboard',
-    description: 'System dashboard and overview',
+    description: 'Redirects to your role dashboard',
     requireAuth: true,
     // String literals used instead of USER_ROLES.* to prevent Turbopack (Next.js 16)
     // from tree-shaking infrequently-referenced role constants in the Edge middleware bundle.
     allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
-    showInNav: true,
+    showInNav: false,
+  },
+
+  [ROUTES.DASHBOARD_ADMIN]: {
+    path: ROUTES.DASHBOARD_ADMIN,
+    title: 'Admin dashboard',
+    description: 'System overview and licenses',
+    requireAuth: true,
+    allowedRoles: ['admin', 'manager'] as UserRoleType[],
+    redirectTo: ROUTES.LOGIN,
+    showInNav: false,
+  },
+
+  [ROUTES.DASHBOARD_AGENT]: {
+    path: ROUTES.DASHBOARD_AGENT,
+    title: 'Agent dashboard',
+    description: 'Your licenses overview',
+    requireAuth: true,
+    allowedRoles: ['agent'] as UserRoleType[],
+    redirectTo: ROUTES.LOGIN,
+    showInNav: false,
+  },
+
+  [ROUTES.DASHBOARD_TECH]: {
+    path: ROUTES.DASHBOARD_TECH,
+    title: 'Tech dashboard',
+    description: 'Technical license overview',
+    requireAuth: true,
+    allowedRoles: ['tech'] as UserRoleType[],
+    redirectTo: ROUTES.LOGIN,
+    showInNav: false,
+  },
+
+  [ROUTES.DASHBOARD_ACCOUNTANT]: {
+    path: ROUTES.DASHBOARD_ACCOUNTANT,
+    title: 'Accountant dashboard',
+    description: 'Financial and license overview',
+    requireAuth: true,
+    allowedRoles: ['accountant'] as UserRoleType[],
+    redirectTo: ROUTES.LOGIN,
+    showInNav: false,
   },
 
   [ROUTES.USERS]: {
@@ -159,10 +203,15 @@ export const AUTH_ROUTES = [
 ];
 
 /**
- * Get route config by path
+ * Resolve route config by pathname (longest prefix wins — same rules as middleware).
  */
 export function getRouteConfig(path: string): RouteConfig | undefined {
-  return ROUTE_CONFIGS[path];
+  const sorted = Object.values(ROUTE_CONFIGS).sort(
+    (a, b) => b.path.length - a.path.length
+  );
+  return sorted.find(
+    (c) => path === c.path || path.startsWith(`${c.path}/`)
+  );
 }
 
 /**
@@ -204,22 +253,33 @@ export function getNavigationRoutes(userRole?: string): RouteConfig[] {
 }
 
 /**
- * Get default redirect path after login based on user role
+ * Home dashboard URL for a role (use for nav, post-login, middleware).
+ * Unknown role falls back to profile; missing role falls back to `/dashboard` (middleware then routes).
  */
-export function getDefaultRedirect(userRole?: string): string {
-  if (!userRole) return ROUTES.LOGIN;
+export function getRoleDashboardPath(userRole?: string): string {
+  if (!userRole) return ROUTES.DASHBOARD;
 
-  // String literals used instead of USER_ROLES.* to prevent Turbopack tree-shaking.
   switch (userRole) {
     case 'admin':
-    case 'accountant':
     case 'manager':
-    case 'tech':
+      return ROUTES.DASHBOARD_ADMIN;
     case 'agent':
-      return ROUTES.DASHBOARD;
+      return ROUTES.DASHBOARD_AGENT;
+    case 'tech':
+      return ROUTES.DASHBOARD_TECH;
+    case 'accountant':
+      return ROUTES.DASHBOARD_ACCOUNTANT;
     default:
       return ROUTES.PROFILE;
   }
+}
+
+/**
+ * Default redirect after login / unauthorized recovery
+ */
+export function getDefaultRedirect(userRole?: string): string {
+  if (!userRole) return ROUTES.LOGIN;
+  return getRoleDashboardPath(userRole);
 }
 
 /**

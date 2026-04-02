@@ -6,6 +6,8 @@ import { AlertTriangle, RefreshCw, Home, Copy, ChevronDown, ChevronUp } from 'lu
 import { useRouter } from 'next/navigation';
 import { logger } from '@/shared/helpers';
 import { ErrorTemplate } from '@/presentation/components/templates';
+import { useAuthStore } from '@/infrastructure/stores/auth';
+import { getRoleDashboardPath } from '@/shared/constants';
 
 // Suppress React's verbose error logging in development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -275,6 +277,7 @@ function ErrorFallback({
   maxRetries = 3
 }: ErrorFallbackProps) {
   const router = useRouter();
+  const userRole = useAuthStore((s) => s.user?.role);
   const isDevelopment = process.env.NODE_ENV === 'development';
   const shouldShowErrorDetails = showErrorDetails || isDevelopment;
   const canRetry = onRetry && retryCount < maxRetries;
@@ -358,7 +361,7 @@ function ErrorFallback({
         </Button>
 
         <Button
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push(getRoleDashboardPath(userRole))}
           variant="outline"
           size="sm"
           className="flex items-center gap-2"

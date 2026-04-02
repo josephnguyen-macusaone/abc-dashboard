@@ -10,9 +10,15 @@ import { cn } from '@/shared/helpers';
 import { useSidebarStore } from '@/infrastructure/stores';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { getLicenseCapabilities } from '@/shared/constants/license-capabilities';
+import { ROUTES } from '@/shared/constants';
 
-/** Routes where Sync button is shown (dashboard and license management only) */
-const SYNC_BUTTON_ROUTES = ['/dashboard', '/licenses'];
+function showLicenseSyncForPath(pathname: string): boolean {
+  return (
+    pathname === ROUTES.LICENSES ||
+    pathname === ROUTES.DASHBOARD ||
+    pathname.startsWith(`${ROUTES.DASHBOARD}/`)
+  );
+}
 
 export interface AppHeaderProps {
   sidebarOpen: boolean;
@@ -31,9 +37,7 @@ export function AppHeader({
   const pathname = usePathname();
   const userRole = useAuthStore((s) => s.user?.role);
   const canManualLicenseSync = getLicenseCapabilities(userRole).canUpdateLicense;
-  const showSyncButton =
-    canManualLicenseSync &&
-    SYNC_BUTTON_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+  const showSyncButton = canManualLicenseSync && showLicenseSyncForPath(pathname);
 
   return (
     <header

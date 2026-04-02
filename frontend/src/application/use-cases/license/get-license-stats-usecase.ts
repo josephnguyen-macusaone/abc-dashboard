@@ -134,22 +134,22 @@ export function buildAgentPortfolioMetricsFromLicenses(licenses: LicenseRecord[]
   return [
     {
       id: 'agent-sms-purchased',
-      label: 'SMS purchased',
+      label: 'SMS Purchased',
       value: numberFormatter.format(smsPurchased),
     },
     {
       id: 'agent-sms-sent',
-      label: 'SMS sent',
+      label: 'SMS Sent',
       value: numberFormatter.format(smsSent),
     },
     {
       id: 'agent-sms-balance',
-      label: 'SMS balance',
+      label: 'SMS Balance',
       value: numberFormatter.format(smsBalance),
     },
     {
       id: 'agent-agents-cost',
-      label: 'Agents cost',
+      label: 'Agents Cost',
       value: currencyFormatter.format(agentsCost),
     },
     {

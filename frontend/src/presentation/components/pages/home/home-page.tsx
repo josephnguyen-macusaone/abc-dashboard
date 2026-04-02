@@ -3,23 +3,25 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/infrastructure/stores/auth';
+import { getRoleDashboardPath } from '@/shared/constants';
 import { LoadingSpinner } from '@/presentation/components/atoms';
 
 export default function HomePage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const userRole = useAuthStore((s) => s.user?.role);
 
   // Only redirect after authentication state is determined
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.push('/dashboard');
+        router.push(getRoleDashboardPath(userRole));
       } else {
         router.push('/login');
       }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, userRole]);
 
   // Show loading state while determining authentication status
   if (isLoading) {
