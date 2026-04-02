@@ -183,6 +183,7 @@ export function AdminDashboard({
   // Initial load: set loading before paint so skeleton shows immediately, then fetch.
   // Once initialized, never overwrite user's choice (e.g. if they clear date range, don't set current month again).
   const hasInitializedDateRef = useRef(false);
+  const hasFetchedAttentionRef = useRef(false);
   useLayoutEffect(() => {
     if (licensesProp) return;
 
@@ -207,7 +208,6 @@ export function AdminDashboard({
       void Promise.all([
         fetchLicenses({ page: 1, limit: 20, ...dateParams }),
         fetchDashboardMetrics(metricsParams),
-        fetchLicensesRequiringAttention(),
       ]);
     };
 
@@ -229,7 +229,18 @@ export function AdminDashboard({
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
     runParallelFetch({ startsAtFrom, startsAtTo });
-  }, [licensesProp, fetchLicenses, fetchDashboardMetrics, fetchLicensesRequiringAttention, setFilters, setLoading, filters.startsAtFrom, filters.startsAtTo]);
+  }, [licensesProp, fetchLicenses, fetchDashboardMetrics, setFilters, setLoading, filters.startsAtFrom, filters.startsAtTo]);
+
+  // Defer "requiring attention" fetch until after first paint so primary dashboard data
+  // (metrics + table) renders first and feels faster.
+  useEffect(() => {
+    if (licensesProp || hasFetchedAttentionRef.current) return;
+    hasFetchedAttentionRef.current = true;
+    const timerId = setTimeout(() => {
+      void fetchLicensesRequiringAttention();
+    }, 0);
+    return () => clearTimeout(timerId);
+  }, [licensesProp, fetchLicensesRequiringAttention]);
 
   // Periodic refresh; only when tab visible to avoid stuck loading when tab inactive
   useEffect(() => {
