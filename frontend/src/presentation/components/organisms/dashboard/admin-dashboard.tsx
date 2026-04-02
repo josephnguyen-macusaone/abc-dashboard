@@ -224,6 +224,23 @@ export function AdminDashboard({
       ]);
     };
 
+    // Agent/staff views: always skip the date filter.
+    // This check comes FIRST so a stale date range already in the store (left by another
+    // page in the same session) never sneaks into the API call.
+    if (skipDefaultDateRange) {
+      if (!hasInitializedDateRef.current) {
+        hasInitializedDateRef.current = true;
+        // Clear any stale date filters before fetching so fetchLicenses does not
+        // spread them back in from the store.
+        const staleFilters = useLicenseStore.getState().filters;
+        if (staleFilters.startsAtFrom || staleFilters.startsAtTo) {
+          setFilters({ ...staleFilters, startsAtFrom: undefined, startsAtTo: undefined });
+        }
+        runParallelFetch({});
+      }
+      return;
+    }
+
     if (hasInitializedDateRef.current) {
       // Already initialized; just refetch with current filters (user may have cleared date)
       runParallelFetch({ startsAtFrom: from, startsAtTo: to });
@@ -236,13 +253,8 @@ export function AdminDashboard({
       return;
     }
 
-    // First mount only: no date set yet.
-    // For agent/staff views, skip the month filter so all assigned licenses are visible.
+    // First mount only: no date set yet, set default to current month (first and last day).
     hasInitializedDateRef.current = true;
-    if (skipDefaultDateRange) {
-      runParallelFetch({});
-      return;
-    }
     const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
