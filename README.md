@@ -74,7 +74,7 @@ docker compose build --no-cache     # Clean build
 ### Deployment
 
 - **Auto:** Push to `main` or `develop` (triggers CI/CD)
-- **Manual:** `./scripts/deploy.sh build-save` → transfer → on server `./scripts/deploy.sh load` (or `./scripts/deploy.sh push`)
+- **Manual:** `./scripts/deploy.sh build-save` → transfer → on server **`./scripts/deploy.sh upgrade-dist --rm-dist`** (or **`./scripts/deploy.sh push`**, which runs **`upgrade-dist`** after SCP)
 - **Operations (logging, DB backups, troubleshooting):** [docs/DEPLOYMENT-GUIDE.md](./docs/DEPLOYMENT-GUIDE.md)
 
 ### Logs and database backups
