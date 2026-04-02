@@ -9,7 +9,6 @@ export function AgentDashboard() {
       tableTitle="My licenses"
       tableDescription="Licenses linked to your agent account (read-only)"
       skipDefaultDateRange
-      hideDateRange
     />
   );
 }
