@@ -205,7 +205,13 @@ export function AdminDashboard({
     const from = filters.startsAtFrom;
     const to = filters.startsAtTo;
 
-    const runParallelFetch = (dateParams: { startsAtFrom?: string; startsAtTo?: string }) => {
+    const runParallelFetch = (params: {
+      startsAtFrom?: string;
+      startsAtTo?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    }) => {
+      const { startsAtFrom, startsAtTo, sortBy, sortOrder } = params;
       const storeFilters = useLicenseStore.getState().filters;
       const statusParam = Array.isArray(storeFilters.status) ? storeFilters.status.join(',') : storeFilters.status;
       const planParam = Array.isArray(storeFilters.plan) ? storeFilters.plan.join(',') : storeFilters.plan;
@@ -213,13 +219,14 @@ export function AdminDashboard({
       const metricsParams = {
         search: storeFilters.search,
         searchField: storeFilters.searchField,
-        ...dateParams,
+        startsAtFrom,
+        startsAtTo,
         status: statusParam,
         plan: planParam,
         term: termParam,
       };
       void Promise.all([
-        fetchLicenses({ page: 1, limit: 20, ...dateParams }),
+        fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo, sortBy, sortOrder }),
         fetchDashboardMetrics(metricsParams),
       ]);
     };
@@ -236,7 +243,8 @@ export function AdminDashboard({
         if (staleFilters.startsAtFrom || staleFilters.startsAtTo) {
           setFilters({ ...staleFilters, startsAtFrom: undefined, startsAtTo: undefined });
         }
-        runParallelFetch({});
+        // Default: no date filter, active licenses sorted first.
+        runParallelFetch({ sortBy: 'status', sortOrder: 'asc' });
       }
       return;
     }
