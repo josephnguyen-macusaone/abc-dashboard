@@ -4,7 +4,6 @@ export enum Role {
   MANAGER = 'manager',
   TECH = 'tech',
   AGENT = 'agent',
-  STAFF = 'staff',
 }
 
 export enum SortBy {

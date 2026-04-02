@@ -17,7 +17,6 @@ const roleIcons: Record<UserRoleType, LucideIcon> = {
   manager: Users,
   tech: Wrench,
   agent: User,
-  staff: User,
 };
 
 export function UserRoleBadge({

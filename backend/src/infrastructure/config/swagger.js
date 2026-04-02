@@ -103,9 +103,9 @@ const swaggerDefinition = {
           },
           role: {
             type: 'string',
-            enum: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'],
+            enum: ['admin', 'accountant', 'manager', 'tech', 'agent'],
             description: 'User role',
-            example: 'staff',
+            example: 'agent',
           },
           avatarUrl: {
             type: 'string',

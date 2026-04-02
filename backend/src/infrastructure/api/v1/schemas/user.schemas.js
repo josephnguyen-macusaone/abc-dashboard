@@ -218,7 +218,7 @@ export const userSchemas = {
 
     role: Joi.string()
       .valid(...VALID_ROLE_VALUES)
-      .default(ROLES.STAFF)
+      .default(ROLES.AGENT)
       .messages({
         'any.only': `Role must be one of: ${VALID_ROLE_LIST}`,
         'string.base': 'Role must be a string',

@@ -22,6 +22,12 @@ interface ScrollAreaProps extends React.ComponentPropsWithoutRef<typeof ScrollAr
     React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Viewport>,
     "children" | "className" | "ref"
   > & { ref?: React.Ref<HTMLDivElement> };
+  /**
+   * Which axes get Radix scrollbars. Use `vertical` on page shells (e.g. dashboard main) so wide
+   * data grids scroll inside their own ScrollArea — otherwise the shell picks up horizontal scroll
+   * and shows the native-looking bar.
+   */
+  scrollbars?: "both" | "vertical" | "horizontal";
 }
 
 function ScrollBar({
@@ -33,18 +39,18 @@ function ScrollBar({
       data-slot="scroll-area-scrollbar"
       className={cn(
         "flex touch-none select-none transition-colors",
-        "p-0.5",
+        "p-px",
         "bg-transparent",
         "hover:bg-muted/60",
-        "data-[orientation=vertical]:h-full data-[orientation=vertical]:w-2",
-        "data-[orientation=horizontal]:h-2 data-[orientation=horizontal]:w-full",
+        "data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5",
+        "data-[orientation=horizontal]:h-[3px] data-[orientation=horizontal]:min-h-[3px] data-[orientation=horizontal]:w-full data-[orientation=horizontal]:p-0",
         className,
       )}
       {...props}
     >
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
-        className="relative flex-1 rounded-full bg-muted-foreground/30"
+        className="relative flex-1 rounded-full bg-muted-foreground/35 hover:bg-muted-foreground/50"
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );
@@ -56,9 +62,12 @@ export function ScrollArea({
   viewportRef,
   viewportClassName,
   viewportProps,
+  scrollbars = "both",
   ...props
 }: ScrollAreaProps) {
   const { ref: viewportPropsRef, ...restViewport } = viewportProps ?? {};
+  const showVertical = scrollbars === "both" || scrollbars === "vertical";
+  const showHorizontal = scrollbars === "both" || scrollbars === "horizontal";
 
   return (
     <ScrollAreaPrimitive.Root
@@ -70,7 +79,9 @@ export function ScrollArea({
         data-slot="scroll-area-viewport"
         ref={composeRefs(viewportRef, viewportPropsRef)}
         className={cn(
-          "h-full w-full rounded-[inherit] outline-none",
+          "h-full w-full min-h-0 min-w-0 rounded-[inherit] outline-none",
+          /* Radix injects inline CSS to hide native bars; duplicate via stylesheet for CSP / reliability */
+          "[scrollbar-width:none] [-ms-overflow-style:none]",
           "[&>div]:!block",
           viewportClassName,
         )}
@@ -78,9 +89,13 @@ export function ScrollArea({
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
-      <ScrollBar />
-      <ScrollBar orientation="horizontal" />
-      <ScrollAreaPrimitive.ScrollAreaCorner />
+      {showVertical ? <ScrollBar /> : null}
+      {showHorizontal ? <ScrollBar orientation="horizontal" /> : null}
+      {showVertical && showHorizontal ? (
+        <ScrollAreaPrimitive.ScrollAreaCorner className="bg-border" />
+      ) : null}
     </ScrollAreaPrimitive.Root>
   );
 }
+
+export { ScrollBar };

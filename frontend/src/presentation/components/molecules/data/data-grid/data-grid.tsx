@@ -83,6 +83,7 @@ export function DataGrid<TData>({
       className={cn("relative flex w-full flex-col", className)}
     >
       <ScrollArea
+        type="auto"
         className="w-full rounded-md border text-sm"
         style={{
           height: `${height}px`,

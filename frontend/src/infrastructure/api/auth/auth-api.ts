@@ -128,6 +128,18 @@ export class AuthApiService {
   }
 
   /**
+   * Resend signup verification email (generic success message; enumeration-safe).
+   */
+  static async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    const body = await httpClient.post<ApiResponse<unknown>>('/auth/resend-verification', { email });
+    const message = typeof body.message === 'string' ? body.message : undefined;
+    if (!message) {
+      throw new Error('Resend verification response missing message');
+    }
+    return { message };
+  }
+
+  /**
    * Reset password
    */
   static async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -231,6 +243,7 @@ export const authApi = {
   logout: AuthApiService.logout,
   verifyEmail: AuthApiService.verifyEmail,
   forgotPassword: AuthApiService.forgotPassword,
+  resendVerificationEmail: AuthApiService.resendVerificationEmail,
   resetPassword: AuthApiService.resetPassword,
   changePassword: AuthApiService.changePassword,
   getProfile: AuthApiService.getProfile,

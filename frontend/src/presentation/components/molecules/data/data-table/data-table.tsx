@@ -40,6 +40,7 @@ export function DataTable<TData>({
 
   const tableContent = (
     <Table
+      className="min-w-0 overflow-x-visible"
       style={
         stretch
           ? { width: "100%" }
@@ -142,7 +143,10 @@ export function DataTable<TData>({
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <ScrollArea className={cn("max-h-[min(70vh,36rem)] w-full rounded-md border", stretch && "w-full")}>
+        <ScrollArea
+          type="auto"
+          className={cn("max-h-[min(70vh,36rem)] w-full rounded-md border", stretch && "w-full")}
+        >
           <div className={cn(stretch && "w-full")}>{tableContent}</div>
         </ScrollArea>
       )}

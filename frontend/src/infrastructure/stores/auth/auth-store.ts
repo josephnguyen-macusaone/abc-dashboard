@@ -36,6 +36,7 @@ interface AuthState {
     phone?: string;
   }) => Promise<{ message: string }>;
   verifyEmail: (token: string) => Promise<{ message: string }>;
+  resendVerificationEmail: (email: string) => Promise<{ message: string }>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
@@ -170,6 +171,18 @@ export const useAuthStore = create<AuthState>()(
               set({ isLoading: true });
               const result = await authApi.verifyEmail(token);
               return { message: result.message ?? 'Email verified. You can now log in.' };
+            } catch (error: unknown) {
+              const errorMessage = getLoginErrorMessage(error);
+              throw new Error(errorMessage);
+            } finally {
+              set({ isLoading: false });
+            }
+          },
+
+          resendVerificationEmail: async (email: string) => {
+            try {
+              set({ isLoading: true });
+              return await authApi.resendVerificationEmail(email.trim().toLowerCase());
             } catch (error: unknown) {
               const errorMessage = getLoginErrorMessage(error);
               throw new Error(errorMessage);
@@ -322,11 +335,6 @@ export const useAuthStore = create<AuthState>()(
               set({ isLoading: true });
               // Note: Backend doesn't return data for security, just success/error
               await authApi.forgotPassword(email);
-
-              set({
-                passwordResetSent: true,
-                passwordResetEmail: email
-              });
             } catch (error) {
               storeLogger.warn('Password reset request failed', {
                 error: error instanceof Error ? error.message : String(error)

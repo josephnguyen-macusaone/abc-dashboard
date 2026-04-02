@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import type { LicenseRecord } from '@/types';
+import type { LicenseMetricsAudience } from '@/application/use-cases';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 import type { LicenseDateRange } from '@/application/use-cases';
 import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePagination } from '@/infrastructure/stores/license';
@@ -35,12 +36,18 @@ interface AdminDashboardProps {
   className?: string;
   licenses?: LicenseRecord[];
   isLoadingLicenses?: boolean;
+  tableTitle?: string;
+  tableDescription?: string;
+  metricsAudience?: LicenseMetricsAudience;
 }
 
 export function AdminDashboard({
   className,
   licenses: licensesProp,
   isLoadingLicenses: isLoadingLicensesProp,
+  tableTitle,
+  tableDescription,
+  metricsAudience = 'admin',
 }: AdminDashboardProps) {
   // Use Zustand store for license data (single source of truth for list + metrics date filter)
   const licensesFromStore = useLicenseStore(selectLicenses);
@@ -272,17 +279,27 @@ export function AdminDashboard({
 
   return (
     <div className={`space-y-6 ${className || ''}`}>
-      <Suspense fallback={<LicenseMetricsSkeleton columns={4} />}>
+      <Suspense
+        fallback={
+          <LicenseMetricsSkeleton
+            columns={metricsAudience === 'agent' ? 5 : 4}
+            cardCount={metricsAudience === 'agent' ? 5 : 8}
+          />
+        }
+      >
         <LicenseMetricsSection
           licenses={licenses}
           dateRange={dateRange}
           isLoading={isLoadingLicenses}
           totalCount={totalCount}
           useApiMetrics={true}
+          audience={metricsAudience}
         />
       </Suspense>
       <Suspense fallback={<LicenseDataTableSkeleton />}>
         <LicenseTableSection
+          title={tableTitle}
+          description={tableDescription}
           licenses={licenses}
           isLoading={isLoadingLicenses}
           pageCount={pageCount}

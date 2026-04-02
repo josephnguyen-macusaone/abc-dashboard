@@ -6,17 +6,21 @@ import { CheckCircle, Mail, XCircle, Loader2 } from 'lucide-react';
 import { Button, Typography } from '@/presentation/components/atoms';
 import { AuthTemplate } from '@/presentation/components/templates';
 import { useAuthStore } from '@/infrastructure/stores/auth';
+import { useToast } from '@/presentation/contexts/toast-context';
+import logger from '@/shared/helpers/logger';
 
 type PageState = 'pending' | 'verifying' | 'success' | 'error';
 
 export function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const verifyEmail = useAuthStore((s) => s.verifyEmail);
+  const resendVerificationEmail = useAuthStore((s) => s.resendVerificationEmail);
+  const authLoading = useAuthStore((s) => s.isLoading);
 
   const token = searchParams.get('token');
-  const isPending = searchParams.get('pending') === 'true';
-  const email = searchParams.get('email') ?? '';
+  const email = searchParams.get('email') ? decodeURIComponent(searchParams.get('email') ?? '') : '';
 
   const [state, setState] = useState<PageState>(token ? 'verifying' : 'pending');
   const [errorMessage, setErrorMessage] = useState('');
@@ -34,6 +38,18 @@ export function VerifyEmailPage() {
         setState('error');
       });
   }, [token, verifyEmail]);
+
+  async function onResendVerification() {
+    if (!email.trim()) return;
+    try {
+      const { message } = await resendVerificationEmail(email);
+      toast.success(message);
+    } catch (err: unknown) {
+      logger.error('Resend verification failed:', { err });
+      const msg = err instanceof Error ? err.message : 'Could not resend email';
+      toast.error(msg);
+    }
+  }
 
   return (
     <AuthTemplate>
@@ -65,6 +81,16 @@ export function VerifyEmailPage() {
                 Check your spam folder, or contact support if the problem persists.
               </Typography>
             </div>
+            {email.trim() ? (
+              <Button
+                variant="default"
+                className="w-full h-11"
+                disabled={authLoading}
+                onClick={() => void onResendVerification()}
+              >
+                Resend verification email
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               className="w-full"

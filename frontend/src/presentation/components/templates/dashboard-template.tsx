@@ -173,12 +173,13 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
           onSidebarCollapse={toggleCollapsed}
         />
 
-        {/* Page content — ScrollArea matches tables/sidebar; horizontal overflow stays inside nested scrollers */}
+        {/* Vertical-only: avoids shell-level horizontal scroll (native bar). Wide tables use nested ScrollArea in DataGrid. */}
         <ScrollArea
+          type="auto"
+          scrollbars="vertical"
           className="min-h-0 min-w-0 flex-1"
-          viewportClassName="overflow-x-hidden"
         >
-          <main className="p-4 lg:p-6 min-w-0">
+          <main className="p-4 lg:p-6 min-w-0 w-full max-w-full overflow-x-hidden">
             <SectionErrorBoundary
               variant="dashboard"
               fallbackTitle="Dashboard Error"

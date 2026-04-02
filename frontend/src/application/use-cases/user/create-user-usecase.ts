@@ -55,9 +55,7 @@ export class CreateUserUseCase {
             throw new Error('Accountants can only create tech or agent accounts');
           }
         } else if (operator.role === UserRole.MANAGER) {
-          if (targetRole !== UserRole.STAFF) {
-            throw new Error('Managers can only create staff accounts');
-          }
+          throw new Error('Managers cannot create user accounts');
         } else {
           throw new Error('Insufficient permissions to create users');
         }

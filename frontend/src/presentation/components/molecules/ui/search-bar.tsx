@@ -117,7 +117,7 @@ export function SearchBar({
   const showPrefix = !hidePrefix && searchField !== undefined && onSearchFieldChange !== undefined;
 
   const inputBlock = (
-    <div className={cn('relative w-full', showPrefix && 'flex-1 min-w-0')}>
+    <div className={cn('relative w-full min-h-0', showPrefix && 'min-w-0 flex-1')}>
       {!showPrefix && (
         <Search
           className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground pointer-events-none z-10"
@@ -133,7 +133,8 @@ export function SearchBar({
         className={cn(
           'pl-10',
           onSearch && searchButtonPosition === 'inline' ? 'pr-24' : 'pr-8',
-          showPrefix && 'h-8 rounded-none border-0 border-l-0 border-input py-2 pl-3',
+          showPrefix &&
+            'h-full min-h-0 rounded-none border-0 border-l-0 border-input py-0 pl-3 leading-normal',
           inputClassName,
         )}
       />
@@ -170,7 +171,7 @@ export function SearchBar({
     return (
       <div
         className={cn(
-          'flex items-center gap-0 rounded-md border border-input bg-transparent overflow-hidden',
+          'flex h-8 max-h-8 min-h-8 items-stretch gap-0 overflow-hidden rounded-md border border-input bg-transparent',
           className,
         )}
       >
@@ -180,7 +181,7 @@ export function SearchBar({
         >
           <SelectTrigger
             className={cn(
-              'h-8 min-w-0 w-[100px] max-w-[100px] shrink-0 rounded-l-md rounded-r-none border-0 border-r border-input bg-muted/30 shadow-none pl-3',
+              'h-full min-h-0 min-w-0 w-[100px] max-w-[100px] shrink-0 rounded-l-md rounded-r-none border-0 border-r border-input bg-muted/30 py-0 shadow-none pl-3',
               'text-xs text-left',
               '[&>span]:text-xs [&>span]:text-left [&>span]:line-clamp-1',
               'focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',

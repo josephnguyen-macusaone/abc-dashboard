@@ -41,7 +41,32 @@ export class RequestPasswordResetUseCase {
         };
       }
 
-      // Check if user is active
+      // Inactive + unverified: self-signup pending — send verification link (same generic response).
+      if (!user.isActive && !user.emailVerified) {
+        try {
+          const verifyToken = this.tokenService.generateEmailVerificationToken(user.id, user.email);
+          await this.emailService.sendEmailVerification(
+            user.email,
+            user.displayName || user.email.split('@')[0],
+            verifyToken
+          );
+          logger.info('Sent verification email from forgot-password flow', {
+            userId: user.id,
+            email: user.email,
+          });
+        } catch (emailError) {
+          logger.error('Failed to send verification from forgot-password', {
+            userId: user.id,
+            error: emailError.message,
+          });
+        }
+        return {
+          success: true,
+          message: 'Password reset email sent if account exists',
+        };
+      }
+
+      // Inactive but already verified (e.g. admin deactivated)
       if (!user.isActive) {
         logger.warn('Password reset requested for inactive user', {
           userId: user.id,

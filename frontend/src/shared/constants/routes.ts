@@ -1,4 +1,4 @@
-import { USER_ROLES, UserRoleType } from './auth';
+import type { UserRoleType } from './auth';
 
 /**
  * Route configuration with permissions and metadata
@@ -110,7 +110,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Licenses',
     description: 'License management',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -120,7 +120,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Profile',
     description: 'Manage your profile',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -130,7 +130,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Edit Profile',
     description: 'Update your profile information',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -140,7 +140,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Change Password',
     description: 'Update your password',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'] as UserRoleType[],
+    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -216,7 +216,6 @@ export function getDefaultRedirect(userRole?: string): string {
     case 'manager':
     case 'tech':
     case 'agent':
-    case 'staff':
       return ROUTES.DASHBOARD;
     default:
       return ROUTES.PROFILE;

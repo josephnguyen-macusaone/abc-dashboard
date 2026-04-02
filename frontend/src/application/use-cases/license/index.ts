@@ -33,8 +33,10 @@ export {
 export {
   GetLicenseStatsUseCase,
   createGetLicenseStatsUseCase,
+  buildAgentPortfolioMetricsFromLicenses,
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,
+  type LicenseMetricsAudience,
   type LicenseMetricsFilters,
 } from './get-license-stats-usecase';

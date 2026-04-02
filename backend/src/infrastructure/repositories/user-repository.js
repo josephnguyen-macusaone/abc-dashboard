@@ -323,7 +323,7 @@ export class UserRepository extends IUserRepository {
   async getUserStats(filters = {}) {
     let query = this.db(this.tableName);
     query = this._applyUserListFilters(query, filters);
-    const roles = ['admin', 'accountant', 'manager', 'tech', 'agent', 'staff'];
+    const roles = ['admin', 'accountant', 'manager', 'tech', 'agent'];
     const [totalCount, ...roleCounts] = await Promise.all([
       query.clone().count('id as count').first(),
       ...roles.map((role) => query.clone().where('role', role).count('id as count').first()),

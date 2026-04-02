@@ -84,6 +84,12 @@ export const ERROR_LIST = {
     category: 'authentication',
   },
 
+  EMAIL_NOT_VERIFIED: {
+    statusCode: 403,
+    message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+    category: 'authentication',
+  },
+
   ACCOUNT_LOCKED: {
     statusCode: 429,
     message: 'Account temporarily locked due to too many failed attempts',
@@ -169,12 +175,6 @@ export const ERROR_LIST = {
   },
 
   // Email verification errors
-  EMAIL_NOT_VERIFIED: {
-    statusCode: 403,
-    message: 'Please verify your email address before proceeding',
-    category: 'verification',
-  },
-
   INVALID_VERIFICATION_TOKEN: {
     statusCode: 400,
     message: 'Invalid or expired verification link',

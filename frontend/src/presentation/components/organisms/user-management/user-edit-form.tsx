@@ -7,7 +7,15 @@ import { updateUserSchema, type UpdateUserFormData } from '@/shared/schemas';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
-import { USER_ROLES } from '@/shared/constants';
+import { ROLE_DEFINITIONS, USER_ROLES, type UserRoleType } from '@/shared/constants';
+
+const ROLE_SELECT_ORDER: UserRoleType[] = [
+  USER_ROLES.ADMIN,
+  USER_ROLES.ACCOUNTANT,
+  USER_ROLES.MANAGER,
+  USER_ROLES.TECH,
+  USER_ROLES.AGENT,
+];
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
 import { Button } from '@/presentation/components/atoms/primitives/button';
@@ -215,31 +223,26 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
           >
             <Select
               value={selectedRole}
-              onValueChange={(value: typeof USER_ROLES.ADMIN | typeof USER_ROLES.MANAGER | typeof USER_ROLES.STAFF) => setValue('role', value)}
+              onValueChange={(value: UserRoleType) => setValue('role', value)}
               disabled={isUpdating || user.role === USER_ROLES.ADMIN}
             >
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={USER_ROLES.ADMIN}>
-                  <div className="flex items-center gap-2">
-                    <span>Admin</span>
-                    <Typography variant="body-xs" color="muted" as="span">System administrator</Typography>
-                  </div>
-                </SelectItem>
-                <SelectItem value="manager">
-                  <div className="flex items-center gap-2">
-                    <span>Manager</span>
-                    <Typography variant="body-xs" color="muted" as="span">Team management access</Typography>
-                  </div>
-                </SelectItem>
-                <SelectItem value="staff">
-                  <div className="flex items-center gap-2">
-                    <span>Staff</span>
-                    <Typography variant="body-xs" color="muted" as="span">Basic user access</Typography>
-                  </div>
-                </SelectItem>
+                {ROLE_SELECT_ORDER.map((role) => {
+                  const def = ROLE_DEFINITIONS[role];
+                  return (
+                    <SelectItem key={role} value={role}>
+                      <div className="flex items-center gap-2">
+                        <span>{def.displayName}</span>
+                        <Typography variant="body-xs" color="muted" as="span">
+                          {def.description}
+                        </Typography>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </FormField>

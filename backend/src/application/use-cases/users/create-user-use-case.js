@@ -100,13 +100,13 @@ export class CreateUserUseCase {
   _resolveRole(role, creatorUser, username, email) {
     const validRoles = Object.values(ROLES);
     if (!role) {
-      logger.warn('No role provided in user creation, defaulting to staff', {
+      logger.warn('No role provided in user creation, defaulting to agent', {
         username,
         email,
         creatorUserId: creatorUser.id,
         creatorUserRole: creatorUser.role,
       });
-      return ROLES.STAFF;
+      return ROLES.AGENT;
     }
     if (!validRoles.includes(role)) {
       throw new ValidationException(

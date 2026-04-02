@@ -59,8 +59,8 @@ export function DataTableToolbar<TData>({
       role="toolbar"
       aria-orientation="horizontal"
       className={cn(
-        "flex w-full flex-col gap-2 py-2 min-w-0 min-h-[2.25rem]",
-        "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-10",
+        "flex w-full flex-col gap-2 py-2 min-w-0 min-h-8",
+        "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-8",
         className,
       )}
       {...props}
@@ -202,7 +202,7 @@ function DataTableToolbarFilter<TData>({
             onValueChange={handleSearchChange}
             allowClear
             className="w-40 lg:w-56"
-            inputClassName="h-8"
+            inputClassName="h-8 py-0"
           />
         );
 
@@ -215,7 +215,7 @@ function DataTableToolbarFilter<TData>({
               placeholder={columnMeta.placeholder ?? columnMeta.label}
               value={(column.getFilterValue() as string) ?? ""}
               onChange={(event) => column.setFilterValue(event.target.value)}
-              className={cn("h-8 w-[120px]", columnMeta.unit && "pr-8")}
+              className={cn("h-8 w-[120px] py-0", columnMeta.unit && "pr-8")}
             />
             {columnMeta.unit && (
               <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">

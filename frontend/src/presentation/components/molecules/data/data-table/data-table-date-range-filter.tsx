@@ -83,7 +83,7 @@ export function DataTableDateRangeFilter({
             'h-8 border-dashed font-normal',
             hasRange
               ? 'w-auto min-w-0 max-w-[200px] justify-start gap-1.5 px-2 sm:w-auto sm:min-w-0 sm:shrink-0 sm:max-w-none sm:px-3'
-              : 'w-8 shrink-0 justify-center p-0 sm:w-auto sm:min-w-0 sm:shrink-0 sm:px-3 sm:py-0',
+              : 'h-8 w-8 shrink-0 justify-center p-0 sm:h-8 sm:w-auto sm:min-w-0 sm:shrink-0 sm:px-3 sm:py-0',
             className,
           )}
           aria-label={title}

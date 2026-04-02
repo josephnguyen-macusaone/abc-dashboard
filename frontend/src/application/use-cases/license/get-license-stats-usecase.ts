@@ -82,6 +82,84 @@ const DEFAULT_LICENSE_DASHBOARD_METRICS: LicenseDashboardMetric[] = [
  * Transform backend dashboard metrics to business domain format.
  * Exported for reuse when store already has metrics (avoids duplicate API calls).
  */
+export type LicenseMetricsAudience = 'admin' | 'agent';
+
+function toSafeNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Agent dashboard: aggregate SMS / agents cost / plan mix from the current license rows (same scope as the table).
+ */
+export function buildAgentPortfolioMetricsFromLicenses(licenses: LicenseRecord[]): LicenseDashboardMetric[] {
+  const numberFormatter = new Intl.NumberFormat('en-US');
+  const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+
+  let smsPurchased = 0;
+  let smsSent = 0;
+  let smsBalance = 0;
+  let agentsCost = 0;
+  const planCounts = new Map<string, number>();
+
+  for (const row of licenses) {
+    smsPurchased += toSafeNumber(row.smsPurchased);
+    smsSent += toSafeNumber(row.smsSent);
+    smsBalance += toSafeNumber(row.smsBalance);
+    agentsCost += toSafeNumber(row.agentsCost);
+    const raw = (row.plan ?? '').trim();
+    const key = raw.length > 0 ? raw : '(unspecified)';
+    planCounts.set(key, (planCounts.get(key) ?? 0) + 1);
+  }
+
+  let planValue = '—';
+  if (licenses.length > 0 && planCounts.size > 0) {
+    const sorted = [...planCounts.entries()].sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+    );
+    const [topPlan, topCount] = sorted[0];
+    if (planCounts.size === 1) {
+      planValue = topPlan === '(unspecified)' ? '—' : topPlan;
+    } else {
+      const label = topPlan === '(unspecified)' ? 'Unspecified' : topPlan;
+      planValue = `${label} · ${topCount} lic. (+${planCounts.size - 1} other plan${planCounts.size > 2 ? 's' : ''})`;
+    }
+  }
+
+  return [
+    {
+      id: 'agent-sms-purchased',
+      label: 'SMS purchased',
+      value: numberFormatter.format(smsPurchased),
+    },
+    {
+      id: 'agent-sms-sent',
+      label: 'SMS sent',
+      value: numberFormatter.format(smsSent),
+    },
+    {
+      id: 'agent-sms-balance',
+      label: 'SMS balance',
+      value: numberFormatter.format(smsBalance),
+    },
+    {
+      id: 'agent-agents-cost',
+      label: 'Agents cost',
+      value: currencyFormatter.format(agentsCost),
+    },
+    {
+      id: 'agent-plan-mix',
+      label: 'Plan',
+      value: planValue,
+    },
+  ];
+}
+
 export function transformDashboardMetricsToCards(metrics: DashboardMetrics): LicenseDashboardMetric[] {
   const currencyFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',

@@ -42,11 +42,6 @@ export function canAccessUser(currentUser, targetUser) {
     return targetUser.managedBy === currentUser.id;
   }
 
-  // Staff can only access themselves
-  if (currentUser.role === ROLES.STAFF) {
-    return targetUser.id === currentUser.id;
-  }
-
   return false;
 }
 
@@ -63,8 +58,8 @@ export function canReassignStaff(currentUser, staffUser, _newManagerId) {
     return false;
   }
 
-  // Staff must be in staff role
-  if (staffUser.role !== ROLES.STAFF) {
+  // Subordinate reassignment: agents (e.g. under a manager)
+  if (staffUser.role !== ROLES.AGENT) {
     return false;
   }
 
@@ -105,11 +100,6 @@ export function checkUserCreationPermission(allowedRoles = null) {
           `Users with role '${currentUser.role}' cannot create '${targetRole}' accounts`,
           403
         );
-      }
-
-      // For managers creating staff, auto-assign to themselves
-      if (currentUser.role === ROLES.MANAGER && targetRole === ROLES.STAFF) {
-        req.body.managedBy = currentUser.id;
       }
 
       // Set createdBy field
@@ -251,7 +241,7 @@ export function getUserQueryFilters(currentUser, _queryParams = {}) {
   }
 
   // Tech/agent/staff see nothing (should not reach user management)
-  if ([ROLES.TECH, ROLES.AGENT, ROLES.STAFF].includes(currentUser.role)) {
+  if ([ROLES.TECH, ROLES.AGENT].includes(currentUser.role)) {
     filters.__emptyUserList = true;
     return filters;
   }

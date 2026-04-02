@@ -112,7 +112,6 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canViewSmsPaymentHistory: true,
     canEditLicenseCoreGridFields: true,
   },
-  [USER_ROLES.STAFF]: NO_CAPABILITIES,
 };
 
 export function getLicenseCapabilities(userRole?: string): LicenseCapabilities {

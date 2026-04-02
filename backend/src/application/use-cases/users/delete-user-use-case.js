@@ -54,26 +54,14 @@ export class DeleteUserUseCase {
       return { allowed: true };
     }
 
-    // Managers can delete staff users but not admins, accountants, or other managers
     if (deleter.role === ROLES.MANAGER) {
-      if (targetUser.role === ROLES.ADMIN) {
-        return {
-          allowed: false,
-          reason: 'Managers cannot delete admin accounts',
-        };
-      }
-      if (targetUser.role === ROLES.ACCOUNTANT || targetUser.role === ROLES.MANAGER) {
-        return {
-          allowed: false,
-          reason: 'Managers cannot delete peer or higher-privilege accounts',
-        };
-      }
-      if (targetUser.role === ROLES.STAFF) {
-        return { allowed: true };
-      }
+      return {
+        allowed: false,
+        reason: 'Managers cannot delete user accounts',
+      };
     }
 
-    // Staff and other roles cannot delete anyone
+    // Other roles cannot delete users
     return {
       allowed: false,
       reason: 'Insufficient permissions to delete users',

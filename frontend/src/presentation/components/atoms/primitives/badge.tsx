@@ -25,8 +25,6 @@ const badgeVariants = cva(
           "border-transparent bg-purple-600 text-white hover:bg-purple-700 shadow-sm",
         manager:
           "border-transparent bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
-        staff:
-          "border-transparent bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
         active:
           "border-transparent bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
         inactive:

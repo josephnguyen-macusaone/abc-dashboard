@@ -50,7 +50,7 @@ export function DataGridViewMenu<TData>({
           size="sm"
           className="ms-auto h-8 font-normal flex"
         >
-          <Settings2 className="text-muted-foreground" />
+          <Settings2 className="size-4 shrink-0 text-muted-foreground" />
           <span className="hidden md:inline ml-1">View</span>
         </Button>
       </PopoverTrigger>

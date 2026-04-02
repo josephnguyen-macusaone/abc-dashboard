@@ -151,7 +151,6 @@ export interface UsersListResponseDto {
     manager: number;
     tech: number;
     agent: number;
-    staff: number;
   };
 }
 
@@ -179,7 +178,6 @@ export interface UserStatsResponseDto {
   manager: number;
   tech: number;
   agent: number;
-  staff: number;
 }
 
 // Profile Update API DTOs

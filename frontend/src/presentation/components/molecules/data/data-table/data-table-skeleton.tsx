@@ -59,8 +59,8 @@ export function DataTableSkeleton({
           <Skeleton className="hidden h-8 w-20 rounded-md lg:block" />
         ) : null}
       </div>
-      <ScrollArea className="max-h-[min(70vh,36rem)] w-full rounded-md border">
-        <Table>
+      <ScrollArea type="auto" className="max-h-[min(70vh,36rem)] w-full rounded-md border">
+        <Table className="min-w-0 overflow-x-visible">
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
               {Array.from({ length: columnCount }).map((_, j) => (

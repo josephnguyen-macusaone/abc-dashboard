@@ -16,6 +16,11 @@ export const tableCellClass =
 export const tableFooterClass =
     "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0";
 
+/**
+ * Wrapper `className` applies to the outer div (not `<table>`).
+ * When this table sits inside a Radix ScrollArea, pass `className="min-w-0 overflow-x-visible"` so
+ * horizontal scrolling stays on the Radix viewport (themed scrollbar) instead of a nested native bar.
+ */
 function Table({ className, style, ...props }: React.ComponentProps<"table">) {
     return (
         <div

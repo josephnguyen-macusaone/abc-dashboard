@@ -75,7 +75,8 @@ export class AuthController extends BaseController {
     tokenService,
     userProfileRepository,
     userRepository = null,
-    verifyEmailUseCase = null
+    verifyEmailUseCase = null,
+    resendVerificationUseCase = null
   ) {
     super();
     this.signupUseCase = signupUseCase;
@@ -90,6 +91,7 @@ export class AuthController extends BaseController {
     this.userProfileRepository = userProfileRepository;
     this.userRepository = userRepository;
     this.verifyEmailUseCase = verifyEmailUseCase;
+    this.resendVerificationUseCase = resendVerificationUseCase;
   }
 
   async signup(req, res) {
@@ -139,6 +141,27 @@ export class AuthController extends BaseController {
       }
 
       logger.error('Email verification error:', error);
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  }
+
+  async resendVerification(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!this.resendVerificationUseCase) {
+        return sendErrorResponse(res, 'SERVICE_UNAVAILABLE');
+      }
+
+      const result = await this.resendVerificationUseCase.execute({ email });
+
+      return res.success(null, result.message);
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
+
+      logger.error('Resend verification error:', error);
       return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
     }
   }

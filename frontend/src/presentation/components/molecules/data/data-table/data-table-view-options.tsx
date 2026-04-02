@@ -48,7 +48,7 @@ export function DataTableViewOptions<TData>({
           role="combobox"
           variant="outline"
           size="sm"
-          className="h-8 w-8 shrink-0 p-0 font-normal sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
+          className="h-8 w-8 shrink-0 p-0 font-normal sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
         >
           <Settings2 className="size-4 text-muted-foreground" />
           <span className="hidden sm:ml-1 sm:inline">View</span>

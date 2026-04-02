@@ -9,6 +9,7 @@
 import {
   InvalidCredentialsException,
   AccountDeactivatedException,
+  EmailNotVerifiedException,
   ValidationException,
 } from '../../../domain/exceptions/domain.exception.js';
 import { withTimeout, TimeoutPresets } from '../../../shared/utils/reliability/retry.js';
@@ -48,14 +49,7 @@ export class LoginUseCase {
         throw new InvalidCredentialsException();
       }
 
-      // Check if account is active (admin controls this)
-      if (!user.isActive) {
-        throw new AccountDeactivatedException(
-          'Your account has been deactivated. Please contact your administrator.'
-        );
-      }
-
-      // Verify password with timeout
+      // Verify password with timeout (before revealing account state beyond "bad credentials")
       const isPasswordValid = await withTimeout(
         () => this.authService.verifyPassword(password, user.hashedPassword),
         TimeoutPresets.NORMAL, // Increased timeout for bcrypt operations (10 seconds)
@@ -63,6 +57,14 @@ export class LoginUseCase {
       );
       if (!isPasswordValid) {
         throw new InvalidCredentialsException();
+      }
+
+      if (!user.emailVerified) {
+        throw new EmailNotVerifiedException();
+      }
+
+      if (!user.isActive) {
+        throw new AccountDeactivatedException();
       }
 
       // Check if password change is required (first login or password reset)
@@ -95,7 +97,8 @@ export class LoginUseCase {
       if (
         error instanceof ValidationException ||
         error instanceof InvalidCredentialsException ||
-        error instanceof AccountDeactivatedException
+        error instanceof AccountDeactivatedException ||
+        error instanceof EmailNotVerifiedException
       ) {
         throw error;
       }

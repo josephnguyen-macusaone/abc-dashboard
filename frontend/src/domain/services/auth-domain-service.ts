@@ -7,7 +7,7 @@ import { User, UserRole } from '@/domain/entities/user-entity';
 export class AuthDomainService {
   /**
    * Validate user role hierarchy
-   * Business rule: Managers can only manage staff, admins can manage everyone
+   * Business rule: Role hierarchy for management checks (admin broadest)
    */
   static canUserManageRole(managerRole: UserRole, targetRole: UserRole): boolean {
     const roleHierarchy = {
@@ -16,7 +16,6 @@ export class AuthDomainService {
       [UserRole.MANAGER]: 4,
       [UserRole.TECH]: 3,
       [UserRole.AGENT]: 2,
-      [UserRole.STAFF]: 1,
     };
 
     return roleHierarchy[managerRole] > roleHierarchy[targetRole];
@@ -65,10 +64,10 @@ export class AuthDomainService {
 
   /**
    * Determine default role for new users
-   * Business rule: New users start as staff unless specified otherwise
+   * Business rule: New users default to agent unless specified otherwise
    */
   static getDefaultRole(requestedRole?: string): UserRole {
-    if (!requestedRole) return UserRole.STAFF;
+    if (!requestedRole) return UserRole.AGENT;
 
     const normalized = requestedRole.toString().toLowerCase();
     const validRoles = Object.values(UserRole);
@@ -76,7 +75,7 @@ export class AuthDomainService {
       return normalized as UserRole;
     }
 
-    return UserRole.STAFF;
+    return UserRole.AGENT;
   }
 
   /**

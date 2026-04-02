@@ -101,6 +101,19 @@ export function createAuthRoutes(authController) {
     authController.verifyEmail.bind(authController)
   );
 
+  const resendVerificationLimiter = createRateLimit(
+    15 * 60 * 1000,
+    5,
+    'Too many resend attempts, please try again later.'
+  );
+
+  router.post(
+    '/resend-verification',
+    resendVerificationLimiter,
+    validateRequest(authSchemas.resendVerification),
+    authController.resendVerification.bind(authController)
+  );
+
   /**
    * @swagger
    * /auth/login:

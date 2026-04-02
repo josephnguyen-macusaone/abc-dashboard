@@ -1,10 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthTemplate } from '@/presentation/components/templates';
 import { ResetPasswordForm } from '@/presentation/components/organisms/auth';
+import { Typography } from '@/presentation/components/atoms';
 
-export function ResetPasswordFormPage() {
+function ResetPasswordFormPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -14,7 +16,7 @@ export function ResetPasswordFormPage() {
     router.push('/login');
   };
 
-  const handleSuccess = () => {
+  const handleContinueToLogin = () => {
     router.push('/login');
   };
 
@@ -22,9 +24,27 @@ export function ResetPasswordFormPage() {
     <AuthTemplate>
       <ResetPasswordForm
         token={token || undefined}
-        onSuccess={handleSuccess}
+        onContinueToLogin={handleContinueToLogin}
         onBackToLogin={handleBackToLogin}
       />
     </AuthTemplate>
+  );
+}
+
+export function ResetPasswordFormPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthTemplate>
+          <div className="flex min-h-[12rem] items-center justify-center">
+            <Typography variant="body-m" color="muted">
+              Loading…
+            </Typography>
+          </div>
+        </AuthTemplate>
+      }
+    >
+      <ResetPasswordFormPageContent />
+    </Suspense>
   );
 }

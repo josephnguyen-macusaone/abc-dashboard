@@ -9,8 +9,10 @@ import { SortBy, SortOrder } from '@/types';
 export interface UserStats {
   total: number;
   admin: number;
+  accountant: number;
   manager: number;
-  staff: number;
+  tech: number;
+  agent: number;
 }
 
 export interface UserFilters {

@@ -146,7 +146,7 @@ export function DataTableSliderFilter<TData>({
         <Button
           variant="outline"
           size="sm"
-          className="border-dashed font-normal"
+          className="h-8 border-dashed font-normal"
         >
           {columnFilterValue ? (
             <div
@@ -156,10 +156,10 @@ export function DataTableSliderFilter<TData>({
               className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onClick={onReset}
             >
-              <XCircle />
+              <XCircle className="size-4 shrink-0" />
             </div>
           ) : (
-            <PlusCircle />
+            <PlusCircle className="size-4 shrink-0" />
           )}
           <span>{title}</span>
           {columnFilterValue ? (
@@ -197,7 +197,7 @@ export function DataTableSliderFilter<TData>({
                 max={max}
                 value={range[0]?.toString()}
                 onChange={onFromInputChange}
-                className={cn("h-8 w-24", unit && "pr-8")}
+                className={cn("h-8 w-24 py-0", unit && "pr-8")}
               />
               {unit && (
                 <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">
@@ -221,7 +221,7 @@ export function DataTableSliderFilter<TData>({
                 max={max}
                 value={range[1]?.toString()}
                 onChange={onToInputChange}
-                className={cn("h-8 w-24", unit && "pr-8")}
+                className={cn("h-8 w-24 py-0", unit && "pr-8")}
               />
               {unit && (
                 <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">

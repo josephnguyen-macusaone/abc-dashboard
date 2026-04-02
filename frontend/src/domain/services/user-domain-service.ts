@@ -34,11 +34,6 @@ export class UserDomainService {
       return targetUser.role !== UserRole.ADMIN;
     }
 
-    // Managers can only delete staff
-    if (deleter.role === UserRole.MANAGER) {
-      return targetUser.role === UserRole.STAFF;
-    }
-
     return false;
   }
 
@@ -61,15 +56,13 @@ export class UserDomainService {
 
   /**
    * Validate user activation/deactivation permissions
-   * Business rule: Only admins can deactivate users, managers can activate staff
+   * Business rule: Admins and accountants may activate non-admin users
    */
   static canUserToggleActivation(toggler: User, targetUser: User, activate: boolean): boolean {
     if (activate) {
-      // Activation permissions
       return (
         AuthDomainService.canPerformAdminActions(toggler) ||
-        (toggler.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN) ||
-        (toggler.role === UserRole.MANAGER && targetUser.role === UserRole.STAFF)
+        (toggler.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN)
       );
     } else {
       // Deactivation permissions

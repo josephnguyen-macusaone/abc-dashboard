@@ -2149,6 +2149,8 @@ function useDataGrid<TData>({
     };
   }, [store, blurCell, clearSelection]);
 
+  const paginationRowCount = table.getPaginationRowModel().rows.length;
+
   useIsomorphicLayoutEffect(() => {
     const rafId = requestAnimationFrame(() => {
       rowVirtualizer.measure();
@@ -2156,6 +2158,7 @@ function useDataGrid<TData>({
     return () => cancelAnimationFrame(rafId);
   }, [
     rowHeight,
+    paginationRowCount,
     table.getState().columnFilters,
     table.getState().columnOrder,
     table.getState().columnPinning,
@@ -2167,6 +2170,19 @@ function useDataGrid<TData>({
     table.getState().rowSelection,
     table.getState().sorting,
   ]);
+
+  // Radix ScrollArea viewport can report 0×0 until layout; remeasure when it resizes (fixes empty rows in Chrome).
+  useIsomorphicLayoutEffect(() => {
+    const el = dataGridRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        rowVirtualizer.measure();
+      });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rowVirtualizer, paginationRowCount]);
 
   return React.useMemo(
     () => ({
