@@ -59,7 +59,7 @@ export function DataGridSearch<TData>({
         onClear={handleClear}
         allowClear
         className="w-40 lg:w-56"
-        inputClassName="h-8"
+        inputClassName="h-8 py-0"
       />
     </div>
   );

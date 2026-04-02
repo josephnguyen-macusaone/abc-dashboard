@@ -107,7 +107,7 @@ export function LicenseDataTableSkeleton({
 
       {/* Table - same structure as user skeleton */}
       <ScrollArea className="max-h-[min(70vh,36rem)] w-full rounded-md border">
-        <Table>
+        <Table className="min-w-0 overflow-x-visible">
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
               {LICENSE_TABLE_COLUMN_IDS.map((id) => (

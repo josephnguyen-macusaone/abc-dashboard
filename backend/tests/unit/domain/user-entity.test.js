@@ -15,7 +15,7 @@ describe('User Entity', () => {
       hashedPassword: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj8iSyGnU8',
       email: 'test@example.com',
       displayName: 'Test User',
-      role: ROLES.STAFF,
+      role: ROLES.AGENT,
       avatarUrl: 'https://example.com/avatar.jpg',
       phone: '+1234567890',
       isActive: true,

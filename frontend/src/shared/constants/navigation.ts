@@ -31,22 +31,12 @@ export function getNavigationItems(userRole?: string): NavigationItem[] {
     ];
   }
 
-  // Roles focused on license operations
-  if (
-    licenseCapabilities.canViewLicenses ||
-    userRole === USER_ROLES.ACCOUNTANT ||
-    userRole === USER_ROLES.TECH ||
-    userRole === USER_ROLES.AGENT
-  ) {
+  // Roles focused on license operations (agents use dashboard only; /licenses is hidden)
+  if (licenseCapabilities.canViewLicenses && userRole !== USER_ROLES.AGENT) {
     return [
       ...baseItems,
       { name: 'License Management', href: '/licenses', icon: FileSpreadsheet },
     ];
-  }
-
-  // Staff navigation (limited access)
-  if (PermissionUtils.isStaff(userRole)) {
-    return baseItems;
   }
 
   // Default/unknown role

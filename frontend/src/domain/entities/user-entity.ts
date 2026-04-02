@@ -222,7 +222,6 @@ export enum UserRole {
   MANAGER = 'manager',
   TECH = 'tech',
   AGENT = 'agent',
-  STAFF = 'staff',
 }
 
 /**
@@ -271,7 +270,7 @@ export class AuthResult {
    * Create unauthenticated result
    */
   static unauthenticated(): AuthResult {
-    const emptyUser = new User('', 'Guest', '', UserRole.STAFF, false);
+    const emptyUser = new User('', 'Guest', '', UserRole.AGENT, false);
     const emptyTokens = new AuthTokens('', '');
     return new AuthResult(emptyUser, emptyTokens, false);
   }

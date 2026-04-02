@@ -61,7 +61,7 @@ export function UserDataTableSkeleton({
 
       {/* Table - matches DataTable (ScrollArea + rounded-md border) */}
       <ScrollArea className="max-h-[min(70vh,36rem)] w-full rounded-md border">
-        <Table>
+        <Table className="min-w-0 overflow-x-visible">
           <TableHeader className="bg-muted">
             <TableRow className="hover:bg-transparent">
               {USER_COLUMNS.map((col) => (

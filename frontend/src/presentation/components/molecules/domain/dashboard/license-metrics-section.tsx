@@ -8,10 +8,12 @@ import { useLicenseStore, selectLicenseFilters, selectDashboardMetrics, selectDa
 import type { LicenseRecord } from '@/types';
 import type { StatsCardConfig } from '@/presentation/components/molecules/domain/user-management';
 import {
+  buildAgentPortfolioMetricsFromLicenses,
   createGetLicenseStatsUseCase,
   transformDashboardMetricsToCards,
   type LicenseDateRange,
   type LicenseDashboardMetric,
+  type LicenseMetricsAudience,
 } from '@/application/use-cases';
 import type { LicenseMetricsFilters } from '@/application/use-cases/license/get-license-stats-usecase';
 import { container } from '@/shared/di/container';
@@ -21,10 +23,14 @@ import {
   AlertTriangle,
   Building,
   DollarSign,
+  Layers,
+  Package,
   Phone,
+  Send,
   TrendingUp,
   User,
   Users,
+  Wallet,
 } from 'lucide-react';
 
 /**
@@ -40,6 +46,11 @@ function transformMetricsToStatsCards(metrics: LicenseDashboardMetric[]): StatsC
     'total-agent-licenses': User,
     'high-risk-licenses': AlertTriangle,
     'estimate-next-month': TrendingUp,
+    'agent-sms-purchased': Package,
+    'agent-sms-sent': Send,
+    'agent-sms-balance': Wallet,
+    'agent-agents-cost': DollarSign,
+    'agent-plan-mix': Layers,
   };
 
   return metrics.map(metric => ({
@@ -57,6 +68,8 @@ interface LicenseMetricsSectionProps {
   isLoading?: boolean;
   totalCount?: number;
   useApiMetrics?: boolean; // New prop to toggle between API and client-side calculation
+  /** Agent dashboard: scoped copy, fewer cards, tighter grid. */
+  audience?: LicenseMetricsAudience;
 }
 
 export function LicenseMetricsSection({
@@ -64,7 +77,9 @@ export function LicenseMetricsSection({
   dateRange,
   isLoading = false,
   useApiMetrics = true, // Default to using API metrics
+  audience = 'admin',
 }: LicenseMetricsSectionProps) {
+  const isAgent = audience === 'agent';
   const { errorWithDescription } = useToast();
   const [metrics, setMetrics] = useState<LicenseDashboardMetric[]>([]);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
@@ -80,6 +95,11 @@ export function LicenseMetricsSection({
   // Use store metrics when available (from parallel dashboard fetch) to avoid duplicate API call
   // Must match all filter fields that affect metrics (date, search, status, plan, term)
   useEffect(() => {
+    if (isAgent) {
+      setIsLoadingMetrics(false);
+      return;
+    }
+
     const filtersMatch =
       filtersForApi?.startsAtFrom === filters?.startsAtFrom &&
       filtersForApi?.startsAtTo === filters?.startsAtTo &&
@@ -154,6 +174,7 @@ export function LicenseMetricsSection({
     errorWithDescription,
     filters,
     filtersForApi,
+    isAgent,
     licenses,
     storeMetrics,
     storeMetricsLoading,
@@ -162,19 +183,26 @@ export function LicenseMetricsSection({
 
   // Transform business metrics to UI components
   const stats = useMemo(() => {
+    if (isAgent) {
+      return transformMetricsToStatsCards(buildAgentPortfolioMetricsFromLicenses(licenses));
+    }
     return transformMetricsToStatsCards(metrics);
-  }, [metrics]);
+  }, [isAgent, licenses, metrics]);
 
-  const effectiveLoading = isLoading || isLoadingMetrics;
+  const effectiveLoading = isAgent ? isLoading : isLoading || isLoadingMetrics;
+  const gridColumns = isAgent ? 5 : 4;
+  const skeletonCardCount = isAgent ? 5 : 8;
 
   // Show skeleton when loading initially (before any data is loaded)
   if (effectiveLoading && licenses.length === 0) {
-    return <LicenseMetricsSkeleton columns={4} />;
+    return (
+      <LicenseMetricsSkeleton columns={gridColumns} cardCount={skeletonCardCount} />
+    );
   }
 
   return (
     <div className="space-y-6">
-      <StatsCards stats={stats} isLoading={effectiveLoading} columns={4} />
+      <StatsCards stats={stats} isLoading={effectiveLoading} columns={gridColumns} />
     </div>
   );
 }

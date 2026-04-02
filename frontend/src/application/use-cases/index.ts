@@ -79,9 +79,11 @@ export {
   GetLicenseStatsUseCase,
   createGetLicenseStatsUseCase,
   transformDashboardMetricsToCards,
+  buildAgentPortfolioMetricsFromLicenses,
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,
+  type LicenseMetricsAudience,
   type LicenseMetricsFilters,
 } from './license/get-license-stats-usecase';
 

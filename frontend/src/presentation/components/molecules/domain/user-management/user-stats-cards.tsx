@@ -1,11 +1,10 @@
 'use client';
 
 import { Typography } from '@/presentation/components/atoms';
-import { Crown, Shield, Users } from 'lucide-react';
+import { Crown, Shield, Users, BriefcaseBusiness, Wrench, User } from 'lucide-react';
 import { USER_ROLES } from '@/shared/constants';
 import { cn } from '@/shared/helpers';
 
-// Generic stats configuration interface
 export interface StatsCardConfig {
   id: string;
   label: string;
@@ -21,27 +20,26 @@ export interface StatsCardConfig {
   };
 }
 
-// Generic stats cards props
 export interface StatsCardsProps {
   stats: StatsCardConfig[];
   isLoading?: boolean;
   className?: string;
-  columns?: 2 | 3 | 4;
+  columns?: 2 | 3 | 4 | 5 | 6;
 }
 
-// User-specific stats cards props
 export interface UserStatsCardsProps {
   userStats?: {
     total: number;
     admin: number;
+    accountant: number;
     manager: number;
-    staff: number;
+    tech: number;
+    agent: number;
   };
   isLoading?: boolean;
   className?: string;
 }
 
-// Generic Stats Cards Component
 export function StatsCards({
   stats,
   isLoading = false,
@@ -51,10 +49,11 @@ export function StatsCards({
   const gridCols = {
     2: 'grid-cols-2 md:grid-cols-2',
     3: 'grid-cols-2 md:grid-cols-3',
-    4: 'grid-cols-2 md:grid-cols-4'
+    4: 'grid-cols-2 md:grid-cols-4',
+    5: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+    6: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
   };
 
-  // Format trend values to 2 decimal places, removing trailing zeros
   const formatTrendValue = (value: number): string => {
     const rounded = parseFloat(value.toFixed(2));
     return rounded.toString();
@@ -141,23 +140,23 @@ export function StatsCards({
   );
 }
 
-// Legacy UserStatsCards - now uses the generic StatsCards internally
 export function UserStatsCards({
   userStats,
   isLoading = false,
   className,
   onRoleFilter,
-  activeRoleFilter
+  activeRoleFilter,
 }: UserStatsCardsProps & {
   onRoleFilter?: (role: string | null) => void;
   activeRoleFilter?: string | null;
 }) {
-  // Use API stats when available, otherwise calculate from displayed users
   const stats = userStats ?? {
     total: 0,
     admin: 0,
+    accountant: 0,
     manager: 0,
-    staff: 0,
+    tech: 0,
+    agent: 0,
   };
 
   const statsCards: StatsCardConfig[] = [
@@ -180,6 +179,15 @@ export function UserStatsCards({
       onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.ADMIN) : undefined,
     },
     {
+      id: 'accountants',
+      label: 'Accountants',
+      value: stats.accountant,
+      icon: BriefcaseBusiness,
+      color: activeRoleFilter === USER_ROLES.ACCOUNTANT ? 'text-primary' : 'text-amber-600',
+      hoverColor: 'text-amber-700',
+      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.ACCOUNTANT) : undefined,
+    },
+    {
       id: 'managers',
       label: 'Managers',
       value: stats.manager,
@@ -189,15 +197,24 @@ export function UserStatsCards({
       onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.MANAGER) : undefined,
     },
     {
-      id: 'staff',
-      label: 'Staff',
-      value: stats.staff,
-      icon: Shield,
-      color: activeRoleFilter === USER_ROLES.STAFF ? 'text-primary' : 'text-green-600',
-      hoverColor: 'text-green-700',
-      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.STAFF) : undefined,
+      id: 'tech',
+      label: 'Tech',
+      value: stats.tech,
+      icon: Wrench,
+      color: activeRoleFilter === USER_ROLES.TECH ? 'text-primary' : 'text-cyan-600',
+      hoverColor: 'text-cyan-700',
+      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.TECH) : undefined,
+    },
+    {
+      id: 'agents',
+      label: 'Agents',
+      value: stats.agent,
+      icon: User,
+      color: activeRoleFilter === USER_ROLES.AGENT ? 'text-primary' : 'text-indigo-600',
+      hoverColor: 'text-indigo-700',
+      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.AGENT) : undefined,
     },
   ];
 
-  return <StatsCards stats={statsCards} isLoading={isLoading} className={className} />;
+  return <StatsCards stats={statsCards} isLoading={isLoading} className={className} columns={6} />;
 }

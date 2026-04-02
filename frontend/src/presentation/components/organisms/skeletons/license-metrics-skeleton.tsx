@@ -4,7 +4,9 @@ import { cn } from "@/shared/helpers";
 
 interface LicenseMetricsSkeletonProps {
   className?: string;
-  columns?: 2 | 3 | 4;
+  columns?: 2 | 3 | 4 | 5 | 6;
+  /** Number of stat placeholders (default 8 for admin grid; agents use 5). */
+  cardCount?: number;
 }
 
 /**
@@ -14,12 +16,15 @@ interface LicenseMetricsSkeletonProps {
  */
 export function LicenseMetricsSkeleton({
   className,
-  columns = 4
+  columns = 4,
+  cardCount = 8,
 }: LicenseMetricsSkeletonProps) {
   const gridCols = {
     2: 'grid-cols-1 md:grid-cols-2',
     3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
     4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+    5: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+    6: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
   }[columns];
 
   return (
@@ -31,7 +36,7 @@ export function LicenseMetricsSkeleton({
 
       {/* Stats Cards Grid */}
       <div className={cn("grid gap-4", gridCols)}>
-        {Array.from({ length: 8 }).map((_, index) => (
+        {Array.from({ length: cardCount }).map((_, index) => (
           <CardSkeleton
             key={index}
             showIcon={true}

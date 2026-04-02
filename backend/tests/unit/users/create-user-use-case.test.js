@@ -27,7 +27,7 @@ describe('CreateUserUseCase', () => {
     username: 'newuser',
     email: 'newuser@example.com',
     displayName: 'New User',
-    role: 'staff',
+    role: 'agent',
   };
 
   const mockCreatedUser = {
@@ -35,7 +35,7 @@ describe('CreateUserUseCase', () => {
     username: 'newuser',
     email: 'newuser@example.com',
     displayName: 'New User',
-    role: 'staff',
+    role: 'agent',
     avatarUrl: null,
     phone: null,
     isFirstLogin: true,
@@ -172,7 +172,7 @@ describe('CreateUserUseCase', () => {
 
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          role: 'staff',
+          role: 'agent',
         })
       );
     });

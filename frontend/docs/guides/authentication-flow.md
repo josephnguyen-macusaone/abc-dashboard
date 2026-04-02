@@ -4,6 +4,83 @@
 
 The ABC Dashboard implements a comprehensive authentication and authorization system with JWT tokens, role-based access control, and secure session management. This document details the complete authentication flow and security implementation.
 
+### Auth flows at a glance
+
+High-level map of **pages**, **API calls**, and **email** touchpoints (links in email use backend `CLIENT_URL`).
+
+```mermaid
+flowchart LR
+  subgraph selfServe ["Self-serve account"]
+    signup["/signup"]
+    verifyPending["/verify-email pending"]
+    verifyToken["/verify-email token"]
+    signup -->|"POST /auth/signup"| apiSignup[API]
+    apiSignup -->|"verification email"| em1[Email]
+    em1 -->|"user opens link"| verifyToken
+    signup -->|"redirect"| verifyPending
+    verifyPending -->|"POST /auth/resend-verification"| apiResend[API]
+    apiResend --> em1
+    verifyToken -->|"POST /auth/verify-email"| apiVerify[API]
+  end
+
+  subgraph pwdFlow ["Password recovery"]
+    forgot["/forgot-password"]
+    forgotSent["/forgot-password sent=1"]
+    reset["/reset-password token"]
+    forgot -->|"POST /auth/forgot-password"| apiForgot[API]
+    apiForgot -->|"reset or verify email"| em2[Email]
+    em2 -->|"user opens link"| reset
+    forgot -->|"sessionStorage + redirect"| forgotSent
+    reset -->|"POST /auth/reset-password"| apiReset[API]
+  end
+
+  subgraph sess ["Session"]
+    login["/login"]
+    dash["App dashboard"]
+    login -->|"POST /auth/login"| apiLogin[API]
+    apiLogin -->|"HttpOnly cookies"| login
+    login --> dash
+  end
+```
+
+### Backend login decision (after password matches)
+
+Order matters: wrong password always returns generic invalid credentials; only then does the API distinguish unverified email from deactivated account.
+
+```mermaid
+flowchart TD
+  loginReq[POST /auth/login]
+  loginReq --> userExists{User by email?}
+  userExists -->|No| invCred[401 INVALID_CREDENTIALS]
+  userExists -->|Yes| pwdOk{Password valid?}
+  pwdOk -->|No| invCred
+  pwdOk -->|Yes| emailOk{emailVerified?}
+  emailOk -->|No| notVer[403 EMAIL_NOT_VERIFIED]
+  emailOk -->|Yes| active{isActive?}
+  active -->|No| deact[401 ACCOUNT_DEACTIVATED]
+  active -->|Yes| tokens[200 + Set cookies + tokens]
+```
+
+### Forgot-password: which email is sent?
+
+Same HTTP success message in all cases (enumeration-safe). The server chooses the template from account state.
+
+```mermaid
+flowchart TD
+  fp[POST /auth/forgot-password]
+  fp --> lookup{User exists?}
+  lookup -->|No| noop[Log + generic success response]
+  lookup -->|Yes| inactive{isActive?}
+  inactive -->|No| unver{emailVerified?}
+  unver -->|No| sendVer[Send verification link]
+  unver -->|Yes| skipInactive[No email + generic success]
+  inactive -->|Yes| sendReset[Send reset-password link]
+  sendVer --> ok[Generic success response]
+  sendReset --> ok
+  skipInactive --> ok
+  noop --> ok
+```
+
 ## 🔐 Authentication Architecture
 
 ```mermaid
@@ -68,21 +145,61 @@ sequenceDiagram
     participant EM as Email Service
 
     U->>F: Fill registration form
-    F->>BE: POST /auth/register
+    F->>BE: POST /auth/signup
     BE->>DB: Check if email exists
     DB-->>BE: Email available
-    BE->>DB: Create user (inactive)
-    BE->>EM: Send verification email
+    BE->>DB: Create user (inactive, unverified)
+    BE->>EM: Send verification email (link uses backend CLIENT_URL → /verify-email?token=…)
     EM-->>U: Verification email sent
-    BE-->>F: Registration successful
-    F-->>U: Show verification message
+    BE-->>F: Registration successful (message only; no tokens)
+    F-->>U: Redirect to /verify-email?pending=true&email=…
 
     U->>F: Click verification link
-    F->>BE: GET /auth/verify-email?token=...
+    F->>BE: POST /auth/verify-email { token }
     BE->>DB: Verify token & activate user
     DB-->>BE: User activated
     BE-->>F: Email verified
     F-->>U: Show success message
+```
+
+**Email links and config:** Set backend `CLIENT_URL` to the public Next.js origin (same value in every environment) so verification, password reset, and related emails open the correct host.
+
+#### Forgot-password UI: durable confirmation
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as ForgotPasswordForm
+    participant SS as sessionStorage
+    participant R as NextRouter
+    participant API as Backend
+
+    U->>F: Submit email
+    F->>API: POST /auth/forgot-password
+    API-->>F: 200 generic message
+    F->>SS: set sent-email key
+    F->>R: replace /forgot-password?sent=1
+    U->>F: Refresh or return later
+    F->>SS: read sent-email
+    F-->>U: Show check email UI
+    U->>F: Try different email
+    F->>SS: remove key
+    F->>R: replace /forgot-password
+```
+
+#### Resend verification (pending screen)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant V as VerifyEmailPage
+    participant API as Backend
+
+    Note over V: Route has email query e.g. from signup redirect
+    U->>V: Click Resend verification email
+    V->>API: POST /auth/resend-verification
+    API-->>V: 200 generic message
+    V-->>U: Toast with message
 ```
 
 ### Login Flow
@@ -92,25 +209,32 @@ sequenceDiagram
     participant U as User
     participant F as Frontend
     participant AS as Auth Store
-    participant AR as Auth Repository
     participant API as API Client
     participant BE as Backend API
-    participant DB as Database
 
     U->>F: Enter credentials
     F->>AS: login(email, password)
-    AS->>AR: login()
-    AR->>API: POST /auth/login
+    AS->>API: POST /auth/login
     API->>BE: Login request
-    BE->>DB: Validate credentials
-    DB-->>BE: User data
-    BE->>BE: Generate JWT tokens
-    BE-->>API: {accessToken, refreshToken, user}
-    API-->>AR: AuthResult
-    AR-->>AS: AuthResult
-    AS->>AS: Store user & tokens
-    AS->>F: Update UI state
-    F-->>U: Redirect to dashboard
+    alt Wrong password or unknown email
+        BE-->>API: 401 INVALID_CREDENTIALS
+        API-->>AS: Error
+        AS-->>F: Show error
+    else Email not verified
+        BE-->>API: 403 EMAIL_NOT_VERIFIED
+        API-->>AS: Error
+        AS-->>F: Show verify email hint
+    else Account deactivated
+        BE-->>API: 401 ACCOUNT_DEACTIVATED
+        API-->>AS: Error
+        AS-->>F: Show support message
+    else Success
+        BE-->>API: 200 + Set HttpOnly cookies + user
+        API-->>AS: Login payload
+        AS->>AS: getProfile hydrate user
+        AS-->>F: Authenticated
+        F-->>U: Redirect to dashboard
+    end
 ```
 
 ### Token Refresh Flow

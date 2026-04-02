@@ -52,26 +52,14 @@ export class UpdateUserUseCase {
       return { allowed: true };
     }
 
-    // Managers can update staff users but not admins, accountants, or other managers
     if (updater.role === ROLES.MANAGER) {
-      if (targetUser.role === ROLES.ADMIN) {
-        return {
-          allowed: false,
-          reason: 'Managers cannot update admin accounts',
-        };
-      }
-      if (targetUser.role === ROLES.ACCOUNTANT || targetUser.role === ROLES.MANAGER) {
-        return {
-          allowed: false,
-          reason: 'Managers cannot update peer or higher-privilege accounts',
-        };
-      }
-      if (targetUser.role === ROLES.STAFF) {
-        return { allowed: true };
-      }
+      return {
+        allowed: false,
+        reason: 'Managers cannot update other user accounts',
+      };
     }
 
-    // Staff and other roles can only update themselves (already handled above)
+    // Other roles can only update themselves (already handled above)
     return {
       allowed: false,
       reason: 'Insufficient permissions to update users',
@@ -117,18 +105,14 @@ export class UpdateUserUseCase {
       return { allowed: true };
     }
 
-    // Manager can only edit status of staff
     if (updater.role === ROLES.MANAGER) {
-      if (targetUser.role === ROLES.STAFF) {
-        return { allowed: true };
-      }
       return {
         allowed: false,
-        reason: 'Managers can only change status of staff accounts',
+        reason: 'Managers cannot change status of other user accounts',
       };
     }
 
-    // Staff cannot edit status of anyone
+    // Other roles cannot edit status of others
     return {
       allowed: false,
       reason: 'You do not have permission to change account status',

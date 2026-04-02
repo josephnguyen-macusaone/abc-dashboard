@@ -8,6 +8,22 @@ import { cn } from "@/shared/helpers";
 /** Row height matches LicensesDataGrid (rowHeight: "medium" = 56px) */
 const ROW_HEIGHT = getRowHeightValue("medium");
 
+/** Keep in sync with `LicensesDataGrid` height math (sticky header, add-row strip, padding, viewport cap). */
+const GRID_HEADER_APPROX_PX = 49;
+const ADD_ROW_STRIP_PX = 36;
+const GRID_VERTICAL_PADDING_PX = 8;
+const SKELETON_VIEWPORT_CAP_PX = 720;
+
+function defaultSkeletonGridHeight(rowCount: number, showAddRow: boolean): number {
+  const addStrip = showAddRow ? ADD_ROW_STRIP_PX : 0;
+  const contentPx =
+    GRID_HEADER_APPROX_PX +
+    rowCount * ROW_HEIGHT +
+    addStrip +
+    GRID_VERTICAL_PADDING_PX;
+  return Math.min(Math.max(contentPx, 200), SKELETON_VIEWPORT_CAP_PX);
+}
+
 /** Grid columns: same as license grid, no select */
 const GRID_COLUMN_IDS: LicenseColumnId[] = [
   "dba",
@@ -58,10 +74,12 @@ interface LicensesDataGridSkeletonProps {
 export function LicensesDataGridSkeleton({
   className,
   rowCount = 20,
-  height = 1200,
+  height,
   showAddRow = true,
   showPagination = true,
 }: LicensesDataGridSkeletonProps) {
+  const resolvedHeight = height ?? defaultSkeletonGridHeight(rowCount, showAddRow);
+
   return (
     <div className={cn("space-y-5", className)}>
       {/* Toolbar - Skeleton placeholders aligned with user skeleton */}
@@ -91,8 +109,9 @@ export function LicensesDataGridSkeleton({
       {/* Data Grid */}
       <div className="relative flex w-full flex-col">
         <ScrollArea
+          type="auto"
           className="w-full rounded-md border bg-card"
-          style={{ height: `${height}px`, maxHeight: `${height}px` }}
+          style={{ height: `${resolvedHeight}px`, maxHeight: `${resolvedHeight}px` }}
           viewportProps={{ role: "grid", "aria-label": "Data grid", tabIndex: 0 }}
           viewportClassName="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >

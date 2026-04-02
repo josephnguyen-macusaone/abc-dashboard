@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Typography } from '@/presentation/components/atoms';
 import { InputField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useForgotPasswordFormStore } from '@/infrastructure/stores/auth/forms';
 import { Mail, CheckCircle, AlertCircle } from 'lucide-react';
 import logger from '@/shared/helpers/logger';
+import { FORGOT_PASSWORD_EMAIL_STORAGE_KEY } from '@/shared/constants/auth-flow-storage';
 
 interface ForgotPasswordFormProps {
   onBackToLogin?: () => void;
@@ -20,12 +22,28 @@ interface ForgotPasswordFormData {
 
 export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordFormProps) {
   const toast = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sentFromUrl = searchParams.get('sent') === '1';
+
+  const [storedEmail, setStoredEmail] = useState<string | null>(null);
+  const [emailHydrated, setEmailHydrated] = useState(false);
+
+  useEffect(() => {
+    if (!sentFromUrl || typeof window === 'undefined') {
+      setStoredEmail(null);
+      setEmailHydrated(true);
+      return;
+    }
+    setStoredEmail(sessionStorage.getItem(FORGOT_PASSWORD_EMAIL_STORAGE_KEY));
+    setEmailHydrated(true);
+  }, [sentFromUrl]);
 
   const requestPasswordReset = useAuthStore((state) => state.requestPasswordReset);
   const authLoading = useAuthStore((state) => state.isLoading);
-  const passwordResetSent = useAuthStore((state) => state.passwordResetSent);
-  const passwordResetEmail = useAuthStore((state) => state.passwordResetEmail);
   const clearPasswordResetState = useAuthStore((state) => state.clearPasswordResetState);
+
+  const showSentConfirmation = sentFromUrl && emailHydrated;
 
   const {
     data: formData,
@@ -72,13 +90,15 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
 
     if (!validateForm()) return;
 
+    const submittedEmail = formData.email.trim();
+
     try {
-      await requestPasswordReset(formData.email);
+      await requestPasswordReset(submittedEmail);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(FORGOT_PASSWORD_EMAIL_STORAGE_KEY, submittedEmail);
+      }
       resetForm();
-      toast.success('Password reset email sent successfully!', {
-        description: 'Check your email for reset instructions.',
-        duration: 5000,
-      });
+      router.replace('/forgot-password?sent=1');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to send password reset email';
       logger.error('Forgot password error:', { error });
@@ -90,11 +110,15 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
   };
 
   const handleTryDifferentEmail = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(FORGOT_PASSWORD_EMAIL_STORAGE_KEY);
+    }
     clearPasswordResetState();
     resetForm();
+    router.replace('/forgot-password');
   };
 
-  if (passwordResetSent && passwordResetEmail) {
+  if (showSentConfirmation) {
     return (
       <div className="text-center space-y-4 mt-6">
         <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-in zoom-in-50 duration-300 delay-150">
@@ -107,11 +131,14 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
           </Typography>
           <div>
             <Typography variant="body-s" className="text-muted-foreground">
-              We&apos;ve sent a password reset link to
+              If an account exists for that address, we&apos;ve sent an email with a link to continue
+              (verify your account or reset your password).
             </Typography>
-            <Typography variant="body-s" className="text-foreground font-medium">
-              {passwordResetEmail}
-            </Typography>
+            {storedEmail ? (
+              <Typography variant="body-s" className="text-foreground font-medium mt-2">
+                {storedEmail}
+              </Typography>
+            ) : null}
           </div>
         </div>
 
@@ -121,8 +148,8 @@ export function ForgotPasswordForm({ onBackToLogin, className }: ForgotPasswordF
               <strong>Next steps</strong>
               <ul className="list-disc list-inside">
                 <li>Check your email inbox (and spam folder)</li>
-                <li>Click the &quot;Reset Password&quot; link</li>
-                <li>Follow the instructions in the email</li>
+                <li>Open the link in the email</li>
+                <li>Follow the instructions on the page</li>
               </ul>
             </Typography>
           </div>

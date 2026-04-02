@@ -25,6 +25,7 @@ import { RequestPasswordResetUseCase } from '../../application/use-cases/auth/re
 import { RequestPasswordResetWithGeneratedPasswordUseCase } from '../../application/use-cases/auth/request-password-reset-with-generated-password-use-case.js';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password-use-case.js';
 import { VerifyEmailUseCase } from '../../application/use-cases/auth/verify-email-use-case.js';
+import { ResendVerificationUseCase } from '../../application/use-cases/auth/resend-verification-use-case.js';
 import { GetUsersUseCase } from '../../application/use-cases/users/get-users-use-case.js';
 import { CreateUserUseCase } from '../../application/use-cases/users/create-user-use-case.js';
 import { UpdateUserUseCase } from '../../application/use-cases/users/update-user-use-case.js';
@@ -257,6 +258,14 @@ class Container {
     return new VerifyEmailUseCase(await this.getUserRepository(), this.getTokenService());
   }
 
+  async getResendVerificationUseCase() {
+    return new ResendVerificationUseCase(
+      await this.getUserRepository(),
+      this.getTokenService(),
+      this.getEmailService()
+    );
+  }
+
   async getRefreshTokenUseCase() {
     return new RefreshTokenUseCase(await this.getUserRepository(), this.getTokenService());
   }
@@ -388,7 +397,8 @@ class Container {
       this.getTokenService(),
       await this.getUserProfileRepository(),
       await this.getUserRepository(),
-      await this.getVerifyEmailUseCase()
+      await this.getVerifyEmailUseCase(),
+      await this.getResendVerificationUseCase()
     );
   }
 

@@ -8,6 +8,8 @@ import { CollapseButton } from '@/presentation/components/molecules/layout/sideb
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 import { useSidebarStore } from '@/infrastructure/stores';
+import { useAuthStore } from '@/infrastructure/stores/auth';
+import { getLicenseCapabilities } from '@/shared/constants/license-capabilities';
 
 /** Routes where Sync button is shown (dashboard and license management only) */
 const SYNC_BUTTON_ROUTES = ['/dashboard', '/licenses'];
@@ -27,9 +29,11 @@ export function AppHeader({
 }: AppHeaderProps) {
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const pathname = usePathname();
-  const showSyncButton = SYNC_BUTTON_ROUTES.some(
-    (r) => pathname === r || pathname.startsWith(`${r}/`)
-  );
+  const userRole = useAuthStore((s) => s.user?.role);
+  const canManualLicenseSync = getLicenseCapabilities(userRole).canUpdateLicense;
+  const showSyncButton =
+    canManualLicenseSync &&
+    SYNC_BUTTON_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 
   return (
     <header

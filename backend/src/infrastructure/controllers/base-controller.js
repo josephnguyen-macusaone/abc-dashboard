@@ -11,6 +11,7 @@ import {
   InsufficientPermissionsException,
   InvalidCredentialsException,
   AccountDeactivatedException,
+  EmailNotVerifiedException,
   NetworkTimeoutException,
   ExternalServiceUnavailableException,
   ConcurrentModificationException,
@@ -36,6 +37,7 @@ const DOMAIN_EXCEPTION_HANDLERS = [
   [InsufficientPermissionsException, '_handlePermissionError'],
   [InvalidCredentialsException, '_handleAuthError'],
   [AccountDeactivatedException, '_handleAccountError'],
+  [EmailNotVerifiedException, '_handleEmailNotVerifiedError'],
   [NetworkTimeoutException, '_handleNetworkTimeoutError'],
   [ExternalServiceUnavailableException, '_handleExternalServiceUnavailableError'],
   [ConcurrentModificationException, '_handleConcurrentModificationError'],
@@ -61,6 +63,7 @@ const DOMAIN_EXCEPTION_CLASSES = new Set([
   InsufficientPermissionsException,
   InvalidCredentialsException,
   AccountDeactivatedException,
+  EmailNotVerifiedException,
   NetworkTimeoutException,
   ExternalServiceUnavailableException,
   ConcurrentModificationException,
@@ -204,6 +207,10 @@ export class BaseController {
 
   _handleAccountError(error, res) {
     return sendErrorResponse(res, 'ACCOUNT_DEACTIVATED');
+  }
+
+  _handleEmailNotVerifiedError(error, res) {
+    return sendErrorResponse(res, 'EMAIL_NOT_VERIFIED');
   }
 
   _handleNetworkTimeoutError(error, res) {

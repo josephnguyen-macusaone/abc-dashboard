@@ -53,7 +53,7 @@ describe('Authentication Integration Tests', () => {
         hashed_password: hashedPassword,
         email: testUserEmail,
         display_name: 'Test User',
-        role: 'staff',
+        role: 'agent',
         is_active: true,
         is_first_login: false,
       })

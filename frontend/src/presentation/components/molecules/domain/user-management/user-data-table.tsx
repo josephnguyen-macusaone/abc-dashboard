@@ -469,7 +469,7 @@ export function UsersDataTable({
             onValueChange={handleSearchChange}
             allowClear={false}
             className="w-64"
-            inputClassName="h-8"
+            inputClassName="h-8 py-0"
           />
         }
         onReset={() => {

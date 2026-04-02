@@ -20,7 +20,15 @@ export async function seed(knex) {
   async function ensureUser(userData) {
     const existing = await knex('users').where({ username: userData.username }).first();
     if (existing) {
-      logger.info(`${userData.username} user already exists, skipping creation`);
+      // Keep seeded dev accounts loggable without email verification (e.g. after schema changes).
+      await knex('users').where({ username: userData.username }).update({
+        email_verified: true,
+        is_active: true,
+        updated_at: new Date(),
+      });
+      logger.info(
+        `${userData.username} user already exists; ensured email_verified and is_active for login`
+      );
       return;
     }
 
@@ -34,6 +42,7 @@ export async function seed(knex) {
       role: userData.role,
       phone: userData.phone,
       is_active: true,
+      email_verified: true,
       is_first_login: false,
       requires_password_change: false,
       lang_key: 'en',
@@ -74,15 +83,6 @@ export async function seed(knex) {
   });
 
   await ensureUser({
-    username: 'tech_smoke',
-    email: 'tech.smoke@abcsalon.us',
-    password: 'TechSmoke123!',
-    displayName: 'Tech Smoke Tester',
-    role: 'tech',
-    phone: '+1-555-0112',
-  });
-
-  await ensureUser({
     username: 'accountant',
     email: 'accountant@abcsalon.us',
     password: 'Accountant123!',
@@ -92,29 +92,11 @@ export async function seed(knex) {
   });
 
   await ensureUser({
-    username: 'account_smoke',
-    email: 'account.smoke@abcsalon.us',
-    password: 'AccountSmoke123!',
-    displayName: 'Account Smoke Tester',
-    role: 'accountant',
-    phone: '+1-555-0113',
-  });
-
-  await ensureUser({
     username: 'agent',
     email: 'agent@abcsalon.us',
     password: 'Agent123!',
     displayName: 'Agent User',
     role: 'agent',
     phone: '+1-555-0104',
-  });
-
-  await ensureUser({
-    username: 'agent_smoke',
-    email: 'agent.smoke@abcsalon.us',
-    password: 'AgentSmoke123!',
-    displayName: 'Agent Smoke Tester',
-    role: 'agent',
-    phone: '+1-555-0114',
   });
 }

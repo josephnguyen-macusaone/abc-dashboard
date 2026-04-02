@@ -11,7 +11,6 @@ export const USER_ROLES = {
   MANAGER: 'manager',
   TECH: 'tech',
   AGENT: 'agent',
-  STAFF: 'staff',
 } as const;
 
 /**
@@ -23,7 +22,6 @@ export const USER_ROLE_LABELS = {
   [USER_ROLES.MANAGER]: 'Manager',
   [USER_ROLES.TECH]: 'Tech',
   [USER_ROLES.AGENT]: 'Agent',
-  [USER_ROLES.STAFF]: 'Staff',
 } as const;
 
 /**
@@ -54,9 +52,8 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, readonly PermissionType[]> =
     USER_PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
   [USER_ROLES.MANAGER]: [
-    USER_PERMISSIONS.CREATE_USER,
     USER_PERMISSIONS.READ_USER,
-    USER_PERMISSIONS.UPDATE_USER, // With restrictions
+    USER_PERMISSIONS.UPDATE_USER,
     USER_PERMISSIONS.VIEW_DASHBOARD,
     USER_PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
@@ -75,19 +72,11 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, readonly PermissionType[]> =
     USER_PERMISSIONS.VIEW_DASHBOARD,
     USER_PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
-  [USER_ROLES.STAFF]: [
-    USER_PERMISSIONS.UPDATE_USER, // Only own profile
-    USER_PERMISSIONS.VIEW_DASHBOARD,
-    USER_PERMISSIONS.MANAGE_OWN_PROFILE,
-  ],
 } as const;
 
 /**
  * Role Creation Permissions - which roles can create which other roles
- * Matches backend permission logic exactly:
- * - Admin: can create admin, manager, staff
- * - Manager: can only create staff
- * - Staff: cannot create any users
+ * Matches backend permission logic exactly.
  */
 export const ROLE_CREATION_PERMISSIONS: Record<UserRoleType, readonly UserRoleType[]> = {
   [USER_ROLES.ADMIN]: [
@@ -96,13 +85,11 @@ export const ROLE_CREATION_PERMISSIONS: Record<UserRoleType, readonly UserRoleTy
     USER_ROLES.MANAGER,
     USER_ROLES.TECH,
     USER_ROLES.AGENT,
-    USER_ROLES.STAFF,
   ],
   [USER_ROLES.ACCOUNTANT]: [USER_ROLES.TECH, USER_ROLES.AGENT],
-  [USER_ROLES.MANAGER]: [USER_ROLES.STAFF],
+  [USER_ROLES.MANAGER]: [],
   [USER_ROLES.TECH]: [],
   [USER_ROLES.AGENT]: [],
-  [USER_ROLES.STAFF]: [],
 } as const;
 
 /**
@@ -113,7 +100,7 @@ export type PermissionType = typeof USER_PERMISSIONS[keyof typeof USER_PERMISSIO
 /**
  * Type for valid user roles (defined directly to avoid circular reference)
  */
-export type UserRoleType = 'admin' | 'accountant' | 'manager' | 'tech' | 'agent' | 'staff';
+export type UserRoleType = 'admin' | 'accountant' | 'manager' | 'tech' | 'agent';
 
 /**
  * Role Definitions for UI display and management
@@ -149,12 +136,6 @@ export const ROLE_DEFINITIONS = {
     description: 'Assigned client and license operations',
     color: 'agent' as const,
   },
-  [USER_ROLES.STAFF]: {
-    name: 'staff' as UserRoleType,
-    displayName: 'Staff',
-    description: 'Basic user access',
-    color: 'staff' as const,
-  },
 } as const;
 
 /**
@@ -182,12 +163,10 @@ export const USER_ROLE_COLORS: Record<UserRoleType, string> = {
   manager: 'bg-blue-100 text-blue-800 border-blue-300',
   tech: 'bg-cyan-100 text-cyan-800 border-cyan-300',
   agent: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  staff: 'bg-emerald-100 text-emerald-800 border-emerald-300',
 };
 
 /**
  * Check if a user role can manage another role
- * Hierarchical permission system where admin > manager > staff
  */
 export function canManageRole(managerRole: UserRoleType, targetRole: UserRoleType): boolean {
   const roleHierarchy: Record<UserRoleType, number> = {
@@ -196,7 +175,6 @@ export function canManageRole(managerRole: UserRoleType, targetRole: UserRoleTyp
     manager: 4,
     tech: 3,
     agent: 2,
-    staff: 1,
   };
 
   return roleHierarchy[managerRole] >= roleHierarchy[targetRole];
@@ -212,7 +190,6 @@ export function isValidUserRole(role: string | undefined): role is UserRoleType 
     USER_ROLES.MANAGER,
     USER_ROLES.TECH,
     USER_ROLES.AGENT,
-    USER_ROLES.STAFF,
   ];
   return role !== undefined && validRoles.includes(role);
 }
@@ -226,13 +203,10 @@ export const PermissionUtils = {
    * Check if a user role has a specific permission
    */
   hasPermission: (userRole: string | undefined, permission: PermissionType): boolean => {
-    // Use type guard for better type safety
     if (!isValidUserRole(userRole)) {
       return false;
     }
 
-    // TypeScript now knows userRole is a valid UserRoleType
-    // With explicit typing, includes() should work naturally
     return ROLE_PERMISSIONS[userRole].includes(permission);
   },
 
@@ -254,20 +228,18 @@ export const PermissionUtils = {
    * Check if user can update users (with hierarchical restrictions)
    * Matches backend logic:
    * - Admin can update anyone EXCEPT other admins
-   * - Manager can update staff only
-   * - Staff cannot update other users (only themselves via different check)
+   * - Accountant can update non-admin users
+   * - Managers cannot update other users (only themselves via canUpdateTargetUser)
    */
   canUpdateUser: (userRole: string | undefined, targetUserRole?: string): boolean => {
     if (!PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.UPDATE_USER)) {
       return false;
     }
 
-    // If no target role specified, just check basic permission
     if (!targetUserRole) {
       return true;
     }
 
-    // Admin can update anyone EXCEPT other admins
     if (userRole === USER_ROLES.ADMIN) {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
@@ -276,21 +248,15 @@ export const PermissionUtils = {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
 
-    // Manager can update staff only (not admins, accountants, or other managers)
     if (userRole === USER_ROLES.MANAGER) {
-      return targetUserRole === USER_ROLES.STAFF;
+      return false;
     }
 
-    // Staff cannot update other users
     return false;
   },
 
   /**
    * Check if user can update a specific target user (including self-update check)
-   * @param userRole - Current user's role
-   * @param userId - Current user's ID
-   * @param targetUserId - Target user's ID
-   * @param targetUserRole - Target user's role
    */
   canUpdateTargetUser: (
     userRole: string | undefined,
@@ -298,12 +264,10 @@ export const PermissionUtils = {
     targetUserId: string | undefined,
     targetUserRole?: string
   ): boolean => {
-    // Users can always update their own profile
     if (userId && targetUserId && userId === targetUserId) {
       return true;
     }
 
-    // Otherwise, check hierarchical permissions
     return PermissionUtils.canUpdateUser(userRole, targetUserRole);
   },
 
@@ -316,11 +280,6 @@ export const PermissionUtils = {
 
   /**
    * Check if user can delete a specific target user (with hierarchical restrictions)
-   * Matches backend logic:
-   * - Users CANNOT delete themselves
-   * - Admin can delete anyone EXCEPT other admins
-   * - Manager can delete staff only
-   * - Staff cannot delete anyone
    */
   canDeleteTargetUser: (
     userRole: string | undefined,
@@ -328,32 +287,26 @@ export const PermissionUtils = {
     targetUserId: string | undefined,
     targetUserRole?: string
   ): boolean => {
-    // Users cannot delete themselves
     if (userId && targetUserId && userId === targetUserId) {
       return false;
     }
 
-    // Must have basic delete permission
     if (!PermissionUtils.hasPermission(userRole, USER_PERMISSIONS.DELETE_USER)) {
       return false;
     }
 
-    // If no target role specified, just check basic permission
     if (!targetUserRole) {
       return true;
     }
 
-    // Admin can delete anyone EXCEPT other admins
     if (userRole === USER_ROLES.ADMIN) {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
 
-    // Manager can delete staff only (not admins or other managers)
     if (userRole === USER_ROLES.MANAGER) {
-      return targetUserRole === USER_ROLES.STAFF;
+      return false;
     }
 
-    // Staff cannot delete anyone
     return false;
   },
 
@@ -385,7 +338,6 @@ export const PermissionUtils = {
     if (!isValidUserRole(userRole)) {
       return [];
     }
-    // With explicit typing, we can safely spread the readonly array
     return [...ROLE_PERMISSIONS[userRole]];
   },
 
@@ -416,17 +368,7 @@ export const PermissionUtils = {
   },
 
   /**
-   * Check if user is staff
-   */
-  isStaff: (userRole: string | undefined): boolean => {
-    return userRole === USER_ROLES.STAFF;
-  },
-
-  /**
    * Get roles that a user can create based on their role
-   * - Admin: can create admin, manager, staff
-   * - Manager: can only create staff
-   * - Staff: cannot create any users
    */
   getCreatableRoles: (userRole: string | undefined): UserRoleType[] => {
     if (!isValidUserRole(userRole)) {

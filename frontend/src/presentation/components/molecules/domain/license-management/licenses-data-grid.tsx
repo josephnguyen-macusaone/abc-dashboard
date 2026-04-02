@@ -30,8 +30,27 @@ import type { LicenseRecord } from "@/types";
 import logger from "@/shared/helpers/logger";
 import { useLicenseStore } from "@/infrastructure/stores/license";
 import { DEFAULT_LICENSE_SORT } from "@/shared/constants/license";
+import { getRowHeightValue } from "@/shared/lib/data-grid";
 
 const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
+
+/** Sticky header row + border (matches grid header). */
+const GRID_HEADER_APPROX_PX = 49;
+const ADD_ROW_STRIP_PX = 36;
+const GRID_VERTICAL_PADDING_PX = 8;
+
+function useLicenseGridViewportCap(absoluteMax = 720, fraction = 0.62) {
+  const [cap, setCap] = React.useState(absoluteMax);
+  React.useEffect(() => {
+    function update() {
+      setCap(Math.min(absoluteMax, Math.round(window.innerHeight * fraction)));
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [absoluteMax, fraction]);
+  return cap;
+}
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
@@ -39,6 +58,7 @@ interface LicensesDataGridProps {
   readOnly?: boolean;
   /** Per-field edit restrictions when the grid is not globally read-only */
   licenseCapabilities?: LicenseCapabilities;
+  /** Fixed grid viewport height (px). Omit to size from row count, capped by viewport (no huge empty area). */
   height?: number;
   className?: string;
   onSave?: (data: LicenseRecord[]) => Promise<void>;
@@ -69,7 +89,7 @@ export function LicensesDataGrid({
   isLoading = false,
   readOnly = false,
   licenseCapabilities,
-  height = 1200,
+  height: heightFromProps,
   className,
   onSave,
   onAddRow,
@@ -80,6 +100,8 @@ export function LicensesDataGrid({
   dateRange,
   onDateRangeChange,
 }: LicensesDataGridProps) {
+  const viewportCapPx = useLicenseGridViewportCap();
+
   // For license management (no onQueryChange), use data directly without complex sync
   // For admin dashboard (with onQueryChange), use complex sync to handle pagination
   const useComplexSync = !!onQueryChange;
@@ -205,9 +227,9 @@ export function LicensesDataGrid({
     } catch (error) {
       const status =
         typeof error === "object" &&
-        error !== null &&
-        "status" in error &&
-        typeof (error as { status?: unknown }).status === "number"
+          error !== null &&
+          "status" in error &&
+          typeof (error as { status?: unknown }).status === "number"
           ? ((error as { status: number }).status)
           : undefined;
       if (status === 409) {
@@ -318,6 +340,29 @@ export function LicensesDataGrid({
   const tablePageSize = gridState.table.getState().pagination.pageSize;
   const tableSorting = gridState.table.getState().sorting;
   const tableColumnFilters = gridState.table.getState().columnFilters;
+
+  const computedGridHeight = React.useMemo(() => {
+    if (heightFromProps != null) return heightFromProps;
+    const rowCount = gridState.table.getPaginationRowModel().rows.length;
+    const rowPx = getRowHeightValue(gridState.rowHeight);
+    const addStrip = gridState.onRowAdd ? ADD_ROW_STRIP_PX : 0;
+    const contentPx =
+      GRID_HEADER_APPROX_PX +
+      rowCount * rowPx +
+      addStrip +
+      GRID_VERTICAL_PADDING_PX;
+    const minPx = 200;
+    return Math.min(Math.max(contentPx, minPx), viewportCapPx);
+  }, [
+    heightFromProps,
+    gridState.table,
+    gridState.rowHeight,
+    gridState.onRowAdd,
+    tablePageIndex,
+    tablePageSize,
+    data.length,
+    viewportCapPx,
+  ]);
 
   // Manual query change handler (adapted from data-table)
   // Only triggers API calls when search/filter/pagination actually changes (after debounce)
@@ -595,7 +640,7 @@ export function LicensesDataGrid({
         <div
           role="toolbar"
           aria-orientation="horizontal"
-          className="flex w-full flex-col gap-2 py-2 min-w-0 min-h-[2.25rem] lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-10"
+          className="flex w-full flex-col gap-2 py-2 min-w-0 min-h-8 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-8"
         >
           {onDateRangeChange && (
             <>
@@ -766,7 +811,7 @@ export function LicensesDataGrid({
                   size="sm"
                   onClick={handleReset}
                   disabled={isSaving}
-                  className="gap-1.5 sm:gap-2"
+                  className="h-8 gap-1.5 sm:gap-2"
                   aria-label="Discard changes"
                 >
                   <RotateCcw className="h-4 w-4 shrink-0" />
@@ -776,7 +821,7 @@ export function LicensesDataGrid({
                   size="sm"
                   onClick={handleSave}
                   disabled={!onSave || isSaving}
-                  className="gap-1.5 sm:gap-2"
+                  className="h-8 gap-1.5 sm:gap-2"
                   aria-label={isSaving ? "Saving changes" : "Save changes"}
                 >
                   <Save className="h-4 w-4 shrink-0" />
@@ -806,7 +851,7 @@ export function LicensesDataGrid({
         ) : (
           <DataGrid
             {...gridState}
-            height={height}
+            height={computedGridHeight}
             stretchColumns
           />
         )}

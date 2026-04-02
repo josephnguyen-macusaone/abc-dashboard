@@ -29,6 +29,7 @@ Minimum for local dev:
 ```bash
 NODE_ENV=development
 PORT=5000
+# Public frontend origin — used in email links (verify-email, reset-password, etc.); must match where Next runs
 CLIENT_URL=http://localhost:3000
 
 POSTGRES_HOST=localhost
@@ -66,19 +67,19 @@ Then from `backend/`: `npm run migrate` and `npm run seed`. See also [../../scri
 
 ## Commands
 
-| Command | Purpose |
-|--------|---------|
-| `npm run dev` | Start dev server (nodemon) |
-| `npm run migrate` | Run migrations |
-| `npm run migrate:fresh` | Rollback all, run migrations again |
-| `npm run seed` | Seed data |
-| `npm run test` | Run tests |
-| `npm run test:unit` | Unit tests only |
-| `npm run test:integration` | Integration tests (needs test DB) |
-| `npm run test:email:config` | Validate email config |
-| `npm run db:status` | Migration status |
-| `npm run sync:start` | Run license sync once |
-| `npm run sync:status` | Sync and health status |
+| Command                     | Purpose                            |
+| --------------------------- | ---------------------------------- |
+| `npm run dev`               | Start dev server (nodemon)         |
+| `npm run migrate`           | Run migrations                     |
+| `npm run migrate:fresh`     | Rollback all, run migrations again |
+| `npm run seed`              | Seed data                          |
+| `npm run test`              | Run tests                          |
+| `npm run test:unit`         | Unit tests only                    |
+| `npm run test:integration`  | Integration tests (needs test DB)  |
+| `npm run test:email:config` | Validate email config              |
+| `npm run db:status`         | Migration status                   |
+| `npm run sync:start`        | Run license sync once              |
+| `npm run sync:status`       | Sync and health status             |
 
 ## Integration tests
 

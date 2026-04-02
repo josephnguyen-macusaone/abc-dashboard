@@ -52,6 +52,12 @@ export class AccountDeactivatedException extends DomainException {
   }
 }
 
+export class EmailNotVerifiedException extends DomainException {
+  constructor() {
+    super('EMAIL_NOT_VERIFIED');
+  }
+}
+
 export class AccountLockedException extends DomainException {
   constructor(retryAfter) {
     super('ACCOUNT_LOCKED', {}, { retryAfter });

@@ -11,7 +11,7 @@ export class CreateUserRequestDto extends BaseDto {
     username,
     email,
     displayName,
-    role = 'staff',
+    role = 'agent',
     avatarUrl = null,
     phone = null,
     managedBy = null,

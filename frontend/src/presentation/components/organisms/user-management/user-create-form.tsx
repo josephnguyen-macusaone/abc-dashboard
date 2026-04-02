@@ -26,10 +26,6 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   const { success: showSuccess } = useToast();
   const isCreating = formLoading;
 
-  // Get available roles for the current user based on role creation permissions
-  // - Admin: can create admin, manager, staff
-  // - Manager: can only create staff
-  // - Staff: cannot create any users
   const getAvailableRoles = () => {
     const creatableRoles = PermissionUtils.getCreatableRoles(currentUser?.role);
 
@@ -40,7 +36,8 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   };
 
   const availableRoles = getAvailableRoles();
-  const defaultRole = availableRoles.length > 0 ? availableRoles[availableRoles.length - 1].value : 'staff';
+  const defaultRole =
+    availableRoles.length > 0 ? availableRoles[availableRoles.length - 1].value : UserRole.AGENT;
 
   const [formData, setFormData] = useState<{
     username: string;

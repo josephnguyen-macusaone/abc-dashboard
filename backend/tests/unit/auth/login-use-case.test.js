@@ -5,6 +5,7 @@ import { jest } from '@jest/globals';
 import { LoginUseCase } from '../../../src/application/use-cases/auth/login-use-case.js';
 import {
   AccountDeactivatedException,
+  EmailNotVerifiedException,
   InvalidCredentialsException,
   ValidationException,
 } from '../../../src/domain/exceptions/domain.exception.js';
@@ -20,11 +21,12 @@ describe('LoginUseCase', () => {
     username: 'testuser',
     email: 'test@example.com',
     displayName: 'Test User',
-    role: 'staff',
+    role: 'agent',
     hashedPassword: 'hashed-password-123',
     avatarUrl: null,
     phone: null,
     isActive: true,
+    emailVerified: true,
     isFirstLogin: false,
     createdAt: new Date('2024-01-01'),
   };
@@ -107,9 +109,10 @@ describe('LoginUseCase', () => {
       ).rejects.toThrow(InvalidCredentialsException);
     });
 
-    it('should throw AccountDeactivatedException when account is not active', async () => {
-      const inactiveUser = { ...mockUser, isActive: false };
+    it('should throw AccountDeactivatedException when account is not active but email is verified', async () => {
+      const inactiveUser = { ...mockUser, isActive: false, emailVerified: true };
       mockUserRepository.findByEmail.mockResolvedValue(inactiveUser);
+      mockAuthService.verifyPassword.mockResolvedValue(true);
 
       await expect(
         loginUseCase.execute({ email: 'test@example.com', password: 'password123' })
@@ -117,6 +120,16 @@ describe('LoginUseCase', () => {
       await expect(
         loginUseCase.execute({ email: 'test@example.com', password: 'password123' })
       ).rejects.toThrow(/deactivated/);
+    });
+
+    it('should throw EmailNotVerifiedException when password is valid but email is not verified', async () => {
+      const unverifiedUser = { ...mockUser, isActive: false, emailVerified: false };
+      mockUserRepository.findByEmail.mockResolvedValue(unverifiedUser);
+      mockAuthService.verifyPassword.mockResolvedValue(true);
+
+      await expect(
+        loginUseCase.execute({ email: 'test@example.com', password: 'ValidPassword123' })
+      ).rejects.toThrow(EmailNotVerifiedException);
     });
 
     it('should throw InvalidCredentialsException when password is invalid', async () => {

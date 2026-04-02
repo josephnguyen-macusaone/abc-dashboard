@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField } from '@/presentation/components/molecules';
 import { useToast } from '@/presentation/contexts/toast-context';
@@ -11,7 +11,8 @@ import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 
 interface ResetPasswordFormProps {
   token?: string;
-  onSuccess?: () => void;
+  /** Called when the user chooses to go to login after a successful reset (avoids racing navigation with the success panel). */
+  onContinueToLogin?: () => void;
   onBackToLogin?: () => void;
   className?: string;
 }
@@ -21,15 +22,15 @@ interface ResetPasswordFormData {
   confirmPassword: string;
 }
 
-export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }: ResetPasswordFormProps) {
+export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, className }: ResetPasswordFormProps) {
   const toast = useToast();
   const resetPassword = useAuthStore((s) => s.resetPassword);
+  const authLoading = useAuthStore((s) => s.isLoading);
 
   // Use Zustand store for form state management
   const {
     data: formData,
     errors,
-    isSubmitting: isLoading,
     setFieldValue,
     validateForm,
     reset: resetForm,
@@ -39,12 +40,6 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
   const [isSuccess, setIsSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  useEffect(() => {
-    if (!token) {
-      toast.error('Invalid or missing reset token');
-    }
-  }, [token, toast]);
 
   const handleInputChange = (field: keyof ResetPasswordFormData, value: string) => {
     setFieldValue(field, value);
@@ -57,23 +52,13 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
     if (!token) return;
 
     try {
-      await toast.promise(
-        resetPassword(token, formData.password),
-        {
-          loading: 'Resetting your password...',
-          success: () => {
-            setIsSuccess(true);
-            resetForm(); // Reset form on success
-            onSuccess?.();
-            return 'Password reset successfully!';
-          },
-          error: (error: unknown) => {
-            return (error as { message?: string })?.message || 'Failed to reset password';
-          }
-        }
-      );
-    } catch {
-      // Error already handled by toast.promise
+      await resetPassword(token, formData.password);
+      setIsSuccess(true);
+      resetForm();
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error ? error.message : 'Failed to reset password';
+      toast.error(msg);
     }
   };
 
@@ -92,6 +77,16 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
             Your password has been successfully reset. You can now sign in with your new password.
           </Typography>
         </div>
+        {onContinueToLogin ? (
+          <Button
+            type="button"
+            variant="default"
+            className="w-full h-11"
+            onClick={onContinueToLogin}
+          >
+            Continue to login
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -141,7 +136,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
                   'pl-10 pr-10 h-11',
                   errors.password && 'border-destructive focus:border-destructive'
                 )}
-                disabled={isLoading}
+                disabled={authLoading}
               />
               <Button
                 type="button"
@@ -149,7 +144,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
                 size="sm"
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
                 onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading}
+                disabled={authLoading}
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -177,7 +172,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
                   'pl-10 pr-10 h-11',
                   errors.confirmPassword && 'border-destructive focus:border-destructive'
                 )}
-                disabled={isLoading}
+                disabled={authLoading}
               />
               <Button
                 type="button"
@@ -185,7 +180,7 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
                 size="sm"
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                disabled={isLoading}
+                disabled={authLoading}
               >
                 {showConfirmPassword ? (
                   <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -202,9 +197,9 @@ export function ResetPasswordForm({ token, onSuccess, onBackToLogin, className }
             variant="default"
             className="w-full h-11 text-button-m transition-all duration-200"
             size="default"
-            disabled={isLoading || !formData.password.trim() || !formData.confirmPassword.trim()}
+            disabled={authLoading || !formData.password.trim() || !formData.confirmPassword.trim()}
           >
-            {isLoading ? (
+            {authLoading ? (
               <div className="flex items-center space-x-2">
                 <Typography variant="button-m" className="pt-0.5">Resetting...</Typography>
               </div>

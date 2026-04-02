@@ -26,7 +26,6 @@ export const updateUserSchema = z
         USER_ROLES.MANAGER,
         USER_ROLES.TECH,
         USER_ROLES.AGENT,
-        USER_ROLES.STAFF,
       ])
       .optional(),
     isActive: z.boolean().optional(),

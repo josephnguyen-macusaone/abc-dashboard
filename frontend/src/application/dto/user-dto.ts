@@ -84,7 +84,6 @@ export interface UserStats {
   manager: number;
   tech: number;
   agent: number;
-  staff: number;
 }
 
 /**
@@ -107,7 +106,6 @@ export interface PaginatedUserList {
     manager: number;
     tech: number;
     agent: number;
-    staff: number;
   };
 }
 

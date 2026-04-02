@@ -14,7 +14,7 @@ describe('GetUsersUseCase', () => {
       username: 'user1',
       email: 'user1@example.com',
       displayName: 'User One',
-      role: 'staff',
+      role: 'agent',
       avatarUrl: null,
       phone: null,
       isActive: true,
@@ -91,7 +91,7 @@ describe('GetUsersUseCase', () => {
       expect(result.users[0].username).toBe('user1');
       expect(result.users[0].email).toBe('user1@example.com');
       expect(result.users[0].displayName).toBe('User One');
-      expect(result.users[0].role).toBe('staff');
+      expect(result.users[0].role).toBe('agent');
       expect(result.users[0].isActive).toBe(true);
 
       // Ensure no hashedPassword is returned

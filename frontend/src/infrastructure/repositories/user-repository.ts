@@ -165,7 +165,7 @@ export class UserRepository implements IUserRepository {
 
     // Validate role parameter
     if (params.role && typeof params.role === 'string') {
-      const validRoles = ['admin', 'manager', 'staff'];
+      const validRoles = ['admin', 'accountant', 'manager', 'tech', 'agent'];
       if (!validRoles.includes(params.role)) {
         throw new Error(`${operation}: Invalid role`);
       }

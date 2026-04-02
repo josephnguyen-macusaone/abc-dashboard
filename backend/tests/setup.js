@@ -38,7 +38,7 @@ global.testUtils = {
     email: `test_${Date.now()}@example.com`,
     password: 'TestPassword123!',
     displayName: 'Test User',
-    role: 'staff',
+    role: 'agent',
     ...overrides,
   }),
 

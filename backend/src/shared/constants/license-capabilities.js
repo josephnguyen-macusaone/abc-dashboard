@@ -51,16 +51,6 @@ export const LICENSE_ROLE_CAPABILITIES = {
     canAddSmsPayment: true,
     canViewSmsPayments: true,
   },
-  [ROLES.STAFF]: {
-    canViewLicenses: false,
-    canCreateLicense: false,
-    canUpdateLicense: false,
-    canDeleteLicense: false,
-    canBulkOperate: false,
-    canResetLicenseId: false,
-    canAddSmsPayment: false,
-    canViewSmsPayments: false,
-  },
 };
 
 const NO_CAPABILITIES = {

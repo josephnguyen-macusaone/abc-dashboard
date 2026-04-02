@@ -99,8 +99,7 @@ export class UpdateUserUseCase {
     if (currentUser.id !== userId) {
       const canManage =
         currentUser.role === UserRole.ADMIN ||
-        (currentUser.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN) ||
-        (currentUser.role === UserRole.MANAGER && targetUser.role === UserRole.STAFF);
+        (currentUser.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN);
 
       if (!canManage) {
         throw new Error('Insufficient permissions to update this user');

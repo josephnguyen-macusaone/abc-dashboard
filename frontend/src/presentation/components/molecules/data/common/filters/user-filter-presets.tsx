@@ -9,11 +9,11 @@ import type { FilterPreset } from '@/types/data-display';
  */
 export const USER_FILTER_PRESETS: FilterPreset[] = [
   {
-    id: 'active-staff',
-    name: 'Active Staff',
-    description: 'All active staff members',
+    id: 'active-agents',
+    name: 'Active Agents',
+    description: 'All active agent accounts',
     filters: {
-      role: 'staff',
+      role: 'agent',
       isActive: true,
     },
     system: true,

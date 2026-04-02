@@ -132,6 +132,18 @@ export const authSchemas = {
       }),
   }),
 
+  /** Resend signup verification email — same shape as forgot-password (enumeration-safe). */
+  resendVerification: Joi.object({
+    email: Joi.string()
+      .email({ tlds: { allow: false } })
+      .required()
+      .messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required',
+        'string.empty': 'Email cannot be empty',
+      }),
+  }),
+
   /**
    * Password reset schema
    */

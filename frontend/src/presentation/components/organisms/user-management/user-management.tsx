@@ -125,7 +125,7 @@ export function UserManagement({
   // Check if current user can edit a target user
   // - Users can edit their own profile
   // - Admin can edit anyone EXCEPT other admins
-  // - Manager can edit staff only
+  // - Managers do not edit other users from this UI
   const canEditUser = (user: User) => {
     return PermissionUtils.canUpdateTargetUser(
       currentUser.role,
@@ -138,7 +138,7 @@ export function UserManagement({
   // Check if current user can delete a target user
   // - Users CANNOT delete themselves
   // - Admin can delete anyone EXCEPT other admins
-  // - Manager can delete staff only
+  // - Managers do not delete other users from this UI
   // - Staff cannot delete anyone
   const canDeleteUser = (user: User) => {
     return PermissionUtils.canDeleteTargetUser(

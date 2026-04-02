@@ -5,7 +5,20 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { User2, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  User2,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  CircleDashed,
+  CheckCircle2,
+  XCircle,
+  Shield,
+  UserCog,
+  BriefcaseBusiness,
+  Wrench,
+  User as UserIcon,
+} from "lucide-react";
 import * as React from "react";
 
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
@@ -22,15 +35,16 @@ import type { User } from "@/domain/entities/user-entity";
 import type { DataTableRowAction, Option } from "@/types/data-table";
 import { USER_COLUMN_WIDTHS } from "@/shared/constants/user";
 
-import { CircleDashed, CheckCircle2, XCircle, Shield, Users, UserCog } from "lucide-react";
 import { Typography } from "@/presentation/components/atoms";
 import { USER_ROLES } from "@/shared/constants";
 
 // Role options for filter - derived from shared constants for consistency
 export const ROLE_OPTIONS: Option[] = [
-  { label: "Admin", value: USER_ROLES.ADMIN, icon: Shield },
-  { label: "Manager", value: USER_ROLES.MANAGER, icon: UserCog },
-  { label: "Staff", value: USER_ROLES.STAFF, icon: Users },
+  { label: 'Admin', value: USER_ROLES.ADMIN, icon: Shield },
+  { label: 'Accountant', value: USER_ROLES.ACCOUNTANT, icon: BriefcaseBusiness },
+  { label: 'Manager', value: USER_ROLES.MANAGER, icon: UserCog },
+  { label: 'Tech', value: USER_ROLES.TECH, icon: Wrench },
+  { label: 'Agent', value: USER_ROLES.AGENT, icon: UserIcon },
 ];
 
 // Status options for filter
