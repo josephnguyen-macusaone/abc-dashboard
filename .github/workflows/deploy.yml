@@ -178,6 +178,17 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets['SERVER_HOST'] }} >> ~/.ssh/known_hosts
 
+      # Droplets often have only compose + dist/; ensure deploy.sh exists and matches this commit.
+      - name: Sync deploy.sh to server
+        run: |
+          SERVER="${{ secrets['SERVER_USER'] }}@${{ secrets['SERVER_HOST'] }}"
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=no "$SERVER" \
+            "mkdir -p /root/abc-dashboard/scripts"
+          scp -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=no \
+            scripts/deploy.sh "${SERVER}:/root/abc-dashboard/scripts/deploy.sh"
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=no "$SERVER" \
+            "chmod +x /root/abc-dashboard/scripts/deploy.sh"
+
       - name: Transfer images to server
         run: |
           echo "Transferring images to server..."
@@ -240,9 +251,9 @@ jobs:
               echo "LICENSE_SYNC_ENABLED=false" >> .env
             fi
 
-            # load dist/*.tar.gz → migrate → deploy.sh up (same as ./scripts/deploy.sh push on server)
+            # load dist/*.tar.gz → migrate → deploy.sh up (script synced in prior CI step; bash avoids shebang/CRLF issues)
             echo "Running deploy.sh upgrade-dist --rm-dist (load → migrate → up)..."
-            timeout 40m ./scripts/deploy.sh upgrade-dist --rm-dist
+            timeout 40m bash ./scripts/deploy.sh upgrade-dist --rm-dist
 
             echo "Verifying images..."
             docker images | grep abc-license | head -6
@@ -284,7 +295,7 @@ jobs:
               echo "Backend health check timed out — rolling back..."
               docker tag abc-license-backend:rollback abc-license-backend:latest
               docker tag abc-license-frontend:rollback abc-license-frontend:latest
-              ./scripts/deploy.sh up -d
+              bash ./scripts/deploy.sh up -d
               echo "Rollback triggered. Exiting with error."
               exit 1
             fi
@@ -335,5 +346,5 @@ jobs:
           echo "  cd /root/abc-dashboard"
           echo "  docker tag abc-license-backend:rollback abc-license-backend:latest"
           echo "  docker tag abc-license-frontend:rollback abc-license-frontend:latest"
-          echo "  ./scripts/deploy.sh up -d"
+          echo "  bash ./scripts/deploy.sh up -d"
           exit 1
