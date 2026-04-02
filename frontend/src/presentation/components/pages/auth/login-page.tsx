@@ -4,18 +4,15 @@ import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/presentation/components/organisms/auth/login-form';
 import { AuthTemplate } from '@/presentation/components/templates';
 import { useAuthStore } from '@/infrastructure/stores/auth';
+import { getRoleDashboardPath } from '@/shared/constants';
 
 function LoginPage() {
   const router = useRouter();
 
   const handleLoginSuccess = () => {
     const currentUser = useAuthStore.getState().user;
-
-    if (!currentUser) {
-      return router.push('/dashboard');
-    }
-
-    return router.push('/dashboard');
+    const target = getRoleDashboardPath(currentUser?.role);
+    return router.push(target);
   };
 
   return (

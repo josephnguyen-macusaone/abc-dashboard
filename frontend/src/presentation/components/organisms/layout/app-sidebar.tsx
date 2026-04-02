@@ -7,6 +7,7 @@ import {
   type NavigationItem,
 } from '@/presentation/components/molecules/layout/sidebar';
 import { cn } from '@/shared/helpers';
+import { getRoleDashboardPath } from '@/shared/constants';
 import { useSidebarStore } from '@/infrastructure/stores';
 import { SIDEBAR_CONSTANTS } from '@/infrastructure/stores/ui/sidebar-store';
 import { useEffect } from 'react';
@@ -47,7 +48,7 @@ export function AppSidebar({
   const getEffectiveWidth = useSidebarStore((s) => s.getEffectiveWidth);
 
   const handleBrandClick = () => {
-    onNavigate('/dashboard');
+    onNavigate(getRoleDashboardPath(userRole));
   };
 
   // Update mobile state on mount and resize

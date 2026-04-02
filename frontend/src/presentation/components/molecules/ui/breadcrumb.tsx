@@ -4,6 +4,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/helpers';
+import { useAuthStore } from '@/infrastructure/stores/auth';
+import { getRoleDashboardPath, ROUTES } from '@/shared/constants';
 
 interface BreadcrumbItem {
   name: string;
@@ -18,11 +20,13 @@ interface BreadcrumbProps {
 export function Breadcrumb({ collapseButton }: BreadcrumbProps = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const userRole = useAuthStore((s) => s.user?.role);
+  const dashboardHref = getRoleDashboardPath(userRole);
 
   // Generate breadcrumb items from pathname and query params
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const paths = pathname.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Dashboard', href: '/dashboard' }];
+    const breadcrumbs: BreadcrumbItem[] = [{ name: 'Dashboard', href: dashboardHref }];
 
     // Map path names to display names
     const pathNameMap: Record<string, string> = {
@@ -30,6 +34,9 @@ export function Breadcrumb({ collapseButton }: BreadcrumbProps = {}) {
       'users': 'User Management',
       'user-management': 'User Management',
       'admin': 'Admin',
+      'agent': 'Agent',
+      'tech': 'Tech',
+      'accountant': 'Accountant',
       'score': 'Score',
       'profile': 'Profile',
     };
@@ -42,8 +49,14 @@ export function Breadcrumb({ collapseButton }: BreadcrumbProps = {}) {
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-      // Skip if it's the dashboard (already added as Dashboard)
-      if (currentPath !== '/dashboard') {
+      const isDashboardRootSegment =
+        currentPath === ROUTES.DASHBOARD ||
+        currentPath === ROUTES.DASHBOARD_ADMIN ||
+        currentPath === ROUTES.DASHBOARD_AGENT ||
+        currentPath === ROUTES.DASHBOARD_TECH ||
+        currentPath === ROUTES.DASHBOARD_ACCOUNTANT;
+
+      if (!isDashboardRootSegment) {
         breadcrumbs.push({
           name: displayName,
           href: currentPath,
@@ -52,7 +65,7 @@ export function Breadcrumb({ collapseButton }: BreadcrumbProps = {}) {
     });
 
     // Handle dashboard sections (query parameters)
-    if (pathname === '/dashboard') {
+    if (pathname === ROUTES.DASHBOARD) {
       const section = searchParams.get('section');
       if (section === 'users') {
         breadcrumbs.push({

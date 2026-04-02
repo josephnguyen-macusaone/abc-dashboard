@@ -1,6 +1,7 @@
 import { Home, Users, FileSpreadsheet } from 'lucide-react';
 import { PermissionUtils, USER_ROLES } from './auth';
 import { getLicenseCapabilities } from './license-capabilities';
+import { getRoleDashboardPath } from './routes';
 import type { NavigationItem } from '@/presentation/components/molecules';
 
 /**
@@ -9,7 +10,7 @@ import type { NavigationItem } from '@/presentation/components/molecules';
  */
 export function getNavigationItems(userRole?: string): NavigationItem[] {
   const baseItems: NavigationItem[] = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Dashboard', href: getRoleDashboardPath(userRole), icon: Home },
   ];
   const licenseCapabilities = getLicenseCapabilities(userRole);
 

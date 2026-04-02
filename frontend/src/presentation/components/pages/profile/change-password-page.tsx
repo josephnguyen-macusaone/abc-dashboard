@@ -6,6 +6,7 @@ import { DashboardTemplate } from '@/presentation/components/templates/dashboard
 import { Card, CardContent, CardTitle, CardDescription, CardHeader } from '@/presentation/components/atoms';
 import { ChangePasswordForm } from '@/presentation/components/organisms/user-profile';
 import { Key, AlertTriangle } from 'lucide-react';
+import { getRoleDashboardPath } from '@/shared/constants';
 import { Alert, AlertDescription } from '@/presentation/components/atoms';
 
 export function ChangePasswordPage() {
@@ -18,8 +19,7 @@ export function ChangePasswordPage() {
 
   const handleSuccess = () => {
     if (isForced) {
-      // Clear forced change flag and redirect to appropriate dashboard
-      router.push('/dashboard');
+      router.push(getRoleDashboardPath(user?.role));
       return;
     }
     router.push('/profile');

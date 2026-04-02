@@ -6,14 +6,15 @@ import { SectionErrorBoundary } from '@/presentation/components/organisms/error-
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ReactNode, useMemo, useCallback, useTransition, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/presentation/contexts';
-import { PermissionUtils, getNavigationItems } from '@/shared/constants';
+import { PermissionUtils, getNavigationItems, ROUTES } from '@/shared/constants';
 import { useSidebarStore, useAuthStore, useLicenseStore, useDataTableStore } from '@/infrastructure/stores';
 import { selectSyncStatus } from '@/infrastructure/stores/license';
 import { useRealtimeSync } from '@/presentation/hooks/use-realtime-sync';
 import { LicenseSyncProgressOverlay } from '@/presentation/components/molecules/domain/dashboard';
 
-/** Routes that display license data. */
-const LICENSE_ROUTES = ['/dashboard', '/licenses'];
+function isLicenseShellRoute(pathname: string): boolean {
+  return pathname === ROUTES.LICENSES || pathname === ROUTES.DASHBOARD || pathname.startsWith(`${ROUTES.DASHBOARD}/`);
+}
 
 /** Table ID used by LicensesDataTable on dashboard; clear its search/filters when navigating away. */
 const LICENSES_TABLE_ID = 'licenses-data-table';
@@ -41,7 +42,7 @@ export function DashboardTemplate({ children }: DashboardTemplateProps) {
   // Reset license store and data table search/filters when entering any license page
   // (each route mounts its own template, so prevPathRef is null on mount - we must reset on enter)
   useEffect(() => {
-    const isLicenseRoute = LICENSE_ROUTES.some(r => pathname === r || pathname.startsWith(`${r}/`));
+    const isLicenseRoute = isLicenseShellRoute(pathname);
     const justArrived = prevPathRef.current === null || prevPathRef.current !== pathname;
 
     if (isLicenseRoute && justArrived) {
