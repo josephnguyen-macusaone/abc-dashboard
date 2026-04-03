@@ -5,6 +5,24 @@ import { ILicenseRepository } from '../../domain/repositories/interfaces/i-licen
 import { withTimeout, TimeoutPresets } from '../../shared/utils/reliability/retry.js';
 import logger from '../../shared/utils/logger.js';
 
+/** SQL aggregate scalars → int (avoids high complexity in _mapDashboardAggregatesRow from repeated ??). */
+function dashboardAggregateInt(value) {
+  if (value === undefined || value === null) {
+    return 0;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** SQL aggregate scalars → float */
+function dashboardAggregateFloat(value) {
+  if (value === undefined || value === null) {
+    return 0;
+  }
+  const n = parseFloat(String(value));
+  return Number.isFinite(n) ? n : 0;
+}
+
 /**
  * License Repository Implementation
  * Implements the ILicenseRepository interface using PostgreSQL with Knex
@@ -570,16 +588,17 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   _mapDashboardAggregatesRow(row) {
+    const r = row || {};
     return {
-      total: row?.total ?? 0,
-      active: row?.active ?? 0,
-      agentHeavy: row?.agent_heavy ?? 0,
-      highRisk: row?.high_risk ?? 0,
-      income: parseFloat(row?.income ?? 0),
-      smsSent: row?.sms_sent ?? 0,
-      smsPurchased: row?.sms_purchased ?? 0,
-      smsBalance: parseFloat(row?.sms_balance ?? 0),
-      agentsCost: parseFloat(row?.agents_cost ?? 0),
+      total: dashboardAggregateInt(r.total),
+      active: dashboardAggregateInt(r.active),
+      agentHeavy: dashboardAggregateInt(r.agent_heavy),
+      highRisk: dashboardAggregateInt(r.high_risk),
+      income: dashboardAggregateFloat(r.income),
+      smsSent: dashboardAggregateInt(r.sms_sent),
+      smsPurchased: dashboardAggregateInt(r.sms_purchased),
+      smsBalance: dashboardAggregateFloat(r.sms_balance),
+      agentsCost: dashboardAggregateFloat(r.agents_cost),
     };
   }
 
