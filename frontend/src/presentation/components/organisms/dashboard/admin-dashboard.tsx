@@ -18,6 +18,21 @@ import {
 const LICENSES_TABLE_ID = 'licenses-data-table';
 import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
 
+function metricsSkeletonForAudience(audience: LicenseMetricsAudience) {
+  if (audience === 'agent') return { columns: 5 as const, cardCount: 5 };
+  if (audience === 'tech' || audience === 'accountant') return { columns: 3 as const, cardCount: 6 };
+  return { columns: 4 as const, cardCount: 8 };
+}
+
+function licenseTableVariantFromAudience(
+  audience: LicenseMetricsAudience,
+): 'default' | 'agent' | 'tech' | 'accountant' {
+  if (audience === 'agent') return 'agent';
+  if (audience === 'tech') return 'tech';
+  if (audience === 'accountant') return 'accountant';
+  return 'default';
+}
+
 // Dynamically import heavy dashboard components for better code splitting
 const LicenseMetricsSection = dynamic(
   () => import('@/presentation/components/molecules/domain/dashboard/license-metrics-section').then(mod => ({ default: mod.LicenseMetricsSection })),
@@ -41,6 +56,7 @@ interface AdminDashboardProps {
   isLoadingLicenses?: boolean;
   tableTitle?: string;
   tableDescription?: string;
+  /** `admin` default; `agent`, `tech`, and `accountant` use tailored metrics and table defaults. */
   metricsAudience?: LicenseMetricsAudience;
   /**
    * Initial license date filter on first dashboard mount.
@@ -333,13 +349,15 @@ export function AdminDashboard({
     };
   }, [setFilters, setTableSearch, clearTableFilters]);
 
+  const metricsSkeleton = metricsSkeletonForAudience(metricsAudience);
+
   return (
     <div className={`space-y-6 ${className || ''}`}>
       <Suspense
         fallback={
           <LicenseMetricsSkeleton
-            columns={metricsAudience === 'agent' ? 5 : 4}
-            cardCount={metricsAudience === 'agent' ? 5 : 8}
+            columns={metricsSkeleton.columns}
+            cardCount={metricsSkeleton.cardCount}
           />
         }
       >
@@ -364,7 +382,7 @@ export function AdminDashboard({
           dateRange={hideDateRange ? undefined : dateRange}
           onDateRangeChange={hideDateRange ? undefined : (range => handleDateRangeChange(range ? { range } : null))}
           hideDateRange={hideDateRange}
-          tableVariant={metricsAudience === 'agent' ? 'agent' : 'default'}
+          tableVariant={licenseTableVariantFromAudience(metricsAudience)}
         />
       </Suspense>
     </div>

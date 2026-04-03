@@ -82,7 +82,39 @@ const DEFAULT_LICENSE_DASHBOARD_METRICS: LicenseDashboardMetric[] = [
  * Transform backend dashboard metrics to business domain format.
  * Exported for reuse when store already has metrics (avoids duplicate API calls).
  */
-export type LicenseMetricsAudience = 'admin' | 'agent';
+export type LicenseMetricsAudience = 'admin' | 'agent' | 'tech' | 'accountant';
+
+/** Tech dashboard: operational subset (volume, risk, mix, SMS usage signal). */
+const TECH_DASHBOARD_METRIC_IDS: readonly string[] = [
+  'total-active-licenses',
+  'new-licenses-month',
+  'high-risk-licenses',
+  'total-inhouse-licenses',
+  'total-agent-licenses',
+  'sms-income-month',
+];
+
+/** Accountant dashboard: revenue- and renewal-oriented subset. */
+const ACCOUNTANT_DASHBOARD_METRIC_IDS: readonly string[] = [
+  'licenses-income-month',
+  'sms-income-month',
+  'total-active-licenses',
+  'high-risk-licenses',
+  'estimate-next-month',
+  'new-licenses-month',
+];
+
+/**
+ * Pick and order admin API metrics for Tech / Accountant dashboards (same aggregate, curated cards).
+ */
+export function sliceStaffDashboardMetricsForAudience(
+  metrics: LicenseDashboardMetric[],
+  audience: 'tech' | 'accountant',
+): LicenseDashboardMetric[] {
+  const order = audience === 'tech' ? TECH_DASHBOARD_METRIC_IDS : ACCOUNTANT_DASHBOARD_METRIC_IDS;
+  const byId = new Map(metrics.map((m) => [m.id, m]));
+  return order.map((id) => byId.get(id)).filter((m): m is LicenseDashboardMetric => m != null);
+}
 
 function toSafeNumber(value: unknown): number {
   const n = Number(value);

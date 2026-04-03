@@ -12,7 +12,6 @@ export interface LicenseCapabilities {
   canToggleLicenseStatus: boolean;
   canAdjustPackage: boolean;
   canAddSmsBalance: boolean;
-  canViewSmsPaymentHistory: boolean;
   /**
    * License grid: edit DBA, zip, term, fees, agents, notes, SMS sent, etc.
    * When false (e.g. Tech), persisted rows are limited to date fields; draft (`temp-*`) rows stay editable for new requests.
@@ -32,7 +31,6 @@ const NO_CAPABILITIES: LicenseCapabilities = {
   canToggleLicenseStatus: false,
   canAdjustPackage: false,
   canAddSmsBalance: false,
-  canViewSmsPaymentHistory: false,
   canEditLicenseCoreGridFields: false,
 };
 
@@ -49,7 +47,6 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canToggleLicenseStatus: true,
     canAdjustPackage: true,
     canAddSmsBalance: true,
-    canViewSmsPaymentHistory: true,
     canEditLicenseCoreGridFields: true,
   },
   [USER_ROLES.MANAGER]: {
@@ -64,7 +61,6 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canToggleLicenseStatus: true,
     canAdjustPackage: true,
     canAddSmsBalance: true,
-    canViewSmsPaymentHistory: true,
     canEditLicenseCoreGridFields: true,
   },
   [USER_ROLES.AGENT]: {
@@ -79,7 +75,6 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canToggleLicenseStatus: false,
     canAdjustPackage: false,
     canAddSmsBalance: true,
-    canViewSmsPaymentHistory: true,
     canEditLicenseCoreGridFields: false,
   },
   [USER_ROLES.TECH]: {
@@ -94,7 +89,6 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canToggleLicenseStatus: false,
     canAdjustPackage: false,
     canAddSmsBalance: false,
-    canViewSmsPaymentHistory: true,
     canEditLicenseCoreGridFields: false,
   },
   [USER_ROLES.ACCOUNTANT]: {
@@ -109,7 +103,6 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canToggleLicenseStatus: true,
     canAdjustPackage: true,
     canAddSmsBalance: true,
-    canViewSmsPaymentHistory: true,
     canEditLicenseCoreGridFields: true,
   },
 };
