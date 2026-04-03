@@ -61,9 +61,9 @@ export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarF
         aria-label="User menu"
         {...props}
       >
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 min-w-0 flex-1">
           {/* Avatar */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <Avatar className="h-8 w-8">
               <AvatarImage src={avatarUrl} alt={`${initials} avatar`} />
               <AvatarFallback className="bg-primary text-primary-foreground text-label-s font-medium">
@@ -76,7 +76,7 @@ export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarF
             {/* MAC USA ONE Typography: Body S for user name */}
             <p className="text-body-s font-medium text-foreground truncate">{displayName}</p>
             {/* MAC USA ONE Typography: Body XS for role */}
-            <p className="text-body-xs text-muted-foreground">{displayRole}</p>
+            <p className="text-body-xs text-muted-foreground truncate">{displayRole}</p>
           </div>
         </div>
         <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground ml-2 shrink-0 transition-transform duration-300 ease-out" />

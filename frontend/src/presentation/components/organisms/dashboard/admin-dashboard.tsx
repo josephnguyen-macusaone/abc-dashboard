@@ -39,6 +39,17 @@ interface AdminDashboardProps {
   tableTitle?: string;
   tableDescription?: string;
   metricsAudience?: LicenseMetricsAudience;
+  /**
+   * When true, skip setting a default date range on first mount.
+   * Use for agent/staff views where all assigned licenses should be visible
+   * regardless of their activation month.
+   */
+  skipDefaultDateRange?: boolean;
+  /**
+   * When true, hide the date range picker from the license table toolbar.
+   * Use for agent/staff views where filtering by activation date makes no sense.
+   */
+  hideDateRange?: boolean;
 }
 
 export function AdminDashboard({
@@ -48,6 +59,8 @@ export function AdminDashboard({
   tableTitle,
   tableDescription,
   metricsAudience = 'admin',
+  skipDefaultDateRange = false,
+  hideDateRange = false,
 }: AdminDashboardProps) {
   // Use Zustand store for license data (single source of truth for list + metrics date filter)
   const licensesFromStore = useLicenseStore(selectLicenses);
@@ -192,7 +205,13 @@ export function AdminDashboard({
     const from = filters.startsAtFrom;
     const to = filters.startsAtTo;
 
-    const runParallelFetch = (dateParams: { startsAtFrom?: string; startsAtTo?: string }) => {
+    const runParallelFetch = (params: {
+      startsAtFrom?: string;
+      startsAtTo?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    }) => {
+      const { startsAtFrom, startsAtTo, sortBy, sortOrder } = params;
       const storeFilters = useLicenseStore.getState().filters;
       const statusParam = Array.isArray(storeFilters.status) ? storeFilters.status.join(',') : storeFilters.status;
       const planParam = Array.isArray(storeFilters.plan) ? storeFilters.plan.join(',') : storeFilters.plan;
@@ -200,16 +219,35 @@ export function AdminDashboard({
       const metricsParams = {
         search: storeFilters.search,
         searchField: storeFilters.searchField,
-        ...dateParams,
+        startsAtFrom,
+        startsAtTo,
         status: statusParam,
         plan: planParam,
         term: termParam,
       };
       void Promise.all([
-        fetchLicenses({ page: 1, limit: 20, ...dateParams }),
+        fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo, sortBy, sortOrder }),
         fetchDashboardMetrics(metricsParams),
       ]);
     };
+
+    // Agent/staff views: always skip the date filter.
+    // This check comes FIRST so a stale date range already in the store (left by another
+    // page in the same session) never sneaks into the API call.
+    if (skipDefaultDateRange) {
+      if (!hasInitializedDateRef.current) {
+        hasInitializedDateRef.current = true;
+        // Clear any stale date filters before fetching so fetchLicenses does not
+        // spread them back in from the store.
+        const staleFilters = useLicenseStore.getState().filters;
+        if (staleFilters.startsAtFrom || staleFilters.startsAtTo) {
+          setFilters({ ...staleFilters, startsAtFrom: undefined, startsAtTo: undefined });
+        }
+        // Default: no date filter, active licenses sorted first.
+        runParallelFetch({ sortBy: 'status', sortOrder: 'asc' });
+      }
+      return;
+    }
 
     if (hasInitializedDateRef.current) {
       // Already initialized; just refetch with current filters (user may have cleared date)
@@ -223,7 +261,7 @@ export function AdminDashboard({
       return;
     }
 
-    // First mount only: no date set yet, set default to current month (first and last day)
+    // First mount only: no date set yet, set default to current month (first and last day).
     hasInitializedDateRef.current = true;
     const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
     const currentFilters = useLicenseStore.getState().filters;
@@ -316,8 +354,9 @@ export function AdminDashboard({
           pageCount={pageCount}
           totalRows={totalCount}
           onQueryChange={licensesProp ? undefined : handleQueryChange}
-          dateRange={dateRange}
-          onDateRangeChange={range => handleDateRangeChange(range ? { range } : null)}
+          dateRange={hideDateRange ? undefined : dateRange}
+          onDateRangeChange={hideDateRange ? undefined : (range => handleDateRangeChange(range ? { range } : null))}
+          hideDateRange={hideDateRange}
         />
       </Suspense>
     </div>
