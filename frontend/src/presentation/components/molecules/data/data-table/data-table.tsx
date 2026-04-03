@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/presentation/components/atoms/primitives/table";
-import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { cn } from "@/shared/helpers";
 
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
@@ -20,6 +19,8 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   emptyState?: React.ReactNode;
   /** When true, table stretches to fill container width (e.g. user management). Default false. */
   stretch?: boolean;
+  /** Extra classes on the table wrapper (horizontal overflow; height follows row content). */
+  tableWrapperClassName?: string;
 }
 
 export function DataTable<TData>({
@@ -27,6 +28,7 @@ export function DataTable<TData>({
   actionBar,
   emptyState,
   stretch = false,
+  tableWrapperClassName,
   children,
   className,
   ...props
@@ -143,12 +145,15 @@ export function DataTable<TData>({
       {showEmptyBlock ? (
         emptyState
       ) : (
-        <ScrollArea
-          type="auto"
-          className={cn("max-h-[min(70vh,36rem)] w-full rounded-md border", stretch && "w-full")}
+        <div
+          className={cn(
+            "w-full min-h-0 overflow-x-auto rounded-md border",
+            tableWrapperClassName,
+            stretch && "w-full",
+          )}
         >
-          <div className={cn(stretch && "w-full")}>{tableContent}</div>
-        </ScrollArea>
+          {tableContent}
+        </div>
       )}
       <div className="flex flex-col gap-2.5">
         <TablePagination table={table} />

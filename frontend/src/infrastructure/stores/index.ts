@@ -1,4 +1,5 @@
 // Domain stores
+export { useApiConnectivityStore } from '@/infrastructure/stores/api-connectivity-store';
 export { useAuthStore } from '@/infrastructure/stores/auth';
 export { useUserStore, useDataTableStore } from '@/infrastructure/stores/user';
 export { useLicenseStore } from '@/infrastructure/stores/license';

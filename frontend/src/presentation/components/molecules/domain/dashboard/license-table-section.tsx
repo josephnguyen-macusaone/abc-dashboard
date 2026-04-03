@@ -58,6 +58,8 @@ export interface LicenseTableSectionProps {
   onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
   /** When true, hides the date range picker (used for agent view where start date is irrelevant) */
   hideDateRange?: boolean;
+  /** Agent: leaner default columns and separate visibility storage. */
+  tableVariant?: 'default' | 'agent';
 }
 
 export function LicenseTableSection({
@@ -72,6 +74,7 @@ export function LicenseTableSection({
   dateRange,
   onDateRangeChange,
   hideDateRange = false,
+  tableVariant = 'default',
 }: LicenseTableSectionProps) {
   return (
     <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-3 px-6 pb-6', className)}>
@@ -97,6 +100,7 @@ export function LicenseTableSection({
         dateRange={hideDateRange ? undefined : dateRange}
         onDateRangeChange={hideDateRange ? undefined : onDateRangeChange}
         hideDateRange={hideDateRange}
+        variant={tableVariant}
       />
     </div>
   );

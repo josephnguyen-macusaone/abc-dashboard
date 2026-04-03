@@ -7,6 +7,39 @@ import type { LicenseStatus } from '../types/license';
 /** Default sort for license data table and data grid (Activate Date, newest first) */
 export const DEFAULT_LICENSE_SORT = [{ id: 'startsAt', desc: true }] as const;
 
+/** localStorage key for license data table column visibility (staff / admin). */
+export const LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY = 'licenses-data-table-column-visibility';
+
+/** Separate key so agent column prefs do not overwrite staff defaults. */
+export const LICENSE_DATA_TABLE_AGENT_COLUMN_VISIBILITY_KEY = 'licenses-data-table-column-visibility-agent';
+
+/**
+ * Agent dashboard: show core list fields only; SMS / agents / notes / audit off by default
+ * (users enable via column visibility). Aligns with a lean default list UX.
+ */
+export const AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY: Record<string, boolean> = {
+  select: false,
+  dba: true,
+  zip: true,
+  startsAt: true,
+  status: true,
+  plan: true,
+  term: true,
+  dueDate: true,
+  lastPayment: true,
+  lastActive: true,
+  smsPurchased: false,
+  smsSent: false,
+  smsBalance: false,
+  agents: false,
+  agentsName: false,
+  agentsCost: false,
+  notes: false,
+  createdBy: false,
+  updatedBy: false,
+  auditHistory: false,
+};
+
 /**
  * License Plan Types
  */

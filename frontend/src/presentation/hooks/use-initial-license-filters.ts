@@ -15,6 +15,15 @@ export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo
   return { startsAtFrom: toLocalDateString(first), startsAtTo: toLocalDateString(last) };
 }
 
+/**
+ * First day of the current calendar month through today (local). Used for agent dashboard default.
+ */
+export function getMonthToDateLicenseDateRange(): { startsAtFrom: string; startsAtTo: string } {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { startsAtFrom: toLocalDateString(first), startsAtTo: toLocalDateString(now) };
+}
+
 interface UseInitialLicenseFiltersOptions {
   filters: LicenseFilters;
   setFilters: (filters: LicenseFilters) => void;

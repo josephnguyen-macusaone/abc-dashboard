@@ -19,7 +19,12 @@ import { LicenseAuditHistoryDialog } from "@/presentation/components/molecules/d
 import type { LicenseRecord } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useDataTableStore } from "@/infrastructure/stores/user";
-import { DEFAULT_LICENSE_SORT } from "@/shared/constants/license";
+import {
+  AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY,
+  DEFAULT_LICENSE_SORT,
+  LICENSE_DATA_TABLE_AGENT_COLUMN_VISIBILITY_KEY,
+  LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY,
+} from "@/shared/constants/license";
 
 interface LicensesDataTableProps {
   data: LicenseRecord[];
@@ -43,6 +48,8 @@ interface LicensesDataTableProps {
   onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
   /** When true, hides the date range picker entirely (e.g. agent view where date is irrelevant) */
   hideDateRange?: boolean;
+  /** Agent dashboard: minimal default columns + separate visibility storage. */
+  variant?: 'default' | 'agent';
 }
 
 export function LicensesDataTable({
@@ -54,6 +61,7 @@ export function LicensesDataTable({
   dateRange,
   onDateRangeChange,
   hideDateRange = false,
+  variant = 'default',
 }: LicensesDataTableProps) {
   const [auditTarget, setAuditTarget] = useState<LicenseRecord | null>(null);
 
@@ -75,26 +83,39 @@ export function LicensesDataTable({
     [serverPageCount, data.length, currentPageSize]
   );
 
+  const columnVisibilityStorageKey =
+    variant === 'agent'
+      ? LICENSE_DATA_TABLE_AGENT_COLUMN_VISIBILITY_KEY
+      : LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY;
+
+  const defaultColumnVisibility = useMemo(
+    () =>
+      variant === 'agent'
+        ? { ...AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY }
+        : {
+            select: false,
+            smsPurchased: true,
+            smsSent: true,
+            smsBalance: true,
+            agentsName: true,
+            agentsCost: true,
+            notes: true,
+            createdBy: false,
+            updatedBy: false,
+          },
+    [variant],
+  );
+
   const { table, setPage } = useDataTable({
     data,
     columns,
     pageCount,
     totalRows,
-    columnVisibilityStorageKey: "licenses-data-table-column-visibility",
+    columnVisibilityStorageKey,
     initialState: {
       pagination: { pageSize: 20, pageIndex: 0 },
       sorting: [...DEFAULT_LICENSE_SORT],
-      columnVisibility: {
-        select: false,
-        smsPurchased: true,
-        smsSent: true,
-        smsBalance: true,
-        agentsName: true,
-        agentsCost: true,
-        notes: true,
-        createdBy: false,
-        updatedBy: false,
-      },
+      columnVisibility: defaultColumnVisibility,
     },
     manualPagination: !!onQueryChange,
     manualSorting: !!onQueryChange,
