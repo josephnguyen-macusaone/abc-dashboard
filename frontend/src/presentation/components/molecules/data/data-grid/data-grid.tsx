@@ -10,7 +10,6 @@ import {
   tableFooterClass,
   tableHeadCellClass,
 } from "@/presentation/components/atoms/primitives/table";
-import { ScrollArea } from "@/presentation/components/atoms/primitives/scroll-area";
 import { flexRender } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
 import type { Direction } from "@/types/data-grid";
@@ -80,25 +79,25 @@ export function DataGrid<TData>({
       data-slot="grid-wrapper"
       dir={dir}
       {...props}
-      className={cn("relative flex w-full flex-col", className)}
+      className={cn("relative flex w-full min-h-0 flex-col", className)}
     >
-      <ScrollArea
-        type="auto"
-        className="w-full rounded-md border text-sm"
+      <div
+        ref={dataGridRef}
+        data-slot="grid-scroll"
+        className={cn(
+          "w-full min-h-0 overflow-auto rounded-md border text-sm",
+          "select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        )}
         style={{
           height: `${height}px`,
           maxHeight: `${height}px`,
         }}
-        viewportRef={dataGridRef}
-        viewportClassName="select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        viewportProps={{
-          role: "grid",
-          "aria-label": "Data grid",
-          "aria-rowcount": rows.length + (onRowAdd ? 1 : 0),
-          "aria-colcount": columns.length,
-          tabIndex: 0,
-          onContextMenu: onGridContextMenu,
-        }}
+        role="grid"
+        aria-label="Data grid"
+        aria-rowcount={rows.length + (onRowAdd ? 1 : 0)}
+        aria-colcount={columns.length}
+        tabIndex={0}
+        onContextMenu={onGridContextMenu}
       >
         <div
           data-slot="grid"
@@ -240,7 +239,7 @@ export function DataGrid<TData>({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
       <div className="mt-4 flex flex-col gap-2.5">
         <TablePagination table={table} />
       </div>

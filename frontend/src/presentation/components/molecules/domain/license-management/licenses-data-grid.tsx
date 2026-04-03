@@ -39,7 +39,8 @@ const GRID_HEADER_APPROX_PX = 49;
 const ADD_ROW_STRIP_PX = 36;
 const GRID_VERTICAL_PADDING_PX = 8;
 
-function useLicenseGridViewportCap(absoluteMax = 720, fraction = 0.62) {
+/** Max grid body height: prefer fitting current page rows; cap near viewport so huge pages still scroll inside the grid. */
+function useLicenseGridViewportCap(absoluteMax = 2400, fraction = 0.92) {
   const [cap, setCap] = React.useState(absoluteMax);
   React.useEffect(() => {
     function update() {

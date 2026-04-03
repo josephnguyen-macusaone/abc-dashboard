@@ -10,7 +10,10 @@ import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePag
 import { useDataTableStore } from '@/infrastructure/stores/user';
 import { logger } from '@/shared/helpers';
 import { parseLocalDateString, toLocalDateString } from '@/shared/helpers/date-utils';
-import { getDefaultLicenseDateRange } from '@/presentation/hooks/use-initial-license-filters';
+import {
+  getDefaultLicenseDateRange,
+  getMonthToDateLicenseDateRange,
+} from '@/presentation/hooks/use-initial-license-filters';
 
 const LICENSES_TABLE_ID = 'licenses-data-table';
 import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
@@ -40,14 +43,13 @@ interface AdminDashboardProps {
   tableDescription?: string;
   metricsAudience?: LicenseMetricsAudience;
   /**
-   * When true, skip setting a default date range on first mount.
-   * Use for agent/staff views where all assigned licenses should be visible
-   * regardless of their activation month.
+   * Initial license date filter on first dashboard mount.
+   * - `fullMonth` — first day of month through last day (staff default).
+   * - `monthToDate` — first day of month through today (agent default per product).
    */
-  skipDefaultDateRange?: boolean;
+  licenseDatePreset?: 'fullMonth' | 'monthToDate';
   /**
    * When true, hide the date range picker from the license table toolbar.
-   * Use for agent/staff views where filtering by activation date makes no sense.
    */
   hideDateRange?: boolean;
 }
@@ -59,7 +61,7 @@ export function AdminDashboard({
   tableTitle,
   tableDescription,
   metricsAudience = 'admin',
-  skipDefaultDateRange = false,
+  licenseDatePreset = 'fullMonth',
   hideDateRange = false,
 }: AdminDashboardProps) {
   // Use Zustand store for license data (single source of truth for list + metrics date filter)
@@ -231,21 +233,17 @@ export function AdminDashboard({
       ]);
     };
 
-    // Agent/staff views: always skip the date filter.
-    // This check comes FIRST so a stale date range already in the store (left by another
-    // page in the same session) never sneaks into the API call.
-    if (skipDefaultDateRange) {
-      if (!hasInitializedDateRef.current) {
-        hasInitializedDateRef.current = true;
-        // Clear any stale date filters before fetching so fetchLicenses does not
-        // spread them back in from the store.
-        const staleFilters = useLicenseStore.getState().filters;
-        if (staleFilters.startsAtFrom || staleFilters.startsAtTo) {
-          setFilters({ ...staleFilters, startsAtFrom: undefined, startsAtTo: undefined });
-        }
-        // Default: no date filter, active licenses sorted first.
-        runParallelFetch({ sortBy: 'status', sortOrder: 'asc' });
+    // Month-to-date (e.g. agent): default first of month → today; then follow store dates when user changes picker.
+    if (licenseDatePreset === 'monthToDate') {
+      if (hasInitializedDateRef.current) {
+        runParallelFetch({ startsAtFrom: from, startsAtTo: to });
+        return;
       }
+      hasInitializedDateRef.current = true;
+      const { startsAtFrom, startsAtTo } = getMonthToDateLicenseDateRange();
+      const currentFilters = useLicenseStore.getState().filters;
+      setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
+      runParallelFetch({ startsAtFrom, startsAtTo });
       return;
     }
 
@@ -267,7 +265,16 @@ export function AdminDashboard({
     const currentFilters = useLicenseStore.getState().filters;
     setFilters({ ...currentFilters, startsAtFrom, startsAtTo });
     runParallelFetch({ startsAtFrom, startsAtTo });
-  }, [licensesProp, fetchLicenses, fetchDashboardMetrics, setFilters, setLoading, filters.startsAtFrom, filters.startsAtTo]);
+  }, [
+    licensesProp,
+    fetchLicenses,
+    fetchDashboardMetrics,
+    setFilters,
+    setLoading,
+    filters.startsAtFrom,
+    filters.startsAtTo,
+    licenseDatePreset,
+  ]);
 
   // Defer "requiring attention" fetch until after first paint so primary dashboard data
   // (metrics + table) renders first and feels faster.
@@ -357,6 +364,7 @@ export function AdminDashboard({
           dateRange={hideDateRange ? undefined : dateRange}
           onDateRangeChange={hideDateRange ? undefined : (range => handleDateRangeChange(range ? { range } : null))}
           hideDateRange={hideDateRange}
+          tableVariant={metricsAudience === 'agent' ? 'agent' : 'default'}
         />
       </Suspense>
     </div>

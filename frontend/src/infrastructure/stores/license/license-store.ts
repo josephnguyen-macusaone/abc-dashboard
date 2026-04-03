@@ -10,8 +10,6 @@ import logger from '@/shared/helpers/logger';
 import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
 import { httpClient } from '@/infrastructure/api/core/client';
-import { useAuthStore } from '@/infrastructure/stores/auth/auth-store';
-import { transformApiLicenseToRecord } from '@/infrastructure/api/licenses/transforms';
 import { createLicenseApiClient } from '@/infrastructure/api/licenses/api-client';
 
 const INTERNAL_LICENSE_ID_RE =

@@ -11,6 +11,7 @@ import logger, { generateCorrelationId } from '@/shared/helpers/logger';
 import { startTrace, injectIntoHeaders, TraceContext } from '@/shared/helpers/tracing';
 import { API_CONFIG } from '@/shared/constants';
 import { createApiCircuitBreaker, CircuitBreaker } from '@/shared/helpers/circuit-breaker';
+import { useApiConnectivityStore } from '@/infrastructure/stores/api-connectivity-store';
 
 // Default configuration - API_CONFIG.BASE_URL already handles validation and normalization
 const DEFAULT_BASE_URL = API_CONFIG.BASE_URL;
@@ -142,6 +143,8 @@ class HttpClient {
           category: 'api-details',
         });
 
+        useApiConnectivityStore.getState().reportReachable();
+
         return response;
       },
       async (error: AxiosError) => {
@@ -150,6 +153,30 @@ class HttpClient {
 
         // Log failed response with detailed error info (less verbose if auth failure handled)
         const errorResponse = handleApiError(error);
+        const httpStatus = error.response?.status;
+        const hdrs = error.response?.headers;
+        const contentType =
+          hdrs && typeof hdrs.get === 'function'
+            ? String(hdrs.get('content-type') ?? '')
+            : '';
+        const baseUrl = this.instance.defaults.baseURL ?? '';
+        const isRelativeApi = baseUrl.startsWith('/');
+        const isDevProxyHtml500 =
+          typeof process !== 'undefined' &&
+          process.env.NODE_ENV === 'development' &&
+          isRelativeApi &&
+          httpStatus === 500 &&
+          contentType.toLowerCase().includes('text/html');
+
+        const isUnreachable =
+          errorResponse.code === 'NETWORK_ERROR' ||
+          (typeof httpStatus === 'number' &&
+            (httpStatus === 502 || httpStatus === 503 || httpStatus === 504)) ||
+          isDevProxyHtml500;
+        if (isUnreachable) {
+          useApiConnectivityStore.getState().reportUnreachable(errorResponse.message);
+        }
+
         const logLevel = this.authFailureHandled && error.response?.status === 401 ? 'debug' : 'error';
         this.httpLogger[logLevel](`API Error: ${errorResponse.message}`, {
           correlationId,
