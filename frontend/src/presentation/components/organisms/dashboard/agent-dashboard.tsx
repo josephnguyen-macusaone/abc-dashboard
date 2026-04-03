@@ -8,7 +8,7 @@ export function AgentDashboard() {
       metricsAudience="agent"
       tableTitle="My licenses"
       tableDescription="Licenses linked to your agent account (read-only)"
-      licenseDatePreset="monthToDate"
+      licenseDatePreset="none"
     />
   );
 }
