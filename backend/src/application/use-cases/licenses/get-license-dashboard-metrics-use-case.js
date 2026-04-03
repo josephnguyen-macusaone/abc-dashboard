@@ -153,9 +153,9 @@ export class GetLicenseDashboardMetricsUseCase {
       // When the agent picks a specific date range, use the period aggregate.
       agentSmsStats: {
         smsPurchased: hasCustomDateRange ? target.smsPurchased : all.smsPurchased,
-        smsSent:      hasCustomDateRange ? target.smsSent      : all.smsSent,
-        smsBalance:   hasCustomDateRange ? target.smsBalance   : all.smsBalance,
-        agentsCost:   hasCustomDateRange ? target.agentsCost   : all.agentsCost,
+        smsSent: hasCustomDateRange ? target.smsSent : all.smsSent,
+        smsBalance: hasCustomDateRange ? target.smsBalance : all.smsBalance,
+        agentsCost: hasCustomDateRange ? target.agentsCost : all.agentsCost,
       },
       metadata: {
         currentPeriod: {
