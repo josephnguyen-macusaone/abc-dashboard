@@ -58,8 +58,8 @@ export interface LicenseTableSectionProps {
   onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
   /** When true, hides the date range picker (used for agent view where start date is irrelevant) */
   hideDateRange?: boolean;
-  /** Agent: leaner default columns and separate visibility storage. */
-  tableVariant?: 'default' | 'agent';
+  /** Role-based default columns and separate visibility storage (dashboard). */
+  tableVariant?: 'default' | 'agent' | 'tech' | 'accountant';
 }
 
 export function LicenseTableSection({

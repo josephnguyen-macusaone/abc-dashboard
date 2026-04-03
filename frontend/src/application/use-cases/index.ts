@@ -80,6 +80,7 @@ export {
   createGetLicenseStatsUseCase,
   transformDashboardMetricsToCards,
   buildAgentPortfolioMetricsFromLicenses,
+  sliceStaffDashboardMetricsForAudience,
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,

@@ -34,6 +34,8 @@ export {
   GetLicenseStatsUseCase,
   createGetLicenseStatsUseCase,
   buildAgentPortfolioMetricsFromLicenses,
+  sliceStaffDashboardMetricsForAudience,
+  transformDashboardMetricsToCards,
   type GetLicenseStatsUseCaseContract,
   type LicenseDateRange,
   type LicenseDashboardMetric,

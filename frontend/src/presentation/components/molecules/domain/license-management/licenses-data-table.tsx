@@ -20,10 +20,14 @@ import type { LicenseRecord } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useDataTableStore } from "@/infrastructure/stores/user";
 import {
+  ACCOUNTANT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY,
   AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY,
   DEFAULT_LICENSE_SORT,
+  LICENSE_DATA_TABLE_ACCOUNTANT_COLUMN_VISIBILITY_KEY,
   LICENSE_DATA_TABLE_AGENT_COLUMN_VISIBILITY_KEY,
   LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY,
+  LICENSE_DATA_TABLE_TECH_COLUMN_VISIBILITY_KEY,
+  TECH_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY,
 } from "@/shared/constants/license";
 
 interface LicensesDataTableProps {
@@ -48,8 +52,8 @@ interface LicensesDataTableProps {
   onDateRangeChange?: (range: { from?: Date; to?: Date } | null) => void;
   /** When true, hides the date range picker entirely (e.g. agent view where date is irrelevant) */
   hideDateRange?: boolean;
-  /** Agent dashboard: minimal default columns + separate visibility storage. */
-  variant?: 'default' | 'agent';
+  /** Role-specific default columns + separate visibility storage (dashboard). */
+  variant?: 'default' | 'agent' | 'tech' | 'accountant';
 }
 
 export function LicensesDataTable({
@@ -86,25 +90,28 @@ export function LicensesDataTable({
   const columnVisibilityStorageKey =
     variant === 'agent'
       ? LICENSE_DATA_TABLE_AGENT_COLUMN_VISIBILITY_KEY
-      : LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY;
+      : variant === 'tech'
+        ? LICENSE_DATA_TABLE_TECH_COLUMN_VISIBILITY_KEY
+        : variant === 'accountant'
+          ? LICENSE_DATA_TABLE_ACCOUNTANT_COLUMN_VISIBILITY_KEY
+          : LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY;
 
-  const defaultColumnVisibility = useMemo(
-    () =>
-      variant === 'agent'
-        ? { ...AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY }
-        : {
-            select: false,
-            smsPurchased: true,
-            smsSent: true,
-            smsBalance: true,
-            agentsName: true,
-            agentsCost: true,
-            notes: true,
-            createdBy: false,
-            updatedBy: false,
-          },
-    [variant],
-  );
+  const defaultColumnVisibility = useMemo(() => {
+    if (variant === 'agent') return { ...AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY };
+    if (variant === 'tech') return { ...TECH_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY };
+    if (variant === 'accountant') return { ...ACCOUNTANT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY };
+    return {
+      select: false,
+      smsPurchased: true,
+      smsSent: true,
+      smsBalance: true,
+      agentsName: true,
+      agentsCost: true,
+      notes: true,
+      createdBy: false,
+      updatedBy: false,
+    };
+  }, [variant]);
 
   const { table, setPage } = useDataTable({
     data,

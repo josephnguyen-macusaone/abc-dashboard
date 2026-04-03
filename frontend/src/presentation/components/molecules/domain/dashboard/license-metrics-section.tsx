@@ -10,6 +10,7 @@ import type { StatsCardConfig } from '@/presentation/components/molecules/domain
 import {
   buildAgentPortfolioMetricsFromLicenses,
   createGetLicenseStatsUseCase,
+  sliceStaffDashboardMetricsForAudience,
   transformDashboardMetricsToCards,
   type LicenseDateRange,
   type LicenseDashboardMetric,
@@ -81,6 +82,7 @@ export function LicenseMetricsSection({
   audience = 'admin',
 }: LicenseMetricsSectionProps) {
   const isAgent = audience === 'agent';
+  const isStaffSlice = audience === 'tech' || audience === 'accountant';
   const { errorWithDescription } = useToast();
   const [metrics, setMetrics] = useState<LicenseDashboardMetric[]>([]);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
@@ -216,12 +218,16 @@ export function LicenseMetricsSection({
       }
       return transformMetricsToStatsCards(baseMetrics);
     }
+    if (isStaffSlice) {
+      const sliced = sliceStaffDashboardMetricsForAudience(metrics, audience);
+      return transformMetricsToStatsCards(sliced);
+    }
     return transformMetricsToStatsCards(metrics);
-  }, [isAgent, licenses, metrics, storeMetrics]);
+  }, [audience, isAgent, isStaffSlice, licenses, metrics, storeMetrics]);
 
   const effectiveLoading = isLoading || isLoadingMetrics;
-  const gridColumns = isAgent ? 5 : 4;
-  const skeletonCardCount = isAgent ? 5 : 8;
+  const gridColumns = isAgent ? 5 : isStaffSlice ? 3 : 4;
+  const skeletonCardCount = isAgent ? 5 : isStaffSlice ? 6 : 8;
 
   // Show skeleton when loading initially (before any data is loaded)
   if (effectiveLoading && licenses.length === 0) {

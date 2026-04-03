@@ -13,6 +13,11 @@ export const LICENSE_DATA_TABLE_COLUMN_VISIBILITY_KEY = 'licenses-data-table-col
 /** Separate key so agent column prefs do not overwrite staff defaults. */
 export const LICENSE_DATA_TABLE_AGENT_COLUMN_VISIBILITY_KEY = 'licenses-data-table-column-visibility-agent';
 
+/** Separate keys for Tech / Accountant dashboard table defaults. */
+export const LICENSE_DATA_TABLE_TECH_COLUMN_VISIBILITY_KEY = 'licenses-data-table-column-visibility-tech';
+export const LICENSE_DATA_TABLE_ACCOUNTANT_COLUMN_VISIBILITY_KEY =
+  'licenses-data-table-column-visibility-accountant';
+
 /**
  * Agent dashboard: show core list fields only; SMS / agents / notes / audit off by default
  * (users enable via column visibility). Aligns with a lean default list UX.
@@ -37,6 +42,58 @@ export const AGENT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY: Record<string, boole
   notes: false,
   createdBy: false,
   updatedBy: false,
+  auditHistory: false,
+};
+
+/**
+ * Tech dashboard: dates, status, plan, agent context; light on SMS $ columns (edits live in License Management).
+ */
+export const TECH_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY: Record<string, boolean> = {
+  select: false,
+  dba: true,
+  zip: true,
+  startsAt: true,
+  status: true,
+  plan: true,
+  term: true,
+  dueDate: true,
+  lastPayment: false,
+  lastActive: true,
+  smsPurchased: false,
+  smsSent: false,
+  smsBalance: false,
+  agents: true,
+  agentsName: true,
+  agentsCost: false,
+  notes: false,
+  createdBy: true,
+  updatedBy: true,
+  auditHistory: false,
+};
+
+/**
+ * Accountant dashboard: financial + SMS + package-relevant columns by default.
+ */
+export const ACCOUNTANT_LICENSE_TABLE_INITIAL_COLUMN_VISIBILITY: Record<string, boolean> = {
+  select: false,
+  dba: true,
+  zip: true,
+  startsAt: true,
+  status: true,
+  plan: true,
+  term: true,
+  dueDate: true,
+  lastPayment: true,
+  lastActive: true,
+  smsPurchased: true,
+  smsSent: true,
+  smsBalance: true,
+  agents: true,
+  agentsName: true,
+  agentsCost: true,
+  notes: true,
+  createdBy: true,
+  updatedBy: true,
   auditHistory: false,
 };
 
