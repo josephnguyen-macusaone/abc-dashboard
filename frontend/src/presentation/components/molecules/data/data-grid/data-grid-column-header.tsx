@@ -134,7 +134,6 @@ export function DataGridColumnHeader<TData, TValue>({
             tableHeadCellClass,
             className,
           )}
-          {...props}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <span className={cn("truncate", labelAlignClass)}>{label}</span>
