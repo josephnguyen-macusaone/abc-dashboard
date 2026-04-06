@@ -160,12 +160,28 @@ export class ExternalLicenseController {
     }
   }
 
+  /**
+   * SMS / external APIs use short app id (e.g. toJeMUW). Agents may still send EXT-… from stale clients.
+   */
+  normalizeSmsQueryAppid(value) {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    const s = String(value).trim();
+    if (!s) {
+      return undefined;
+    }
+    const m = s.match(/^EXT-([^-]+)-/i);
+    return m ? m[1].trim() : s;
+  }
+
   async resolveInternalLicenseForSmsScope(identifier) {
     if (!this.licenseRepository) {
       return null;
     }
     if (identifier.appid) {
-      return this.licenseRepository.findByAppId(identifier.appid);
+      const forLookup = this.normalizeSmsQueryAppid(identifier.appid) ?? identifier.appid;
+      return this.licenseRepository.findByAppId(forLookup);
     }
     if (identifier.countid !== undefined && identifier.countid !== null) {
       return this.licenseRepository.findByCountId(identifier.countid);
@@ -1430,11 +1446,32 @@ export class ExternalLicenseController {
         sortOrder: req.query.sortOrder,
       };
 
+      if (options.appid) {
+        const normalizedAppid = this.normalizeSmsQueryAppid(options.appid);
+        if (normalizedAppid) {
+          options.appid = normalizedAppid;
+        }
+      }
+
       await this.ensureSmsScopeAccess(req, {
         appid: options.appid,
         countid: options.countid,
         emailLicense: options.emailLicense,
       });
+
+      if (this.licenseRepository?.findEmailLicenseForSmsProxy) {
+        const canonicalEmail = await this.licenseRepository.findEmailLicenseForSmsProxy({
+          appid: options.appid,
+          countid: options.countid,
+        });
+        if (canonicalEmail) {
+          if (req.user?.role === ROLES.AGENT) {
+            options.emailLicense = canonicalEmail;
+          } else if (!options.emailLicense) {
+            options.emailLicense = canonicalEmail;
+          }
+        }
+      }
 
       logger.info('Getting SMS payments via API', {
         correlationId: req.correlationId,
@@ -1468,6 +1505,12 @@ export class ExternalLicenseController {
   addSmsPayment = async (req, res) => {
     try {
       const paymentData = req.body;
+      if (paymentData?.appid) {
+        const n = this.normalizeSmsQueryAppid(paymentData.appid);
+        if (n) {
+          paymentData.appid = n;
+        }
+      }
       await this.ensureSmsScopeAccess(req, {
         appid: paymentData?.appid,
         countid: paymentData?.countid,

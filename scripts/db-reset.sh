@@ -195,9 +195,9 @@ else
   fi
 fi
 
-echo "Running seeds..."
-docker compose exec backend npm run seed
-
+# License sync must run before seeds that attach agents (002–004): those seeds match
+# `licenses` / `external_licenses`, which are empty until sync. Otherwise agents exist
+# but have no license_assignments → empty dashboard and no SMS history scope.
 if [[ "$DO_SYNC" == "1" ]]; then
   if [[ -n "$SYNC_LIMIT" ]]; then
     echo "Starting license sync (limit=$SYNC_LIMIT licenses)..."
@@ -210,5 +210,8 @@ if [[ "$DO_SYNC" == "1" ]]; then
     docker compose exec backend npm run sync:start
   fi
 fi
+
+echo "Running seeds..."
+docker compose exec backend npm run seed
 
 echo "Done."

@@ -1249,6 +1249,18 @@ export class ExternalLicenseApiService extends IExternalLicenseApiService {
   /**
    * Get SMS payments with filtering and pagination
    */
+  /**
+   * Convert a date string to MM/DD/YYYY format expected by mapi.
+   * Accepts YYYY-MM-DD (ISO) or MM/DD/YYYY (already correct). Returns null for invalid input.
+   */
+  _toMapiDate(value) {
+    if (!value) return null;
+    const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) return `${iso[2]}/${iso[3]}/${iso[1]}`;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+    return null;
+  }
+
   async getSmsPayments(options = {}) {
     const params = new URLSearchParams();
 
@@ -1262,10 +1274,12 @@ export class ExternalLicenseApiService extends IExternalLicenseApiService {
       params.append('countid', options.countid.toString());
     }
     if (options.startDate) {
-      params.append('startDate', options.startDate);
+      const d = this._toMapiDate(options.startDate);
+      if (d) params.append('startDate', d);
     }
     if (options.endDate) {
-      params.append('endDate', options.endDate);
+      const d = this._toMapiDate(options.endDate);
+      if (d) params.append('endDate', d);
     }
     if (options.page) {
       params.append('page', options.page.toString());

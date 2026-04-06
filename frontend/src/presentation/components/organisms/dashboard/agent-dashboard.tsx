@@ -48,20 +48,34 @@ function isLikelyUuid(id: string): boolean {
   );
 }
 
+/** External license keys look like EXT-{shortAppId}-…; SMS APIs expect the short segment only. */
+const EXT_LICENSE_KEY_APPID_RE = /^EXT-([^-]+)-/i;
+
 /**
  * Resolve SMS query params for GET sms-payments (appid / countid / emailLicense).
- * Priority: appid → key (external short id) → countid → emailLicense → non-UUID id as appid.
+ * When mapi expects both appid and emailLicense, include Email_license from the row whenever present.
+ * Priority: appid → short id parsed from EXT-… key → non-EXT key as appid → countid → emailLicense only → non-UUID id as appid.
  */
 function resolveIdentifier(license: LicenseRecord): SmsPaymentsQueryParams {
-  const appid = license.appid?.trim();
-  if (appid) return { appid };
-  const key = license.key?.trim();
-  if (key) return { appid: key };
-  if (license.countid != null) return { countid: license.countid };
   const email = license.emailLicense?.trim();
+
+  const withEmail = (base: SmsPaymentsQueryParams): SmsPaymentsQueryParams =>
+    email ? { ...base, emailLicense: email } : base;
+
+  const appid = license.appid?.trim();
+  if (appid) return withEmail({ appid });
+  const key = license.key?.trim();
+  if (key) {
+    const fromExt = key.match(EXT_LICENSE_KEY_APPID_RE);
+    if (fromExt?.[1]) return withEmail({ appid: fromExt[1] });
+    if (!/^EXT-/i.test(key)) return withEmail({ appid: key });
+  }
+  if (license.countid != null) {
+    return email ? { countid: license.countid, emailLicense: email } : { countid: license.countid };
+  }
   if (email) return { emailLicense: email };
   const idStr = String(license.id ?? '').trim();
-  if (idStr && !isLikelyUuid(idStr)) return { appid: idStr };
+  if (idStr && !isLikelyUuid(idStr)) return withEmail({ appid: idStr });
   return {};
 }
 
@@ -73,7 +87,7 @@ function smsScopeHasIdentifier(params: SmsPaymentsQueryParams): boolean {
   );
 }
 
-/** Shown in banner; "license not found" uses toast only (see license-store). */
+/** Hide generic upstream "license not found" from the SMS section banner (avoid duplicate noise if API still returns it). */
 const SMS_ERROR_HIDE_FROM_BANNER_RE = /license not found/i;
 
 export function AgentDashboard() {

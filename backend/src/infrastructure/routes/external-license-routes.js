@@ -655,6 +655,128 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *       404:
    *         description: License not found
    */
+  /**
+   * @swagger
+   * /api/v1/external-licenses/sms-payments:
+   *   get:
+   *     summary: Get SMS Payments
+   *     description: GET /api/v1/external-licenses/sms-payments - Get SMS payment records
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: appid
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: emailLicense
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: countid
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: startDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 10
+   *     responses:
+   *       200:
+   *         description: SMS payments retrieved successfully
+   */
+  router.get(
+    '/sms-payments',
+    checkLicenseAccessPermission('sms_history'),
+    controller.getSmsPayments
+  );
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/add-sms-payment:
+   *   post:
+   *     summary: Add SMS Payment
+   *     description: POST /api/v1/external-licenses/add-sms-payment - Create SMS payment and update balance
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: SMS payment added successfully
+   */
+  router.post(
+    '/add-sms-payment',
+    checkLicenseAccessPermission('sms_payment'),
+    controller.addSmsPayment
+  );
+
+  /**
+   * @swagger
+   * /api/v1/external-licenses/license-analytic:
+   *   get:
+   *     summary: Get License Analytics
+   *     description: GET /api/v1/external-licenses/license-analytic - Get license analytics with filtering
+   *     tags: [External Licenses]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: month
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 12
+   *       - in: query
+   *         name: year
+   *         schema:
+   *           type: integer
+   *           minimum: 1900
+   *       - in: query
+   *         name: startDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: license_type
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: License analytics retrieved successfully
+   */
+  router.get(
+    '/license-analytic',
+    checkLicenseAccessPermission('read'),
+    controller.getLicenseAnalytics
+  );
+
   router.get('/:id', checkLicenseAccessPermission('read'), controller.getLicenseById);
   router.put(
     '/:id',
@@ -1141,128 +1263,6 @@ export const createExternalLicenseRoutes = (controller, authMiddleware) => {
    *         description: License row added successfully
    */
   router.post('/licenses/row', checkLicenseCreationPermission(), controller.addRowLicense);
-
-  /**
-   * @swagger
-   * /api/v1/external-licenses/sms-payments:
-   *   get:
-   *     summary: Get SMS Payments
-   *     description: GET /api/v1/external-licenses/sms-payments - Get SMS payment records
-   *     tags: [External Licenses]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: query
-   *         name: appid
-   *         schema:
-   *           type: string
-   *       - in: query
-   *         name: emailLicense
-   *         schema:
-   *           type: string
-   *       - in: query
-   *         name: countid
-   *         schema:
-   *           type: integer
-   *       - in: query
-   *         name: startDate
-   *         schema:
-   *           type: string
-   *       - in: query
-   *         name: endDate
-   *         schema:
-   *           type: string
-   *       - in: query
-   *         name: page
-   *         schema:
-   *           type: integer
-   *           default: 1
-   *       - in: query
-   *         name: limit
-   *         schema:
-   *           type: integer
-   *           default: 10
-   *     responses:
-   *       200:
-   *         description: SMS payments retrieved successfully
-   */
-  router.get(
-    '/sms-payments',
-    checkLicenseAccessPermission('sms_history'),
-    controller.getSmsPayments
-  );
-
-  /**
-   * @swagger
-   * /api/v1/external-licenses/add-sms-payment:
-   *   post:
-   *     summary: Add SMS Payment
-   *     description: POST /api/v1/external-licenses/add-sms-payment - Create SMS payment and update balance
-   *     tags: [External Licenses]
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *     responses:
-   *       200:
-   *         description: SMS payment added successfully
-   */
-  router.post(
-    '/add-sms-payment',
-    checkLicenseAccessPermission('sms_payment'),
-    controller.addSmsPayment
-  );
-
-  /**
-   * @swagger
-   * /api/v1/external-licenses/license-analytic:
-   *   get:
-   *     summary: Get License Analytics
-   *     description: GET /api/v1/external-licenses/license-analytic - Get license analytics with filtering
-   *     tags: [External Licenses]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: query
-   *         name: month
-   *         schema:
-   *           type: integer
-   *           minimum: 1
-   *           maximum: 12
-   *       - in: query
-   *         name: year
-   *         schema:
-   *           type: integer
-   *           minimum: 1900
-   *       - in: query
-   *         name: startDate
-   *         schema:
-   *           type: string
-   *       - in: query
-   *         name: endDate
-   *         schema:
-   *           type: string
-   *       - in: query
-   *         name: status
-   *         schema:
-   *           type: integer
-   *       - in: query
-   *         name: license_type
-   *         schema:
-   *           type: string
-   *     responses:
-   *       200:
-   *         description: License analytics retrieved successfully
-   */
-  router.get(
-    '/license-analytic',
-    checkLicenseAccessPermission('read'),
-    controller.getLicenseAnalytics
-  );
 
   return router;
 };
