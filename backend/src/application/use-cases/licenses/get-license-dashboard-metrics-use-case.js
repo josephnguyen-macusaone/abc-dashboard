@@ -47,6 +47,8 @@ export class GetLicenseDashboardMetricsUseCase {
       });
 
       // Two aggregate queries in parallel — replaces 4 × findLicenses(limit:10000)
+      const hasCustomDateRange = !!(dateRange.startsAtFrom && dateRange.startsAtTo);
+
       const [targetAgg, comparisonAgg, allAgg] = await Promise.all([
         this.licenseRepository.getDashboardAggregates(filters, targetPeriodStart, targetPeriodEnd),
         this.licenseRepository.getDashboardAggregates(
@@ -68,7 +70,8 @@ export class GetLicenseDashboardMetricsUseCase {
         targetPeriodEnd,
         comparisonPeriodStart,
         comparisonPeriodEnd,
-        filters
+        filters,
+        hasCustomDateRange
       );
     } catch (error) {
       logger.error('Error in GetLicenseDashboardMetricsUseCase', {
@@ -88,7 +91,8 @@ export class GetLicenseDashboardMetricsUseCase {
     targetPeriodEnd,
     comparisonPeriodStart,
     comparisonPeriodEnd,
-    filters
+    filters,
+    hasCustomDateRange = false
   ) {
     const MAX_TREND = 999;
 
@@ -144,11 +148,14 @@ export class GetLicenseDashboardMetricsUseCase {
         value: estimatedNextPeriod,
         trend: { value: 10, direction: 'up', label: 'projected' },
       },
+      // When no date range is selected, use all-time totals so agents always see
+      // their current SMS balance even if licenses were activated in a prior month.
+      // When the agent picks a specific date range, use the period aggregate.
       agentSmsStats: {
-        smsPurchased: target.smsPurchased,
-        smsSent: target.smsSent,
-        smsBalance: target.smsBalance,
-        agentsCost: target.agentsCost,
+        smsPurchased: hasCustomDateRange ? target.smsPurchased : all.smsPurchased,
+        smsSent: hasCustomDateRange ? target.smsSent : all.smsSent,
+        smsBalance: hasCustomDateRange ? target.smsBalance : all.smsBalance,
+        agentsCost: hasCustomDateRange ? target.agentsCost : all.agentsCost,
       },
       metadata: {
         currentPeriod: {

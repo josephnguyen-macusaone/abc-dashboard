@@ -61,9 +61,10 @@ interface AdminDashboardProps {
   /**
    * Initial license date filter on first dashboard mount.
    * - `fullMonth` — first day of month through last day (staff default).
-   * - `monthToDate` — first day of month through today (agent default per product).
+   * - `monthToDate` — first day of month through today.
+   * - `none` — no default date; show all records and let the user pick a range.
    */
-  licenseDatePreset?: 'fullMonth' | 'monthToDate';
+  licenseDatePreset?: 'fullMonth' | 'monthToDate' | 'none';
   /**
    * When true, hide the date range picker from the license table toolbar.
    */
@@ -127,7 +128,6 @@ export function AdminDashboard({
       // Do NOT clear search/filters when only clearing date range - preserve user's search (e.g. "milano")
       // so they don't have to re-type after broadening the date filter.
 
-      // Refetch list and metrics so both stay in sync with date filter
       const storeFilters = useLicenseStore.getState().filters;
       const statusParam = Array.isArray(storeFilters.status) ? storeFilters.status.join(',') : storeFilters.status;
       const planParam = Array.isArray(storeFilters.plan) ? storeFilters.plan.join(',') : storeFilters.plan;
@@ -141,6 +141,13 @@ export function AdminDashboard({
         plan: planParam,
         term: termParam,
       };
+
+      // Agents: date range only drives metric cards — the table always shows all assigned licenses.
+      if (metricsAudience === 'agent') {
+        void fetchDashboardMetrics(metricsParams);
+        return;
+      }
+
       void Promise.all([
         fetchLicenses({
           page: 1,
@@ -151,7 +158,7 @@ export function AdminDashboard({
         fetchDashboardMetrics(metricsParams),
       ]);
     },
-    [filters, setFilters, fetchLicenses, fetchDashboardMetrics],
+    [filters, metricsAudience, setFilters, fetchLicenses, fetchDashboardMetrics],
   );
 
   // Handle pagination and filtering changes using Zustand store (read date range from store at call time to avoid stale closure)
@@ -179,7 +186,10 @@ export function AdminDashboard({
         ? params.term.join(',')
         : params.term;
 
-      // Always use date range from store; only cleared when user clicks X on date filter
+      // Agents: table is never filtered by date (date range only drives metric cards).
+      const tableStartsAtFrom = metricsAudience === 'agent' ? undefined : storeFilters.startsAtFrom;
+      const tableStartsAtTo   = metricsAudience === 'agent' ? undefined : storeFilters.startsAtTo;
+
       const metricsParams = {
         search: params.search,
         searchField: params.searchField,
@@ -201,8 +211,8 @@ export function AdminDashboard({
           status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[],
           plan: planParam,
           term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[],
-          startsAtFrom: storeFilters.startsAtFrom,
-          startsAtTo: storeFilters.startsAtTo,
+          startsAtFrom: tableStartsAtFrom,
+          startsAtTo: tableStartsAtTo,
         }),
         fetchDashboardMetrics(metricsParams),
       ]);
@@ -249,7 +259,21 @@ export function AdminDashboard({
       ]);
     };
 
-    // Month-to-date (e.g. agent): default first of month → today; then follow store dates when user changes picker.
+    // No default date: show all records. Table is never filtered by date on this preset.
+    // The date picker only drives fetchDashboardMetrics (handled in handleDateRangeChange).
+    if (licenseDatePreset === 'none') {
+      if (!hasInitializedDateRef.current) {
+        hasInitializedDateRef.current = true;
+        const staleFilters = useLicenseStore.getState().filters;
+        if (staleFilters.startsAtFrom || staleFilters.startsAtTo) {
+          setFilters({ ...staleFilters, startsAtFrom: undefined, startsAtTo: undefined });
+        }
+        runParallelFetch({ sortBy: 'status', sortOrder: 'asc' });
+      }
+      return;
+    }
+
+    // Month-to-date: default first of month → today; then follow store dates when user changes picker.
     if (licenseDatePreset === 'monthToDate') {
       if (hasInitializedDateRef.current) {
         runParallelFetch({ startsAtFrom: from, startsAtTo: to });
@@ -308,13 +332,17 @@ export function AdminDashboard({
     if (licensesProp) return;
 
     const REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+    // Agents: never filter the table by date on refresh.
+    const refreshStartsAtFrom = metricsAudience === 'agent' ? undefined : filters.startsAtFrom;
+    const refreshStartsAtTo   = metricsAudience === 'agent' ? undefined : filters.startsAtTo;
+
     const runWhenVisible = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchLicenses({
           page: paginationFromStore.page,
           limit: paginationFromStore.limit,
-          startsAtFrom: filters.startsAtFrom,
-          startsAtTo: filters.startsAtTo,
+          startsAtFrom: refreshStartsAtFrom,
+          startsAtTo: refreshStartsAtTo,
         });
       }
     };
@@ -326,8 +354,8 @@ export function AdminDashboard({
         fetchLicenses({
           page: paginationFromStore.page,
           limit: paginationFromStore.limit,
-          startsAtFrom: filters.startsAtFrom,
-          startsAtTo: filters.startsAtTo,
+          startsAtFrom: refreshStartsAtFrom,
+          startsAtTo: refreshStartsAtTo,
         });
       }
     };
@@ -337,7 +365,7 @@ export function AdminDashboard({
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [licensesProp, fetchLicenses, paginationFromStore.page, paginationFromStore.limit, filters.startsAtFrom, filters.startsAtTo]);
+  }, [licensesProp, metricsAudience, fetchLicenses, paginationFromStore.page, paginationFromStore.limit, filters.startsAtFrom, filters.startsAtTo]);
 
   // Clear search when leaving this page so it doesn't persist when switching pages
   useEffect(() => {
