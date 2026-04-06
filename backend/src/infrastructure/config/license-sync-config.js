@@ -1,11 +1,29 @@
 /**
+ * Normalize external API base URL (no trailing slash).
+ * IMPORTANT: Do not fall back to a legacy host. Docker Compose often passes an empty
+ * string when EXTERNAL_LICENSE_API_URL is unset in `.env`, which previously sent all
+ * traffic to the wrong server (404 / wrong data vs https://mapi.abcsalon.us:2342).
+ */
+function externalLicenseBaseUrl() {
+  const raw = process.env.EXTERNAL_LICENSE_API_URL;
+  if (raw === undefined || raw === null) {
+    return '';
+  }
+  const trimmed = String(raw).trim();
+  if (!trimmed) {
+    return '';
+  }
+  return trimmed.replace(/\/+$/, '');
+}
+
+/**
  * License Sync Configuration
  * Centralized configuration for external license synchronization operations
  */
 export const licenseSyncConfig = {
   // External API Configuration
   external: {
-    baseUrl: process.env.EXTERNAL_LICENSE_API_URL || 'http://155.138.247.131:2341',
+    baseUrl: externalLicenseBaseUrl(),
     apiKey: process.env.EXTERNAL_LICENSE_API_KEY,
     timeout: parseInt(process.env.EXTERNAL_LICENSE_API_TIMEOUT_MS) || 30000,
     userAgent: 'ABC-Dashboard-Backend/1.0',

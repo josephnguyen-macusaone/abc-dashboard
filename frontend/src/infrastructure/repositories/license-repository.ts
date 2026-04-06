@@ -13,6 +13,7 @@ import {
   type LicensesRequiringAttentionResult,
   type BulkIdentifiers,
   type SmsPaymentsParams,
+  type SmsPaymentsMeta,
   type SmsPaymentsResult,
   type AddSmsPaymentData,
 } from '@/domain/repositories/i-license-repository';
@@ -25,6 +26,66 @@ import logger from '@/shared/helpers/logger';
 
 /** API or list response license shape accepted by the mapper */
 type LicenseLike = InternalLicenseRow | LicenseRecord | (Record<string, unknown> & { id?: string | number; dba?: string; zip?: string; startsAt?: string; startDay?: string; status?: string; plan?: string; term?: string });
+
+const DEFAULT_SMS_PAYMENTS_META: SmsPaymentsMeta = {
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 0,
+  hasNext: false,
+  hasPrev: false,
+};
+
+/**
+ * Backend `res.success(externalPayload)` nests the mapi body once:
+ * `{ success, message, data: { success, data: rows[], meta, total_records, total_amount } }`.
+ * The repository must use `response.data.data`, not `response.data`, for the row array.
+ */
+function normalizeSmsPaymentsApiPayload(raw: unknown): SmsPaymentsResult {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      data: [],
+      meta: { ...DEFAULT_SMS_PAYMENTS_META },
+      total_records: 0,
+      total_amount: 0,
+    };
+  }
+
+  const r = raw as Record<string, unknown>;
+
+  if (Array.isArray(r.data)) {
+    const meta = (r.meta as SmsPaymentsMeta) ?? { ...DEFAULT_SMS_PAYMENTS_META };
+    const rows = r.data as SmsPaymentsResult['data'];
+    return {
+      data: rows,
+      meta,
+      total_records: typeof r.total_records === 'number' ? r.total_records : rows.length,
+      total_amount: typeof r.total_amount === 'number' ? r.total_amount : 0,
+    };
+  }
+
+  const nested = r.data;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+    const inner = nested as Record<string, unknown>;
+    if (Array.isArray(inner.data)) {
+      const rows = inner.data as SmsPaymentsResult['data'];
+      const meta = (inner.meta as SmsPaymentsMeta) ?? { ...DEFAULT_SMS_PAYMENTS_META };
+      return {
+        data: rows,
+        meta,
+        total_records: typeof inner.total_records === 'number' ? inner.total_records : rows.length,
+        total_amount: typeof inner.total_amount === 'number' ? inner.total_amount : 0,
+      };
+    }
+  }
+
+  return {
+    data: [],
+    meta: { ...DEFAULT_SMS_PAYMENTS_META },
+    total_records: 0,
+    total_amount: 0,
+  };
+}
 
 /**
  * Infrastructure Repository: License Management
@@ -623,12 +684,7 @@ export class LicenseRepository implements ILicenseRepository {
 
   async getSmsPayments(params?: SmsPaymentsParams): Promise<SmsPaymentsResult> {
     const response = await this.apiClient.getSmsPayments(params);
-    return {
-      data: response.data ?? [],
-      meta: response.meta ?? { page: 1, limit: 20, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
-      total_records: response.total_records ?? 0,
-      total_amount: response.total_amount ?? 0,
-    };
+    return normalizeSmsPaymentsApiPayload(response);
   }
 
   async addSmsPayment(paymentData: AddSmsPaymentData): Promise<unknown> {

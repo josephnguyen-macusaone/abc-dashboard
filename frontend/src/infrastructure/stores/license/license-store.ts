@@ -16,15 +16,6 @@ import { createLicenseApiClient } from '@/infrastructure/api/licenses/api-client
 const INTERNAL_LICENSE_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const LICENSE_NOT_FOUND_IN_MESSAGE_RE = /license not found/i;
-
-function toastLicenseNotFoundIfApplicable(message: string): void {
-  const m = message.trim();
-  if (m && LICENSE_NOT_FOUND_IN_MESSAGE_RE.test(m)) {
-    toast.error(m);
-  }
-}
-
 const licenseApiClient = createLicenseApiClient();
 
 /**
@@ -361,7 +352,6 @@ export const useLicenseStore = create<LicenseState>()(
               smsPaymentsLoading: false,
               smsPaymentsError: message,
             });
-            toastLicenseNotFoundIfApplicable(message);
           }
         },
 
@@ -375,7 +365,6 @@ export const useLicenseStore = create<LicenseState>()(
           } catch (err) {
             const message = getErrorMessage(err);
             set({ smsPaymentsLoading: false, smsPaymentsError: message });
-            toastLicenseNotFoundIfApplicable(message);
             throw err;
           }
         },

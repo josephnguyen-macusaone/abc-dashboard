@@ -87,14 +87,29 @@ export class LicenseRepository extends ILicenseRepository {
 
   /**
    * Find license by external App ID
+   * Matches LOWER(appid) for case drift; if appid column is empty, matches license key EXT-{short}-%.
    */
   async findByAppId(appId) {
     if (!appId) {
       throw new Error('App ID is required for findByAppId');
     }
 
+    const raw = String(appId).trim();
+    const extKeyMatch = raw.match(/^EXT-([^-]+)-/i);
+    const shortId = extKeyMatch ? extKeyMatch[1].trim() : raw;
+    const shortLower = shortId.toLowerCase();
+
     try {
-      const licenseRow = await this.db(this.licensesTable).where('appid', appId).first();
+      let licenseRow = await this.db(this.licensesTable)
+        .whereRaw('LOWER(TRIM(appid)) = ?', [shortLower])
+        .first();
+
+      if (!licenseRow) {
+        licenseRow = await this.db(this.licensesTable)
+          .whereRaw('key ILIKE ?', [`EXT-${shortId}-%`])
+          .first();
+      }
+
       return licenseRow ? this._toLicenseEntity(licenseRow) : null;
     } catch (error) {
       logger.error('License findByAppId error', {
@@ -131,6 +146,43 @@ export class LicenseRepository extends ILicenseRepository {
         error: error.message,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Resolve Email_license from external_licenses for SMS payment API proxy.
+   * Mapi may require both appid and emailLicense; internal license rows often omit email.
+   */
+  async findEmailLicenseForSmsProxy(identifiers = {}) {
+    const { appid, countid } = identifiers;
+    if (!appid && (countid === undefined || countid === null)) {
+      return null;
+    }
+
+    try {
+      let q = this.db('external_licenses')
+        .select('email_license')
+        .whereNotNull('email_license')
+        .whereRaw("TRIM(COALESCE(email_license, '')) <> ''");
+
+      if (appid) {
+        const raw = String(appid).trim();
+        const extMatch = raw.match(/^EXT-([^-]+)-/i);
+        const short = extMatch ? extMatch[1].trim() : raw;
+        q = q.whereRaw('LOWER(TRIM(appid)) = ?', [short.toLowerCase()]);
+      } else {
+        q = q.where('countid', countid);
+      }
+
+      const row = await q.first();
+      return row?.email_license ?? null;
+    } catch (error) {
+      logger.error('findEmailLicenseForSmsProxy error', {
+        correlationId: this.correlationId,
+        identifiers,
+        error: error.message,
+      });
+      return null;
     }
   }
 

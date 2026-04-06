@@ -72,6 +72,14 @@ export class GetLicensesUseCase {
     }
   }
 
+  /** Expose Email_license on list DTOs for SMS payment queries (appid + emailLicense on mapi). */
+  _mergeEmailLicense(license, external) {
+    const em = external.Email_license ?? external.email_license;
+    if (em !== undefined && em !== null && String(em).trim() !== '') {
+      license.emailLicense = String(em).trim();
+    }
+  }
+
   /**
    * Enrich license DTOs with startsAt, smsBalance, and notes from external_licenses when internal has wrong/default values.
    * @param {Object[]} licenses - License DTOs (plain objects with startsAt, smsBalance, appid, key)
@@ -94,6 +102,7 @@ export class GetLicensesUseCase {
       this._mergeStartsAt(license, external, today);
       this._mergeSmsBalance(license, external);
       this._mergeNotes(license, external);
+      this._mergeEmailLicense(license, external);
     }
   }
 
