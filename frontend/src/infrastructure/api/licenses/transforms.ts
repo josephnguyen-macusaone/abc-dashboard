@@ -104,8 +104,13 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
   const dueDateRaw = String((apiLicense as { coming_expired?: string; Coming_expired?: string; renewalDueDate?: string }).coming_expired ?? (apiLicense as { Coming_expired?: string }).Coming_expired ?? (apiLicense as { renewalDueDate?: string }).renewalDueDate ?? '');
   const dueDate = dueDateRaw.includes('/') ? convertDate(dueDateRaw) : (dueDateRaw || '');
 
-  // Prefer id (UUID) over appid so bulk update can find the license by UUID
-  const appidVal = String((apiLicense as Record<string, unknown>).appid ?? '').trim() || undefined;
+  // Prefer id (UUID) over appid so bulk update can find the license by UUID.
+  // SMS payments API expects appid: fall back to `key` when the payload only has the short external id.
+  const fromApiAppid = String((apiLicense as Record<string, unknown>).appid ?? '').trim();
+  const keyStr = String(
+    (apiLicense as Record<string, unknown>).key ?? (apiLicense as Record<string, unknown>).appid ?? '',
+  ).trim();
+  const appidVal = fromApiAppid || keyStr || undefined;
   const emailLicenseVal = String(
     (apiLicense as Record<string, unknown>).Email_license ??
     (apiLicense as Record<string, unknown>).email_license ??
@@ -117,7 +122,7 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
 
   return {
     id: (apiLicense.id ?? apiLicense.appid ?? `temp-${Date.now()}`) as LicenseRecord['id'],
-    key: String(apiLicense.key ?? apiLicense.appid ?? ''),
+    key: keyStr,
     appid: appidVal,
     emailLicense: emailLicenseVal,
     countid: countidVal,

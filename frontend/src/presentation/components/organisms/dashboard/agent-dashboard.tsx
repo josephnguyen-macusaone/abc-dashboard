@@ -12,6 +12,7 @@ import {
   selectSmsPagination,
   selectSmsTotalAmount,
   selectSmsPaymentsLoading,
+  selectSmsPaymentsError,
 } from '@/infrastructure/stores/license';
 import { StatsCards } from '@/presentation/components/molecules/domain/user-management';
 import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
@@ -20,6 +21,7 @@ import type { SmsPaymentHistoryQueryParams } from '@/presentation/components/mol
 import type { SmsPaymentsQueryParams } from '@/infrastructure/api/licenses/types';
 import { parseLocalDateString, toLocalDateString } from '@/shared/helpers/date-utils';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
+import type { LicenseRecord } from '@/types';
 
 const LicenseTableSection = dynamic(
   () =>
@@ -40,22 +42,39 @@ const currencyFmt = new Intl.NumberFormat('en-US', {
 
 const numberFmt = new Intl.NumberFormat('en-US');
 
+function isLikelyUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    id.trim(),
+  );
+}
+
 /**
- * Resolve the best available SMS query identifier from a license record.
- * Priority: appid → countid → emailLicense
+ * Resolve SMS query params for GET sms-payments (appid / countid / emailLicense).
+ * Priority: appid → key (external short id) → countid → emailLicense → non-UUID id as appid.
  */
-function resolveIdentifier(license: {
-  appid?: string;
-  countid?: number;
-  emailLicense?: string;
-  key?: string;
-}): SmsPaymentsQueryParams {
-  if (license.appid) return { appid: license.appid };
-  if (license.key) return { appid: license.key };
+function resolveIdentifier(license: LicenseRecord): SmsPaymentsQueryParams {
+  const appid = license.appid?.trim();
+  if (appid) return { appid };
+  const key = license.key?.trim();
+  if (key) return { appid: key };
   if (license.countid != null) return { countid: license.countid };
-  if (license.emailLicense) return { emailLicense: license.emailLicense };
+  const email = license.emailLicense?.trim();
+  if (email) return { emailLicense: email };
+  const idStr = String(license.id ?? '').trim();
+  if (idStr && !isLikelyUuid(idStr)) return { appid: idStr };
   return {};
 }
+
+function smsScopeHasIdentifier(params: SmsPaymentsQueryParams): boolean {
+  return Boolean(
+    params.appid?.trim() ||
+      params.emailLicense?.trim() ||
+      (params.countid !== undefined && params.countid !== null),
+  );
+}
+
+/** Shown in banner; "license not found" uses toast only (see license-store). */
+const SMS_ERROR_HIDE_FROM_BANNER_RE = /license not found/i;
 
 export function AgentDashboard() {
   const licenses = useLicenseStore(selectLicenses);
@@ -65,6 +84,7 @@ export function AgentDashboard() {
   const smsPagination = useLicenseStore(selectSmsPagination);
   const smsTotalAmount = useLicenseStore(selectSmsTotalAmount);
   const smsPaymentsLoading = useLicenseStore(selectSmsPaymentsLoading);
+  const smsPaymentsError = useLicenseStore(selectSmsPaymentsError);
   // Subscribe to individual date-filter strings so the component only re-renders when
   // these values actually change, not on every fetchLicenses call (which always creates
   // a new filters object reference).
@@ -77,6 +97,26 @@ export function AgentDashboard() {
 
   const primaryLicense = licenses[0] ?? null;
   const smsBalance = primaryLicense?.smsBalance ?? 0;
+
+  const primarySmsScopeKey = useMemo(
+    () =>
+      primaryLicense
+        ? [
+            primaryLicense.id ?? '',
+            primaryLicense.appid ?? '',
+            primaryLicense.key ?? '',
+            primaryLicense.countid ?? '',
+            primaryLicense.emailLicense ?? '',
+          ].join('|')
+        : '',
+    [
+      primaryLicense?.id,
+      primaryLicense?.appid,
+      primaryLicense?.key,
+      primaryLicense?.countid,
+      primaryLicense?.emailLicense,
+    ],
+  );
 
   // Derive date range from store filters (same pattern as AdminDashboard)
   const dateRange = useMemo<{ from?: Date; to?: Date }>(() => {
@@ -105,25 +145,32 @@ export function AgentDashboard() {
       startsAtTo: undefined,
     });
 
-    const run = async () => {
-      try {
-        await fetchLicenses({ page: 1, limit: 20 });
-      } catch {
-        return;
-      }
-      const firstLicense = useLicenseStore.getState().licenses[0];
-      if (firstLicense) {
-        identifierRef.current = resolveIdentifier(firstLicense);
-        try {
-          await fetchSmsPayments({ ...identifierRef.current, page: 1, limit: 20 });
-        } catch {
-          // SMS fetch failure is non-fatal; store already holds the error state
-        }
-      }
-    };
+    void fetchLicenses({ page: 1, limit: 20 }).catch(() => {});
+  }, [fetchLicenses, setFilters]);
 
-    void run();
-  }, [fetchLicenses, fetchSmsPayments, setFilters]);
+  useEffect(() => {
+    const first = licenses[0];
+    if (!first) {
+      identifierRef.current = {};
+      return;
+    }
+    const next = resolveIdentifier(first);
+    identifierRef.current = next;
+    if (!smsScopeHasIdentifier(next)) return;
+    void fetchSmsPayments({ ...next, page: 1, limit: 20 }).catch(() => {});
+  }, [primarySmsScopeKey, fetchSmsPayments]);
+
+  const smsHistoryAlert = useMemo(() => {
+    const err = smsPaymentsError?.trim();
+    if (err && !SMS_ERROR_HIDE_FROM_BANNER_RE.test(err)) return err;
+    if (
+      primaryLicense &&
+      !smsScopeHasIdentifier(resolveIdentifier(primaryLicense))
+    ) {
+      return 'SMS payment history needs an App ID, Count ID, or email on your license. If this message persists, contact support.';
+    }
+    return null;
+  }, [smsPaymentsError, primaryLicense]);
 
   const handleDateRangeChange = useCallback(
     (values: { range?: { from?: Date; to?: Date }; rangeCompare?: DateRange } | null) => {
@@ -152,6 +199,7 @@ export function AgentDashboard() {
 
   const handleQueryChange = useCallback(
     (params: SmsPaymentHistoryQueryParams) => {
+      if (!smsScopeHasIdentifier(identifierRef.current)) return;
       fetchSmsPayments({
         ...identifierRef.current,
         page: params.page ?? 1,
@@ -230,6 +278,7 @@ export function AgentDashboard() {
         payments={smsPayments}
         pagination={smsPagination}
         isLoading={smsPaymentsLoading}
+        fetchError={smsHistoryAlert}
         onQueryChange={handleQueryChange}
       />
     </div>

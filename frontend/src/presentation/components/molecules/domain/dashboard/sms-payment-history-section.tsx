@@ -102,6 +102,8 @@ export interface SmsPaymentHistorySectionProps {
   payments: SmsPaymentRecord[];
   pagination: SmsPaymentsMeta | null;
   isLoading?: boolean;
+  /** Set when the SMS payments API request failed (e.g. missing license identifier for agents). */
+  fetchError?: string | null;
   onQueryChange: (params: SmsPaymentHistoryQueryParams) => void;
   className?: string;
 }
@@ -427,6 +429,7 @@ export function SmsPaymentHistorySection({
   payments,
   pagination,
   isLoading = false,
+  fetchError = null,
   onQueryChange,
   className,
 }: SmsPaymentHistorySectionProps) {
@@ -521,6 +524,15 @@ export function SmsPaymentHistorySection({
         </div>
       </div>
 
+      {fetchError ? (
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {fetchError}
+        </div>
+      ) : null}
+
       {/* Toolbar */}
       <div
         role="toolbar"
@@ -559,13 +571,11 @@ export function SmsPaymentHistorySection({
       {/* Table */}
       <div className="w-full min-h-0 overflow-x-auto rounded-md border">
         <table
-          className="caption-bottom text-sm table-fixed"
+          className="caption-bottom text-sm table-fixed w-full"
           style={{
             tableLayout: 'fixed',
-            width: smsTableMinWidth,
+            width: '100%',
             minWidth: smsTableMinWidth,
-            marginLeft: 'auto',
-            marginRight: 'auto',
           }}
         >
           <colgroup>
