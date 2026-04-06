@@ -23,6 +23,11 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
    * Centered when the container is wider.
    */
   stretch?: boolean;
+  /**
+   * When true with `stretch`: table spans 100% of the scroll container (`minWidth` stays column sum).
+   * Use on compact dashboards (e.g. agent) so the card is not flanked by empty margins.
+   */
+  fillContainer?: boolean;
   /** Extra classes on the table wrapper (horizontal overflow; height follows row content). */
   tableWrapperClassName?: string;
 }
@@ -32,6 +37,7 @@ export function DataTable<TData>({
   actionBar,
   emptyState,
   stretch = true,
+  fillContainer = false,
   tableWrapperClassName,
   children,
   className,
@@ -44,17 +50,22 @@ export function DataTable<TData>({
   const headerGroup = table.getHeaderGroups()[0];
   const totalSize = headerGroup?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
 
-  // Stretch: fixed width = sum of column sizes so the browser does not distribute extra viewport
-  // width across columns (which caused large gaps next to short values). Horizontal scroll when needed.
+  // Stretch: min width = sum of column sizes; optional fill uses 100% width so the table spans the card.
   const stretchTableStyle =
     stretch && totalSize > 0
-      ? {
-          width: totalSize,
-          minWidth: totalSize,
-          marginLeft: "auto",
-          marginRight: "auto",
-          tableLayout: "fixed" as const,
-        }
+      ? fillContainer
+        ? {
+            width: "100%",
+            minWidth: totalSize,
+            tableLayout: "fixed" as const,
+          }
+        : {
+            width: totalSize,
+            minWidth: totalSize,
+            marginLeft: "auto",
+            marginRight: "auto",
+            tableLayout: "fixed" as const,
+          }
       : totalSize && !stretch
         ? { width: totalSize, minWidth: totalSize, tableLayout: "auto" as const }
         : undefined;
