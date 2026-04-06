@@ -16,6 +16,8 @@ import type {
   InternalLicenseListResponse,
   LicenseAuditEventsResponse,
   LicenseAuditEventsData,
+  SmsPaymentsApiResponse,
+  SmsPaymentsQueryParams,
 } from './types';
 import { transformApiLicenseToRecord } from './transforms';
 import { httpClient } from '@/infrastructure/api/core/client';
@@ -157,9 +159,9 @@ export class LicenseApiClient implements ILicenseApiClient {
     return { data };
   }
 
-  async getSmsPayments(params?: Record<string, unknown>): Promise<unknown> {
-    const qs = params ? buildQueryString(params ?? {}) : '';
-    return this.client.get(`/external-licenses/sms-payments${qs}`);
+  async getSmsPayments(params?: SmsPaymentsQueryParams): Promise<SmsPaymentsApiResponse> {
+    const qs = params ? buildQueryString(params as Record<string, unknown>) : '';
+    return this.client.get<SmsPaymentsApiResponse>(`/external-licenses/sms-payments${qs}`);
   }
 
   async addSmsPayment(paymentData: Record<string, unknown>): Promise<unknown> {

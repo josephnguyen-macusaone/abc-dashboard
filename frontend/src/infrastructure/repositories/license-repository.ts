@@ -622,14 +622,12 @@ export class LicenseRepository implements ILicenseRepository {
   }
 
   async getSmsPayments(params?: SmsPaymentsParams): Promise<SmsPaymentsResult> {
-    const response = await this.apiClient.getSmsPayments((params ?? {}) as Record<string, unknown>);
-    const data = typeof response === 'object' && response !== null && 'data' in response
-      ? (response as { data: { payments?: unknown[]; totals?: unknown; pagination?: unknown } }).data
-      : { payments: [], totals: null, pagination: null };
+    const response = await this.apiClient.getSmsPayments(params);
     return {
-      payments: data?.payments ?? [],
-      totals: data?.totals ?? null,
-      pagination: data?.pagination ?? null,
+      data: response.data ?? [],
+      meta: response.meta ?? { page: 1, limit: 20, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+      total_records: response.total_records ?? 0,
+      total_amount: response.total_amount ?? 0,
     };
   }
 

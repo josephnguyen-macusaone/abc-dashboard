@@ -107,6 +107,34 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   /**
+   * Find license by email_license via external_licenses table join
+   */
+  async findByEmailLicense(emailLicense) {
+    if (!emailLicense) {
+      throw new Error('Email license is required for findByEmailLicense');
+    }
+
+    try {
+      const licenseRow = await this.db(this.licensesTable)
+        .whereIn('appid', (qb) => {
+          qb.select('appid')
+            .from('external_licenses')
+            .whereRaw('LOWER(email_license) = ?', [emailLicense.toLowerCase()])
+            .whereNotNull('appid');
+        })
+        .first();
+      return licenseRow ? this._toLicenseEntity(licenseRow) : null;
+    } catch (error) {
+      logger.error('License findByEmailLicense error', {
+        correlationId: this.correlationId,
+        emailLicense,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Find license by external count ID
    */
   async findByCountId(countId) {

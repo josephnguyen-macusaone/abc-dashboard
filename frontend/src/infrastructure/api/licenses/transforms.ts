@@ -105,9 +105,22 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
   const dueDate = dueDateRaw.includes('/') ? convertDate(dueDateRaw) : (dueDateRaw || '');
 
   // Prefer id (UUID) over appid so bulk update can find the license by UUID
+  const appidVal = String((apiLicense as Record<string, unknown>).appid ?? '').trim() || undefined;
+  const emailLicenseVal = String(
+    (apiLicense as Record<string, unknown>).Email_license ??
+    (apiLicense as Record<string, unknown>).email_license ??
+    (apiLicense as Record<string, unknown>).emailLicense ??
+    ''
+  ).trim() || undefined;
+  const countidRaw = (apiLicense as Record<string, unknown>).countid;
+  const countidVal = countidRaw != null && countidRaw !== '' ? Number(countidRaw) : undefined;
+
   return {
     id: (apiLicense.id ?? apiLicense.appid ?? `temp-${Date.now()}`) as LicenseRecord['id'],
     key: String(apiLicense.key ?? apiLicense.appid ?? ''),
+    appid: appidVal,
+    emailLicense: emailLicenseVal,
+    countid: countidVal,
     product: String(apiLicense.product ?? 'ABC Business Suite'),
     dba: String(apiLicense.dba ?? ''),
     zip: String(apiLicense.zip ?? ''),

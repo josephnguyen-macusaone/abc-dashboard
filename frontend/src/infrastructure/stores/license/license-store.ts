@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { LicenseRecord, LicenseStatus, LicenseTerm } from '@/types';
-import { LicenseSyncStatus } from '@/domain/repositories/i-license-repository';
+import { LicenseSyncStatus, type SmsPaymentsMeta } from '@/domain/repositories/i-license-repository';
+import type { SmsPaymentRecord, SmsPaymentsQueryParams } from '@/infrastructure/api/licenses/types';
 import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import { ApiExceptionDto } from '@/application/dto/api-dto';
 import type { UpdateLicenseDTO } from '@/application/dto/license-dto';
@@ -121,9 +122,11 @@ interface LicenseState {
   /** Bulk update by identifiers (appids/emails/countids) */
   bulkUpdateByIdentifiersLoading: boolean;
   /** SMS payments */
-  smsPayments: unknown[];
-  smsTotals: unknown;
-  smsPagination: unknown;
+  smsPayments: SmsPaymentRecord[];
+  smsPagination: SmsPaymentsMeta | null;
+  smsTotalRecords: number;
+  /** Sum of all payment amounts for the current query — "SMS Purchased" metric */
+  smsTotalAmount: number;
   smsPaymentsLoading: boolean;
   smsPaymentsError: string | null;
 
@@ -134,7 +137,7 @@ interface LicenseState {
   fetchDashboardMetrics: (params?: { startsAtFrom?: string; startsAtTo?: string; search?: string; status?: string; dba?: string }) => Promise<void>;
   fetchLicensesRequiringAttention: (options?: Record<string, unknown>) => Promise<{ expiringSoon: unknown[]; expired: unknown[]; suspended: unknown[]; total: number }>;
   bulkUpdateByIdentifiers: (identifiers: { appids?: string[]; emails?: string[]; countids?: number[] }, updates: Record<string, unknown>) => Promise<{ updated: number }>;
-  fetchSmsPayments: (params?: { appid?: string; emailLicense?: string; countid?: number; startDate?: string; endDate?: string; page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => Promise<void>;
+  fetchSmsPayments: (params?: SmsPaymentsQueryParams) => Promise<void>;
   addSmsPayment: (paymentData: { appid?: string; emailLicense?: string; countid?: number; amount: number; paymentDate?: string; description?: string }) => Promise<void>;
   resetExternalLicenseId: (identifier: { appid?: string; email?: string }) => Promise<void>;
   fetchLicenses: (params?: Partial<LicenseFilters & { page?: number; limit?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; status?: LicenseStatus | LicenseStatus[]; plan?: string | string[]; term?: LicenseTerm | LicenseTerm[]; startsAtFrom?: string; startsAtTo?: string }>) => Promise<void>;
@@ -190,8 +193,9 @@ export const useLicenseStore = create<LicenseState>()(
         licensesRequiringAttentionError: null,
         bulkUpdateByIdentifiersLoading: false,
         smsPayments: [],
-        smsTotals: null,
         smsPagination: null,
+        smsTotalRecords: 0,
+        smsTotalAmount: 0,
         smsPaymentsLoading: false,
         smsPaymentsError: null,
 
@@ -332,16 +336,18 @@ export const useLicenseStore = create<LicenseState>()(
           try {
             const result = await container.licenseManagementService.getSmsPayments(params);
             set({
-              smsPayments: result.payments,
-              smsTotals: result.totals,
-              smsPagination: result.pagination,
+              smsPayments: result.data,
+              smsPagination: result.meta,
+              smsTotalRecords: result.total_records,
+              smsTotalAmount: result.total_amount,
               smsPaymentsLoading: false,
             });
           } catch (err) {
             set({
               smsPayments: [],
-              smsTotals: null,
               smsPagination: null,
+              smsTotalRecords: 0,
+              smsTotalAmount: 0,
               smsPaymentsLoading: false,
               smsPaymentsError: getErrorMessage(err),
             });
@@ -545,7 +551,13 @@ export const useLicenseStore = create<LicenseState>()(
             });
           } catch (error) {
             const apiErr = error instanceof ApiExceptionDto ? error : handleApiError(error);
-            if (apiErr.status === 429) {
+            // The use-case layer re-wraps errors as plain Error objects, stripping the HTTP
+            // status. Fall back to a message check so the 429 rate-limit guard fires reliably.
+            const is429 =
+              apiErr.status === 429 ||
+              (typeof apiErr.message === 'string' &&
+                apiErr.message.toLowerCase().includes('too many requests'));
+            if (is429) {
               const details = apiErr.details as { retryAfter?: number; error?: { retryAfter?: number } } | undefined;
               const retryAfterSec = typeof details?.retryAfter === 'number' ? details.retryAfter : typeof details?.error?.retryAfter === 'number' ? details.error.retryAfter : 60;
               set({
@@ -1207,8 +1219,9 @@ export const useLicenseStore = create<LicenseState>()(
             licensesRequiringAttentionError: null,
             bulkUpdateByIdentifiersLoading: false,
             smsPayments: [],
-            smsTotals: null,
             smsPagination: null,
+            smsTotalRecords: 0,
+            smsTotalAmount: 0,
             smsPaymentsLoading: false,
             smsPaymentsError: null,
           });
@@ -1239,6 +1252,8 @@ export const selectLicensesRequiringAttentionLoading = (state: LicenseState) => 
 export const selectLicensesRequiringAttentionError = (state: LicenseState) => state.licensesRequiringAttentionError;
 export const selectBulkUpdateByIdentifiersLoading = (state: LicenseState) => state.bulkUpdateByIdentifiersLoading;
 export const selectSmsPayments = (state: LicenseState) => state.smsPayments;
-export const selectSmsTotals = (state: LicenseState) => state.smsTotals;
+export const selectSmsPagination = (state: LicenseState) => state.smsPagination;
+export const selectSmsTotalAmount = (state: LicenseState) => state.smsTotalAmount;
+export const selectSmsTotalRecords = (state: LicenseState) => state.smsTotalRecords;
 export const selectSmsPaymentsLoading = (state: LicenseState) => state.smsPaymentsLoading;
 export const selectSmsPaymentsError = (state: LicenseState) => state.smsPaymentsError;

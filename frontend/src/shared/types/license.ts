@@ -13,6 +13,12 @@ export interface LicenseRecord {
   id: number | string; // Backend uses string UUIDs, frontend may use temp numbers for new rows
   key?: string; // License key for identification (returned by backend)
   product?: string; // Product name (returned by backend)
+  /** External appid short identifier (e.g. "toJeMUW") — used for SMS payment queries */
+  appid?: string;
+  /** External email license (Email_license from external API) */
+  emailLicense?: string;
+  /** External countid numeric identifier */
+  countid?: number;
   dba: string; // Database/Account identifier
   zip: string;
   startsAt: string; // ISO date string

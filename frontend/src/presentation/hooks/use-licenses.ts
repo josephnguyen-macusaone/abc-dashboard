@@ -20,7 +20,7 @@ import {
   selectDashboardMetricsLoading,
   selectDashboardMetricsError,
   selectSmsPayments,
-  selectSmsTotals,
+  selectSmsTotalAmount,
   selectSmsPaymentsLoading,
   selectSmsPaymentsError,
 } from '@/infrastructure/stores/license';
@@ -390,7 +390,7 @@ export const useSmsPayments = (params?: {
   autoFetch?: boolean;
 }) => {
   const payments = useLicenseStore(selectSmsPayments);
-  const totals = useLicenseStore(selectSmsTotals);
+  const totals = useLicenseStore(selectSmsTotalAmount);
   const pagination = useLicenseStore((s) => s.smsPagination);
   const loading = useLicenseStore(selectSmsPaymentsLoading);
   const error = useLicenseStore(selectSmsPaymentsError);

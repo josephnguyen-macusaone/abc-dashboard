@@ -170,6 +170,9 @@ export class ExternalLicenseController {
     if (identifier.countid !== undefined && identifier.countid !== null) {
       return this.licenseRepository.findByCountId(identifier.countid);
     }
+    if (identifier.emailLicense) {
+      return this.licenseRepository.findByEmailLicense(identifier.emailLicense);
+    }
     return null;
   }
 
@@ -179,13 +182,18 @@ export class ExternalLicenseController {
       return;
     }
 
-    if (!identifier.appid && (identifier.countid === undefined || identifier.countid === null)) {
-      throw new ValidationException('Agent SMS operations require appid or countid');
+    const hasIdentifier =
+      identifier.appid ||
+      (identifier.countid !== undefined && identifier.countid !== null) ||
+      identifier.emailLicense;
+
+    if (!hasIdentifier) {
+      throw new ValidationException('Agent SMS operations require appid, countid, or emailLicense');
     }
 
     const internalLicense = await this.resolveInternalLicenseForSmsScope(identifier);
     if (!internalLicense) {
-      throw new ValidationException('License not found for provided appid/countid');
+      throw new ValidationException('License not found for provided identifier');
     }
 
     const hasAssignment = await this.licenseRepository.hasUserAssignment(
@@ -1425,6 +1433,7 @@ export class ExternalLicenseController {
       await this.ensureSmsScopeAccess(req, {
         appid: options.appid,
         countid: options.countid,
+        emailLicense: options.emailLicense,
       });
 
       logger.info('Getting SMS payments via API', {

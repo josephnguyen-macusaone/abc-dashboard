@@ -374,38 +374,76 @@ export interface LicenseAnalyticsResponse {
 // SMS Payments
 // =============================================================================
 
-export interface SmsPaymentItem {
-  id?: string;
-  appid?: string;
-  countid?: number;
-  emailLicense?: string;
-  amount: number;
-  paymentDate?: string;
-  description?: string;
-  smsCredits?: number;
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: unknown;
+export interface SmsPaymentTransactionResponse {
+  cvvResultCode?: string;
+  SupplementalDataQualificationIndicator?: number;
+  transHashSha2?: string;
+  authCode?: string;
+  cavvResultCode?: string;
+  transId?: string;
+  transHash?: string;
+  accountType?: string;
+  accountNumber?: string;
+  responseCode?: string;
+  avsResultCode?: string;
+  testRequest?: string;
+  networkTransId?: string;
+  messages?: Array<{ code: string; description: string }>;
+  refTransID?: string;
 }
 
+export interface SmsPaymentJoption {
+  amount?: string;
+  transactionResponse?: SmsPaymentTransactionResponse;
+  messages?: {
+    resultCode?: string;
+    message?: Array<{ code: string; text: string }>;
+  };
+  refId?: string;
+}
+
+/** A single SMS payment record as returned by GET /api/v1/sms-payments */
+export interface SmsPaymentRecord {
+  id: number;
+  shopid: string;
+  amount: number;
+  date: string;
+  appid: string;
+  approved: boolean | null;
+  joption: SmsPaymentJoption;
+}
+
+/** Full response from GET /api/v1/external-licenses/sms-payments */
+export interface SmsPaymentsApiResponse {
+  success: boolean;
+  data: SmsPaymentRecord[];
+  meta: LicenseListMeta;
+  total_records: number;
+  /** Sum of all payment amounts in the filtered result — used as "SMS Purchased" metric */
+  total_amount: number;
+}
+
+/** Query parameters for SMS payments endpoint */
+export interface SmsPaymentsQueryParams {
+  appid?: string;
+  emailLicense?: string;
+  countid?: number;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/** @deprecated Use SmsPaymentsApiResponse — kept for backward compat until store is updated */
 export interface SmsPaymentsResponse {
   success: boolean;
   message: string;
   data: {
-    payments: SmsPaymentItem[];
-    totals: {
-      totalPayments: number;
-      totalAmount: number;
-      totalSmsCredits: number;
-    };
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
+    payments: unknown[];
+    totals: unknown;
+    pagination: unknown;
   };
 }
 
@@ -413,7 +451,7 @@ export interface AddSmsPaymentResponse {
   success: boolean;
   message: string;
   data: {
-    payment: SmsPaymentItem;
+    payment: SmsPaymentRecord;
     updatedLicense: InternalLicenseRow;
   };
 }
