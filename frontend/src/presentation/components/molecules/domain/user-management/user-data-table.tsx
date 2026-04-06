@@ -455,11 +455,7 @@ export function UsersDataTable({
     ) : undefined;
 
   return (
-    <DataTable
-      table={table}
-      emptyState={emptyStateContent}
-      stretch
-    >
+    <DataTable table={table} emptyState={emptyStateContent}>
       <DataTableToolbar
         table={table}
         searchBar={

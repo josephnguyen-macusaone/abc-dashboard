@@ -219,7 +219,7 @@ export function AdminDashboard({
     } catch (error) {
       logger.error('Failed to fetch licenses', { error });
     }
-  }, [fetchLicenses, fetchDashboardMetrics]);
+  }, [fetchLicenses, fetchDashboardMetrics, metricsAudience]);
 
   // Initial load: set loading before paint so skeleton shows immediately, then fetch.
   // Once initialized, never overwrite user's choice (e.g. if they clear date range, don't set current month again).

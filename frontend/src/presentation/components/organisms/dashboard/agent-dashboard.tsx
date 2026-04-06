@@ -19,7 +19,6 @@ import { SmsPaymentHistorySection } from '@/presentation/components/molecules/do
 import type { SmsPaymentHistoryQueryParams } from '@/presentation/components/molecules/domain/dashboard/sms-payment-history-section';
 import type { SmsPaymentsQueryParams } from '@/infrastructure/api/licenses/types';
 import { parseLocalDateString, toLocalDateString } from '@/shared/helpers/date-utils';
-import { getMonthToDateLicenseDateRange } from '@/presentation/hooks/use-initial-license-filters';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 
 const LicenseTableSection = dynamic(
@@ -98,12 +97,17 @@ export function AgentDashboard() {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
-    const { startsAtFrom, startsAtTo } = getMonthToDateLicenseDateRange();
-    setFilters({ startsAtFrom, startsAtTo });
+    // No default date range — agents see all assigned licenses until they pick a range.
+    const currentFilters = useLicenseStore.getState().filters;
+    setFilters({
+      ...currentFilters,
+      startsAtFrom: undefined,
+      startsAtTo: undefined,
+    });
 
     const run = async () => {
       try {
-        await fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
+        await fetchLicenses({ page: 1, limit: 20 });
       } catch {
         return;
       }
