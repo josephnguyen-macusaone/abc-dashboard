@@ -190,11 +190,23 @@ export interface SmsPaymentsParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-/** Result for SMS payments list */
+/** Pagination meta for SMS payments */
+export interface SmsPaymentsMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+/** Result for SMS payments list — mirrors actual mapi.abcsalon.us response */
 export interface SmsPaymentsResult {
-  payments: unknown[];
-  totals: unknown;
-  pagination: unknown;
+  data: import('@/infrastructure/api/licenses/types').SmsPaymentRecord[];
+  meta: SmsPaymentsMeta;
+  total_records: number;
+  /** Sum of all payment amounts — used as "SMS Purchased" metric */
+  total_amount: number;
 }
 
 /** Payload for adding SMS payment */

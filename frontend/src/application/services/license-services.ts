@@ -251,7 +251,7 @@ export class LicenseManagementService {
     limit?: number;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
-  }): Promise<{ payments: unknown[]; totals: unknown; pagination: unknown }> {
+  }): ReturnType<typeof this.licenseRepository.getSmsPayments> {
     return this.licenseRepository.getSmsPayments(params);
   }
 

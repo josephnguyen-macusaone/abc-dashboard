@@ -12,6 +12,8 @@ import type {
   BulkDeleteResponse,
   LicensesRequiringAttentionResponse,
   LicenseAuditEventsData,
+  SmsPaymentsApiResponse,
+  SmsPaymentsQueryParams,
 } from '@/infrastructure/api/licenses/types';
 
 export interface LicenseListResult {
@@ -47,6 +49,6 @@ export interface ILicenseApiClient {
   triggerSync(): Promise<void>;
   getDashboardMetrics(params?: Record<string, unknown>): Promise<unknown>;
   getLicensesRequiringAttention(options?: Record<string, unknown>): Promise<{ data: LicensesRequiringAttentionResponse }>;
-  getSmsPayments(params?: Record<string, unknown>): Promise<unknown>;
+  getSmsPayments(params?: SmsPaymentsQueryParams): Promise<SmsPaymentsApiResponse>;
   addSmsPayment(paymentData: Record<string, unknown>): Promise<unknown>;
 }

@@ -135,6 +135,9 @@ export function LicensesDataTable({
   // Track the last query to prevent infinite loops
   const lastQueryRef = useRef<string>("");
   const hasInitializedRef = useRef(false);
+  // Separate guard for URL-param seeding; must NOT share hasInitializedRef so the
+  // main query effect can still run its own initialization path on first mount.
+  const urlInitializedRef = useRef(false);
 
   // Track last values for changes
   const lastPageIndexRef = useRef<number>(0);
@@ -162,8 +165,8 @@ export function LicensesDataTable({
 
   // Initialize from URL once on mount only. Re-running when `table` changes causes store updates → re-render → loop.
   useEffect(() => {
-    if (hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
+    if (urlInitializedRef.current) return;
+    urlInitializedRef.current = true;
 
     const urlParams = new URLSearchParams(window.location.search);
     const searchParam = urlParams.get('search');
