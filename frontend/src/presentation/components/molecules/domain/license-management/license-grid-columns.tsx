@@ -338,11 +338,16 @@ export function getLicenseGridColumns(
       header: "Activity",
       enableColumnFilter: false,
       enableSorting: false,
+      enableResizing: false,
+      enableHiding: false,
+      enablePinning: false,
       ...LICENSE_COLUMN_WIDTHS.auditHistory,
       meta: {
         label: "Activity",
         headerAlign: "center" as const,
         cell: { variant: "audit-history" as const, readOnly: true },
+        disableColumnHeaderMenu: true,
+        stickyEnd: true,
       },
     },
   ];

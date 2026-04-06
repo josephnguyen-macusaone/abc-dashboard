@@ -17,6 +17,10 @@ import {
   getRowHeightValue,
 } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
+import {
+  dataGridColumnShouldGrow,
+  sameStretchColumnIds,
+} from "./data-grid-column-flex";
 import type {
   CellPosition,
   Direction,
@@ -38,6 +42,7 @@ interface DataGridRowProps<TData> extends React.ComponentProps<"div"> {
   dir: Direction;
   readOnly: boolean;
   stretchColumns?: boolean;
+  stretchColumnIds?: readonly string[];
 }
 
 export const DataGridRow = React.memo(DataGridRowImpl, (prev, next) => {
@@ -102,6 +107,14 @@ export const DataGridRow = React.memo(DataGridRowImpl, (prev, next) => {
     return false;
   }
 
+  if (prev.stretchColumns !== next.stretchColumns) {
+    return false;
+  }
+
+  if (!sameStretchColumnIds(prev.stretchColumnIds, next.stretchColumnIds)) {
+    return false;
+  }
+
   return true;
 }) as typeof DataGridRowImpl;
 
@@ -119,6 +132,7 @@ function DataGridRowImpl<TData>({
   columnPinning: _columnPinning,
   readOnly,
   stretchColumns,
+  stretchColumnIds,
   className,
   style,
   ref,
@@ -173,6 +187,10 @@ function DataGridRowImpl<TData>({
     >
       {visibleCells.map((cell, colIndex) => {
         const columnId = cell.column.id;
+        const stickyEnd = cell.column.columnDef.meta?.stickyEnd;
+        const rowStripeClass =
+          virtualRowIndex % 2 === 1 ? "bg-muted/20" : "bg-background";
+        const stickyEndBg = isRowSelected ? "bg-muted/50" : rowStripeClass;
         const isCellFocused =
           focusedCell?.rowIndex === virtualRowIndex &&
           focusedCell?.columnId === columnId;
@@ -191,9 +209,21 @@ function DataGridRowImpl<TData>({
             data-highlighted={isCellFocused ? "" : undefined}
             data-slot="grid-cell"
             tabIndex={-1}
-            className={cn("shrink-0", {
-              grow: stretchColumns && columnId !== "select",
-            })}
+            className={cn(
+              "shrink-0",
+              {
+                grow: dataGridColumnShouldGrow(
+                  columnId,
+                  stretchColumns ?? false,
+                  stretchColumnIds,
+                ),
+              },
+              stickyEnd &&
+                cn(
+                  "sticky end-0 z-20 border-s border-border",
+                  stickyEndBg,
+                ),
+            )}
             style={{
               width: `calc(var(--col-${columnId}-size) * 1px)`,
               minWidth: `calc(var(--col-${columnId}-size) * 1px)`,

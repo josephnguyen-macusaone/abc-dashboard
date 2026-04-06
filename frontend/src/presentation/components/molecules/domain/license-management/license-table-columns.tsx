@@ -97,12 +97,14 @@ export function getLicenseTableColumns(
         <DataTableColumnHeader column={column} label="Zip Code" />
       ),
       cell: ({ row }) => (
-        <span className="text-sm">{row.getValue("zip")}</span>
+        <span className="block w-full text-right text-sm tabular-nums">
+          {row.getValue("zip")}
+        </span>
       ),
       ...LICENSE_COLUMN_WIDTHS.zip,
       meta: {
         label: "Zip Code",
-        headerAlign: "start" as const,
+        headerAlign: "end" as const,
       },
     },
     {
@@ -141,7 +143,7 @@ export function getLicenseTableColumns(
       cell: ({ row }) => {
         const status = row.getValue("status") as LicenseStatus;
         return (
-          <div className="flex justify-center items-center w-full">
+          <div className="flex w-full items-center justify-center py-0.5">
             <LicenseStatusBadge
               status={status}
               variant="minimal"

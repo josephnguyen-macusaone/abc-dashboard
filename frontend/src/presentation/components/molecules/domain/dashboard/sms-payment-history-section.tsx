@@ -487,17 +487,18 @@ export function SmsPaymentHistorySection({
 
   const colHide = (id: ToggleableColumnId) => hiddenCols.has(id);
 
-  // Match DataTable stretch: equal % widths so the table fills the row when columns are hidden via View.
-  const smsDataColumnCount = useMemo(
-    () =>
-      2 +
-      (hiddenCols.has('txnId') ? 0 : 1) +
-      (hiddenCols.has('authCode') ? 0 : 1) +
-      (hiddenCols.has('card') ? 0 : 1) +
-      1,
-    [hiddenCols],
-  );
-  const smsColWidthPercent = smsDataColumnCount > 0 ? 100 / smsDataColumnCount : 100;
+  // Pixel col widths + min table width (like DataTable stretch): scroll horizontally instead of crushing columns.
+  const { smsColWidthsPx, smsTableMinWidth } = useMemo(() => {
+    const widths: number[] = [200, 100];
+    if (!hiddenCols.has('txnId')) widths.push(220);
+    if (!hiddenCols.has('authCode')) widths.push(120);
+    if (!hiddenCols.has('card')) widths.push(200);
+    widths.push(130);
+    return {
+      smsColWidthsPx: widths,
+      smsTableMinWidth: widths.reduce((a, b) => a + b, 0),
+    };
+  }, [hiddenCols]);
 
   return (
     <div
@@ -558,12 +559,18 @@ export function SmsPaymentHistorySection({
       {/* Table */}
       <div className="w-full min-h-0 overflow-x-auto rounded-md border">
         <table
-          className="w-full caption-bottom text-sm table-fixed"
-          style={{ tableLayout: 'fixed', width: '100%' }}
+          className="caption-bottom text-sm table-fixed"
+          style={{
+            tableLayout: 'fixed',
+            width: smsTableMinWidth,
+            minWidth: smsTableMinWidth,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
         >
           <colgroup>
-            {Array.from({ length: smsDataColumnCount }).map((_, i) => (
-              <col key={i} style={{ width: `${smsColWidthPercent}%` }} />
+            {smsColWidthsPx.map((w, i) => (
+              <col key={i} style={{ width: w }} />
             ))}
           </colgroup>
           <TableHeader className="bg-muted">
@@ -586,7 +593,7 @@ export function SmsPaymentHistorySection({
             {showSkeleton &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 6 - hiddenCols.size }).map((__, j) => (
+                  {Array.from({ length: smsColWidthsPx.length }).map((__, j) => (
                     <TableCell key={j}>
                       <div
                         className="h-4 rounded bg-muted animate-pulse"
@@ -599,7 +606,7 @@ export function SmsPaymentHistorySection({
 
             {!showSkeleton && showEmpty && (
               <TableRow>
-                <TableCell colSpan={6 - hiddenCols.size} className="p-0">
+                <TableCell colSpan={smsColWidthsPx.length} className="p-0">
                   <div className="p-12 text-center">
                     <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <FileText className="h-8 w-8 text-muted-foreground" />
