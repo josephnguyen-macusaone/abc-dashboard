@@ -1254,10 +1254,16 @@ export class ExternalLicenseApiService extends IExternalLicenseApiService {
    * Accepts YYYY-MM-DD (ISO) or MM/DD/YYYY (already correct). Returns null for invalid input.
    */
   _toMapiDate(value) {
-    if (!value) return null;
+    if (!value) {
+      return null;
+    }
     const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (iso) return `${iso[2]}/${iso[3]}/${iso[1]}`;
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+    if (iso) {
+      return `${iso[2]}/${iso[3]}/${iso[1]}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      return value;
+    }
     return null;
   }
 
@@ -1275,11 +1281,15 @@ export class ExternalLicenseApiService extends IExternalLicenseApiService {
     }
     if (options.startDate) {
       const d = this._toMapiDate(options.startDate);
-      if (d) params.append('startDate', d);
+      if (d) {
+        params.append('startDate', d);
+      }
     }
     if (options.endDate) {
       const d = this._toMapiDate(options.endDate);
-      if (d) params.append('endDate', d);
+      if (d) {
+        params.append('endDate', d);
+      }
     }
     if (options.page) {
       params.append('page', options.page.toString());

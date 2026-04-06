@@ -1430,6 +1430,26 @@ export class ExternalLicenseController {
   };
 
   /**
+   * Inject canonical emailLicense from external_licenses into sms options.
+   * For agents, always overrides; for other roles, fills in only if absent.
+   */
+  async _injectCanonicalEmailLicense(req, options) {
+    if (!this.licenseRepository?.findEmailLicenseForSmsProxy) {
+      return;
+    }
+    const canonicalEmail = await this.licenseRepository.findEmailLicenseForSmsProxy({
+      appid: options.appid,
+      countid: options.countid,
+    });
+    if (!canonicalEmail) {
+      return;
+    }
+    if (req.user?.role === ROLES.AGENT || !options.emailLicense) {
+      options.emailLicense = canonicalEmail;
+    }
+  }
+
+  /**
    * Get SMS payments (GET /api/v1/sms-payments)
    */
   getSmsPayments = async (req, res) => {
@@ -1459,19 +1479,7 @@ export class ExternalLicenseController {
         emailLicense: options.emailLicense,
       });
 
-      if (this.licenseRepository?.findEmailLicenseForSmsProxy) {
-        const canonicalEmail = await this.licenseRepository.findEmailLicenseForSmsProxy({
-          appid: options.appid,
-          countid: options.countid,
-        });
-        if (canonicalEmail) {
-          if (req.user?.role === ROLES.AGENT) {
-            options.emailLicense = canonicalEmail;
-          } else if (!options.emailLicense) {
-            options.emailLicense = canonicalEmail;
-          }
-        }
-      }
+      await this._injectCanonicalEmailLicense(req, options);
 
       logger.info('Getting SMS payments via API', {
         correlationId: req.correlationId,
