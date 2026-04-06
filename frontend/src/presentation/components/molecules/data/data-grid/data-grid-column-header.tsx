@@ -124,6 +124,26 @@ export function DataGridColumnHeader<TData, TValue>({
         ? "text-center"
         : "text-start";
 
+  if (column.columnDef.meta?.disableColumnHeaderMenu) {
+    return (
+      <TooltipWrapper content={label} side="top" delayDuration={500}>
+        <div
+          className={cn(
+            "flex size-full items-center gap-3 text-sm",
+            triggerJustifyClass,
+            tableHeadCellClass,
+            className,
+          )}
+          {...props}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className={cn("truncate", labelAlignClass)}>{label}</span>
+          </div>
+        </div>
+      </TooltipWrapper>
+    );
+  }
+
   return (
     <>
       <DropdownMenu>

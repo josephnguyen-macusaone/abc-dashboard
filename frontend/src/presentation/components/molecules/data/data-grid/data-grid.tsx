@@ -13,13 +13,18 @@ import {
 import { flexRender } from "@/shared/lib/data-grid";
 import { cn } from "@/shared/helpers";
 import type { Direction } from "@/types/data-grid";
+import { dataGridColumnShouldGrow } from "./data-grid-column-flex";
 
 interface DataGridProps<TData>
   extends Omit<ReturnType<typeof useDataGrid<TData>>, "dir">,
   Omit<React.ComponentProps<"div">, "contextMenu"> {
   dir?: Direction;
+  /** Fixed viewport (px). Omit for intrinsic height: page scrolls vertically; only horizontal scroll inside the grid (avoids a vertical bar when a horizontal scrollbar steals height). */
   height?: number;
+  /** When true, all columns except `select` grow to fill slack (ignored if `stretchColumnIds` is non-empty). */
   stretchColumns?: boolean;
+  /** Only these column ids grow to fill horizontal slack; takes precedence over `stretchColumns`. */
+  stretchColumnIds?: readonly string[];
 }
 
 export function DataGrid<TData>({
@@ -38,8 +43,9 @@ export function DataGrid<TData>({
   editingCell,
   rowHeight,
   onRowAdd,
-  height = 600,
+  height: heightFromProps,
   stretchColumns = false,
+  stretchColumnIds,
   className,
   // Destructured so they are not spread onto the div (not valid DOM attributes)
   contextMenu: _contextMenu,
@@ -50,6 +56,7 @@ export function DataGrid<TData>({
   void _contextMenu;
   void _pasteDialog;
   void _searchState;
+  const hasFixedHeight = heightFromProps != null;
   const rows = table.getPaginationRowModel().rows;
   const readOnly = tableMeta?.readOnly ?? false;
   const columnVisibility = table.getState().columnVisibility;
@@ -85,13 +92,20 @@ export function DataGrid<TData>({
         ref={dataGridRef}
         data-slot="grid-scroll"
         className={cn(
-          "w-full min-h-0 overflow-auto rounded-md border text-sm",
-          "select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "w-full rounded-md border text-sm",
+          hasFixedHeight && "min-h-0 overflow-auto",
+          // Intrinsic: horizontal scroll only; clip vertically so no scrollbar track eats width on the right.
+          !hasFixedHeight && "overflow-x-auto overflow-y-clip",
+          "select-none focus:outline-none focus-visible:outline-none",
         )}
-        style={{
-          height: `${height}px`,
-          maxHeight: `${height}px`,
-        }}
+        style={
+          hasFixedHeight && heightFromProps != null
+            ? {
+                height: `${heightFromProps}px`,
+                maxHeight: `${heightFromProps}px`,
+              }
+            : undefined
+        }
         role="grid"
         aria-label="Data grid"
         aria-rowcount={rows.length + (onRowAdd ? 1 : 0)}
@@ -125,6 +139,7 @@ export function DataGrid<TData>({
                     (sort) => sort.id === header.column.id,
                   );
                   const isSortable = header.column.getCanSort();
+                  const stickyEnd = header.column.columnDef.meta?.stickyEnd;
 
                   return (
                     <div
@@ -142,9 +157,18 @@ export function DataGrid<TData>({
                       }
                       data-slot="grid-header-cell"
                       tabIndex={-1}
-                      className={cn("relative", {
-                        grow: stretchColumns && header.column.id !== "select",
-                      })}
+                      className={cn(
+                        "relative",
+                        stickyEnd &&
+                          "sticky end-0 z-30 border-s border-border bg-muted",
+                        {
+                          grow: dataGridColumnShouldGrow(
+                            header.column.id,
+                            stretchColumns,
+                            stretchColumnIds,
+                          ),
+                        },
+                      )}
                       style={{
                         width: `calc(var(--header-${header.id}-size) * 1px)`,
                       }}
@@ -173,7 +197,6 @@ export function DataGrid<TData>({
             className="relative grid"
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
-              contain: "strict",
             }}
           >
             {rowVirtualizer.getVirtualItems().map((virtualItem) => {
@@ -200,6 +223,7 @@ export function DataGrid<TData>({
                   dir={dir}
                   readOnly={readOnly}
                   stretchColumns={stretchColumns}
+                  stretchColumnIds={stretchColumnIds}
                 />
               );
             })}

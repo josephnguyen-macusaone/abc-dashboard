@@ -30,28 +30,11 @@ import type { LicenseRecord } from "@/types";
 import logger from "@/shared/helpers/logger";
 import { useLicenseStore } from "@/infrastructure/stores/license";
 import { DEFAULT_LICENSE_SORT } from "@/shared/constants/license";
-import { getRowHeightValue } from "@/shared/lib/data-grid";
 
 const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
 
-/** Sticky header row + border (matches grid header). */
-const GRID_HEADER_APPROX_PX = 49;
-const ADD_ROW_STRIP_PX = 36;
-const GRID_VERTICAL_PADDING_PX = 8;
-
-/** Max grid body height: prefer fitting current page rows; cap near viewport so huge pages still scroll inside the grid. */
-function useLicenseGridViewportCap(absoluteMax = 2400, fraction = 0.92) {
-  const [cap, setCap] = React.useState(absoluteMax);
-  React.useEffect(() => {
-    function update() {
-      setCap(Math.min(absoluteMax, Math.round(window.innerHeight * fraction)));
-    }
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [absoluteMax, fraction]);
-  return cap;
-}
+/** Only these columns flex-grow; `notes` absorbs slack before the sticky Activity column. */
+const LICENSE_GRID_STRETCH_COLUMN_IDS = ["notes"] as const;
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
@@ -59,7 +42,7 @@ interface LicensesDataGridProps {
   readOnly?: boolean;
   /** Per-field edit restrictions when the grid is not globally read-only */
   licenseCapabilities?: LicenseCapabilities;
-  /** Fixed grid viewport height (px). Omit to size from row count, capped by viewport (no huge empty area). */
+  /** Fixed grid viewport height (px). Omit so the grid uses intrinsic height (horizontal scroll only inside the grid; page scrolls vertically). */
   height?: number;
   className?: string;
   onSave?: (data: LicenseRecord[]) => Promise<void>;
@@ -101,8 +84,6 @@ export function LicensesDataGrid({
   dateRange,
   onDateRangeChange,
 }: LicensesDataGridProps) {
-  const viewportCapPx = useLicenseGridViewportCap();
-
   // For license management (no onQueryChange), use data directly without complex sync
   // For admin dashboard (with onQueryChange), use complex sync to handle pagination
   const useComplexSync = !!onQueryChange;
@@ -341,31 +322,6 @@ export function LicensesDataGrid({
   const tablePageSize = gridState.table.getState().pagination.pageSize;
   const tableSorting = gridState.table.getState().sorting;
   const tableColumnFilters = gridState.table.getState().columnFilters;
-
-  const computedGridHeight = React.useMemo(() => {
-    if (heightFromProps != null) return heightFromProps;
-    const rowCount = gridState.table.getPaginationRowModel().rows.length;
-    const rowPx = getRowHeightValue(gridState.rowHeight);
-    const addStrip = gridState.onRowAdd ? ADD_ROW_STRIP_PX : 0;
-    const contentPx =
-      GRID_HEADER_APPROX_PX +
-      rowCount * rowPx +
-      addStrip +
-      GRID_VERTICAL_PADDING_PX;
-    const minPx = 200;
-    return Math.min(Math.max(contentPx, minPx), viewportCapPx);
-    // TanStack `table` ref is stable; pagination / page row count are not inferred as deps — keep primitives below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- height must update when pageIndex, pageSize, or data changes
-  }, [
-    heightFromProps,
-    gridState.table,
-    gridState.rowHeight,
-    gridState.onRowAdd,
-    tablePageIndex,
-    tablePageSize,
-    data.length,
-    viewportCapPx,
-  ]);
 
   // Manual query change handler (adapted from data-table)
   // Only triggers API calls when search/filter/pagination actually changes (after debounce)
@@ -854,8 +810,8 @@ export function LicensesDataGrid({
         ) : (
           <DataGrid
             {...gridState}
-            height={computedGridHeight}
-            stretchColumns
+            height={heightFromProps}
+            stretchColumnIds={LICENSE_GRID_STRETCH_COLUMN_IDS}
           />
         )}
       </div>

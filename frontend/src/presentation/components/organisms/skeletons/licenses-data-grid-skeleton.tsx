@@ -8,11 +8,10 @@ import { cn } from "@/shared/helpers";
 /** Row height matches LicensesDataGrid (rowHeight: "medium" = 56px) */
 const ROW_HEIGHT = getRowHeightValue("medium");
 
-/** Keep in sync with `LicensesDataGrid` height math (sticky header, add-row strip, padding, viewport cap). */
+/** Keep in sync with `LicensesDataGrid` / DataGrid intrinsic layout (header, rows, add-row strip, slack). */
 const GRID_HEADER_APPROX_PX = 49;
 const ADD_ROW_STRIP_PX = 36;
 const GRID_VERTICAL_PADDING_PX = 8;
-const SKELETON_VIEWPORT_CAP_PX = 720;
 
 function defaultSkeletonGridHeight(rowCount: number, showAddRow: boolean): number {
   const addStrip = showAddRow ? ADD_ROW_STRIP_PX : 0;
@@ -21,7 +20,7 @@ function defaultSkeletonGridHeight(rowCount: number, showAddRow: boolean): numbe
     rowCount * ROW_HEIGHT +
     addStrip +
     GRID_VERTICAL_PADDING_PX;
-  return Math.min(Math.max(contentPx, 200), SKELETON_VIEWPORT_CAP_PX);
+  return Math.max(contentPx, 200);
 }
 
 /** Grid columns: same as license grid, no select */

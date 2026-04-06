@@ -17,7 +17,11 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   actionBar?: React.ReactNode;
   /** Custom content when table has no rows (toolbar remains visible). */
   emptyState?: React.ReactNode;
-  /** When true, table stretches to fill container width; hidden columns no longer leave a right gutter. Default true. */
+  /**
+   * When true (default): table width matches the sum of column sizes (no extra horizontal stretch
+   * into the viewport — avoids empty space inside narrow columns). Scrolls when the container is narrower.
+   * Centered when the container is wider.
+   */
   stretch?: boolean;
   /** Extra classes on the table wrapper (horizontal overflow; height follows row content). */
   tableWrapperClassName?: string;
@@ -40,24 +44,27 @@ export function DataTable<TData>({
   const headerGroup = table.getHeaderGroups()[0];
   const totalSize = headerGroup?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
 
+  // Stretch: fixed width = sum of column sizes so the browser does not distribute extra viewport
+  // width across columns (which caused large gaps next to short values). Horizontal scroll when needed.
+  const stretchTableStyle =
+    stretch && totalSize > 0
+      ? {
+          width: totalSize,
+          minWidth: totalSize,
+          marginLeft: "auto",
+          marginRight: "auto",
+          tableLayout: "fixed" as const,
+        }
+      : totalSize && !stretch
+        ? { width: totalSize, minWidth: totalSize, tableLayout: "auto" as const }
+        : undefined;
+
   const tableContent = (
-    <Table
-      className="min-w-0 overflow-x-visible"
-      style={
-        stretch
-          ? { width: "100%" }
-          : totalSize
-            ? { width: totalSize, minWidth: totalSize, tableLayout: "auto" as const }
-            : undefined
-      }
-    >
+    <Table className="min-w-0 overflow-x-visible" style={stretchTableStyle}>
       {stretch && totalSize > 0 && (
         <colgroup>
           {headerGroup?.headers.map((header) => (
-            <col
-              key={header.id}
-              style={{ width: `${(header.getSize() / totalSize) * 100}%` }}
-            />
+            <col key={header.id} style={{ width: header.getSize() }} />
           ))}
         </colgroup>
       )}
@@ -66,8 +73,12 @@ export function DataTable<TData>({
           <TableRow key={headerGroup.id}>
             {headerGroup.headers.map((header) => {
               const size = header.getSize();
+              const minFromDef = header.column.columnDef.minSize;
+              const floor = typeof minFromDef === "number" ? Math.max(size, minFromDef) : size;
               const widthStyle =
-                stretch && totalSize > 0 ? undefined : { minWidth: `${size}px`, width: `${size}px` };
+                stretch && totalSize > 0
+                  ? { minWidth: `${floor}px` }
+                  : { minWidth: `${size}px`, width: `${size}px` };
               const align = (header.column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
               const alignClass = align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left";
               return (
@@ -78,7 +89,14 @@ export function DataTable<TData>({
                   className={cn("!p-0", alignClass)}
                 >
                   {header.isPlaceholder ? null : (
-                    <div className="flex w-full items-center">
+                    <div
+                      className={cn(
+                        "flex w-full items-center align-middle",
+                        align === "end" && "justify-end",
+                        align === "center" && "justify-center",
+                        align === "start" && "justify-start",
+                      )}
+                    >
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext(),
@@ -110,9 +128,12 @@ export function DataTable<TData>({
             >
               {row.getVisibleCells().map((cell) => {
                 const cellSize = cell.column.getSize();
+                const cellMinDef = cell.column.columnDef.minSize;
+                const cellFloor =
+                  typeof cellMinDef === "number" ? Math.max(cellSize, cellMinDef) : cellSize;
                 const cellWidthStyle =
                   stretch && totalSize > 0
-                    ? undefined
+                    ? { minWidth: `${cellFloor}px` }
                     : { minWidth: `${cellSize}px` };
                 const align = (cell.column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
                 const alignClass = align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left";
@@ -120,7 +141,7 @@ export function DataTable<TData>({
                   <TableCell
                     key={cell.id}
                     style={cellWidthStyle}
-                    className={cn("whitespace-nowrap", alignClass)}
+                    className={cn("align-middle whitespace-nowrap", alignClass)}
                   >
                     {flexRender(
                       cell.column.columnDef.cell,

@@ -78,6 +78,10 @@ declare module "@tanstack/react-table" {
     /** When true this column's cells are always read-only regardless of the table-level readOnly setting. */
     cell?: CellOpts & { align?: CellAlign; readOnly?: boolean };
     headerAlign?: CellAlign;
+    /** Plain header label only — no sort/pin/hide column menu. */
+    disableColumnHeaderMenu?: boolean;
+    /** Sticky to the end of the horizontal scroll viewport (e.g. activity / actions column). */
+    stickyEnd?: boolean;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

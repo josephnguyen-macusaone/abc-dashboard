@@ -224,7 +224,7 @@ export { LICENSE_PLAN_OPTIONS as LICENSE_PLAN_OPTIONS_WITH_COLORS };
  */
 export const LICENSE_COLUMN_WIDTHS = {
   select: { size: 48, minSize: 40 },
-  dba: { size: 200, minSize: 80 },
+  dba: { size: 280, minSize: 160 },
   zip: { size: 130, minSize: 90 },
   startsAt: { size: 160, minSize: 120 },
   status: { size: 130, minSize: 80 },
