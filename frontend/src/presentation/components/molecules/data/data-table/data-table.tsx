@@ -17,7 +17,7 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   actionBar?: React.ReactNode;
   /** Custom content when table has no rows (toolbar remains visible). */
   emptyState?: React.ReactNode;
-  /** When true, table stretches to fill container width (e.g. user management). Default false. */
+  /** When true, table stretches to fill container width; hidden columns no longer leave a right gutter. Default true. */
   stretch?: boolean;
   /** Extra classes on the table wrapper (horizontal overflow; height follows row content). */
   tableWrapperClassName?: string;
@@ -27,7 +27,7 @@ export function DataTable<TData>({
   table,
   actionBar,
   emptyState,
-  stretch = false,
+  stretch = true,
   tableWrapperClassName,
   children,
   className,

@@ -487,6 +487,18 @@ export function SmsPaymentHistorySection({
 
   const colHide = (id: ToggleableColumnId) => hiddenCols.has(id);
 
+  // Match DataTable stretch: equal % widths so the table fills the row when columns are hidden via View.
+  const smsDataColumnCount = useMemo(
+    () =>
+      2 +
+      (hiddenCols.has('txnId') ? 0 : 1) +
+      (hiddenCols.has('authCode') ? 0 : 1) +
+      (hiddenCols.has('card') ? 0 : 1) +
+      1,
+    [hiddenCols],
+  );
+  const smsColWidthPercent = smsDataColumnCount > 0 ? 100 / smsDataColumnCount : 100;
+
   return (
     <div
       className={cn(
@@ -545,7 +557,15 @@ export function SmsPaymentHistorySection({
 
       {/* Table */}
       <div className="w-full min-h-0 overflow-x-auto rounded-md border">
-        <table className="w-full caption-bottom text-sm">
+        <table
+          className="w-full caption-bottom text-sm table-fixed"
+          style={{ tableLayout: 'fixed', width: '100%' }}
+        >
+          <colgroup>
+            {Array.from({ length: smsDataColumnCount }).map((_, i) => (
+              <col key={i} style={{ width: `${smsColWidthPercent}%` }} />
+            ))}
+          </colgroup>
           <TableHeader className="bg-muted">
             <TableRow>
               <TableHead>Date</TableHead>

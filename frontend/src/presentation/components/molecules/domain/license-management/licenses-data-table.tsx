@@ -478,11 +478,7 @@ export function LicensesDataTable({
 
   return (
     <>
-    <DataTable
-      table={table}
-      emptyState={emptyStateContent}
-      stretch={false}
-    >
+    <DataTable table={table} emptyState={emptyStateContent}>
       <DataTableToolbar
         table={table}
         dateRangeFilter={
