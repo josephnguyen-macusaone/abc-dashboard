@@ -176,6 +176,15 @@ export const responseHelpers = {
   },
 
   /**
+   * Send a forbidden response (403) - canonical error shape
+   * @param {string} message - Error message
+   */
+  forbidden(message = 'Forbidden') {
+    const payload = formatCanonicalError('INSUFFICIENT_PERMISSIONS', { customMessage: message });
+    return this.status(payload.error.statusCode).json(payload);
+  },
+
+  /**
    * Send an error response - canonical error shape
    * @param {string} message - Error message
    * @param {number} statusCode - HTTP status code (default: 500)
