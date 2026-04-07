@@ -3,7 +3,6 @@ import {
   InvalidTokenException,
   TokenExpiredException,
   ResourceNotFoundException,
-  BusinessRuleViolationException,
 } from '../../../domain/exceptions/domain.exception.js';
 import logger from '../../../shared/utils/logger.js';
 
@@ -78,7 +77,9 @@ export class VerifyEmailUseCase {
               license.id,
               user.id
             );
-            if (alreadyAssigned) return;
+            if (alreadyAssigned) {
+              return;
+            }
             await this.licenseRepository.assignLicense({
               licenseId: license.id,
               userId: user.id,

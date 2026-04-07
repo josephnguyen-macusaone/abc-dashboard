@@ -163,19 +163,24 @@ export class AuthController extends BaseController {
     const redirectSuccess = () => res.redirect(302, `${clientUrl}/login?verified=true`);
     const redirectError = (type) => res.redirect(302, `${clientUrl}/verify-email?error=${type}`);
 
-    if (!token) return redirectError('invalid');
+    if (!token) {
+      return redirectError('invalid');
+    }
 
     try {
-      if (!this.verifyEmailUseCase) return redirectError('invalid');
+      if (!this.verifyEmailUseCase) {
+        return redirectError('invalid');
+      }
 
       await this.verifyEmailUseCase.execute({ token });
       return redirectSuccess();
     } catch (error) {
-      if (error instanceof TokenExpiredException) return redirectError('expired');
-      if (
-        error instanceof InvalidTokenException ||
-        error instanceof ResourceNotFoundException
-      ) return redirectError('invalid');
+      if (error instanceof TokenExpiredException) {
+        return redirectError('expired');
+      }
+      if (error instanceof InvalidTokenException || error instanceof ResourceNotFoundException) {
+        return redirectError('invalid');
+      }
       if (error instanceof BusinessRuleViolationException) {
         // Already verified — still a success from the user's perspective.
         return redirectSuccess();
