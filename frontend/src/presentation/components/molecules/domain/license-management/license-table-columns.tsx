@@ -97,14 +97,14 @@ export function getLicenseTableColumns(
         <DataTableColumnHeader column={column} label="Zip Code" />
       ),
       cell: ({ row }) => (
-        <span className="block w-full text-right text-sm tabular-nums">
+        <span className="block w-full text-center text-sm tabular-nums">
           {row.getValue("zip")}
         </span>
       ),
       ...LICENSE_COLUMN_WIDTHS.zip,
       meta: {
         label: "Zip Code",
-        headerAlign: "end" as const,
+        headerAlign: "center" as const,
       },
     },
     {
@@ -146,8 +146,8 @@ export function getLicenseTableColumns(
           <div className="flex w-full items-center justify-center py-0.5">
             <LicenseStatusBadge
               status={status}
-              variant="minimal"
-              showIcon={true}
+              variant="table"
+              showIcon
             />
           </div>
         );
@@ -485,33 +485,37 @@ export function getLicenseTableColumns(
   if (onOpenAuditHistory) {
     columns.push({
       id: "auditHistory",
-      header: () => <span className="sr-only">Activity</span>,
+      header: () => null,
       cell: ({ row }) => {
         const id = row.original.id;
         const canOpen = typeof id === "string" && LICENSE_ROW_UUID_RE.test(id);
         return (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0"
-            aria-label="View activity log"
-            title={canOpen ? "Activity log" : "Save the license to view activity"}
-            disabled={!canOpen}
-            onClick={() => {
-              if (!canOpen) return;
-              onOpenAuditHistory(row.original);
-            }}
-          >
-            <History className="size-4" />
-          </Button>
+          <div className="flex w-full justify-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              aria-label="View activity log"
+              title={canOpen ? "Activity log" : "Save the license to view activity"}
+              disabled={!canOpen}
+              onClick={() => {
+                if (!canOpen) return;
+                onOpenAuditHistory(row.original);
+              }}
+            >
+              <History className="size-4" />
+            </Button>
+          </div>
         );
       },
       enableSorting: false,
       enableHiding: false,
       ...LICENSE_COLUMN_WIDTHS.auditHistory,
       meta: {
-        label: "Activity",
+        label: "",
+        stickyEnd: true,
+        headerAlign: "center" as const,
       },
     });
   }

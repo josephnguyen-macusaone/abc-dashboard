@@ -5,18 +5,22 @@ import {
   ResourceNotFoundException,
   BusinessRuleViolationException,
 } from '../../../domain/exceptions/domain.exception.js';
+import logger from '../../../shared/utils/logger.js';
 
 /** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
 /** @typedef {import('../../interfaces/i-token-service.js').ITokenService} ITokenService */
+/** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
 
 export class VerifyEmailUseCase {
   /**
    * @param {IUserRepository} userRepository
    * @param {ITokenService} tokenService
+   * @param {ILicenseRepository} licenseRepository
    */
-  constructor(userRepository, tokenService) {
+  constructor(userRepository, tokenService, licenseRepository) {
     this.userRepository = userRepository;
     this.tokenService = tokenService;
+    this.licenseRepository = licenseRepository;
   }
 
   async execute({ token }) {
@@ -51,10 +55,45 @@ export class VerifyEmailUseCase {
 
     const activatedUser = await this.userRepository.updateEmailVerification(user.id);
 
+    await this._autoAssignLicenses(activatedUser);
+
     return {
       user: UserAuthDto.fromEntity(activatedUser),
       message: 'Email verified successfully. You can now log in.',
     };
+  }
+
+  async _autoAssignLicenses(user) {
+    try {
+      const licenses = await this.licenseRepository.findAllByEmailLicense(user.email);
+      await Promise.all(
+        licenses.map(async (license) => {
+          try {
+            const alreadyAssigned = await this.licenseRepository.hasUserAssignment(
+              license.id,
+              user.id
+            );
+            if (alreadyAssigned) return;
+            await this.licenseRepository.assignLicense({
+              licenseId: license.id,
+              userId: user.id,
+              assignedBy: null,
+            });
+          } catch (assignError) {
+            logger.warn('Auto-assign skipped for license', {
+              userId: user.id,
+              licenseId: license.id,
+              error: assignError.message,
+            });
+          }
+        })
+      );
+    } catch (error) {
+      logger.warn('Auto-assign licenses after email verification failed', {
+        userId: user.id,
+        error: error.message,
+      });
+    }
   }
 }
 

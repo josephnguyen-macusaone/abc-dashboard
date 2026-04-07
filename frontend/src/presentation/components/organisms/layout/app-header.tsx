@@ -9,7 +9,7 @@ import { Menu, X } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 import { useSidebarStore } from '@/infrastructure/stores';
 import { useAuthStore } from '@/infrastructure/stores/auth';
-import { getLicenseCapabilities } from '@/shared/constants/license-capabilities';
+import { getLicenseCapabilities } from '@/shared/constants/license';
 import { ROUTES } from '@/shared/constants';
 
 function showLicenseSyncForPath(pathname: string): boolean {

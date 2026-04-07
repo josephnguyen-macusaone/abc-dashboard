@@ -1,8 +1,8 @@
 import { Home, Users, FileSpreadsheet } from 'lucide-react';
+import type { NavigationItem } from '@/shared/types/navigation';
 import { PermissionUtils, USER_ROLES } from './auth';
-import { getLicenseCapabilities } from './license-capabilities';
+import { getLicenseCapabilities } from './license';
 import { getRoleDashboardPath } from './routes';
-import type { NavigationItem } from '@/presentation/components/molecules';
 
 /**
  * Permission-based navigation items based on enterprise permission system

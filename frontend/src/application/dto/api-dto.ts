@@ -64,12 +64,9 @@ export interface LoginRequestDto {
 }
 
 export interface SignupRequestDto {
-  firstName: string;
-  lastName: string;
   email: string;
   password: string;
   role: 'agent' | 'tech' | 'accountant';
-  username?: string;
   phone?: string;
 }
 

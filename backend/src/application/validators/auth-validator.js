@@ -48,9 +48,6 @@ export class AuthValidator {
   static validateSignup(input) {
     const errors = [];
 
-    this.pushRequiredStringError(errors, input, 'firstName', 'First name is required');
-    this.pushRequiredStringError(errors, input, 'lastName', 'Last name is required');
-
     if (!input.email || typeof input.email !== 'string') {
       errors.push({ field: 'email', message: 'Email is required' });
     } else if (!this.isValidEmail(input.email)) {

@@ -478,101 +478,101 @@ export function LicensesDataTable({
 
   return (
     <>
-    <DataTable
-      table={table}
-      fillContainer={variant === "agent"}
-      emptyState={emptyStateContent}
-    >
-      <DataTableToolbar
+      <DataTable
         table={table}
-        dateRangeFilter={
-          !hideDateRange && onDateRangeChange ? (
-            <DataTableDateRangeFilter
-              value={dateRange ?? null}
-              onDateRangeChange={onDateRangeChange}
-              title="Date Range"
-              align="start"
-              className="shrink-0"
-            />
-          ) : undefined
-        }
-        searchBar={
-          <div className="flex items-center gap-2 min-w-0">
-            <SearchBar
-              value={searchValue}
-              onValueChange={handleSearchChange}
-              onSearch={onQueryChange ? handleSearchSubmit : undefined}
-              searchField={searchField}
-              onSearchFieldChange={(v) => setSearchField(v)}
-              placeholder="Search..."
-              className="w-full min-w-[140px] sm:min-w-[200px] sm:w-72 md:w-80 max-w-full"
-              allowClear={false}
-              searchButtonPosition="external"
-            />
-            {onQueryChange && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0 gap-1.5"
-                onClick={handleSearchSubmit}
-                aria-label="Search"
-              >
-                <Search className="h-4 w-4" />
-                <span className="hidden sm:inline">Search</span>
-              </Button>
-            )}
-          </div>
-        }
-        onReset={() => {
-          // 1. Clear search state and prefix (default to DBA)
-          setTableSearch(tableId, "");
-          setAppliedSearchValue('');
-          setSearchField('dba');
+        fillContainer={variant === "agent"}
+        emptyState={emptyStateContent}
+      >
+        <DataTableToolbar
+          table={table}
+          dateRangeFilter={
+            !hideDateRange && onDateRangeChange ? (
+              <DataTableDateRangeFilter
+                value={dateRange ?? null}
+                onDateRangeChange={onDateRangeChange}
+                title="Date Range"
+                align="start"
+                className="shrink-0"
+              />
+            ) : undefined
+          }
+          searchBar={
+            <div className="flex items-center gap-2 min-w-0">
+              <SearchBar
+                value={searchValue}
+                onValueChange={handleSearchChange}
+                onSearch={onQueryChange ? handleSearchSubmit : undefined}
+                searchField={searchField}
+                onSearchFieldChange={(v) => setSearchField(v)}
+                placeholder="Search..."
+                className="w-full min-w-[140px] sm:min-w-[200px] sm:w-72 md:w-80 max-w-full"
+                allowClear={false}
+                searchButtonPosition="external"
+              />
+              {onQueryChange && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 gap-1.5"
+                  onClick={handleSearchSubmit}
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">Search</span>
+                </Button>
+              )}
+            </div>
+          }
+          onReset={() => {
+            // 1. Clear search state and prefix (default to DBA)
+            setTableSearch(tableId, "");
+            setAppliedSearchValue('');
+            setSearchField('dba');
 
-          // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
-          clearTableFilters(tableId);
+            // 2. Clear manual filter values (this will reset visual state via initialFilterValues)
+            clearTableFilters(tableId);
 
-          // 3. Clear table filters
-          table.setColumnFilters([]);
+            // 3. Clear table filters
+            table.setColumnFilters([]);
 
-          // 4. Reset filtering tracking
-          setHasPerformedFiltering(false);
+            // 4. Reset filtering tracking
+            setHasPerformedFiltering(false);
 
-          // 5. Clear date range filter
-          onDateRangeChange?.(null);
+            // 5. Clear date range filter
+            onDateRangeChange?.(null);
 
-          // 6. Reset to first page and trigger API call with clean state
-          table.setPageIndex(0);
+            // 6. Reset to first page and trigger API call with clean state
+            table.setPageIndex(0);
 
-          // 7. Trigger API call with clean state (explicit clears so store and API reset filters)
-          setTimeout(() => {
-            onQueryChange?.({
-              page: 1,
-              limit: table.getState().pagination.pageSize,
-              sortBy: DEFAULT_LICENSE_SORT[0].id as keyof LicenseRecord,
-              sortOrder: DEFAULT_LICENSE_SORT[0].desc ? 'desc' : 'asc',
-              search: undefined,
-              searchField: 'dba',
-              status: undefined,
-              plan: undefined,
-              term: undefined,
-            });
-          }, 0);
+            // 7. Trigger API call with clean state (explicit clears so store and API reset filters)
+            setTimeout(() => {
+              onQueryChange?.({
+                page: 1,
+                limit: table.getState().pagination.pageSize,
+                sortBy: DEFAULT_LICENSE_SORT[0].id as keyof LicenseRecord,
+                sortOrder: DEFAULT_LICENSE_SORT[0].desc ? 'desc' : 'asc',
+                search: undefined,
+                searchField: 'dba',
+                status: undefined,
+                plan: undefined,
+                term: undefined,
+              });
+            }, 0);
+          }}
+          hasActiveFilters={shouldShowResetButton}
+          onManualFilterChange={handleManualFilterChange}
+          initialFilterValues={manualFilterValues}
+        />
+      </DataTable>
+      <LicenseAuditHistoryDialog
+        open={Boolean(auditTarget && auditLicenseId)}
+        onOpenChange={(next) => {
+          if (!next) setAuditTarget(null);
         }}
-        hasActiveFilters={shouldShowResetButton}
-        onManualFilterChange={handleManualFilterChange}
-        initialFilterValues={manualFilterValues}
+        licenseId={auditLicenseId}
+        licenseLabel={auditLabel}
       />
-    </DataTable>
-    <LicenseAuditHistoryDialog
-      open={Boolean(auditTarget && auditLicenseId)}
-      onOpenChange={(next) => {
-        if (!next) setAuditTarget(null);
-      }}
-      licenseId={auditLicenseId}
-      licenseLabel={auditLabel}
-    />
     </>
   );
 }

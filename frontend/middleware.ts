@@ -26,6 +26,13 @@ function decodeJwtPayload(token: string): { role?: string; isActive?: boolean; e
   }
 }
 
+/** JWT exp is seconds since epoch; treat as expired when missing clock skew buffer. */
+function isAccessTokenExpired(payload: { exp?: number } | null): boolean {
+  if (!payload || typeof payload.exp !== 'number') return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return nowSec >= payload.exp;
+}
+
 /**
  * Build connect-src value for CSP. Allows same-origin plus API origin when frontend and API
  * run on different origins (e.g. app on :3000, API on :5001). Uses NEXT_PUBLIC_API_URL.
@@ -180,10 +187,20 @@ export function middleware(request: NextRequest) {
   try {
     if (token) {
       const payload = decodeJwtPayload(token);
-      if (payload && payload.role !== undefined) {
+      if (isAccessTokenExpired(payload)) {
+        middlewareLogger.debug('Access token JWT expired (exp); treating as unauthenticated', {
+          exp: payload?.exp,
+        });
+        isAuthenticated = false;
+        user = null;
+      } else if (
+        payload &&
+        typeof payload.role === 'string' &&
+        payload.role.trim() !== ''
+      ) {
         // Role from JWT (trusted); isActive from JWT for verify-email redirect
         user = {
-          role: payload.role,
+          role: payload.role.trim(),
           isActive: payload.isActive ?? true,
         };
         // Fallback: merge display name from user cookie if present (for logging only)

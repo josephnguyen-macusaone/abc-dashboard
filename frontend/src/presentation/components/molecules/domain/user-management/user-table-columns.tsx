@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
 import type { User } from "@/domain/entities/user-entity";
+import "@/types/data-table";
 import type { DataTableRowAction, Option } from "@/types/data-table";
 import { USER_COLUMN_WIDTHS } from "@/shared/constants/user";
 
@@ -116,13 +117,16 @@ export function getUserTableColumns({
         <DataTableColumnHeader column={column} label="Email" />
       ),
       cell: ({ row }) => (
-        <span className="text-muted-foreground truncate">
-          {row.getValue("email")}
-        </span>
+        <div className="min-w-0 max-w-full">
+          <span className="block truncate text-muted-foreground">
+            {row.getValue("email")}
+          </span>
+        </div>
       ),
       ...USER_COLUMN_WIDTHS.email,
       meta: {
         label: "Email",
+        absorbTableSlack: true,
       },
     },
     {
@@ -179,7 +183,7 @@ export function getUserTableColumns({
         const isActive = row.getValue("isActive") as boolean;
         return (
           <div className="flex justify-start items-center w-full">
-            <StatusBadge isActive={isActive} variant="minimal" showIcon={true} />
+            <StatusBadge isActive={isActive} variant="table" showIcon />
           </div>
         );
       },
@@ -223,6 +227,7 @@ export function getUserTableColumns({
     },
     {
       id: "actions",
+      header: () => null,
       cell: ({ row }) => {
         const user = row.original;
         const showEdit = canEdit(user);
@@ -233,43 +238,49 @@ export function getUserTableColumns({
         }
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="Open menu"
-                variant="ghost"
-                className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-              >
-                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {showEdit && (
-                <DropdownMenuItem
-                  onClick={() => onRowAction({ row, variant: "update" })}
+          <div className="flex w-full justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label="Open menu"
+                  variant="ghost"
+                  className="flex h-8 w-8 shrink-0 p-0 data-[state=open]:bg-muted"
                 >
-                  <Edit className="h-4 w-4 mr-2" />
-                  <Typography variant="body-s" className="text-foreground">Edit</Typography>
-                </DropdownMenuItem>
-              )}
-              {showEdit && showDelete && <DropdownMenuSeparator />}
-              {showDelete && (
-                <DropdownMenuItem
-                  onClick={() => onRowAction({ row, variant: "delete" })}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  <Typography variant="body-s" className="text-destructive">Delete</Typography>
-                </DropdownMenuItem>
-              )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {showEdit && (
+                  <DropdownMenuItem
+                    onClick={() => onRowAction({ row, variant: "update" })}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    <Typography variant="body-s" className="text-foreground">Edit</Typography>
+                  </DropdownMenuItem>
+                )}
+                {showEdit && showDelete && <DropdownMenuSeparator />}
+                {showDelete && (
+                  <DropdownMenuItem
+                    onClick={() => onRowAction({ row, variant: "delete" })}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Typography variant="body-s" className="text-destructive">Delete</Typography>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+      ...USER_COLUMN_WIDTHS.actions,
+      enableSorting: false,
+      enableHiding: false,
+      meta: {
+        stickyEnd: true,
+        headerAlign: "center" as const,
+      },
     },
-    ...USER_COLUMN_WIDTHS.actions,
-    enableSorting: false,
-    enableHiding: false,
-  },
-];
+  ];
 }
 

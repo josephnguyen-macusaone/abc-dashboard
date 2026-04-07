@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { container } from '@/shared/di/container';
 import { httpClient } from '@/infrastructure/api/core/client';
 import { createLicenseApiClient } from '@/infrastructure/api/licenses/api-client';
+import { isBenignSmsPaymentFetchError } from '@/shared/helpers/sms-payment-fetch-errors';
 
 const INTERNAL_LICENSE_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -333,6 +334,16 @@ export const useLicenseStore = create<LicenseState>()(
 
         fetchSmsPayments: async (params) => {
           set({ smsPaymentsError: null, smsPaymentsLoading: true });
+          const page = params?.page ?? 1;
+          const limit = params?.limit ?? 20;
+          const emptyMeta: SmsPaymentsMeta = {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false,
+          };
           try {
             const result = await container.licenseManagementService.getSmsPayments(params);
             set({
@@ -343,6 +354,17 @@ export const useLicenseStore = create<LicenseState>()(
               smsPaymentsLoading: false,
             });
           } catch (err) {
+            if (isBenignSmsPaymentFetchError(err)) {
+              set({
+                smsPayments: [],
+                smsPagination: emptyMeta,
+                smsTotalRecords: 0,
+                smsTotalAmount: 0,
+                smsPaymentsLoading: false,
+                smsPaymentsError: null,
+              });
+              return;
+            }
             const message = getErrorMessage(err);
             set({
               smsPayments: [],

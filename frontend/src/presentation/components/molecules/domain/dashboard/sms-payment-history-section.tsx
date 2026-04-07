@@ -8,7 +8,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   FileText,
-  Settings2,
+  Columns3,
   X,
 } from 'lucide-react';
 import { cn } from '@/shared/helpers';
@@ -46,6 +46,7 @@ import {
 import { DataTableDateRangeFilter } from '@/presentation/components/molecules/data/data-table';
 import type { SmsPaymentRecord } from '@/infrastructure/api/licenses/types';
 import type { SmsPaymentsMeta } from '@/domain/repositories/i-license-repository';
+import { LicenseStatusBadge } from '@/presentation/components/molecules/domain/license-management/badges';
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
@@ -102,11 +103,17 @@ export interface SmsPaymentHistorySectionProps {
   payments: SmsPaymentRecord[];
   pagination: SmsPaymentsMeta | null;
   isLoading?: boolean;
-  /** Set when the SMS payments API request failed (e.g. missing license identifier for agents). */
+  /** Only for non-recoverable API failures (network, 5xx). "No data" cases use empty state like My Licenses. */
   fetchError?: string | null;
+  /** Shown in the empty state (muted) when there is no fetch error — e.g. license missing App ID / email for SMS scope */
+  emptyStateDetail?: string | null;
   onQueryChange: (params: SmsPaymentHistoryQueryParams) => void;
   className?: string;
 }
+
+/** Taller list area: min height + scroll when many rows */
+const SMS_PAYMENT_TABLE_VIEWPORT_CLASS =
+  'sms-payment-history-viewport w-full min-h-[min(30rem,55vh)] max-h-[min(75vh,52rem)] overflow-auto rounded-md border';
 
 // ─── Column definitions (for view options) ───────────────────────────────────
 
@@ -272,7 +279,7 @@ function SmsViewOptions({ hiddenCols, onChange }: SmsViewOptionsProps) {
           size="sm"
           className="h-8 w-8 shrink-0 p-0 font-normal sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
         >
-          <Settings2 className="size-4 text-muted-foreground" />
+          <Columns3 className="size-4 text-muted-foreground" aria-hidden />
           <span className="hidden sm:ml-1 sm:inline">View</span>
         </Button>
       </PopoverTrigger>
@@ -302,22 +309,17 @@ function SmsViewOptions({ hiddenCols, onChange }: SmsViewOptionsProps) {
   );
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+// ─── Status badge (same component + tokens as My Licenses: active / cancel) ───
 
 function PaymentStatusBadge({ responseCode }: { responseCode?: string }) {
   const approved = responseCode === '1';
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'text-xs font-medium border',
-        approved
-          ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
-          : 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
-      )}
-    >
-      {approved ? 'Approved' : 'Declined'}
-    </Badge>
+    <LicenseStatusBadge
+      status={approved ? 'active' : 'cancel'}
+      label={approved ? 'Approved' : 'Declined'}
+      variant="table"
+      showIcon
+    />
   );
 }
 
@@ -430,6 +432,7 @@ export function SmsPaymentHistorySection({
   pagination,
   isLoading = false,
   fetchError = null,
+  emptyStateDetail = null,
   onQueryChange,
   className,
 }: SmsPaymentHistorySectionProps) {
@@ -486,7 +489,6 @@ export function SmsPaymentHistorySection({
 
   const showSkeleton = isLoading && payments.length === 0;
   const showEmpty = !isLoading && visiblePayments.length === 0;
-  const showTable = visiblePayments.length > 0 || showSkeleton;
 
   const colHide = (id: ToggleableColumnId) => hiddenCols.has(id);
 
@@ -568,119 +570,120 @@ export function SmsPaymentHistorySection({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="w-full min-h-0 overflow-x-auto rounded-md border">
-        <table
-          className="caption-bottom text-sm table-fixed w-full"
-          style={{
-            tableLayout: 'fixed',
-            width: '100%',
-            minWidth: smsTableMinWidth,
-          }}
+      {/* Table — empty state is a standalone bordered block (same pattern as My Licenses DataTable) so row hover styles never apply */}
+      {showEmpty && !showSkeleton ? (
+        <div
+          className={`p-12 text-center flex flex-col items-center justify-center ${SMS_PAYMENT_TABLE_VIEWPORT_CLASS}`}
         >
-          <colgroup>
-            {smsColWidthsPx.map((w, i) => (
-              <col key={i} style={{ width: w }} />
-            ))}
-          </colgroup>
-          <TableHeader className="bg-muted">
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              {!colHide('txnId') && (
-                <TableHead className="hidden md:table-cell">Transaction ID</TableHead>
-              )}
-              {!colHide('authCode') && (
-                <TableHead className="hidden lg:table-cell">Auth Code</TableHead>
-              )}
-              {!colHide('card') && (
-                <TableHead className="hidden sm:table-cell">Card</TableHead>
-              )}
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {showSkeleton &&
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: smsColWidthsPx.length }).map((__, j) => (
-                    <TableCell key={j}>
-                      <div
-                        className="h-4 rounded bg-muted animate-pulse"
-                        style={{ width: `${55 + (j % 3) * 20}%` }}
-                      />
-                    </TableCell>
-                  ))}
-                </TableRow>
+          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <Typography variant="title-s" className="text-foreground mb-2">
+            No SMS payments found
+          </Typography>
+          {hasActiveFilters ? (
+            <>
+              <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
+                No payment records match the active filters. Try adjusting your filters.
+              </Typography>
+              <Button variant="default" size="sm" onClick={handleReset}>
+                Clear filters
+              </Button>
+            </>
+          ) : emptyStateDetail ? (
+            <Typography variant="body-s" color="muted" className="text-muted-foreground max-w-md mx-auto">
+              {emptyStateDetail}
+            </Typography>
+          ) : (
+            <Typography variant="body-s" color="muted" className="text-muted-foreground">
+              No payment records are available at this time.
+            </Typography>
+          )}
+        </div>
+      ) : (
+        <div className={SMS_PAYMENT_TABLE_VIEWPORT_CLASS}>
+          <table
+            className="caption-bottom text-sm table-fixed w-full"
+            style={{
+              tableLayout: 'fixed',
+              width: '100%',
+              minWidth: smsTableMinWidth,
+            }}
+          >
+            <colgroup>
+              {smsColWidthsPx.map((w, i) => (
+                <col key={i} style={{ width: w }} />
               ))}
-
-            {!showSkeleton && showEmpty && (
+            </colgroup>
+            <TableHeader className="bg-muted">
               <TableRow>
-                <TableCell colSpan={smsColWidthsPx.length} className="p-0">
-                  <div className="p-12 text-center">
-                    <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FileText className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <Typography variant="title-s" className="text-foreground mb-2">
-                      No SMS payments found
-                    </Typography>
-                    {hasActiveFilters ? (
-                      <>
-                        <Typography variant="body-s" color="muted" className="text-muted-foreground mb-4">
-                          No payment records match the active filters. Try adjusting your filters.
-                        </Typography>
-                        <Button variant="default" size="sm" onClick={handleReset}>
-                          Clear filters
-                        </Button>
-                      </>
-                    ) : (
-                      <Typography variant="body-s" color="muted" className="text-muted-foreground">
-                        No payment records are available at this time.
-                      </Typography>
-                    )}
-                  </div>
-                </TableCell>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                {!colHide('txnId') && (
+                  <TableHead className="hidden md:table-cell">Transaction ID</TableHead>
+                )}
+                {!colHide('authCode') && (
+                  <TableHead className="hidden lg:table-cell">Auth Code</TableHead>
+                )}
+                {!colHide('card') && (
+                  <TableHead className="hidden sm:table-cell">Card</TableHead>
+                )}
+                <TableHead>Status</TableHead>
               </TableRow>
-            )}
-
-            {!showSkeleton &&
-              showTable &&
-              visiblePayments.map((payment) => {
-                const txn = payment.joption?.transactionResponse;
-                return (
-                  <TableRow key={payment.id} className="even:bg-muted/20">
-                    <TableCell className="whitespace-nowrap">
-                      {formatDisplayDate(payment.date)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium whitespace-nowrap">
-                      {currencyFmt.format(payment.amount)}
-                    </TableCell>
-                    {!colHide('txnId') && (
-                      <TableCell className="text-muted-foreground font-mono text-xs hidden md:table-cell truncate max-w-[160px]">
-                        {txn?.transId ?? '—'}
+            </TableHeader>
+            <TableBody>
+              {showSkeleton &&
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: smsColWidthsPx.length }).map((__, j) => (
+                      <TableCell key={j}>
+                        <div
+                          className="h-4 rounded bg-muted animate-pulse"
+                          style={{ width: `${55 + (j % 3) * 20}%` }}
+                        />
                       </TableCell>
-                    )}
-                    {!colHide('authCode') && (
-                      <TableCell className="text-muted-foreground font-mono text-xs hidden lg:table-cell">
-                        {txn?.authCode ?? '—'}
-                      </TableCell>
-                    )}
-                    {!colHide('card') && (
-                      <TableCell className="text-muted-foreground text-xs hidden sm:table-cell whitespace-nowrap">
-                        {txn?.accountType && txn?.accountNumber
-                          ? `${txn.accountType} ${txn.accountNumber}`
-                          : '—'}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <PaymentStatusBadge responseCode={txn?.responseCode} />
-                    </TableCell>
+                    ))}
                   </TableRow>
-                );
-              })}
-          </TableBody>
-        </table>
-      </div>
+                ))}
+
+              {!showSkeleton &&
+                visiblePayments.map((payment) => {
+                  const txn = payment.joption?.transactionResponse;
+                  return (
+                    <TableRow key={payment.id} className="even:bg-muted/20">
+                      <TableCell className="whitespace-nowrap">
+                        {formatDisplayDate(payment.date)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium whitespace-nowrap">
+                        {currencyFmt.format(payment.amount)}
+                      </TableCell>
+                      {!colHide('txnId') && (
+                        <TableCell className="text-muted-foreground font-mono text-xs hidden md:table-cell truncate max-w-[160px]">
+                          {txn?.transId ?? '—'}
+                        </TableCell>
+                      )}
+                      {!colHide('authCode') && (
+                        <TableCell className="text-muted-foreground font-mono text-xs hidden lg:table-cell">
+                          {txn?.authCode ?? '—'}
+                        </TableCell>
+                      )}
+                      {!colHide('card') && (
+                        <TableCell className="text-muted-foreground text-xs hidden sm:table-cell whitespace-nowrap">
+                          {txn?.accountType && txn?.accountNumber
+                            ? `${txn.accountType} ${txn.accountNumber}`
+                            : '—'}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <PaymentStatusBadge responseCode={txn?.responseCode} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </table>
+        </div>
+      )}
 
       {/* Pagination */}
       {pagination && (

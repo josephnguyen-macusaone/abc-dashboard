@@ -295,6 +295,16 @@ export class ILicenseRepository {
   }
 
   /**
+   * Find all internal licenses whose email_license matches the given email
+   * (via the external_licenses join). Returns every matching row, not just the first.
+   * @param {string} emailLicense - Email to look up
+   * @returns {Promise<License[]>}
+   */
+  async findAllByEmailLicense(emailLicense) {
+    throw new Error('findAllByEmailLicense not implemented');
+  }
+
+  /**
    * Find internal license by external Count ID.
    * @param {number|string} countid - External count identifier
    * @returns {Promise<License|null>}

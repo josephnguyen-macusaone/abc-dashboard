@@ -7,7 +7,7 @@ import { LicensesDataGridSkeleton } from '@/presentation/components/organisms';
 import { cn } from '@/shared/helpers';
 import type { LicenseRecord } from '@/types';
 import type { User } from '@/domain/entities/user-entity';
-import type { LicenseCapabilities } from '@/shared/constants/license-capabilities';
+import type { LicenseCapabilities } from '@/shared/constants/license';
 
 // Dynamically import heavy data grid component for better code splitting
 const LicensesDataGrid = dynamic(

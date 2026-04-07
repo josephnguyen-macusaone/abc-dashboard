@@ -150,6 +150,31 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   /**
+   * Find ALL licenses whose email_license matches via external_licenses join.
+   * Returns an array (empty if none found).
+   */
+  async findAllByEmailLicense(emailLicense) {
+    if (!emailLicense) return [];
+
+    try {
+      const licenseRows = await this.db(this.licensesTable).whereIn('appid', (qb) => {
+        qb.select('appid')
+          .from('external_licenses')
+          .whereRaw('LOWER(email_license) = ?', [emailLicense.toLowerCase()])
+          .whereNotNull('appid');
+      });
+      return licenseRows.map((row) => this._toLicenseEntity(row));
+    } catch (error) {
+      logger.error('License findAllByEmailLicense error', {
+        correlationId: this.correlationId,
+        emailLicense,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Resolve Email_license from external_licenses for SMS payment API proxy.
    * Mapi may require both appid and emailLicense; internal license rows often omit email.
    */

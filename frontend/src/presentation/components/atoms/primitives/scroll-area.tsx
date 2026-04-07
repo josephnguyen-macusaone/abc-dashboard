@@ -39,10 +39,9 @@ function ScrollBar({
       data-slot="scroll-area-scrollbar"
       className={cn(
         "flex touch-none select-none transition-colors",
-        "p-px",
         "bg-transparent",
         "hover:bg-muted/60",
-        "data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5",
+        "data-[orientation=vertical]:h-full data-[orientation=vertical]:w-[var(--app-scrollbar-width)] data-[orientation=vertical]:p-0",
         "data-[orientation=horizontal]:h-[3px] data-[orientation=horizontal]:min-h-[3px] data-[orientation=horizontal]:w-full data-[orientation=horizontal]:p-0",
         className,
       )}

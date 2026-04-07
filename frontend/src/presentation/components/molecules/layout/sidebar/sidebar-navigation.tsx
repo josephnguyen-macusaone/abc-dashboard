@@ -2,16 +2,10 @@
 
 import { ScrollArea } from '@/presentation/components/atoms';
 import { NavigationLink } from './sidebar-navigation-link';
-import { LucideIcon } from 'lucide-react';
+import type { NavigationItem } from '@/shared/types/navigation';
 import { cn } from '@/shared/helpers';
 
-export interface NavigationItem {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  adminOnly?: boolean;
-  userOnly?: boolean;
-}
+export type { NavigationItem };
 
 export interface SidebarNavigationProps {
   items: NavigationItem[];

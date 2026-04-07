@@ -1,7 +1,7 @@
 "use client";
 
 import type { Table } from "@tanstack/react-table";
-import { Check, Settings2 } from "lucide-react";
+import { Check, Columns3 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import {
@@ -50,7 +50,7 @@ export function DataGridViewMenu<TData>({
           size="sm"
           className="ms-auto h-8 font-normal flex"
         >
-          <Settings2 className="size-4 shrink-0 text-muted-foreground" />
+          <Columns3 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <span className="hidden md:inline ml-1">View</span>
         </Button>
       </PopoverTrigger>

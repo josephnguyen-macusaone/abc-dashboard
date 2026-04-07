@@ -255,7 +255,11 @@ class Container {
   }
 
   async getVerifyEmailUseCase() {
-    return new VerifyEmailUseCase(await this.getUserRepository(), this.getTokenService());
+    return new VerifyEmailUseCase(
+      await this.getUserRepository(),
+      this.getTokenService(),
+      await this.getLicenseRepository()
+    );
   }
 
   async getResendVerificationUseCase() {

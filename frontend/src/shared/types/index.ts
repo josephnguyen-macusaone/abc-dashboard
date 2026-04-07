@@ -112,6 +112,8 @@ export { Role, SortBy, SortOrder } from './enum';
 // Re-export license types
 export type { LicenseStatus, LicenseTerm, LicenseRecord } from './license';
 
+export type { NavigationItem } from './navigation';
+
 // Re-export common types
 export type {
   UnknownObject,

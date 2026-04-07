@@ -20,7 +20,7 @@ import { SearchBar } from "@/presentation/components/molecules";
 import { LicensesDataGridSkeleton } from "@/presentation/components/organisms";
 import { LicenseAuditHistoryDialog } from "@/presentation/components/molecules/domain/license-management/license-audit-history-dialog";
 import { getLicenseGridColumns } from "./license-grid-columns";
-import type { LicenseCapabilities } from "@/shared/constants/license-capabilities";
+import type { LicenseCapabilities } from "@/shared/constants/license";
 import {
   STATUS_OPTIONS,
   PLAN_MODULE_OPTIONS,

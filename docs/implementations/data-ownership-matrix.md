@@ -38,7 +38,7 @@
 
 ## Role × capability (business data)
 
-High-level only; detailed flags live in code (`license-capabilities` FE/BE).
+High-level only; detailed flags live in code (frontend `license/capabilities.ts`, backend license middleware).
 
 | Role | External API: view licenses | External API: mutate license/SMS | Web DB: business license mirror |
 |------|-----------------------------|-----------------------------------|--------------------------------|

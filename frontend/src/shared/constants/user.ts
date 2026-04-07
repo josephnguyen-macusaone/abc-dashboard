@@ -8,14 +8,14 @@
  * Edit this file to resize columns in all user views.
  */
 export const USER_COLUMN_WIDTHS = {
-  displayName: { size: 200 },
+  displayName: { size: 280 },
   username: { size: 150 },
-  email: { size: 200 },
+  email: { size: 160 },
   phone: { size: 140 },
-  role: { size: 150 },
-  isActive: { size: 100 },
+  role: { size: 140 },
+  isActive: { size: 140 },
   createdAt: { size: 120 },
-  actions: { size: 70 },
+  actions: { size: 52, minSize: 44 },
 } as const;
 
 export type UserColumnId = keyof typeof USER_COLUMN_WIDTHS;

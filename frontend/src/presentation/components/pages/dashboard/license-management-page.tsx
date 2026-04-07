@@ -17,7 +17,7 @@ import { useLicenseStore, selectLicenses, selectLicenseLoading, selectLicensePag
 import { ApiExceptionDto } from "@/application/dto/api-dto";
 import { parseLocalDateString, toLocalDateString } from "@/shared/helpers/date-utils";
 import type { LicenseRecord } from "@/types";
-import { getLicenseCapabilities } from "@/shared/constants/license-capabilities";
+import { getLicenseCapabilities } from "@/shared/constants/license";
 
 // Helper function to check if error should be shown to user
 const shouldShowError = (error: unknown): boolean => {
