@@ -7,9 +7,11 @@ import type { LicenseStatus } from '@/types/license';
 
 export interface LicenseStatusBadgeProps {
   status: LicenseStatus;
-  variant?: 'default' | 'icon' | 'minimal';
+  variant?: 'default' | 'icon' | 'minimal' | 'table';
   className?: string;
   showIcon?: boolean;
+  /** When set (e.g. SMS payment Approved/Declined), uses same colors/icons as status but this text */
+  label?: string;
 }
 
 const statusIcons: Record<LicenseStatus, LucideIcon> = {
@@ -21,21 +23,23 @@ export function LicenseStatusBadge({
   status,
   variant = 'default',
   className,
-  showIcon = true
+  showIcon = true,
+  label: labelOverride,
 }: LicenseStatusBadgeProps) {
-  const label = LICENSE_STATUS_LABELS[status];
+  const label = labelOverride ?? LICENSE_STATUS_LABELS[status];
   const colors = LICENSE_STATUS_COLORS[status];
   const IconComponent = statusIcons[status];
 
-  if (variant === 'minimal') {
+  /* `table` matches UserRoleBadge minimal: same padding, type, outline + domain colors. */
+  if (variant === 'minimal' || variant === 'table') {
     return (
       <Badge
         className={cn(colors, 'px-2 py-1 text-xs font-medium justify-center', className)}
         variant="outline"
       >
-        {showIcon && IconComponent && (
-          <IconComponent className="w-3 h-3 mr-1" />
-        )}
+        {showIcon && IconComponent ? (
+          <IconComponent className="w-3 h-3 mr-1" aria-hidden />
+        ) : null}
         {label}
       </Badge>
     );

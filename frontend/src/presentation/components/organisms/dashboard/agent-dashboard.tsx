@@ -87,9 +87,6 @@ function smsScopeHasIdentifier(params: SmsPaymentsQueryParams): boolean {
   );
 }
 
-/** Hide generic upstream "license not found" from the SMS section banner (avoid duplicate noise if API still returns it). */
-const SMS_ERROR_HIDE_FROM_BANNER_RE = /license not found/i;
-
 export function AgentDashboard() {
   const licenses = useLicenseStore(selectLicenses);
   const licensesLoading = useLicenseStore(selectLicenseLoading);
@@ -123,13 +120,7 @@ export function AgentDashboard() {
             primaryLicense.emailLicense ?? '',
           ].join('|')
         : '',
-    [
-      primaryLicense?.id,
-      primaryLicense?.appid,
-      primaryLicense?.key,
-      primaryLicense?.countid,
-      primaryLicense?.emailLicense,
-    ],
+    [primaryLicense],
   );
 
   // Derive date range from store filters (same pattern as AdminDashboard)
@@ -163,7 +154,8 @@ export function AgentDashboard() {
   }, [fetchLicenses, setFilters]);
 
   useEffect(() => {
-    const first = licenses[0];
+    // Read first row from store so we do not depend on `licenses` array identity (avoids redundant SMS refetches).
+    const first = useLicenseStore.getState().licenses[0] ?? null;
     if (!first) {
       identifierRef.current = {};
       return;
@@ -174,17 +166,16 @@ export function AgentDashboard() {
     void fetchSmsPayments({ ...next, page: 1, limit: 20 }).catch(() => {});
   }, [primarySmsScopeKey, fetchSmsPayments]);
 
-  const smsHistoryAlert = useMemo(() => {
-    const err = smsPaymentsError?.trim();
-    if (err && !SMS_ERROR_HIDE_FROM_BANNER_RE.test(err)) return err;
-    if (
-      primaryLicense &&
-      !smsScopeHasIdentifier(resolveIdentifier(primaryLicense))
-    ) {
+  /** Real failures only — "no license / no rows" is handled in the store as empty data (like My Licenses). */
+  const smsFetchError = smsPaymentsError?.trim() || null;
+
+  const smsEmptyStateDetail = useMemo(() => {
+    if (smsFetchError) return null;
+    if (primaryLicense && !smsScopeHasIdentifier(resolveIdentifier(primaryLicense))) {
       return 'SMS payment history needs an App ID, Count ID, or email on your license. If this message persists, contact support.';
     }
     return null;
-  }, [smsPaymentsError, primaryLicense]);
+  }, [smsFetchError, primaryLicense]);
 
   const handleDateRangeChange = useCallback(
     (values: { range?: { from?: Date; to?: Date }; rangeCompare?: DateRange } | null) => {
@@ -292,7 +283,8 @@ export function AgentDashboard() {
         payments={smsPayments}
         pagination={smsPagination}
         isLoading={smsPaymentsLoading}
-        fetchError={smsHistoryAlert}
+        fetchError={smsFetchError}
+        emptyStateDetail={smsEmptyStateDetail}
         onQueryChange={handleQueryChange}
       />
     </div>

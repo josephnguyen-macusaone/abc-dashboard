@@ -1,7 +1,7 @@
 "use client";
 
 import type { Table } from "@tanstack/react-table";
-import { Check, Settings2 } from "lucide-react";
+import { Check, Columns3 } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/presentation/components/atoms/primitives/button";
@@ -50,7 +50,7 @@ export function DataTableViewOptions<TData>({
           size="sm"
           className="h-8 w-8 shrink-0 p-0 font-normal sm:h-8 sm:w-auto sm:min-w-0 sm:px-3 sm:py-0"
         >
-          <Settings2 className="size-4 text-muted-foreground" />
+          <Columns3 className="size-4 text-muted-foreground" aria-hidden />
           <span className="hidden sm:ml-1 sm:inline">View</span>
         </Button>
       </PopoverTrigger>

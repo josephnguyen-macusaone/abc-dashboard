@@ -1,7 +1,17 @@
 'use client';
 
 import { Typography } from '@/presentation/components/atoms';
-import { Crown, Shield, Users, BriefcaseBusiness, Wrench, User } from 'lucide-react';
+import {
+  Crown,
+  Shield,
+  Users,
+  BriefcaseBusiness,
+  Wrench,
+  User,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 import { USER_ROLES } from '@/shared/constants';
 import { cn } from '@/shared/helpers';
 
@@ -16,7 +26,10 @@ export interface StatsCardConfig {
   trend?: {
     value: number;
     direction: 'up' | 'down' | 'neutral';
+    /** Shown on the left of the footer row (Figma: “vs. … vs yesterday”). */
     label?: string;
+    /** `inverted`: up = bad (destructive), down = good — e.g. high-risk counts. */
+    polarity?: 'default' | 'inverted';
   };
 }
 
@@ -59,78 +72,116 @@ export function StatsCards({
     return rounded.toString();
   };
 
+  const trendSign = (direction: 'up' | 'down' | 'neutral'): string => {
+    if (direction === 'down') return '-';
+    if (direction === 'up') return '+';
+    return '';
+  };
+
+  const trendAccentClass = (
+    direction: 'up' | 'down' | 'neutral',
+    polarity: 'default' | 'inverted' | undefined,
+  ): string => {
+    if (direction === 'neutral') return 'text-muted-foreground';
+    const inverted = polarity === 'inverted';
+    if (direction === 'up')
+      return inverted ? 'text-destructive' : 'text-green-600 dark:text-green-400';
+    return inverted ? 'text-green-600 dark:text-green-400' : 'text-destructive';
+  };
+
   return (
     <div className={cn('grid items-stretch gap-4', gridCols[columns], className)}>
       {stats.map((stat) => {
         const IconComponent = stat.icon;
         const valueText = isLoading ? '...' : String(stat.value);
+        const trendPct = stat.trend
+          ? `${trendSign(stat.trend.direction)}${formatTrendValue(Math.abs(stat.trend.value))}%`
+          : '';
+        const trendClass = stat.trend
+          ? trendAccentClass(stat.trend.direction, stat.trend.polarity)
+          : '';
         return (
           <div
             key={stat.id}
             className={cn(
-              'group flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card p-4',
-              'transition-all duration-300 ease-out hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/5 hover:via-primary/10 hover:to-primary/5 hover:shadow-sm',
-              stat.onClick && 'cursor-pointer ring-0 hover:ring-1 hover:ring-primary/20',
+              /* ABC Order — Card Simple (Figma 4568:47787): surface, subtle border, 20px pad, 12px radius */
+              'group flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden rounded-xl border border-border bg-card p-5',
+              'transition-[border-color,box-shadow] duration-200 ease-out',
+              stat.onClick &&
+                'cursor-pointer hover:border-primary/35 hover:shadow-sm hover:ring-1 hover:ring-primary/15',
+              !stat.onClick && 'hover:border-muted-foreground/20',
             )}
             onClick={stat.onClick}
           >
-            <div className="mb-1 flex min-h-[2.75rem] shrink-0 items-start justify-between gap-2">
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <IconComponent
+                className={cn(
+                  'h-6 w-6 shrink-0 transition-colors duration-200',
+                  stat.color || 'text-muted-foreground',
+                  stat.onClick &&
+                    (stat.hoverColor ? `group-hover:${stat.hoverColor}` : 'group-hover:text-primary/80'),
+                )}
+                aria-hidden
+              />
               <Typography
-                variant="label-s"
+                variant="body-s"
                 color="muted"
+                weight="bold"
                 lineClamp={2}
                 title={stat.label}
-                className="min-w-0 flex-1 font-medium text-muted-foreground"
+                className="min-w-0 flex-1"
               >
                 {stat.label}
               </Typography>
-              <div className="shrink-0 rounded-full bg-muted/20 p-1.5 transition-colors duration-300 group-hover:bg-primary/10">
-                <IconComponent
-                  className={cn(
-                    'h-4 w-4 shrink-0 transition-colors duration-300',
-                    stat.color || 'text-primary',
-                    stat.hoverColor ? `group-hover:${stat.hoverColor}` : 'group-hover:text-primary/80',
-                  )}
-                />
-              </div>
             </div>
             <Typography
-              variant="display-m"
+              variant="title-l"
               weight="bold"
-              lineHeight="none"
+              lineHeight="tight"
               truncate
               title={isLoading ? undefined : valueText}
-              className="min-h-9 min-w-0 max-w-full tabular-nums text-foreground transition-colors duration-300 group-hover:text-primary"
+              className={cn(
+                'min-w-0 max-w-full font-bold tabular-nums text-foreground',
+                stat.onClick && 'transition-colors duration-200 group-hover:text-primary',
+              )}
             >
               {valueText}
             </Typography>
             {stat.trend ? (
               <div
-                className="mt-2.5 flex min-h-5 min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5"
+                className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1"
                 title={
                   stat.trend.label
-                    ? `${formatTrendValue(Math.abs(stat.trend.value))}% ${stat.trend.label}`
-                    : undefined
+                    ? `${trendPct} ${stat.trend.label}`.trim()
+                    : trendPct
                 }
               >
-                <span
-                  className={cn(
-                    'shrink-0 text-body-xs',
-                    stat.trend.direction === 'up' && 'text-green-600',
-                    stat.trend.direction === 'down' && 'text-red-600',
-                    stat.trend.direction === 'neutral' && 'text-foreground',
-                  )}
-                >
-                  {stat.trend.direction === 'up' && '↗ '}
-                  {stat.trend.direction === 'down' && '↘ '}
-                  {stat.trend.direction === 'neutral' && '→ '}
-                  {formatTrendValue(Math.abs(stat.trend.value))}%
-                </span>
                 {stat.trend.label ? (
-                  <span className="min-w-0 flex-1 truncate text-body-xs text-foreground/70">
+                  <Typography
+                    variant="caption"
+                    weight="semibold"
+                    color="muted"
+                    className="min-w-0 max-w-[65%] truncate text-muted-foreground/90"
+                  >
                     {stat.trend.label}
-                  </span>
-                ) : null}
+                  </Typography>
+                ) : (
+                  <span className="min-w-0 flex-1" />
+                )}
+                <div className="ml-auto flex shrink-0 items-center gap-1">
+                  {stat.trend.direction === 'up' ? (
+                    <TrendingUp className={cn('h-6 w-6 shrink-0', trendClass)} aria-hidden />
+                  ) : null}
+                  {stat.trend.direction === 'down' ? (
+                    <TrendingDown className={cn('h-6 w-6 shrink-0', trendClass)} aria-hidden />
+                  ) : null}
+                  {stat.trend.direction === 'neutral' ? (
+                    <Minus className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden />
+                  ) : null}
+                  <Typography variant="body-s" weight="bold" className={cn('shrink-0 tabular-nums', trendClass)}>
+                    {trendPct}
+                  </Typography>
+                </div>
               </div>
             ) : null}
           </div>

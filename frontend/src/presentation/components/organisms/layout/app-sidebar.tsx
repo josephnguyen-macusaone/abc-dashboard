@@ -4,8 +4,8 @@ import {
   SidebarBrand,
   SidebarNavigation,
   SidebarFooter,
-  type NavigationItem,
 } from '@/presentation/components/molecules/layout/sidebar';
+import type { NavigationItem } from '@/shared/types/navigation';
 import { cn } from '@/shared/helpers';
 import { getRoleDashboardPath } from '@/shared/constants';
 import { useSidebarStore } from '@/infrastructure/stores';

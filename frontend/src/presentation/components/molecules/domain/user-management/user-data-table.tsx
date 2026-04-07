@@ -455,7 +455,7 @@ export function UsersDataTable({
     ) : undefined;
 
   return (
-    <DataTable table={table} emptyState={emptyStateContent}>
+    <DataTable table={table} emptyState={emptyStateContent} fillContainer>
       <DataTableToolbar
         table={table}
         searchBar={

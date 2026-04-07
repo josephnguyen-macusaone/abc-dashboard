@@ -12,6 +12,16 @@ import {
 } from "@/presentation/components/atoms/primitives/table";
 import { cn } from "@/shared/helpers";
 
+type ColumnChromeMeta = {
+  headerAlign?: "start" | "end" | "center";
+  stickyEnd?: boolean;
+  absorbTableSlack?: boolean;
+};
+
+function columnChromeMeta(column: { columnDef: { meta?: unknown } }): ColumnChromeMeta | undefined {
+  return column.columnDef.meta as ColumnChromeMeta | undefined;
+}
+
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
@@ -74,9 +84,29 @@ export function DataTable<TData>({
     <Table className="min-w-0 overflow-x-visible" style={stretchTableStyle}>
       {stretch && totalSize > 0 && (
         <colgroup>
-          {headerGroup?.headers.map((header) => (
-            <col key={header.id} style={{ width: header.getSize() }} />
-          ))}
+          {headerGroup?.headers.map((header) => {
+            const w = header.getSize();
+            const meta = columnChromeMeta(header.column);
+            const stickyEnd = Boolean(meta?.stickyEnd);
+            const absorbSlack = Boolean(fillContainer && meta?.absorbTableSlack);
+            if (stickyEnd) {
+              return (
+                <col
+                  key={header.id}
+                  style={{ width: w, minWidth: w, maxWidth: w }}
+                />
+              );
+            }
+            if (absorbSlack) {
+              return (
+                <col
+                  key={header.id}
+                  style={{ minWidth: w, width: "100%" }}
+                />
+              );
+            }
+            return <col key={header.id} style={{ width: w }} />;
+          })}
         </colgroup>
       )}
       <TableHeader className="bg-muted">
@@ -86,18 +116,26 @@ export function DataTable<TData>({
               const size = header.getSize();
               const minFromDef = header.column.columnDef.minSize;
               const floor = typeof minFromDef === "number" ? Math.max(size, minFromDef) : size;
-              const widthStyle =
-                stretch && totalSize > 0
+              const meta = columnChromeMeta(header.column);
+              const stickyEnd = Boolean(meta?.stickyEnd);
+              const widthStyle = stickyEnd
+                ? { width: `${size}px`, minWidth: `${size}px`, maxWidth: `${size}px` }
+                : stretch && totalSize > 0
                   ? { minWidth: `${floor}px` }
                   : { minWidth: `${size}px`, width: `${size}px` };
-              const align = (header.column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
+              const align = meta?.headerAlign ?? "start";
               const alignClass = align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left";
               return (
                 <TableHead
                   key={header.id}
                   colSpan={header.colSpan}
                   style={widthStyle}
-                  className={cn("!p-0", alignClass)}
+                  className={cn(
+                    "!p-0",
+                    alignClass,
+                    stickyEnd &&
+                      "sticky end-0 z-30 bg-muted shadow-[inset_1px_0_0_0_var(--border)]",
+                  )}
                 >
                   {header.isPlaceholder ? null : (
                     <div
@@ -135,24 +173,41 @@ export function DataTable<TData>({
             <TableRow
               key={row.id}
               data-state={row.getIsSelected() ? "selected" : undefined}
-              className="even:bg-muted/20"
+              className="group/row even:bg-muted/20"
             >
               {row.getVisibleCells().map((cell) => {
                 const cellSize = cell.column.getSize();
                 const cellMinDef = cell.column.columnDef.minSize;
                 const cellFloor =
                   typeof cellMinDef === "number" ? Math.max(cellSize, cellMinDef) : cellSize;
-                const cellWidthStyle =
-                  stretch && totalSize > 0
+                const cellMeta = columnChromeMeta(cell.column);
+                const stickyEnd = Boolean(cellMeta?.stickyEnd);
+                const cellWidthStyle = stickyEnd
+                  ? { width: `${cellSize}px`, minWidth: `${cellSize}px`, maxWidth: `${cellSize}px` }
+                  : stretch && totalSize > 0
                     ? { minWidth: `${cellFloor}px` }
                     : { minWidth: `${cellSize}px` };
-                const align = (cell.column.columnDef.meta as { headerAlign?: "start" | "end" | "center" } | undefined)?.headerAlign ?? "start";
+                const align = cellMeta?.headerAlign ?? "start";
                 const alignClass = align === "end" ? "text-right" : align === "center" ? "text-center" : "text-left";
+                const isSelected = row.getIsSelected();
+                const stickyEndBg = isSelected
+                  ? "bg-muted group-hover/row:bg-muted"
+                  : row.index % 2 === 1
+                    ? "bg-muted/20 group-hover/row:bg-muted/50"
+                    : "bg-background group-hover/row:bg-muted/50";
                 return (
                   <TableCell
                     key={cell.id}
                     style={cellWidthStyle}
-                    className={cn("align-middle whitespace-nowrap", alignClass)}
+                    className={cn(
+                      "align-middle whitespace-nowrap",
+                      alignClass,
+                      stickyEnd &&
+                      cn(
+                        "sticky end-0 z-20 shadow-[inset_1px_0_0_0_var(--border)]",
+                        stickyEndBg,
+                      ),
+                    )}
                   >
                     {flexRender(
                       cell.column.columnDef.cell,
@@ -179,7 +234,7 @@ export function DataTable<TData>({
       ) : (
         <div
           className={cn(
-            "w-full min-h-0 overflow-x-auto rounded-md border",
+            "app-scrollbar-x-slim w-full min-h-0 overflow-x-auto rounded-md border",
             tableWrapperClassName,
             stretch && "w-full",
           )}

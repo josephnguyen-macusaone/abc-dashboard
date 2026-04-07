@@ -92,7 +92,7 @@ export function DataGrid<TData>({
         ref={dataGridRef}
         data-slot="grid-scroll"
         className={cn(
-          "w-full rounded-md border text-sm",
+          "app-scrollbar-x-slim w-full rounded-md border text-sm",
           hasFixedHeight && "min-h-0 overflow-auto",
           // Intrinsic: horizontal scroll only; clip vertically so no scrollbar track eats width on the right.
           !hasFixedHeight && "overflow-x-auto overflow-y-clip",

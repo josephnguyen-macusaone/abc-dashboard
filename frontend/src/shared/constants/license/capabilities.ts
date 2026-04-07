@@ -1,4 +1,8 @@
-import { USER_ROLES, type UserRoleType } from "@/shared/constants/auth";
+/**
+ * Per-role license UI/API capabilities (grid, routes, nav).
+ */
+
+import { USER_ROLES, type UserRoleType } from '@/shared/constants/auth';
 
 export interface LicenseCapabilities {
   canViewLicenses: boolean;

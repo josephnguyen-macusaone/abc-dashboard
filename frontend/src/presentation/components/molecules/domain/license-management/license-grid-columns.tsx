@@ -7,7 +7,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LicenseRecord } from "@/types";
 import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
-import type { LicenseCapabilities } from "@/shared/constants/license-capabilities";
+import type { LicenseCapabilities } from "@/shared/constants/license";
 import { STATUS_OPTIONS, TERM_OPTIONS } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
 
 export interface GetLicenseGridColumnsOptions {
@@ -104,8 +104,8 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.zip,
       meta: {
         label: "Zip Code",
-        headerAlign: "end" as const,
-        cell: { variant: "short-text" as const, align: "end" as const },
+        headerAlign: "center" as const,
+        cell: { variant: "short-text" as const, align: "center" as const },
       },
     },
     {
@@ -335,7 +335,7 @@ export function getLicenseGridColumns(
     {
       id: "auditHistory",
       accessorKey: "id",
-      header: "Activity",
+      header: "",
       enableColumnFilter: false,
       enableSorting: false,
       enableResizing: false,
@@ -343,7 +343,7 @@ export function getLicenseGridColumns(
       enablePinning: false,
       ...LICENSE_COLUMN_WIDTHS.auditHistory,
       meta: {
-        label: "Activity",
+        label: "",
         headerAlign: "center" as const,
         cell: { variant: "audit-history" as const, readOnly: true },
         disableColumnHeaderMenu: true,

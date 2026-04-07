@@ -22,44 +22,35 @@ export function CardSkeleton({
   const isCompact = variant === 'compact';
 
   return (
-    <div className={cn(
-      'group relative overflow-hidden rounded-lg border bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md',
-      isCompact && 'p-4',
-      className
-    )}>
-      <div className="flex items-center justify-between">
-        <div className={cn("space-y-2", isCompact && "space-y-1")}>
-          {/* Card label */}
-          <TextSkeleton
-            variant="caption"
-            width={isCompact ? "16" : "24"}
-            className={isCompact ? "h-3" : "h-4"}
-          />
-
-          {/* Card value */}
-          <TextSkeleton
-            variant={isCompact ? "body" : "heading"}
-            width={isCompact ? "12" : "16"}
-            className={isCompact ? "h-4" : "h-6"}
-          />
-
-          {/* Trend indicator */}
-          {(showTrend || isDetailed) && (
-            <TextSkeleton
-              variant="caption"
-              width="12"
-              className="h-3"
-            />
-          )}
-        </div>
-
-        {/* Icon placeholder */}
-        {showIcon && (
-          <div className="p-1.5 rounded-full bg-muted/20">
-            <IconSkeleton size={isCompact ? "sm" : "md"} />
-          </div>
-        )}
+    <div
+      className={cn(
+        'relative flex min-w-0 flex-col gap-4 overflow-hidden rounded-xl border border-border bg-card p-5',
+        isCompact && 'gap-3 p-4',
+        className,
+      )}
+    >
+      <div className="flex w-full items-center gap-2">
+        {showIcon ? <IconSkeleton size="xl" className="shrink-0 rounded-md" /> : null}
+        <TextSkeleton
+          variant="caption"
+          width={isCompact ? '20' : '28'}
+          className={cn('h-4 flex-1', isCompact && 'h-3')}
+        />
       </div>
+      <TextSkeleton
+        variant={isCompact ? 'body' : 'heading'}
+        width={isCompact ? '12' : '16'}
+        className={cn('h-8', isCompact && 'h-6')}
+      />
+      {(showTrend || isDetailed) && (
+        <div className="flex w-full items-center justify-between gap-2">
+          <TextSkeleton variant="caption" width="24" className="h-3 max-w-[65%]" />
+          <div className="flex shrink-0 items-center gap-1">
+            <IconSkeleton size="xl" className="rounded-md" />
+            <TextSkeleton variant="caption" width="8" className="h-4" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

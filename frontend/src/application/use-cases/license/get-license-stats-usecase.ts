@@ -23,6 +23,10 @@ export interface LicenseDashboardMetric {
     value: number;
     direction: 'up' | 'down' | 'neutral';
     label: string;
+    /**
+     * When `inverted`, an increase is undesirable (e.g. high-risk count) — trend colors match Figma “bad up” (destructive).
+     */
+    polarity?: 'default' | 'inverted';
   };
 }
 
@@ -74,7 +78,12 @@ const DEFAULT_LICENSE_DASHBOARD_METRICS: LicenseDashboardMetric[] = [
   { id: 'sms-income-month', label: 'Total SMS income this month', value: '$0.00', trend: { value: 0, direction: 'neutral', label: 'usage vs last month' } },
   { id: 'total-inhouse-licenses', label: 'Total In-house Licenses', value: '0', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
   { id: 'total-agent-licenses', label: 'Total Agent Licenses', value: '0', trend: { value: 0, direction: 'neutral', label: 'vs last month' } },
-  { id: 'high-risk-licenses', label: 'Total High Risk (7 days no active)', value: '0', trend: { value: 0, direction: 'neutral', label: 'auto-updated daily' } },
+  {
+    id: 'high-risk-licenses',
+    label: 'Total High Risk (7 days no active)',
+    value: '0',
+    trend: { value: 0, direction: 'neutral', label: 'auto-updated daily', polarity: 'inverted' },
+  },
   { id: 'estimate-next-month', label: 'Estimate next month Licenses income', value: '$0.00', trend: { value: 0, direction: 'neutral', label: 'projected' } },
 ];
 
@@ -260,6 +269,7 @@ export function transformDashboardMetricsToCards(metrics: DashboardMetrics): Lic
         value: metrics.highRiskLicenses.trend.value,
         direction: metrics.highRiskLicenses.trend.direction,
         label: metrics.highRiskLicenses.trend.label,
+        polarity: 'inverted',
       },
     },
     {

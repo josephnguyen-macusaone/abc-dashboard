@@ -295,6 +295,12 @@
     --chart-4: var(--clr-warning-500);
     --chart-5: var(--clr-info-500);
 
+    /* Table status column pills (Figma ABC Order — filled caption / 8px radius) */
+    --table-status-on-bg: #0d542b;
+    --table-status-on-fg: #f5f5f5;
+    --table-status-off-bg: #404040;
+    --table-status-off-fg: #f5f5f5;
+
     /* Primary scale mapping */
     --primary-50: var(--clr-primary-50);
     --primary-100: var(--clr-primary-100);
@@ -494,6 +500,12 @@
     --chart-3: var(--clr-success-500);
     --chart-4: var(--clr-warning-500);
     --chart-5: var(--clr-info-500);
+
+    /* Table status column pills (Figma ABC Order — filled caption / 8px radius) */
+    --table-status-on-bg: #0d542b;
+    --table-status-on-fg: #f5f5f5;
+    --table-status-off-bg: #404040;
+    --table-status-off-fg: #f5f5f5;
 
     /* Primary scale mapping */
     --primary-50: var(--clr-primary-50);
@@ -1359,6 +1371,14 @@ html[data-theme="dark"] {
 }
 
 /*
+ * App-wide slim scrollbar thickness (WebKit width/height + Radix ScrollArea via scroll-area.tsx).
+ * Firefox: keep scrollbar-width: thin (no exact px).
+ */
+:root {
+  --app-scrollbar-width: 3px;
+}
+
+/*
  * Themed native scrollbars on the document (dashboard shells, any overflow-auto region on html/body).
  * Uses semantic tokens from .light / .dark on <html>.
  */
@@ -1370,19 +1390,19 @@ html[data-theme="dark"] {
   scrollbar-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent) var(--muted);
 }
 
-/* Vertical: width; horizontal: height — keep horizontal bar slimmer than vertical */
+/* Vertical: width; horizontal: height — horizontal bar thinner than vertical */
 html.light::-webkit-scrollbar:vertical,
 html.dark::-webkit-scrollbar:vertical,
 html[data-theme="light"]::-webkit-scrollbar:vertical,
 html[data-theme="dark"]::-webkit-scrollbar:vertical {
-  width: 6px;
+  width: var(--app-scrollbar-width);
 }
 
 html.light::-webkit-scrollbar:horizontal,
 html.dark::-webkit-scrollbar:horizontal,
 html[data-theme="light"]::-webkit-scrollbar:horizontal,
 html[data-theme="dark"]::-webkit-scrollbar:horizontal {
-  height: 3px;
+  height: 0.5px;
 }
 
 html.light::-webkit-scrollbar-corner,
@@ -1406,7 +1426,7 @@ html[data-theme="light"]::-webkit-scrollbar-thumb,
 html[data-theme="dark"]::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
   border-radius: 9999px;
-  border: 1px solid var(--muted);
+  border: none;
 }
 
 html.light::-webkit-scrollbar-thumb:hover,
@@ -1418,11 +1438,11 @@ html[data-theme="dark"]::-webkit-scrollbar-thumb:hover {
 
 /* Custom scrollbar styles */
 .custom-scrollbar::-webkit-scrollbar:vertical {
-  width: 6px;
+  width: var(--app-scrollbar-width);
 }
 
 .custom-scrollbar::-webkit-scrollbar:horizontal {
-  height: 3px;
+  height: 0.5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -1439,6 +1459,98 @@ html[data-theme="dark"]::-webkit-scrollbar-thumb:hover {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   opacity: 0.5;
+}
+
+/*
+ * Toolbars and generic overflow-x regions (not DataTable/DataGrid — those use .app-scrollbar-x-slim).
+ */
+.overflow-x-auto::-webkit-scrollbar:horizontal,
+.overflow-x-scroll::-webkit-scrollbar:horizontal,
+.overflow-auto::-webkit-scrollbar:horizontal {
+  height: 0.5px !important;
+  max-height: 0.5px !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:horizontal,
+.overflow-x-scroll::-webkit-scrollbar-thumb:horizontal,
+.overflow-auto::-webkit-scrollbar-thumb:horizontal {
+  background: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  border-radius: 9999px;
+  border: none;
+  min-height: 0.5px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track:horizontal,
+.overflow-x-scroll::-webkit-scrollbar-track:horizontal,
+.overflow-auto::-webkit-scrollbar-track:horizontal {
+  background: color-mix(in srgb, var(--muted) 85%, transparent);
+  border-radius: 9999px;
+}
+
+/*
+ * Vertical slim bars: command palettes, popover lists, any overflow-y-auto (e.g. View columns).
+ * Matches html token colors; width uses --app-scrollbar-width.
+ */
+.overflow-y-auto,
+.overflow-y-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent) var(--muted);
+}
+
+.overflow-y-auto::-webkit-scrollbar:vertical,
+.overflow-y-scroll::-webkit-scrollbar:vertical,
+.overflow-x-auto::-webkit-scrollbar:vertical,
+.overflow-x-scroll::-webkit-scrollbar:vertical,
+.overflow-auto::-webkit-scrollbar:vertical {
+  width: var(--app-scrollbar-width);
+}
+
+.overflow-y-auto::-webkit-scrollbar-track:vertical,
+.overflow-y-scroll::-webkit-scrollbar-track:vertical,
+.overflow-x-auto::-webkit-scrollbar-track:vertical,
+.overflow-x-scroll::-webkit-scrollbar-track:vertical,
+.overflow-auto::-webkit-scrollbar-track:vertical {
+  background: var(--muted);
+  border-radius: 9999px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:vertical,
+.overflow-y-scroll::-webkit-scrollbar-thumb:vertical,
+.overflow-x-auto::-webkit-scrollbar-thumb:vertical,
+.overflow-x-scroll::-webkit-scrollbar-thumb:vertical,
+.overflow-auto::-webkit-scrollbar-thumb:vertical {
+  background: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  border-radius: 9999px;
+  border: none;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:vertical:hover,
+.overflow-y-scroll::-webkit-scrollbar-thumb:vertical:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:vertical:hover,
+.overflow-x-scroll::-webkit-scrollbar-thumb:vertical:hover,
+.overflow-auto::-webkit-scrollbar-thumb:vertical:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 72%, transparent);
+}
+
+/*
+ * SMS payment history table viewport: no visible scrollbar (vertical + horizontal).
+ * Scrolling still works via wheel, trackpad, touch, and keyboard.
+ */
+.sms-payment-history-viewport {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sms-payment-history-viewport::-webkit-scrollbar {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.sms-payment-history-viewport::-webkit-scrollbar-thumb,
+.sms-payment-history-viewport::-webkit-scrollbar-track {
+  display: none !important;
 }
 
 /* Autofill styles */
@@ -1562,4 +1674,52 @@ input:autofill {
 /* Better focus state for country selector */
 .phone-input:focus-within .PhoneInputCountry {
   border-right-color: var(--primary);
+}
+
+/* ── DataTable / Table / DataGrid horizontal scrollbar (class on scroll roots; last = wins over Tailwind) ── */
+.app-scrollbar-x-slim {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent)
+    color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
+/* WebKit: width = vertical thickness, height = horizontal thickness (when both axes exist) */
+.app-scrollbar-x-slim::-webkit-scrollbar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--app-scrollbar-width);
+  height: 0.5px !important;
+}
+
+.app-scrollbar-x-slim::-webkit-scrollbar:horizontal {
+  height: 0.5px !important;
+  max-height: 0.5px !important;
+}
+
+.app-scrollbar-x-slim::-webkit-scrollbar:vertical {
+  width: var(--app-scrollbar-width);
+}
+
+.app-scrollbar-x-slim::-webkit-scrollbar-thumb:horizontal {
+  background-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  border-radius: 9999px;
+  border: none !important;
+  box-shadow: none !important;
+  min-height: 0;
+}
+
+.app-scrollbar-x-slim::-webkit-scrollbar-track:horizontal {
+  background-color: color-mix(in srgb, var(--muted) 82%, transparent);
+  border-radius: 9999px;
+}
+
+.app-scrollbar-x-slim::-webkit-scrollbar-thumb:vertical {
+  background-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  border-radius: 9999px;
+  border: none !important;
+}
+
+.app-scrollbar-x-slim::-webkit-scrollbar-track:vertical {
+  background-color: var(--muted);
+  border-radius: 9999px;
 }

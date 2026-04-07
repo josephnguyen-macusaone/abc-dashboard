@@ -8,7 +8,7 @@ export type UserStatus = 'active' | 'inactive';
 
 export interface UserStatusBadgeProps {
   isActive: boolean;
-  variant?: 'default' | 'icon' | 'minimal';
+  variant?: 'default' | 'icon' | 'minimal' | 'table';
   className?: string;
   showIcon?: boolean;
   canToggle?: boolean;
@@ -39,7 +39,8 @@ export function UserStatusBadge({
     }
   };
 
-  if (variant === 'minimal') {
+  /* `table` matches RoleBadge minimal: USER_STATUS_COLORS + same padding/type as role column. */
+  if (variant === 'minimal' || variant === 'table') {
     return (
       <Badge
         className={cn(colors, 'px-2 py-1 text-xs font-medium justify-center', className)}
@@ -47,9 +48,9 @@ export function UserStatusBadge({
         onClick={canToggle ? handleClick : undefined}
         title={canToggle ? `Click to ${isActive ? 'deactivate' : 'activate'}` : undefined}
       >
-        {showIcon && IconComponent && (
-          <IconComponent className="w-3 h-3 mr-1" />
-        )}
+        {showIcon && IconComponent ? (
+          <IconComponent className="w-3 h-3 mr-1" aria-hidden />
+        ) : null}
         {label}
       </Badge>
     );

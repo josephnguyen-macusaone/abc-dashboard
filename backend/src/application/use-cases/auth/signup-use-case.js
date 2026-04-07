@@ -46,7 +46,7 @@ export class SignupUseCase {
     this._validateRole(role);
 
     const finalEmail = email.trim().toLowerCase();
-    const displayName = buildDisplayName(firstName, lastName);
+    const displayName = buildDisplayName(firstName, lastName) || finalEmail.split('@')[0];
     const selectedRole = role || ROLES.AGENT;
 
     const existingByEmail = await this.userRepository.findByEmail(finalEmail);

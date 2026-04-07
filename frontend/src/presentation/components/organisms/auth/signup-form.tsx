@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, Mail, User, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react';
 import { Button, Input, Typography } from '@/presentation/components/atoms';
 import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
 import {
@@ -25,10 +25,7 @@ interface SignupFormProps {
 }
 
 interface SignupFormState {
-  firstName: string;
-  lastName: string;
   email: string;
-  username: string;
   phone: string;
   password: string;
   confirmPassword: string;
@@ -47,10 +44,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof SignupFormState, string>>>({});
   const [formData, setFormData] = useState<SignupFormState>({
-    firstName: '',
-    lastName: '',
     email: '',
-    username: '',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -67,8 +61,6 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
   function validateForm() {
     const nextErrors: Partial<Record<keyof SignupFormState, string>> = {};
 
-    if (!formData.firstName.trim()) nextErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) nextErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) nextErrors.email = 'Email is required';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) nextErrors.email = 'Enter a valid email';
     if (formData.password.length < 8) nextErrors.password = 'Password must be at least 8 characters';
@@ -90,12 +82,9 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
     try {
       await toast.promise(
         signup({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
           email,
           password: formData.password,
           role: formData.role,
-          username: formData.username.trim() || undefined,
           phone: formData.phone.trim() || undefined,
         }),
         {
@@ -116,53 +105,15 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
     <div className={cn('w-full max-w-md space-y-6 mt-6', className)}>
       <form onSubmit={onSubmit} className="space-y-4">
         <InputField
-          label="First Name"
-          type="text"
-          placeholder="Enter your first name"
-          value={formData.firstName}
-          onChange={(event) => onFieldChange('firstName', event.target.value)}
-          error={errors.firstName}
-          disabled={isLoading}
-          icon={<User className="h-4 w-4" />}
-          inputClassName="h-11"
-          className="space-y-3"
-        />
-
-        <InputField
-          label="Last Name"
-          type="text"
-          placeholder="Enter your last name"
-          value={formData.lastName}
-          onChange={(event) => onFieldChange('lastName', event.target.value)}
-          error={errors.lastName}
-          disabled={isLoading}
-          icon={<User className="h-4 w-4" />}
-          inputClassName="h-11"
-          className="space-y-3"
-        />
-
-        <InputField
-          label="Email"
+          label="License Email"
           type="email"
           autoComplete="off"
-          placeholder="Enter your email address"
+          placeholder="Enter your license email address"
           value={formData.email}
           onChange={(event) => onFieldChange('email', event.target.value)}
           error={errors.email}
           disabled={isLoading}
           icon={<Mail className="h-4 w-4" />}
-          inputClassName="h-11"
-          className="space-y-3"
-        />
-
-        <InputField
-          label="Username (Optional)"
-          type="text"
-          placeholder="Auto-generated when empty"
-          value={formData.username}
-          onChange={(event) => onFieldChange('username', event.target.value)}
-          disabled={isLoading}
-          icon={<User className="h-4 w-4" />}
           inputClassName="h-11"
           className="space-y-3"
         />

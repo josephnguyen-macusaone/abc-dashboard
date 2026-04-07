@@ -644,7 +644,7 @@ export function LicenseStatusCell<TData>({
         </Select>
       ) : (
         <div className={cn("flex items-center w-full", triggerAlignClass)} data-slot="grid-cell-content">
-          <LicenseStatusBadge status={value} variant="minimal" showIcon={true} />
+          <LicenseStatusBadge status={value} variant="table" showIcon />
         </div>
       )}
     </DataGridCellWrapper>

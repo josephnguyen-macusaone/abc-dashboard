@@ -11,16 +11,14 @@ if (!Joi) {
 
 export const authSchemas = {
   signup: Joi.object({
-    firstName: Joi.string().trim().min(1).max(50).required().messages({
+    firstName: Joi.string().trim().min(1).max(50).optional().messages({
       'string.min': 'First name cannot be empty',
       'string.max': 'First name cannot exceed 50 characters',
-      'any.required': 'First name is required',
       'string.empty': 'First name cannot be empty',
     }),
-    lastName: Joi.string().trim().min(1).max(50).required().messages({
+    lastName: Joi.string().trim().min(1).max(50).optional().messages({
       'string.min': 'Last name cannot be empty',
       'string.max': 'Last name cannot exceed 50 characters',
-      'any.required': 'Last name is required',
       'string.empty': 'Last name cannot be empty',
     }),
     username: Joi.string()

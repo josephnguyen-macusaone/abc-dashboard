@@ -18,10 +18,10 @@ This report audits `docs/implementations` against the current codebase and runti
 | Phase 1 | Users + roles + auth in Web DB | Implemented | `backend/src/infrastructure/routes/auth-routes.js`, `backend/src/infrastructure/routes/user-routes.js`, `backend/src/infrastructure/database/seeds/001_create_admin_users.js` |
 | Phase 1 | RBAC login/logout | Implemented | `backend/src/infrastructure/routes/auth-routes.js`, `backend/src/infrastructure/middleware/auth-middleware.js`, `backend/src/infrastructure/middleware/license-management.middleware.js` |
 | Phase 1 | Audit metadata (`createdBy`, `updatedBy`, timestamp) | Implemented (license flows) | `backend/src/infrastructure/controllers/external-license-controller.js`, `backend/src/infrastructure/repositories/license-repository.js` |
-| Phase 2 | Agent sees assigned licenses only | Implemented | `backend/src/infrastructure/controllers/external-license-controller.js`, `backend/src/infrastructure/controllers/license-controller.js`, `frontend/src/shared/constants/license-capabilities.ts` |
+| Phase 2 | Agent sees assigned licenses only | Implemented | `backend/src/infrastructure/controllers/external-license-controller.js`, `backend/src/infrastructure/controllers/license-controller.js`, `frontend/src/shared/constants/license/capabilities.ts` |
 | Phase 2 | Agent SMS balance + payment history | Implemented (scoped by assignment) | `backend/src/infrastructure/routes/external-license-routes.js`, `backend/src/infrastructure/controllers/external-license-controller.js` |
 | Phase 3 | Tech license reset/date adjustment | Implemented | `backend/src/infrastructure/routes/external-license-routes.js`, `backend/src/infrastructure/controllers/external-license-controller.js` |
-| Phase 3 | Accountant activation/package/SMS operations | Implemented | `frontend/src/shared/constants/license-capabilities.ts`, `backend/src/infrastructure/middleware/license-management.middleware.js`, `backend/src/infrastructure/controllers/external-license-controller.js` |
+| Phase 3 | Accountant activation/package/SMS operations | Implemented | `frontend/src/shared/constants/license/capabilities.ts`, `backend/src/infrastructure/middleware/license-management.middleware.js`, `backend/src/infrastructure/controllers/external-license-controller.js` |
 | Phase 3 | Conflict-safe handling (`409`) | Partially implemented / not fully verified | `backend/src/infrastructure/repositories/external-license-repository.js` (conflict paths), no full concurrent UI run in this audit |
 
 ## Runtime Verification Summary

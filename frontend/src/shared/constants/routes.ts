@@ -1,4 +1,5 @@
 import type { UserRoleType } from './auth';
+import { FEATURE_FLAGS } from './feature-flags';
 
 /**
  * Route configuration with permissions and metadata
@@ -202,6 +203,24 @@ export const AUTH_ROUTES = [
   ROUTES.VERIFY_EMAIL,
 ];
 
+function routePathStartsWith(path: string, prefix: string): boolean {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+/** Role-specific dashboard routes gated by `NEXT_PUBLIC_FEATURE_*` flags. */
+function isRoleDashboardPathAllowedForUser(path: string, userRole: string): boolean {
+  if (routePathStartsWith(path, ROUTES.DASHBOARD_TECH)) {
+    return userRole !== 'tech' || FEATURE_FLAGS.techModule;
+  }
+  if (routePathStartsWith(path, ROUTES.DASHBOARD_AGENT)) {
+    return userRole !== 'agent' || FEATURE_FLAGS.agentModule;
+  }
+  if (routePathStartsWith(path, ROUTES.DASHBOARD_ACCOUNTANT)) {
+    return userRole !== 'accountant' || FEATURE_FLAGS.accountantModule;
+  }
+  return true;
+}
+
 /**
  * Resolve route config by pathname (longest prefix wins — same rules as middleware).
  */
@@ -240,7 +259,8 @@ export function canAccessRoute(path: string, userRole?: string): boolean {
   if (!config.requireAuth) return true; // Public routes
 
   if (!userRole || !config.allowedRoles) return false;
-  return config.allowedRoles.includes(userRole as UserRoleType);
+  if (!config.allowedRoles.includes(userRole as UserRoleType)) return false;
+  return isRoleDashboardPathAllowedForUser(path, userRole);
 }
 
 /**
@@ -264,11 +284,11 @@ export function getRoleDashboardPath(userRole?: string): string {
     case 'manager':
       return ROUTES.DASHBOARD_ADMIN;
     case 'agent':
-      return ROUTES.DASHBOARD_AGENT;
+      return FEATURE_FLAGS.agentModule ? ROUTES.DASHBOARD_AGENT : ROUTES.PROFILE;
     case 'tech':
-      return ROUTES.DASHBOARD_TECH;
+      return FEATURE_FLAGS.techModule ? ROUTES.DASHBOARD_TECH : ROUTES.PROFILE;
     case 'accountant':
-      return ROUTES.DASHBOARD_ACCOUNTANT;
+      return FEATURE_FLAGS.accountantModule ? ROUTES.DASHBOARD_ACCOUNTANT : ROUTES.PROFILE;
     default:
       return ROUTES.PROFILE;
   }

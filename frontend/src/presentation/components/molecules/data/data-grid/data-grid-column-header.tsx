@@ -43,11 +43,13 @@ export function DataGridColumnHeader<TData, TValue>({
   ...props
 }: DataGridColumnHeaderProps<TData, TValue>) {
   const column = header.column;
-  const label = column.columnDef.meta?.label
-    ? column.columnDef.meta.label
-    : typeof column.columnDef.header === "string"
-      ? column.columnDef.header
-      : column.id;
+  const metaLabel = (column.columnDef.meta as { label?: string } | undefined)?.label;
+  const label =
+    metaLabel !== undefined
+      ? metaLabel
+      : typeof column.columnDef.header === "string"
+        ? column.columnDef.header
+        : column.id;
 
   const isAnyColumnResizing =
     table.getState().columnSizingInfo.isResizingColumn;
@@ -126,7 +128,7 @@ export function DataGridColumnHeader<TData, TValue>({
 
   if (column.columnDef.meta?.disableColumnHeaderMenu) {
     return (
-      <TooltipWrapper content={label} side="top" delayDuration={500}>
+      <TooltipWrapper content={label || undefined} side="top" delayDuration={500}>
         <div
           className={cn(
             "flex size-full items-center gap-3 text-sm",
@@ -146,7 +148,7 @@ export function DataGridColumnHeader<TData, TValue>({
   return (
     <>
       <DropdownMenu>
-        <TooltipWrapper content={label} side="top" delayDuration={500}>
+        <TooltipWrapper content={label || undefined} side="top" delayDuration={500}>
           <DropdownMenuTrigger
             className={cn(
               "flex size-full items-center gap-3 text-sm",

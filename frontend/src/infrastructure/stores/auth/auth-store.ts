@@ -27,12 +27,9 @@ interface AuthState {
   // Actions
   initialize: () => Promise<void>;
   signup: (payload: {
-    firstName: string;
-    lastName: string;
     email: string;
     password: string;
     role: 'agent' | 'tech' | 'accountant';
-    username?: string;
     phone?: string;
   }) => Promise<{ message: string }>;
   verifyEmail: (token: string) => Promise<{ message: string }>;
