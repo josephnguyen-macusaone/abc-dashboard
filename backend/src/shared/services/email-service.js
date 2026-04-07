@@ -76,7 +76,13 @@ export class EmailService extends IEmailService {
     return executeWithDegradation(
       'email_service',
       () =>
-        this.sendEmail(to, subject, html, {}, { text, templateName: 'emailVerification', preRendered: true }),
+        this.sendEmail(
+          to,
+          subject,
+          html,
+          {},
+          { text, templateName: 'emailVerification', preRendered: true }
+        ),
       (error) => this.handleEmailDegradation('verification_email', { to, subject }, error),
       { operation: 'sendEmailVerification', to, correlationId: this.correlationId }
     );
@@ -96,7 +102,13 @@ export class EmailService extends IEmailService {
     return executeWithDegradation(
       'email_service',
       () =>
-        this.sendEmail(to, subject, html, {}, { text, templateName: 'welcomeWithPassword', preRendered: true }),
+        this.sendEmail(
+          to,
+          subject,
+          html,
+          {},
+          { text, templateName: 'welcomeWithPassword', preRendered: true }
+        ),
       (error) => this.handleEmailDegradation('welcome_email', { to, subject, data }, error),
       { operation: 'sendWelcomeWithPassword', to, correlationId: this.correlationId }
     );
@@ -123,19 +135,10 @@ export class EmailService extends IEmailService {
       preRendered = false,
     } = options;
 
-    // Validate inputs
-    if (!to || !subject || !template) {
-      throw new ValidationException('Missing required email parameters: to, subject, template');
-    }
-
-    if (!this._isValidEmail(to)) {
-      throw new ValidationException('Invalid recipient email address');
-    }
+    this._validateSendEmailInput(to, subject, template);
 
     try {
-      const html = preRendered
-        ? String(template)
-        : this._getCompiledTemplate(template, templateName)(data);
+      const html = this._buildEmailHtml(template, preRendered, data, templateName);
 
       const mailOptions = {
         from: `"${config.EMAIL_FROM_NAME}" <${config.EMAIL_FROM}>`,
@@ -222,6 +225,20 @@ export class EmailService extends IEmailService {
       // Wrap unexpected errors
       throw new ExternalServiceUnavailableException('Email delivery service');
     }
+  }
+
+  _validateSendEmailInput(to, subject, template) {
+    if (!to || !subject || !template) {
+      throw new ValidationException('Missing required email parameters: to, subject, template');
+    }
+
+    if (!this._isValidEmail(to)) {
+      throw new ValidationException('Invalid recipient email address');
+    }
+  }
+
+  _buildEmailHtml(template, preRendered, data, templateName) {
+    return preRendered ? String(template) : this._getCompiledTemplate(template, templateName)(data);
   }
 
   _getCompiledTemplate(template, cacheKey) {

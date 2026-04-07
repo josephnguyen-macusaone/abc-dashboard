@@ -154,7 +154,9 @@ export class LicenseRepository extends ILicenseRepository {
    * Returns an array (empty if none found).
    */
   async findAllByEmailLicense(emailLicense) {
-    if (!emailLicense) return [];
+    if (!emailLicense) {
+      return [];
+    }
 
     try {
       const licenseRows = await this.db(this.licensesTable).whereIn('appid', (qb) => {
