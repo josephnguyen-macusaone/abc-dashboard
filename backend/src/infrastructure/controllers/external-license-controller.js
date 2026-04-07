@@ -1454,9 +1454,12 @@ export class ExternalLicenseController {
    */
   getSmsPayments = async (req, res) => {
     try {
+      const rawEmailLicense =
+        req.query.emailLicense ?? req.query.email ?? req.query.email_license ?? undefined;
       const options = {
         appid: req.query.appid,
-        emailLicense: req.query.emailLicense,
+        emailLicense:
+          typeof rawEmailLicense === 'string' ? rawEmailLicense.trim() || undefined : undefined,
         countid: req.query.countid ? parseInt(req.query.countid) : undefined,
         startDate: req.query.startDate,
         endDate: req.query.endDate,
