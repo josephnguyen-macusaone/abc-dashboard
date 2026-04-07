@@ -102,7 +102,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
   }
 
   return (
-    <div className={cn('w-full max-w-md space-y-6 mt-6', className)}>
+    <div className={cn('w-full space-y-6', className)}>
       <form onSubmit={onSubmit} className="space-y-4">
         <InputField
           label="License Email"
@@ -114,7 +114,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
           error={errors.email}
           disabled={isLoading}
           icon={<Mail className="h-4 w-4" />}
-          inputClassName="h-11"
+          inputClassName="h-10"
           className="space-y-3"
         />
 
@@ -123,7 +123,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
           value={formData.phone}
           onChange={(value) => onFieldChange('phone', value || '')}
           disabled={isLoading}
-          inputClassName="h-11"
+          inputClassName="h-10"
           className="space-y-3"
         />
 
@@ -133,7 +133,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
             onValueChange={(value: SignupRole) => onFieldChange('role', value)}
             disabled={isLoading}
           >
-            <SelectTrigger className="h-11">
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
@@ -154,7 +154,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
               placeholder="Create a password"
               value={formData.password}
               onChange={(event) => onFieldChange('password', event.target.value)}
-              className={cn('pl-10 pr-10 h-11', errors.password && 'border-destructive')}
+              className={cn('pl-10 pr-10 h-10', errors.password && 'border-destructive')}
               disabled={isLoading}
             />
             <Button
@@ -182,7 +182,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
               placeholder="Confirm your password"
               value={formData.confirmPassword}
               onChange={(event) => onFieldChange('confirmPassword', event.target.value)}
-              className={cn('pl-10 pr-10 h-11', errors.confirmPassword && 'border-destructive')}
+              className={cn('pl-10 pr-10 h-10', errors.confirmPassword && 'border-destructive')}
               disabled={isLoading}
             />
             <Button
@@ -202,20 +202,22 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
           </div>
         </FormField>
 
-        <Button type="submit" variant="default" className="w-full h-11 mt-4" disabled={isLoading}>
+        <Button
+          type="submit"
+          variant="default"
+          className="w-full h-10 mt-4 text-button-m"
+          size="default"
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <Typography variant="button-m" className="pt-0.5">
-                Creating account...
-              </Typography>
+              <Typography variant="button-m">Creating account...</Typography>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <UserPlus className="h-4 w-4" />
-              <Typography variant="button-l" className="pt-0.5">
-                Sign Up
-              </Typography>
+              <Typography variant="button-m">Sign Up</Typography>
             </div>
           )}
         </Button>

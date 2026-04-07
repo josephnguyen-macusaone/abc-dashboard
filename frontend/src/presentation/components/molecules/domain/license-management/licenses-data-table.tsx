@@ -480,7 +480,7 @@ export function LicensesDataTable({
     <>
       <DataTable
         table={table}
-        fillContainer={variant === "agent"}
+        fillContainer
         emptyState={emptyStateContent}
       >
         <DataTableToolbar

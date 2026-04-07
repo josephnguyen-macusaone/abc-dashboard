@@ -11,7 +11,7 @@ import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 
 interface ResetPasswordFormProps {
   token?: string;
-  /** Called when the user chooses to go to login after a successful reset (avoids racing navigation with the success panel). */
+  /** Called immediately after a successful reset (navigate away from /reset-password?token=...). */
   onContinueToLogin?: () => void;
   onBackToLogin?: () => void;
   className?: string;
@@ -53,8 +53,12 @@ export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, cla
 
     try {
       await resetPassword(token, formData.password);
-      setIsSuccess(true);
       resetForm();
+      if (onContinueToLogin) {
+        onContinueToLogin();
+        return;
+      }
+      setIsSuccess(true);
     } catch (error: unknown) {
       const msg =
         error instanceof Error ? error.message : 'Failed to reset password';
@@ -74,19 +78,9 @@ export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, cla
             Password Reset Successful
           </Typography>
           <Typography variant="body-m" className="text-muted-foreground">
-            Your password has been successfully reset. You can now sign in with your new password.
+            Your password has been reset. You can sign in with your new password.
           </Typography>
         </div>
-        {onContinueToLogin ? (
-          <Button
-            type="button"
-            variant="default"
-            className="w-full h-11"
-            onClick={onContinueToLogin}
-          >
-            Continue to login
-          </Button>
-        ) : null}
       </div>
     );
   }
@@ -133,7 +127,7 @@ export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, cla
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 className={cn(
-                  'pl-10 pr-10 h-11',
+                  'pl-10 pr-10 h-10',
                   errors.password && 'border-destructive focus:border-destructive'
                 )}
                 disabled={authLoading}
@@ -169,7 +163,7 @@ export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, cla
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 className={cn(
-                  'pl-10 pr-10 h-11',
+                  'pl-10 pr-10 h-10',
                   errors.confirmPassword && 'border-destructive focus:border-destructive'
                 )}
                 disabled={authLoading}
@@ -195,20 +189,18 @@ export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, cla
           <Button
             type="submit"
             variant="default"
-            className="w-full h-11 text-button-m transition-all duration-200"
+            className="w-full h-10 text-button-m transition-all duration-200"
             size="default"
             disabled={authLoading || !formData.password.trim() || !formData.confirmPassword.trim()}
           >
             {authLoading ? (
-              <div className="flex items-center space-x-2">
-                <Typography variant="button-m" className="pt-0.5">Resetting...</Typography>
+              <div className="flex items-center gap-2">
+                <Typography variant="button-m">Resetting...</Typography>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4" />
-                <Typography variant="button-s">
-                  Reset Password
-                </Typography>
+                <Typography variant="button-m">Reset Password</Typography>
               </div>
             )}
           </Button>
@@ -217,13 +209,10 @@ export function ResetPasswordForm({ token, onContinueToLogin, onBackToLogin, cla
         {/* Back to Login */}
         {onBackToLogin && !isSuccess && (
           <div className="text-center">
-            <Button
-              type="button"
-              variant="ghost"
-              className="p-0 h-auto"
-              onClick={onBackToLogin}
-            >
-              <Typography variant="button-m" color="muted" className="hover:text-primary">Back to Login</Typography>
+            <Button type="button" variant="ghost" className="p-0 h-auto" onClick={onBackToLogin}>
+              <Typography variant="button-m" color="muted" className="hover:text-primary">
+                Back to Login
+              </Typography>
             </Button>
           </div>
         )}

@@ -17,7 +17,7 @@ function ResetPasswordFormPageContent() {
   };
 
   const handleContinueToLogin = () => {
-    router.push('/login');
+    router.replace('/login?reset=true');
   };
 
   return (

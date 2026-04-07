@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/shared/helpers';
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { SectionErrorBoundary } from '@/presentation/components/organisms/error-handling/error-boundary';
 import { Logo, ScrollArea } from '@/presentation/components/atoms';
 import { useTheme } from '@/presentation/contexts';
@@ -13,15 +13,7 @@ interface AuthTemplateProps {
 export const AuthTemplate: React.FC<AuthTemplateProps> = ({
   children,
 }) => {
-  const { theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Only show theme-dependent logo after hydration
-  useEffect(() => {
-    setTimeout(() => {
-      setMounted(true);
-    }, 0);
-  }, []);
+  const { theme, isHydrated } = useTheme();
   return (
     <div className="relative flex h-screen min-h-0 w-full flex-col overflow-hidden bg-background">
       {/* Full background layer */}
@@ -51,17 +43,17 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
         {/* min-h-dvh: ensures the flex row is at least the visible viewport tall so justify-center
             actually centers the card (ScrollArea’s inner wrapper does not always fill height). */}
         <div className="flex min-h-dvh w-full flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
-          <div className="w-full max-w-md space-y-8">
+          <div className="w-full max-w-md">
             <div
               className={cn(
-                'rounded-lg border border-border bg-card shadow-lg',
-                'px-6 py-8 sm:px-8',
+                'flex flex-col space-y-6 rounded-lg border border-border bg-card shadow-lg',
+                'p-6 sm:p-8',
               )}
             >
               <Logo
-                variant={mounted ? (theme === 'dark' ? 'dark' : 'light') : 'dark'}
+                variant={isHydrated ? (theme === 'dark' ? 'dark' : 'light') : 'dark'}
                 width={160}
-                className="mx-auto"
+                className="mx-auto shrink-0"
               />
 
               <SectionErrorBoundary

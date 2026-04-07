@@ -23,6 +23,21 @@ const buttonStyles = `
   font-weight: 600;
 `;
 
+/** User-provided values in HTML mail must be escaped or a broken tag can yield an empty client body. */
+function escapeEmailHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function escapeEmailAttr(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export const emailTemplates = {
   welcomeWithPassword: (data) => ({
     subject: 'Welcome to ABC Dashboard – Your Account Details',
@@ -127,21 +142,30 @@ If you didn't create an account, you can safely ignore this email.
       <div style="${baseStyles}; padding: 24px;">
         <div style="${cardStyles}">
           <h2 style="margin: 0 0 8px 0; font-size: 22px;">Reset your password</h2>
-          <p style="margin: 0 0 16px 0; color: #475569;">Hi ${data.displayName}, use the button below to set a new password. This link expires in 10 minutes.</p>
+          <p style="margin: 0 0 16px 0; color: #475569;">Hi ${data.displayName}, click the button below to choose a new password for your ABC Dashboard account.</p>
+
           <div style="text-align:center; margin:24px 0;">
-            <a href="${data.resetUrl}" style="${buttonStyles}">Reset Password</a>
+            <a href="${data.resetUrl}" style="${buttonStyles}">Reset password</a>
           </div>
-          <p style="margin:0; color:#94a3b8; font-size:13px;">If you didn’t request this, you can ignore this email.</p>
+
+          <p style="margin:0 0 8px 0; color:#94a3b8; font-size:13px;">This link expires in 10 minutes.</p>
+          <p style="margin:0; color:#94a3b8; font-size:13px;">If you didn’t request a password reset, you can safely ignore this email.</p>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-top:16px; word-break:break-all;">
+            <p style="margin:0; color:#64748b; font-size:12px;">Or copy this link into your browser:</p>
+            <p style="margin:4px 0 0 0; color:#475569; font-size:12px; font-family:monospace;">${data.resetUrl}</p>
+          </div>
         </div>
       </div>
     `,
     text: `
 Reset your password
 
-Hi ${data.displayName}, use the link below to set a new password. This link expires in 10 minutes.
+Hi ${data.displayName}, use the link below to set a new password for your ABC Dashboard account. This link expires in 10 minutes.
+
 ${data.resetUrl}
 
-If you didn’t request this, you can ignore this email.
+If you didn’t request a password reset, you can ignore this email.
     `,
   }),
 
@@ -175,27 +199,49 @@ You’ll be prompted to change this password after login.
     `,
   }),
 
-  passwordResetConfirmation: (data) => ({
-    subject: 'Password reset successful – ABC Dashboard',
-    html: `
+  passwordResetConfirmation: (data) => {
+    const safeName = escapeEmailHtml(data.displayName);
+    const loginUrlRaw = String(data.loginUrl ?? '');
+    const safeLoginHref = escapeEmailAttr(loginUrlRaw);
+    const safeLoginVisible = escapeEmailHtml(loginUrlRaw);
+
+    return {
+      subject: 'Password reset successful – ABC Dashboard',
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Password reset successful</title>
+</head>
+<body style="margin:0;padding:0;">
       <div style="${baseStyles}; padding: 24px;">
         <div style="${cardStyles}">
           <h2 style="margin: 0 0 8px 0; font-size: 22px;">Password reset successful</h2>
-          <p style="margin: 0 0 16px 0; color: #475569;">Hi ${data.displayName}, your password has been updated. If this wasn’t you, contact support immediately.</p>
+          <p style="margin: 0 0 16px 0; color: #475569;">Hi ${safeName}, your password has been updated. If this was not you, contact support immediately.</p>
+
           <div style="text-align:center; margin:24px 0;">
-            <a href="${data.loginUrl}" style="${buttonStyles}">Login</a>
+            <a href="${safeLoginHref}" style="${buttonStyles}">Log in to ABC Dashboard</a>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-top:16px; word-break:break-all;">
+            <p style="margin:0; color:#64748b; font-size:12px;">Or copy this link into your browser:</p>
+            <p style="margin:4px 0 0 0; color:#475569; font-size:12px; font-family:monospace;">${safeLoginVisible}</p>
           </div>
         </div>
       </div>
-    `,
-    text: `
+</body>
+</html>`,
+      text: `
 Password reset successful
 
-Hi ${data.displayName}, your password has been updated. If this wasn’t you, contact support immediately.
+Hi ${data.displayName}, your password has been updated. If this was not you, contact support immediately.
 
-Login: ${data.loginUrl}
+Log in: ${loginUrlRaw}
     `,
-  }),
+    };
+  },
 };
 
 export function renderEmailTemplate(template, data) {

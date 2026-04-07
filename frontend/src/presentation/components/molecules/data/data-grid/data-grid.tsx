@@ -160,7 +160,10 @@ export function DataGrid<TData>({
                       className={cn(
                         "relative",
                         stickyEnd &&
-                          "sticky end-0 z-30 border-s border-border bg-muted",
+                          cn(
+                            "sticky end-0 isolate z-30 bg-muted",
+                            "shadow-[inset_1px_0_0_0_var(--border),-14px_0_20px_-8px_var(--background)]",
+                          ),
                         {
                           grow: dataGridColumnShouldGrow(
                             header.column.id,

@@ -53,7 +53,7 @@ export function NotFoundPage({
 
   return (
     <AuthTemplate>
-      <Card className="text-center max-w-md mx-auto mt-8">
+      <Card className="mx-auto w-full max-w-md text-center">
         <CardHeader>
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-muted p-6">

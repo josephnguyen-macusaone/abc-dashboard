@@ -78,7 +78,7 @@ export function getLicenseTableColumns(
         <DataTableColumnHeader column={column} label="DBA" />
       ),
       cell: ({ row }) => (
-        <span className="text-sm font-medium">
+        <span className="block min-w-0 truncate text-left text-sm font-medium" title={String(row.getValue("dba") ?? "")}>
           {row.getValue("dba")}
         </span>
       ),
@@ -88,6 +88,7 @@ export function getLicenseTableColumns(
       meta: {
         label: "DBA",
         headerAlign: "start" as const,
+        absorbTableSlack: true,
       },
     },
     {
@@ -97,14 +98,14 @@ export function getLicenseTableColumns(
         <DataTableColumnHeader column={column} label="Zip Code" />
       ),
       cell: ({ row }) => (
-        <span className="block w-full text-center text-sm tabular-nums">
+        <span className="block w-full text-end text-sm tabular-nums">
           {row.getValue("zip")}
         </span>
       ),
       ...LICENSE_COLUMN_WIDTHS.zip,
       meta: {
         label: "Zip Code",
-        headerAlign: "center" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -120,7 +121,11 @@ export function getLicenseTableColumns(
           const d = new Date(date);
           return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
         })() : '';
-        return <span className="text-sm">{formattedDate}</span>;
+        return (
+          <span className="block w-full text-end text-sm tabular-nums">
+            {formattedDate}
+          </span>
+        );
       },
       filterFn: (row, id, value) => {
         if (!value) return true;
@@ -164,7 +169,7 @@ export function getLicenseTableColumns(
         variant: "multiSelect",
         options: STATUS_OPTIONS,
         icon: CircleDashed,
-        headerAlign: "center" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -242,7 +247,12 @@ export function getLicenseTableColumns(
         const dueDate = row.getValue("dueDate") as string | undefined;
         const hasDueDate = term === "yearly" && dueDate;
         return (
-          <span className={cn("text-sm", !hasDueDate && "text-muted-foreground")}>
+          <span
+            className={cn(
+              "block w-full text-end text-sm tabular-nums",
+              !hasDueDate && "text-muted-foreground",
+            )}
+          >
             {hasDueDate
               ? (() => {
                 const d = new Date(dueDate);
@@ -280,7 +290,7 @@ export function getLicenseTableColumns(
         label: "Monthly Fee",
         variant: "number",
         unit: "$",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -295,7 +305,11 @@ export function getLicenseTableColumns(
           const d = new Date(date);
           return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
         })() : '';
-        return <span className="text-sm">{formattedDate}</span>;
+        return (
+          <span className="block w-full text-end text-sm tabular-nums">
+            {formattedDate}
+          </span>
+        );
       },
       filterFn: (row, id, value) => {
         if (!value) return true;
@@ -324,7 +338,7 @@ export function getLicenseTableColumns(
       ...LICENSE_COLUMN_WIDTHS.smsPurchased,
       meta: {
         label: "SMS Purchased",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -341,7 +355,7 @@ export function getLicenseTableColumns(
       ...LICENSE_COLUMN_WIDTHS.smsSent,
       meta: {
         label: "SMS Sent",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -358,7 +372,7 @@ export function getLicenseTableColumns(
       ...LICENSE_COLUMN_WIDTHS.smsBalance,
       meta: {
         label: "SMS Balance",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -375,7 +389,7 @@ export function getLicenseTableColumns(
       ...LICENSE_COLUMN_WIDTHS.agents,
       meta: {
         label: "Agents",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -420,7 +434,7 @@ export function getLicenseTableColumns(
       enableSorting: false,
       meta: {
         label: "Agents Cost",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
       },
     },
     {
@@ -515,7 +529,7 @@ export function getLicenseTableColumns(
       meta: {
         label: "",
         stickyEnd: true,
-        headerAlign: "center" as const,
+        headerAlign: "start" as const,
       },
     });
   }

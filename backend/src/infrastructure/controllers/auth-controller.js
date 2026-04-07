@@ -145,6 +145,47 @@ export class AuthController extends BaseController {
     }
   }
 
+  /**
+   * GET /auth/verify-email-redirect?token=...
+   * Verifies the email token and redirects the browser directly to the frontend
+   * login page — so the email link opens in the same tab without a separate
+   * frontend spinner page.
+   *
+   * Success  → 302 → CLIENT_URL/login?verified=true
+   * Already verified → 302 → CLIENT_URL/login?verified=true  (idempotent)
+   * Expired token    → 302 → CLIENT_URL/verify-email?error=expired
+   * Invalid token    → 302 → CLIENT_URL/verify-email?error=invalid
+   */
+  async verifyEmailRedirect(req, res) {
+    const { token } = req.query;
+    const clientUrl = (await import('../../infrastructure/config/config.js')).default.CLIENT_URL;
+
+    const redirectSuccess = () => res.redirect(302, `${clientUrl}/login?verified=true`);
+    const redirectError = (type) => res.redirect(302, `${clientUrl}/verify-email?error=${type}`);
+
+    if (!token) return redirectError('invalid');
+
+    try {
+      if (!this.verifyEmailUseCase) return redirectError('invalid');
+
+      await this.verifyEmailUseCase.execute({ token });
+      return redirectSuccess();
+    } catch (error) {
+      if (error instanceof TokenExpiredException) return redirectError('expired');
+      if (
+        error instanceof InvalidTokenException ||
+        error instanceof ResourceNotFoundException
+      ) return redirectError('invalid');
+      if (error instanceof BusinessRuleViolationException) {
+        // Already verified — still a success from the user's perspective.
+        return redirectSuccess();
+      }
+
+      logger.error('Email verification redirect error:', error);
+      return redirectError('invalid');
+    }
+  }
+
   async resendVerification(req, res) {
     try {
       const { email } = req.body;

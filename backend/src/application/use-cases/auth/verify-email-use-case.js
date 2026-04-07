@@ -50,7 +50,12 @@ export class VerifyEmailUseCase {
     }
 
     if (user.isActive && user.emailVerified) {
-      throw new BusinessRuleViolationException('Email address is already verified.');
+      // Idempotent: return success so repeat opens of the magic link (browser
+      // prefetch, email scanner, double-click) don't surface an error to the user.
+      return {
+        user: UserAuthDto.fromEntity(user),
+        message: 'Email verified successfully. You can now log in.',
+      };
     }
 
     const activatedUser = await this.userRepository.updateEmailVerification(user.id);

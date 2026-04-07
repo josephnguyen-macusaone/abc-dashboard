@@ -64,7 +64,9 @@ export class EmailService extends IEmailService {
    * @param {string} verificationToken - Signed JWT for email verification
    */
   async sendEmailVerification(to, displayName, verificationToken) {
-    const verifyUrl = `${config.CLIENT_URL}/verify-email?token=${verificationToken}`;
+    // Use the backend redirect route so clicking the link verifies + redirects
+    // in the same browser tab (no new tab, no frontend spinner page).
+    const verifyUrl = `${config.CLIENT_URL}/api/v1/auth/verify-email-redirect?token=${verificationToken}`;
 
     const { subject, html, text } = renderEmailTemplate('emailVerification', {
       displayName,
@@ -73,7 +75,8 @@ export class EmailService extends IEmailService {
 
     return executeWithDegradation(
       'email_service',
-      () => this.sendEmail(to, subject, html, {}, { text, templateName: 'emailVerification' }),
+      () =>
+        this.sendEmail(to, subject, html, {}, { text, templateName: 'emailVerification', preRendered: true }),
       (error) => this.handleEmailDegradation('verification_email', { to, subject }, error),
       { operation: 'sendEmailVerification', to, correlationId: this.correlationId }
     );
@@ -92,7 +95,8 @@ export class EmailService extends IEmailService {
 
     return executeWithDegradation(
       'email_service',
-      () => this.sendEmail(to, subject, html, {}, { text, templateName: 'welcomeWithPassword' }),
+      () =>
+        this.sendEmail(to, subject, html, {}, { text, templateName: 'welcomeWithPassword', preRendered: true }),
       (error) => this.handleEmailDegradation('welcome_email', { to, subject, data }, error),
       { operation: 'sendWelcomeWithPassword', to, correlationId: this.correlationId }
     );
@@ -103,11 +107,21 @@ export class EmailService extends IEmailService {
    * @param {string} to - Recipient email
    * @param {string} subject - Email subject
    * @param {string} template - Handlebars template
-   * @param {Object} data - Template data
-   * @param {Object} options - Additional options
+   * @param {Object} data - Template data (for Handlebars `template`; ignored when options.preRendered is true)
+   * @param {Object} options
+   * @param {string} [options.text] - Plain-text body (recommended for deliverability)
+   * @param {string} [options.templateName] - Cache key when using Handlebars (not used when preRendered)
+   * @param {boolean} [options.preRendered] - If true, `template` is final HTML string (skip compile/caching)
    */
   async sendEmail(to, subject, template, data = {}, options = {}) {
-    const { priority = 'normal', correlationId = this.correlationId, text, templateName } = options;
+    const {
+      priority = 'normal',
+      correlationId = this.correlationId,
+      text,
+      templateName,
+      /** When true, `template` is already final HTML (e.g. from renderEmailTemplate). Skips Handlebars — avoids caching one user's HTML for all later sends. */
+      preRendered = false,
+    } = options;
 
     // Validate inputs
     if (!to || !subject || !template) {
@@ -119,9 +133,9 @@ export class EmailService extends IEmailService {
     }
 
     try {
-      // Compile template with cache
-      const compiledTemplate = this._getCompiledTemplate(template, templateName);
-      const html = compiledTemplate(data);
+      const html = preRendered
+        ? String(template)
+        : this._getCompiledTemplate(template, templateName)(data);
 
       const mailOptions = {
         from: `"${config.EMAIL_FROM_NAME}" <${config.EMAIL_FROM}>`,
@@ -537,6 +551,7 @@ export class EmailService extends IEmailService {
           {
             text,
             templateName: 'passwordResetWithGeneratedPassword',
+            preRendered: true,
           }
         ),
       (error) =>
@@ -571,6 +586,7 @@ export class EmailService extends IEmailService {
           {
             text,
             templateName: 'passwordResetConfirmation',
+            preRendered: true,
           }
         ),
       (error) =>
@@ -601,6 +617,7 @@ export class EmailService extends IEmailService {
           {
             text,
             templateName: 'passwordReset',
+            preRendered: true,
           }
         ),
       (error) => this.handleEmailDegradation('password_reset', { to, subject, data }, error),

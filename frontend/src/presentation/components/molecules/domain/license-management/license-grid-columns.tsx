@@ -94,7 +94,8 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableSorting: false,
       meta: {
         label: "DBA",
-        cell: { variant: "short-text" as const },
+        headerAlign: "start" as const,
+        cell: { variant: "short-text" as const, align: "start" as const },
       },
     },
     {
@@ -104,8 +105,8 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.zip,
       meta: {
         label: "Zip Code",
-        headerAlign: "center" as const,
-        cell: { variant: "short-text" as const, align: "center" as const },
+        headerAlign: "start" as const,
+        cell: { variant: "short-text" as const, align: "end" as const },
       },
     },
     {
@@ -115,7 +116,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.startsAt,
       meta: {
         label: "Activate Date",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "date" as const, align: "end" as const },
       },
     },
@@ -189,7 +190,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.dueDate,
       meta: {
         label: "Due Date",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "date" as const, align: "end" as const },
       },
     },
@@ -200,7 +201,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.lastPayment,
       meta: {
         label: "Monthly Fee",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -211,8 +212,8 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.lastActive,
       meta: {
         label: "Last Active",
-        headerAlign: "end" as const,
-        cell: { variant: "date" as const, readOnly: true },
+        headerAlign: "start" as const,
+        cell: { variant: "date" as const, align: "end" as const, readOnly: true },
       },
     },
     {
@@ -222,7 +223,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.smsPurchased,
       meta: {
         label: "SMS Purchased",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -233,7 +234,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.smsSent,
       meta: {
         label: "SMS Sent",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -244,7 +245,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.smsBalance,
       meta: {
         label: "SMS Balance",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "number" as const },
       },
     },
@@ -255,7 +256,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       ...LICENSE_COLUMN_WIDTHS.agents,
       meta: {
         label: "Agents",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -268,6 +269,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableSorting: false,
       meta: {
         label: "Agents Name",
+        headerAlign: "start" as const,
         cell: { variant: "agents-name" as const },
       },
     },
@@ -279,7 +281,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableSorting: false,
       meta: {
         label: "Agents Cost",
-        headerAlign: "end" as const,
+        headerAlign: "start" as const,
         cell: { variant: "number" as const, min: 0 },
       },
     },
@@ -291,6 +293,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableSorting: false,
       meta: {
         label: "Notes",
+        headerAlign: "start" as const,
         cell: { variant: "short-text" as const },
       },
     },
@@ -303,6 +306,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableColumnFilter: false,
       meta: {
         label: "Created by",
+        headerAlign: "start" as const,
         cell: { variant: "short-text" as const, readOnly: true },
       },
     },
@@ -315,6 +319,7 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       enableColumnFilter: false,
       meta: {
         label: "Updated by",
+        headerAlign: "start" as const,
         cell: { variant: "short-text" as const, readOnly: true },
       },
     },
@@ -344,7 +349,7 @@ export function getLicenseGridColumns(
       ...LICENSE_COLUMN_WIDTHS.auditHistory,
       meta: {
         label: "",
-        headerAlign: "center" as const,
+        headerAlign: "start" as const,
         cell: { variant: "audit-history" as const, readOnly: true },
         disableColumnHeaderMenu: true,
         stickyEnd: true,

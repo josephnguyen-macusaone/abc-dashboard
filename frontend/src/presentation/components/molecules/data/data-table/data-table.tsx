@@ -134,7 +134,10 @@ export function DataTable<TData>({
                     "!p-0",
                     alignClass,
                     stickyEnd &&
-                      "sticky end-0 z-30 bg-muted shadow-[inset_1px_0_0_0_var(--border)]",
+                      cn(
+                        "sticky end-0 z-30 bg-muted",
+                        "shadow-[inset_1px_0_0_0_var(--border),-14px_0_20px_-8px_var(--background)]",
+                      ),
                   )}
                 >
                   {header.isPlaceholder ? null : (
@@ -193,8 +196,8 @@ export function DataTable<TData>({
                 const stickyEndBg = isSelected
                   ? "bg-muted group-hover/row:bg-muted"
                   : row.index % 2 === 1
-                    ? "bg-muted/20 group-hover/row:bg-muted/50"
-                    : "bg-background group-hover/row:bg-muted/50";
+                    ? "bg-[color-mix(in_srgb,var(--muted)_24%,var(--background))] group-hover/row:bg-[color-mix(in_srgb,var(--muted)_38%,var(--background))]"
+                    : "bg-background group-hover/row:bg-muted";
                 return (
                   <TableCell
                     key={cell.id}
@@ -204,7 +207,8 @@ export function DataTable<TData>({
                       alignClass,
                       stickyEnd &&
                       cn(
-                        "sticky end-0 z-20 shadow-[inset_1px_0_0_0_var(--border)]",
+                        "sticky end-0 isolate z-20",
+                        "shadow-[inset_1px_0_0_0_var(--border),-14px_0_20px_-8px_var(--background)]",
                         stickyEndBg,
                       ),
                     )}
