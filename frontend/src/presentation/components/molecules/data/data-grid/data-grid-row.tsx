@@ -174,7 +174,7 @@ function DataGridRowImpl<TData>({
       {...props}
       ref={rowRef}
       className={cn(
-        "absolute flex w-full will-change-transform",
+        "group/row absolute flex w-full will-change-transform",
         tableRowClass,
         "even:bg-muted/20",
         className,
@@ -188,9 +188,11 @@ function DataGridRowImpl<TData>({
       {visibleCells.map((cell, colIndex) => {
         const columnId = cell.column.id;
         const stickyEnd = cell.column.columnDef.meta?.stickyEnd;
-        const rowStripeClass =
-          virtualRowIndex % 2 === 1 ? "bg-muted/20" : "bg-background";
-        const stickyEndBg = isRowSelected ? "bg-muted/50" : rowStripeClass;
+        const stickyEndSurface = isRowSelected
+          ? "bg-muted"
+          : virtualRowIndex % 2 === 1
+            ? "bg-[color-mix(in_srgb,var(--muted)_24%,var(--background))] group-hover/row:bg-[color-mix(in_srgb,var(--muted)_45%,var(--background))]"
+            : "bg-background group-hover/row:bg-muted";
         const isCellFocused =
           focusedCell?.rowIndex === virtualRowIndex &&
           focusedCell?.columnId === columnId;
@@ -220,8 +222,9 @@ function DataGridRowImpl<TData>({
               },
               stickyEnd &&
                 cn(
-                  "sticky end-0 z-20 border-s border-border",
-                  stickyEndBg,
+                  "sticky end-0 isolate z-20",
+                  "shadow-[inset_1px_0_0_0_var(--border),-14px_0_20px_-8px_var(--background)]",
+                  stickyEndSurface,
                 ),
             )}
             style={{

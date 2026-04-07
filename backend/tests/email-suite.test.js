@@ -304,7 +304,8 @@ async function testTemplates() {
     console.log('Testing verification email template...');
     const _verifyResult = await emailService.sendEmailVerification(
       'template-test@example.com',
-      testUser
+      testUser.displayName,
+      'dummy-verification-jwt-for-template-test'
     );
     console.log('✅ Verification email sent');
 

@@ -90,7 +90,7 @@ export function createAuthRoutes(authController) {
 
   const verifyEmailLimiter = createRateLimit(
     15 * 60 * 1000,
-    10,
+    20,
     'Too many verification attempts, please try again later.'
   );
 
@@ -99,6 +99,14 @@ export function createAuthRoutes(authController) {
     verifyEmailLimiter,
     validateRequest(authSchemas.verifyEmail),
     authController.verifyEmail.bind(authController)
+  );
+
+  // GET route used by the email link — verifies and redirects the browser
+  // directly to /login?verified=true (same tab, no frontend spinner).
+  router.get(
+    '/verify-email-redirect',
+    verifyEmailLimiter,
+    authController.verifyEmailRedirect.bind(authController)
   );
 
   const resendVerificationLimiter = createRateLimit(

@@ -34,7 +34,8 @@ import { DEFAULT_LICENSE_SORT } from "@/shared/constants/license";
 const FILTER_COLUMN_IDS = ["status", "plan", "term"] as const;
 
 /** Only these columns flex-grow; `notes` absorbs slack before the sticky Activity column. */
-const LICENSE_GRID_STRETCH_COLUMN_IDS = ["notes"] as const;
+/** Horizontal slack fills DBA first (primary business column). */
+const LICENSE_GRID_STRETCH_COLUMN_IDS = ["dba"] as const;
 
 interface LicensesDataGridProps {
   data: LicenseRecord[];
