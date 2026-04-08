@@ -205,6 +205,20 @@ export const userSchemas = {
       'string.empty': 'Last name cannot be empty',
     }),
 
+    password: Joi.string()
+      .min(8)
+      .max(128)
+      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .required()
+      .messages({
+        'string.min': 'Password must be at least 8 characters long',
+        'string.max': 'Password cannot exceed 128 characters',
+        'string.pattern.base':
+          'Password must contain at least one lowercase letter, one uppercase letter, and one number',
+        'any.required': 'Password is required',
+        'string.empty': 'Password cannot be empty',
+      }),
+
     avatarUrl: Joi.string().uri().messages({
       'string.uri': 'Avatar URL must be a valid URI',
     }),

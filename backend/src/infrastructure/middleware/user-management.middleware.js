@@ -114,10 +114,7 @@ export function checkUserAccessPermission(operation = 'read') {
       }
 
       if (!targetUserId && operation === 'list') {
-        if (isManagerRole(currentUser.role)) {
-          req.query.managedBy = currentUser.id;
-          req.query.role = MANAGED_ROLE_BY_MANAGER[currentUser.role];
-        }
+        // Managers see the full directory (read-only on non-agent rows; mutations scoped in use cases).
         return next();
       }
 
@@ -188,8 +185,6 @@ export function getUserQueryFilters(currentUser, _queryParams = {}) {
   }
 
   if (isManagerRole(currentUser.role)) {
-    filters.managedBy = currentUser.id;
-    filters.role = MANAGED_ROLE_BY_MANAGER[currentUser.role];
     return filters;
   }
 

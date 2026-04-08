@@ -11,22 +11,10 @@ export const ROLE_DEFINITIONS = {
     description: 'Full system access and management',
     color: 'admin' as const,
   },
-  [USER_ROLES.ACCOUNT_MANAGER]: {
-    name: 'account_manager' as UserRoleType,
-    displayName: 'Accountant manager',
-    description: 'Oversees accountant accounts',
-    color: 'manager' as const,
-  },
-  [USER_ROLES.TECH_MANAGER]: {
-    name: 'tech_manager' as UserRoleType,
-    displayName: 'Tech manager',
-    description: 'Oversees tech accounts',
-    color: 'manager' as const,
-  },
-  [USER_ROLES.AGENT_MANAGER]: {
-    name: 'agent_manager' as UserRoleType,
-    displayName: 'Agent manager',
-    description: 'Oversees agent accounts',
+  [USER_ROLES.MANAGER]: {
+    name: 'manager' as UserRoleType,
+    displayName: 'Manager',
+    description: 'User management and agent provisioning; directory oversight',
     color: 'manager' as const,
   },
   [USER_ROLES.ACCOUNTANT]: {
@@ -62,9 +50,7 @@ export const USER_STATUS_COLORS: Record<'active' | 'inactive', string> = {
 export const USER_ROLE_COLORS: Record<UserRoleType, string> = {
   admin: 'bg-purple-100 text-purple-800 border-purple-300',
   accountant: 'bg-amber-100 text-amber-800 border-amber-300',
-  account_manager: 'bg-blue-100 text-blue-800 border-blue-300',
-  tech_manager: 'bg-sky-100 text-sky-800 border-sky-300',
-  agent_manager: 'bg-violet-100 text-violet-800 border-violet-300',
+  manager: 'bg-violet-100 text-violet-800 border-violet-300',
   tech: 'bg-cyan-100 text-cyan-800 border-cyan-300',
   agent: 'bg-indigo-100 text-indigo-800 border-indigo-300',
 };

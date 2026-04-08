@@ -12,9 +12,7 @@ describe('role dashboard routes', () => {
     expect(getRoleDashboardPath('tech')).toBe(ROUTES.DASHBOARD_TECH);
     expect(getRoleDashboardPath('accountant')).toBe(ROUTES.DASHBOARD_ACCOUNTANT);
     expect(getRoleDashboardPath('admin')).toBe(ROUTES.DASHBOARD_ADMIN);
-    expect(getRoleDashboardPath('account_manager')).toBe(ROUTES.DASHBOARD_ADMIN);
-    expect(getRoleDashboardPath('tech_manager')).toBe(ROUTES.DASHBOARD_ADMIN);
-    expect(getRoleDashboardPath('agent_manager')).toBe(ROUTES.DASHBOARD_ADMIN);
+    expect(getRoleDashboardPath('manager')).toBe(ROUTES.DASHBOARD_ADMIN);
   });
 
   it('getRoleDashboardPath falls back for unknown or missing role', () => {
@@ -36,7 +34,7 @@ describe('role dashboard routes', () => {
     expect(canAccessRoute('/dashboard/agent', 'agent')).toBe(true);
     expect(canAccessRoute('/dashboard/agent', 'tech')).toBe(false);
     expect(canAccessRoute('/dashboard/admin', 'admin')).toBe(true);
-    expect(canAccessRoute('/dashboard/admin', 'account_manager')).toBe(true);
+    expect(canAccessRoute('/dashboard/admin', 'manager')).toBe(true);
     expect(canAccessRoute('/dashboard/admin', 'agent')).toBe(false);
   });
 });

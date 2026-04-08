@@ -37,16 +37,8 @@ export const LICENSE_ROLES = {
     permissions: Object.values(LICENSE_PERMISSIONS),
   },
 
-  ACCOUNT_MANAGER: {
-    name: 'Accountant Manager',
-    permissions: [LICENSE_PERMISSIONS.LICENSE_READ],
-  },
-  TECH_MANAGER: {
-    name: 'Tech Manager',
-    permissions: [LICENSE_PERMISSIONS.LICENSE_READ],
-  },
-  AGENT_MANAGER: {
-    name: 'Agent Manager',
+  MANAGER: {
+    name: 'Manager',
     permissions: [LICENSE_PERMISSIONS.LICENSE_READ],
   },
 

@@ -5,12 +5,14 @@
 import { BaseDto } from '../common/base.dto.js';
 import { ValidationException } from '../../../domain/exceptions/domain.exception.js';
 import { ROLES } from '../../../shared/constants/roles.js';
+import AuthValidator from '../../validators/auth-validator.js';
 
 export class CreateUserRequestDto extends BaseDto {
   constructor({
     username,
     email,
     displayName,
+    password,
     role = 'agent',
     avatarUrl = null,
     phone = null,
@@ -21,6 +23,7 @@ export class CreateUserRequestDto extends BaseDto {
     this.username = username;
     this.email = email;
     this.displayName = displayName;
+    this.password = password;
     this.role = role;
     this.avatarUrl = avatarUrl;
     this.phone = phone;
@@ -53,6 +56,7 @@ export class CreateUserRequestDto extends BaseDto {
       username,
       email: body.email,
       displayName,
+      password: body.password,
       role: body.role,
       avatarUrl: body.avatarUrl,
       phone: body.phone,
@@ -83,6 +87,17 @@ export class CreateUserRequestDto extends BaseDto {
 
     if (!this.displayName || this.displayName.trim().length === 0) {
       errors.push({ field: 'displayName', message: 'Display name is required' });
+    }
+
+    if (!this.password || typeof this.password !== 'string') {
+      errors.push({ field: 'password', message: 'Password is required' });
+    } else {
+      const passwordValidation = AuthValidator.validatePassword(this.password);
+      if (!passwordValidation.isValid) {
+        errors.push(
+          ...passwordValidation.errors.map((msg) => ({ field: 'password', message: msg }))
+        );
+      }
     }
 
     const validRoles = Object.values(ROLES);

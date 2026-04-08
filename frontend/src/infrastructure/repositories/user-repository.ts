@@ -164,15 +164,7 @@ export class UserRepository implements IUserRepository {
     }
 
     if (params.role && typeof params.role === 'string') {
-      const validRoles = [
-        'admin',
-        'accountant',
-        'account_manager',
-        'tech_manager',
-        'agent_manager',
-        'tech',
-        'agent',
-      ];
+      const validRoles = ['admin', 'accountant', 'manager', 'tech', 'agent'];
       const roles = params.role.split(',').map((r) => r.trim());
       const invalid = roles.filter((r) => !validRoles.includes(r));
       if (invalid.length > 0) {
@@ -473,6 +465,7 @@ export class UserRepository implements IUserRepository {
         email: userData.email,
         firstName: userData.firstName,
         lastName: userData.lastName,
+        password: userData.password,
         role: userData.role,
         avatarUrl: userData.avatarUrl,
         phone: userData.phone,

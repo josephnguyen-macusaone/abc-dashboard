@@ -6,32 +6,17 @@ const DEFAULT_PASSWORD = 'Demo123!';
 
 const DEMO_USERS = [
   {
-    username: 'account_manager_demo',
-    email: 'account.manager.demo@abcsalon.us',
-    displayName: 'Account Manager Demo',
-    role: 'account_manager',
+    username: 'manager_demo',
+    email: 'manager.demo@abcsalon.us',
+    displayName: 'Manager Demo',
+    role: 'manager',
     phone: '+1-555-1001',
-  },
-  {
-    username: 'tech_manager_demo',
-    email: 'tech.manager.demo@abcsalon.us',
-    displayName: 'Tech Manager Demo',
-    role: 'tech_manager',
-    phone: '+1-555-1002',
-  },
-  {
-    username: 'agent_manager_demo',
-    email: 'agent.manager.demo@abcsalon.us',
-    displayName: 'Agent Manager Demo',
-    role: 'agent_manager',
-    phone: '+1-555-1003',
   },
   {
     username: 'accountant_demo',
     email: 'accountant.demo@abcsalon.us',
     displayName: 'Accountant Demo',
     role: 'accountant',
-    managedByUsername: 'account_manager_demo',
     phone: '+1-555-2001',
   },
   {
@@ -39,7 +24,6 @@ const DEMO_USERS = [
     email: 'tech.demo@abcsalon.us',
     displayName: 'Tech Demo',
     role: 'tech',
-    managedByUsername: 'tech_manager_demo',
     phone: '+1-555-2002',
   },
   {
@@ -47,7 +31,7 @@ const DEMO_USERS = [
     email: 'agent.demo.1@abcsalon.us',
     displayName: 'Agent Demo 1',
     role: 'agent',
-    managedByUsername: 'agent_manager_demo',
+    managedByUsername: 'manager_demo',
     phone: '+1-555-3001',
   },
   {
@@ -55,7 +39,7 @@ const DEMO_USERS = [
     email: 'agent.demo.2@abcsalon.us',
     displayName: 'Agent Demo 2',
     role: 'agent',
-    managedByUsername: 'agent_manager_demo',
+    managedByUsername: 'manager_demo',
     phone: '+1-555-3002',
   },
 ];
@@ -193,14 +177,12 @@ export async function seed(knex) {
   const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
   const idByUsername = new Map();
 
-  // Pass 1: seed managers first, then direct reports.
   const managers = DEMO_USERS.filter((u) => !u.managedByUsername);
   const directReports = DEMO_USERS.filter((u) => !!u.managedByUsername);
   for (const spec of [...managers, ...directReports]) {
     await ensureUser(knex, spec, hashedPassword, idByUsername);
   }
 
-  // Optional convenience: auto-assign licenses for seeded agents by matching external email.
   const agents = await knex('users')
     .select('id', 'username', 'email')
     .whereIn(

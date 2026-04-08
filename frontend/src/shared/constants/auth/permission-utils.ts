@@ -147,7 +147,7 @@ export const PermissionUtils = {
     return userRole === USER_ROLES.ADMIN;
   },
 
-  /** Any line-manager role (account / tech / agent manager). */
+  /** User has the manager role (directory + agent provisioning). */
   isManager: (userRole: string | undefined): boolean => {
     return isManagerRole(userRole);
   },

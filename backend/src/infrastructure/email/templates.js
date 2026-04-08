@@ -42,9 +42,7 @@ function escapeEmailAttr(value) {
 const EMAIL_ROLE_LABELS = {
   admin: 'Administrator',
   accountant: 'Accountant',
-  account_manager: 'Accountant manager',
-  tech_manager: 'Tech manager',
-  agent_manager: 'Agent manager',
+  manager: 'Manager',
   tech: 'Tech',
   agent: 'Agent',
 };

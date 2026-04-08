@@ -18,8 +18,6 @@ import {
   BriefcaseBusiness,
   Wrench,
   User as UserIcon,
-  Cpu,
-  UsersRound,
 } from "lucide-react";
 import * as React from "react";
 
@@ -30,7 +28,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
@@ -40,14 +37,7 @@ import type { DataTableRowAction, Option } from "@/types/data-table";
 import { USER_COLUMN_WIDTHS } from "@/shared/constants/user";
 
 import { Typography } from "@/presentation/components/atoms";
-import { USER_ROLES, isManagerRole } from "@/shared/constants";
-
-function rowActionSectionHeading(role: string): string {
-  if (role === USER_ROLES.ADMIN || isManagerRole(role)) {
-    return "Administrators & managers";
-  }
-  return "Staff";
-}
+import { USER_ROLES } from "@/shared/constants";
 
 const ROLE_FILTER_GROUP_MANAGERS = "Administrators & managers";
 const ROLE_FILTER_GROUP_STAFF = "Staff";
@@ -56,21 +46,9 @@ const ROLE_FILTER_GROUP_STAFF = "Staff";
 export const ROLE_OPTIONS: Option[] = [
   { label: "Admin", value: USER_ROLES.ADMIN, icon: Shield, group: ROLE_FILTER_GROUP_MANAGERS },
   {
-    label: "Accountant manager",
-    value: USER_ROLES.ACCOUNT_MANAGER,
+    label: "Manager",
+    value: USER_ROLES.MANAGER,
     icon: UserCog,
-    group: ROLE_FILTER_GROUP_MANAGERS,
-  },
-  {
-    label: "Tech manager",
-    value: USER_ROLES.TECH_MANAGER,
-    icon: Cpu,
-    group: ROLE_FILTER_GROUP_MANAGERS,
-  },
-  {
-    label: "Agent manager",
-    value: USER_ROLES.AGENT_MANAGER,
-    icon: UsersRound,
     group: ROLE_FILTER_GROUP_MANAGERS,
   },
   {
@@ -293,9 +271,6 @@ export function getUserTableColumns({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                  {rowActionSectionHeading(user.role)}
-                </DropdownMenuLabel>
                 {showEdit ? (
                   <DropdownMenuItem
                     onClick={() => onRowAction({ row, variant: "update" })}

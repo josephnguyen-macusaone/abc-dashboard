@@ -6,28 +6,22 @@
 export const ROLES = {
   ADMIN: 'admin',
   ACCOUNTANT: 'accountant',
-  ACCOUNT_MANAGER: 'account_manager',
-  TECH_MANAGER: 'tech_manager',
-  AGENT_MANAGER: 'agent_manager',
+  MANAGER: 'manager',
   TECH: 'tech',
   AGENT: 'agent',
 };
 
-/** Manager roles that oversee a specific staff role via managed_by */
-export const MANAGER_ROLES = [ROLES.ACCOUNT_MANAGER, ROLES.TECH_MANAGER, ROLES.AGENT_MANAGER];
+/** Roles that oversee staff via managed_by (single manager provisions agents). */
+export const MANAGER_ROLES = [ROLES.MANAGER];
 
-/** Staff role each manager type is responsible for */
+/** Staff role each manager is responsible for (mutations: update/delete/status for direct reports). */
 export const MANAGED_ROLE_BY_MANAGER = {
-  [ROLES.ACCOUNT_MANAGER]: ROLES.ACCOUNTANT,
-  [ROLES.TECH_MANAGER]: ROLES.TECH,
-  [ROLES.AGENT_MANAGER]: ROLES.AGENT,
+  [ROLES.MANAGER]: ROLES.AGENT,
 };
 
-/** When reassigning staff, the new manager must have this role for the given staff role */
+/** When reassigning an agent, the new line manager must have this role */
 export const MANAGER_ROLE_FOR_STAFF_ROLE = {
-  [ROLES.ACCOUNTANT]: ROLES.ACCOUNT_MANAGER,
-  [ROLES.TECH]: ROLES.TECH_MANAGER,
-  [ROLES.AGENT]: ROLES.AGENT_MANAGER,
+  [ROLES.AGENT]: ROLES.MANAGER,
 };
 
 export function isManagerRole(role) {
@@ -70,9 +64,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_DASHBOARD,
     PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
-  [ROLES.ACCOUNT_MANAGER]: MANAGER_USER_PERMISSIONS,
-  [ROLES.TECH_MANAGER]: MANAGER_USER_PERMISSIONS,
-  [ROLES.AGENT_MANAGER]: MANAGER_USER_PERMISSIONS,
+  [ROLES.MANAGER]: MANAGER_USER_PERMISSIONS,
   [ROLES.TECH]: [PERMISSIONS.VIEW_DASHBOARD, PERMISSIONS.MANAGE_OWN_PROFILE],
   [ROLES.AGENT]: [PERMISSIONS.VIEW_DASHBOARD, PERMISSIONS.MANAGE_OWN_PROFILE],
 };
@@ -81,16 +73,13 @@ export const ROLE_CREATION_PERMISSIONS = {
   [ROLES.ADMIN]: [
     ROLES.ADMIN,
     ROLES.ACCOUNTANT,
-    ROLES.ACCOUNT_MANAGER,
-    ROLES.TECH_MANAGER,
-    ROLES.AGENT_MANAGER,
+    ROLES.MANAGER,
     ROLES.TECH,
     ROLES.AGENT,
   ],
   [ROLES.ACCOUNTANT]: [],
-  [ROLES.ACCOUNT_MANAGER]: [ROLES.ACCOUNTANT],
-  [ROLES.TECH_MANAGER]: [ROLES.TECH],
-  [ROLES.AGENT_MANAGER]: [ROLES.AGENT],
+  /** Managers provision agents only; tech/accountant onboard via signup. */
+  [ROLES.MANAGER]: [ROLES.AGENT],
   [ROLES.TECH]: [],
   [ROLES.AGENT]: [],
 };

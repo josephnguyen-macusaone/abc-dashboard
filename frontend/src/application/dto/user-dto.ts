@@ -16,6 +16,7 @@ export interface CreateUserDTO {
   email: string;
   firstName: string;
   lastName: string;
+  password: string;
   role?: UserRole;
   avatarUrl?: string;
   phone?: string;
@@ -81,9 +82,7 @@ export interface UserStats {
   totalUsers: number;
   admin: number;
   accountant: number;
-  account_manager: number;
-  tech_manager: number;
-  agent_manager: number;
+  manager: number;
   tech: number;
   agent: number;
 }
@@ -105,9 +104,7 @@ export interface PaginatedUserList {
     total: number;
     admin: number;
     accountant: number;
-    account_manager: number;
-    tech_manager: number;
-    agent_manager: number;
+    manager: number;
     tech: number;
     agent: number;
   };

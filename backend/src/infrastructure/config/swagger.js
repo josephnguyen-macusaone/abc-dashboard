@@ -103,15 +103,7 @@ const swaggerDefinition = {
           },
           role: {
             type: 'string',
-            enum: [
-              'admin',
-              'accountant',
-              'account_manager',
-              'tech_manager',
-              'agent_manager',
-              'tech',
-              'agent',
-            ],
+            enum: ['admin', 'accountant', 'manager', 'tech', 'agent'],
             description: 'User role',
             example: 'agent',
           },
