@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, type ChangeEventHandler } from 'react';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { Input, Label } from '@/presentation/components/atoms';
 import { cn } from '@/shared/helpers';
@@ -13,6 +13,11 @@ interface PasswordFieldProps {
   disabled?: boolean;
   required?: boolean;
   className?: string;
+  value?: string;
+  defaultValue?: string;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
+  autoComplete?: string;
+  name?: string;
 }
 
 export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
@@ -34,7 +39,6 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
           htmlFor={id}
           className="flex items-center gap-2"
         >
-          <Lock className="h-4 w-4 text-primary" />
           {label}
           {required && <span className="text-destructive">*</span>}
         </Label>

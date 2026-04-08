@@ -291,9 +291,7 @@ export function getRoleDashboardPath(userRole?: string): string {
 
   switch (userRole) {
     case 'admin':
-    case 'account_manager':
-    case 'tech_manager':
-    case 'agent_manager':
+    case 'manager':
       return ROUTES.DASHBOARD_ADMIN;
     case 'agent':
       return FEATURE_FLAGS.agentModule ? ROUTES.DASHBOARD_AGENT : ROUTES.PROFILE;

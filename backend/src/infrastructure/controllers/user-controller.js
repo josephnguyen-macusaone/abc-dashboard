@@ -131,22 +131,10 @@ export class UserController {
 
       const result = await this.createUserUseCase.execute(createUserRequest, currentUser);
 
-      // Return user data but don't expose temporary password in production
       const responseData = {
         user: result.user,
       };
 
-      // Only include temporary password in development for testing
-      if (process.env.NODE_ENV === 'development' && result.temporaryPassword) {
-        responseData.temporaryPassword = result.temporaryPassword;
-      }
-
-      // Include warning if email wasn't sent
-      if (result.warning) {
-        responseData.warning = result.warning;
-      }
-
-      // Include email status for client-side handling
       if (result.emailSent !== undefined) {
         responseData.emailSent = result.emailSent;
       }
@@ -277,7 +265,7 @@ export class UserController {
       }
       if (newManager.role !== requiredManagerRole) {
         return sendErrorResponse(res, 'VALIDATION_FAILED', {
-          details: 'New manager must match the staff type (account / tech / agent manager)',
+          details: 'New manager must have the manager role',
         });
       }
 

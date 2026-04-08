@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import { useUserStore } from '@/infrastructure/stores/user';
 import { useAuthStore } from '@/infrastructure/stores/auth';
 import { useToast } from '@/presentation/contexts/toast-context';
@@ -13,6 +13,10 @@ import {
   USER_ROLES,
   type UserRoleType,
 } from '@/shared/constants';
+import {
+  generateStrongProvisionedPassword,
+  getProvisionedPasswordError,
+} from '@/shared/helpers/provisioned-password';
 import { Typography, Button } from '@/presentation/components/atoms';
 import {
   Card,
@@ -21,34 +25,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/presentation/components/atoms/primitives/card';
-import { InputField, FormField, PhoneField } from '@/presentation/components/molecules';
+import { InputField, FormField, PhoneField, PasswordField } from '@/presentation/components/molecules';
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '@/presentation/components/atoms/forms/select';
+  CREATE_USER_ROLE_SECTION_ADMIN_AND_MANAGERS,
+  CREATE_USER_ROLE_SECTION_STAFF,
+  UserRoleSelect,
+} from '@/presentation/components/molecules/domain/user-management';
 import { UserFormTemplate } from '@/presentation/components/templates';
 import { Loader2 } from 'lucide-react';
 
 const CREATE_FORM_ID = 'user-create-form';
-
-/** Order for admin role picker: leadership first, then staff (matches product language). */
-const ADMIN_ROLE_SECTION_LEADERSHIP: UserRoleType[] = [
-  USER_ROLES.ADMIN,
-  USER_ROLES.ACCOUNT_MANAGER,
-  USER_ROLES.TECH_MANAGER,
-  USER_ROLES.AGENT_MANAGER,
-];
-const ADMIN_ROLE_SECTION_STAFF: UserRoleType[] = [
-  USER_ROLES.ACCOUNTANT,
-  USER_ROLES.TECH,
-  USER_ROLES.AGENT,
-];
 
 interface UserCreateFormProps {
   onSuccess?: (user: User) => void;
@@ -78,12 +64,12 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
     [creatableRoles],
   );
 
-  const adminLeadershipRoles = useMemo(
-    () => ADMIN_ROLE_SECTION_LEADERSHIP.filter((r) => creatableSet.has(r)),
+  const adminAndManagerRoles = useMemo(
+    () => CREATE_USER_ROLE_SECTION_ADMIN_AND_MANAGERS.filter((r) => creatableSet.has(r)),
     [creatableSet],
   );
-  const adminStaffRoles = useMemo(
-    () => ADMIN_ROLE_SECTION_STAFF.filter((r) => creatableSet.has(r)),
+  const staffRoles = useMemo(
+    () => CREATE_USER_ROLE_SECTION_STAFF.filter((r) => creatableSet.has(r)),
     [creatableSet],
   );
 
@@ -98,6 +84,8 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
     firstName: string;
     lastName: string;
     phone: string;
+    password: string;
+    confirmPassword: string;
     role: UserRoleType;
   }>({
     username: '',
@@ -105,6 +93,8 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
     firstName: '',
     lastName: '',
     phone: '',
+    password: '',
+    confirmPassword: '',
     role: defaultRole,
   });
 
@@ -115,11 +105,23 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       return;
     }
 
+    const pwdErr = getProvisionedPasswordError(formData.password);
+    if (pwdErr) {
+      showError?.(pwdErr);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      showError?.('Passwords do not match');
+      return;
+    }
+
     const userData: CreateUserRequest = {
       username: formData.username,
       email: formData.email,
       firstName: formData.firstName,
       lastName: formData.lastName,
+      password: formData.password,
       role: formData.role as UserRole,
       ...(formData.phone && { phone: formData.phone }),
     };
@@ -200,7 +202,10 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
                   User details
                 </Typography>
               </CardTitle>
-              <CardDescription>Email, name, phone, and role for the new account.</CardDescription>
+              <CardDescription>
+                Set an initial password; the account is active and can sign in immediately. No welcome
+                email is sent.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <InputField
@@ -224,79 +229,100 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
                 className="space-y-3"
               />
 
-              <InputField
-                label="First Name"
-                type="text"
-                placeholder="Enter first name"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                required
-                disabled={isCreating}
-                inputClassName="h-11"
-                className="space-y-3"
-              />
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4">
+                <InputField
+                  label="First Name"
+                  type="text"
+                  placeholder="Enter first name"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  required
+                  disabled={isCreating}
+                  inputClassName="h-11"
+                  className="space-y-3"
+                />
+                <InputField
+                  label="Last Name"
+                  type="text"
+                  placeholder="Enter last name"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  required
+                  disabled={isCreating}
+                  inputClassName="h-11"
+                  className="space-y-3"
+                />
+              </div>
 
-              <InputField
-                label="Last Name"
-                type="text"
-                placeholder="Enter last name"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                required
-                disabled={isCreating}
-                inputClassName="h-11"
-                className="space-y-3"
-              />
+              <div className="space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <Typography variant="body-s" className="text-foreground font-medium sm:pb-2">
+                    Initial password
+                  </Typography>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 h-9"
+                    disabled={isCreating}
+                    onClick={() => {
+                      const p = generateStrongProvisionedPassword();
+                      setFormData((prev) => ({ ...prev, password: p, confirmPassword: p }));
+                    }}
+                  >
+                    Generate strong password
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4">
+                  <PasswordField
+                    id="create-user-password"
+                    label="Password"
+                    placeholder="Enter password"
+                    required
+                    disabled={isCreating}
+                    value={formData.password}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    autoComplete="new-password"
+                  />
+                  <PasswordField
+                    id="create-user-confirm-password"
+                    label="Confirm password"
+                    placeholder="Confirm password"
+                    required
+                    disabled={isCreating}
+                    value={formData.confirmPassword}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setFormData({ ...formData, confirmPassword: e.target.value })
+                    }
+                    autoComplete="new-password"
+                  />
+                </div>
+                <Typography variant="body-xs" color="muted">
+                  At least 8 characters with uppercase, lowercase, and a number.
+                </Typography>
+              </div>
 
               <FormField label="Role" className="space-y-3">
-                <Select
-                  value={formData.role}
-                  onValueChange={(value: string) =>
-                    setFormData({ ...formData, role: value as UserRoleType })
-                  }
-                  disabled={isCreating}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isAdminCreator ? (
-                      <>
-                        {adminLeadershipRoles.length > 0 ? (
-                          <SelectGroup>
-                            <SelectLabel className="text-muted-foreground">
-                              Line managers
-                            </SelectLabel>
-                            {adminLeadershipRoles.map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {ROLE_DEFINITIONS[role]?.displayName ?? role}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ) : null}
-                        {adminLeadershipRoles.length > 0 && adminStaffRoles.length > 0 ? (
-                          <SelectSeparator />
-                        ) : null}
-                        {adminStaffRoles.length > 0 ? (
-                          <SelectGroup>
-                            <SelectLabel className="text-muted-foreground">Staff roles</SelectLabel>
-                            {adminStaffRoles.map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {ROLE_DEFINITIONS[role]?.displayName ?? role}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ) : null}
-                      </>
-                    ) : (
-                      availableRoles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                {isAdminCreator ? (
+                  <UserRoleSelect
+                    variant="create-admin-sectioned"
+                    value={formData.role}
+                    onValueChange={(role) => setFormData({ ...formData, role })}
+                    disabled={isCreating}
+                    adminAndManagerRoles={adminAndManagerRoles}
+                    staffRoles={staffRoles}
+                  />
+                ) : (
+                  <UserRoleSelect
+                    variant="create-flat"
+                    value={formData.role}
+                    onValueChange={(role) => setFormData({ ...formData, role })}
+                    disabled={isCreating}
+                    options={availableRoles}
+                  />
+                )}
               </FormField>
             </CardContent>
           </Card>

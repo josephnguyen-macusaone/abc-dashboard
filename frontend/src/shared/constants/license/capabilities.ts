@@ -69,9 +69,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAddSmsBalance: true,
     canEditLicenseCoreGridFields: true,
   },
-  [USER_ROLES.ACCOUNT_MANAGER]: MANAGER_LICENSE_READ_ONLY,
-  [USER_ROLES.TECH_MANAGER]: MANAGER_LICENSE_READ_ONLY,
-  [USER_ROLES.AGENT_MANAGER]: MANAGER_LICENSE_READ_ONLY,
+  [USER_ROLES.MANAGER]: MANAGER_LICENSE_READ_ONLY,
   [USER_ROLES.AGENT]: {
     canViewLicenses: true,
     canViewOwnLicensesOnly: true,

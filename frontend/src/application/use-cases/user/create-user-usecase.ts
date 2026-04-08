@@ -4,6 +4,7 @@ import { CreateUserDTO } from '@/application/dto/user-dto';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { UserDomainService } from '@/domain/services/user-domain-service';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { getProvisionedPasswordError } from '@/shared/helpers/provisioned-password';
 import { PermissionUtils } from '@/shared/constants';
 import type { UserRoleType } from '@/shared/constants';
 
@@ -103,6 +104,15 @@ export class CreateUserUseCase {
 
     if (!userData.lastName?.trim()) {
       throw new Error('Last name is required');
+    }
+
+    if (!userData.password?.trim()) {
+      throw new Error('Password is required');
+    }
+
+    const passwordError = getProvisionedPasswordError(userData.password);
+    if (passwordError) {
+      throw new Error(passwordError);
     }
 
     // Username is optional - will be auto-generated from email if not provided

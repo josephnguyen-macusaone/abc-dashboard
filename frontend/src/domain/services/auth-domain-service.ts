@@ -13,9 +13,7 @@ export class AuthDomainService {
     const roleHierarchy: Partial<Record<UserRole, number>> = {
       [UserRole.ADMIN]: 6,
       [UserRole.ACCOUNTANT]: 5,
-      [UserRole.ACCOUNT_MANAGER]: 4,
-      [UserRole.TECH_MANAGER]: 4,
-      [UserRole.AGENT_MANAGER]: 4,
+      [UserRole.MANAGER]: 4,
       [UserRole.TECH]: 3,
       [UserRole.AGENT]: 2,
     };
@@ -101,9 +99,7 @@ export class AuthDomainService {
       user.isActive &&
       (user.role === UserRole.ADMIN ||
         user.role === UserRole.ACCOUNTANT ||
-        user.role === UserRole.ACCOUNT_MANAGER ||
-        user.role === UserRole.TECH_MANAGER ||
-        user.role === UserRole.AGENT_MANAGER)
+        user.role === UserRole.MANAGER)
     );
   }
 

@@ -21,10 +21,10 @@ export const USER_FILTER_PRESETS: FilterPreset[] = [
   },
   {
     id: 'active-managers',
-    name: 'Active line managers',
-    description: 'All active account, tech, and agent manager accounts',
+    name: 'Active managers',
+    description: 'All active manager accounts',
     filters: {
-      role: ['account_manager', 'tech_manager', 'agent_manager'],
+      role: ['manager'],
       isActive: true,
     },
     system: true,

@@ -226,6 +226,9 @@ export class UpdateUserUseCase {
     if (currentUser.role === ROLES.ACCOUNTANT) {
       throw new InsufficientPermissionsException('Accountants cannot change user roles');
     }
+    if (isManagerRole(currentUser.role)) {
+      throw new InsufficientPermissionsException('Managers cannot change user roles');
+    }
   }
 
   async _assertUsernameUniqueIfChanged(updates, user) {

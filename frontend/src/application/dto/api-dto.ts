@@ -106,6 +106,7 @@ export interface CreateUserRequestDto {
   email: string;
   firstName: string;
   lastName: string;
+  password: string;
   role?: UserRole;
   avatarUrl?: string;
   phone?: string;
@@ -145,9 +146,7 @@ export interface UsersListResponseDto {
     total: number;
     admin: number;
     accountant: number;
-    account_manager: number;
-    tech_manager: number;
-    agent_manager: number;
+    manager: number;
     tech: number;
     agent: number;
   };
@@ -174,9 +173,7 @@ export interface UserStatsResponseDto {
   totalUsers: number;
   admin: number;
   accountant: number;
-  account_manager: number;
-  tech_manager: number;
-  agent_manager: number;
+  manager: number;
   tech: number;
   agent: number;
 }

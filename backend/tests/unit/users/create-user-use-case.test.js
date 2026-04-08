@@ -3,7 +3,6 @@
  */
 import { jest } from '@jest/globals';
 
-// Mock logger so email-failure path doesn't throw (logger.error is a no-op)
 jest.unstable_mockModule('../../../src/infrastructure/config/logger.js', () => ({
   default: {
     error: jest.fn(),
@@ -21,13 +20,15 @@ describe('CreateUserUseCase', () => {
   let createUserUseCase;
   let mockUserRepository;
   let mockAuthService;
-  let mockEmailService;
+
+  const creatorUser = { id: 'admin-id', role: 'admin' };
 
   const validInput = {
     username: 'newuser',
     email: 'newuser@example.com',
     displayName: 'New User',
     role: 'agent',
+    password: 'SecurePass1',
   };
 
   const mockCreatedUser = {
@@ -38,12 +39,11 @@ describe('CreateUserUseCase', () => {
     role: 'agent',
     avatarUrl: null,
     phone: null,
-    isFirstLogin: true,
+    isFirstLogin: false,
     createdAt: new Date('2024-01-01'),
   };
 
   beforeEach(() => {
-    // Suppress logger output
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'info').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -55,18 +55,10 @@ describe('CreateUserUseCase', () => {
     };
 
     mockAuthService = {
-      hashPassword: jest.fn().mockResolvedValue('hashed-temp-password'),
+      hashPassword: jest.fn().mockResolvedValue('hashed-password'),
     };
 
-    mockEmailService = {
-      sendWelcomeWithPassword: jest.fn().mockResolvedValue(true),
-    };
-
-    createUserUseCase = new CreateUserUseCase(
-      mockUserRepository,
-      mockAuthService,
-      mockEmailService
-    );
+    createUserUseCase = new CreateUserUseCase(mockUserRepository, mockAuthService);
   });
 
   afterEach(() => {
@@ -80,82 +72,57 @@ describe('CreateUserUseCase', () => {
       mockUserRepository.findByUsername.mockResolvedValue(null);
       mockUserRepository.save.mockResolvedValue(mockCreatedUser);
 
-      const result = await createUserUseCase.execute(validInput, 'admin-user');
+      const result = await createUserUseCase.execute(validInput, creatorUser);
 
-      // Check UserResponseDto properties
       expect(result.user.id).toBe(mockCreatedUser.id);
       expect(result.user.username).toBe(mockCreatedUser.username);
-      expect(result.user.email).toBe(mockCreatedUser.email);
-      expect(result.user.displayName).toBe(mockCreatedUser.displayName);
-      expect(result.user.role).toBe(mockCreatedUser.role);
       expect(result.message).toContain('User created successfully');
     });
-
-    // Note: Validation now happens in controller/DTO creation, so use case only receives valid DTOs
 
     it('should throw error when email already exists', async () => {
       mockUserRepository.findByEmail.mockResolvedValue({ id: 'existing-user' });
 
-      await expect(
-        createUserUseCase.execute(validInput, { id: 'admin', role: 'admin' })
-      ).rejects.toThrow('An account with this email already exists');
+      await expect(createUserUseCase.execute(validInput, creatorUser)).rejects.toThrow(
+        'An account with this email already exists'
+      );
     });
 
     it('should throw error when username already exists', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.findByUsername.mockResolvedValue({ id: 'existing-user' });
 
-      await expect(createUserUseCase.execute(validInput, 'admin')).rejects.toThrow(
+      await expect(createUserUseCase.execute(validInput, creatorUser)).rejects.toThrow(
         'Username already taken'
       );
     });
 
-    it('should generate and hash temporary password', async () => {
+    it('should hash provided password and provision an active, verified account', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.findByUsername.mockResolvedValue(null);
       mockUserRepository.save.mockResolvedValue(mockCreatedUser);
 
-      await createUserUseCase.execute(validInput, 'admin');
+      await createUserUseCase.execute(validInput, creatorUser);
 
-      expect(mockAuthService.hashPassword).toHaveBeenCalledWith(expect.any(String));
+      expect(mockAuthService.hashPassword).toHaveBeenCalledWith('SecurePass1');
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          hashedPassword: 'hashed-temp-password',
+          hashedPassword: 'hashed-password',
+          isActive: true,
           emailVerified: true,
-          isFirstLogin: true,
+          isFirstLogin: false,
+          requiresPasswordChange: false,
         })
       );
     });
 
-    it('should send welcome email with temporary password', async () => {
+    it('should not send welcome email', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.findByUsername.mockResolvedValue(null);
       mockUserRepository.save.mockResolvedValue(mockCreatedUser);
 
-      await createUserUseCase.execute(validInput, 'admin');
-
-      expect(mockEmailService.sendWelcomeWithPassword).toHaveBeenCalledWith(
-        mockCreatedUser.email,
-        expect.objectContaining({
-          displayName: mockCreatedUser.displayName,
-          username: mockCreatedUser.username,
-          password: expect.any(String),
-          loginUrl: expect.any(String),
-        })
-      );
-    });
-
-    it('should not fail user creation if email sending fails', async () => {
-      mockUserRepository.findByEmail.mockResolvedValue(null);
-      mockUserRepository.findByUsername.mockResolvedValue(null);
-      mockUserRepository.save.mockResolvedValue(mockCreatedUser);
-      mockEmailService.sendWelcomeWithPassword.mockRejectedValue(new Error('Email failed'));
-
-      const creatorUser = { id: 'admin-id', role: 'admin' };
       const result = await createUserUseCase.execute(validInput, creatorUser);
 
-      expect(result.user.id).toBe(mockCreatedUser.id);
-      expect(result.message).toContain('User created successfully');
+      expect(result.emailSent).toBe(false);
     });
 
     it('should use default role when not provided', async () => {
@@ -167,9 +134,10 @@ describe('CreateUserUseCase', () => {
         username: 'newuser',
         email: 'newuser@example.com',
         displayName: 'New User',
+        password: 'SecurePass1',
       };
 
-      await createUserUseCase.execute(inputWithoutRole, 'admin');
+      await createUserUseCase.execute(inputWithoutRole, creatorUser);
 
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -193,7 +161,7 @@ describe('CreateUserUseCase', () => {
         phone: '+1234567890',
       };
 
-      await createUserUseCase.execute(inputWithOptionalFields, 'admin');
+      await createUserUseCase.execute(inputWithOptionalFields, creatorUser);
 
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({

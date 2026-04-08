@@ -8,7 +8,7 @@ import { updateUserSchema, type UpdateUserFormData } from '@/shared/schemas';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
-import { ROLE_DEFINITIONS, USER_ROLES, type UserRoleType } from '@/shared/constants';
+import { USER_ROLES, type UserRoleType } from '@/shared/constants';
 import {
   Card,
   CardContent,
@@ -25,20 +25,15 @@ import {
   SelectValue,
 } from '@/presentation/components/atoms/forms/select';
 import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
-import { RoleBadge } from '@/presentation/components/molecules/domain/user-management';
+import {
+  CREATE_USER_ROLE_SECTION_ADMIN_AND_MANAGERS,
+  CREATE_USER_ROLE_SECTION_STAFF,
+  RoleBadge,
+  UserRoleSelect,
+} from '@/presentation/components/molecules/domain/user-management';
 import { Loading } from '@/presentation/components/atoms/display/loading';
 import { Typography } from '@/presentation/components/atoms';
 import { UserFormTemplate } from '@/presentation/components/templates';
-
-const ROLE_SELECT_ORDER: UserRoleType[] = [
-  USER_ROLES.ADMIN,
-  USER_ROLES.ACCOUNTANT,
-  USER_ROLES.ACCOUNT_MANAGER,
-  USER_ROLES.TECH_MANAGER,
-  USER_ROLES.AGENT_MANAGER,
-  USER_ROLES.TECH,
-  USER_ROLES.AGENT,
-];
 
 const EDIT_FORM_ID = 'user-edit-form';
 
@@ -227,27 +222,28 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <InputField
-                label="Display Name"
-                type="text"
-                placeholder="Enter display name"
-                value={watch('displayName') || ''}
-                onChange={(e) => setValue('displayName', e.target.value)}
-                error={errors.displayName?.message}
-                disabled={isUpdating}
-                inputClassName="h-11"
-                className="space-y-3"
-              />
-
-              <PhoneField
-                label="Phone Number"
-                value={watch('phone') || ''}
-                onChange={(value) => setValue('phone', value || '')}
-                error={errors.phone?.message}
-                disabled={isUpdating}
-                inputClassName="h-11"
-                className="space-y-3"
-              />
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4">
+                <InputField
+                  label="Display Name"
+                  type="text"
+                  placeholder="Enter display name"
+                  value={watch('displayName') || ''}
+                  onChange={(e) => setValue('displayName', e.target.value)}
+                  error={errors.displayName?.message}
+                  disabled={isUpdating}
+                  inputClassName="h-11"
+                  className="space-y-3"
+                />
+                <PhoneField
+                  label="Phone Number"
+                  value={watch('phone') || ''}
+                  onChange={(value) => setValue('phone', value || '')}
+                  error={errors.phone?.message}
+                  disabled={isUpdating}
+                  inputClassName="h-11"
+                  className="space-y-3"
+                />
+              </div>
 
               <FormField label="Role" error={errors.role?.message} className="space-y-3">
                 {isAccountantViewer ? (
@@ -258,30 +254,14 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
                     </Typography>
                   </div>
                 ) : (
-                  <Select
+                  <UserRoleSelect
+                    variant="edit-sectioned"
+                    adminAndManagerRoles={CREATE_USER_ROLE_SECTION_ADMIN_AND_MANAGERS}
+                    staffRoles={CREATE_USER_ROLE_SECTION_STAFF}
                     value={selectedRole}
-                    onValueChange={(value: UserRoleType) => setValue('role', value)}
+                    onValueChange={(value) => setValue('role', value)}
                     disabled={isUpdating || user.role === USER_ROLES.ADMIN}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_SELECT_ORDER.map((role) => {
-                        const def = ROLE_DEFINITIONS[role];
-                        return (
-                          <SelectItem key={role} value={role}>
-                            <div className="flex items-center gap-2">
-                              <span>{def.displayName}</span>
-                              <Typography variant="body-xs" color="muted" as="span">
-                                {def.description}
-                              </Typography>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  />
                 )}
               </FormField>
 
