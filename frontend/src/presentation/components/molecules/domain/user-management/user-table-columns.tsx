@@ -18,6 +18,8 @@ import {
   BriefcaseBusiness,
   Wrench,
   User as UserIcon,
+  Cpu,
+  UsersRound,
 } from "lucide-react";
 import * as React from "react";
 
@@ -28,6 +30,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/presentation/components/atoms/primitives/dropdown-menu";
@@ -37,15 +40,47 @@ import type { DataTableRowAction, Option } from "@/types/data-table";
 import { USER_COLUMN_WIDTHS } from "@/shared/constants/user";
 
 import { Typography } from "@/presentation/components/atoms";
-import { USER_ROLES } from "@/shared/constants";
+import { USER_ROLES, isManagerRole } from "@/shared/constants";
 
-// Role options for filter - derived from shared constants for consistency
+function rowActionSectionHeading(role: string): string {
+  if (role === USER_ROLES.ADMIN || isManagerRole(role)) {
+    return "Administrators & managers";
+  }
+  return "Staff";
+}
+
+const ROLE_FILTER_GROUP_MANAGERS = "Administrators & managers";
+const ROLE_FILTER_GROUP_STAFF = "Staff";
+
+// Role options for filter — grouped in the faceted dropdown (order defines section order)
 export const ROLE_OPTIONS: Option[] = [
-  { label: 'Admin', value: USER_ROLES.ADMIN, icon: Shield },
-  { label: 'Accountant', value: USER_ROLES.ACCOUNTANT, icon: BriefcaseBusiness },
-  { label: 'Manager', value: USER_ROLES.MANAGER, icon: UserCog },
-  { label: 'Tech', value: USER_ROLES.TECH, icon: Wrench },
-  { label: 'Agent', value: USER_ROLES.AGENT, icon: UserIcon },
+  { label: "Admin", value: USER_ROLES.ADMIN, icon: Shield, group: ROLE_FILTER_GROUP_MANAGERS },
+  {
+    label: "Accountant manager",
+    value: USER_ROLES.ACCOUNT_MANAGER,
+    icon: UserCog,
+    group: ROLE_FILTER_GROUP_MANAGERS,
+  },
+  {
+    label: "Tech manager",
+    value: USER_ROLES.TECH_MANAGER,
+    icon: Cpu,
+    group: ROLE_FILTER_GROUP_MANAGERS,
+  },
+  {
+    label: "Agent manager",
+    value: USER_ROLES.AGENT_MANAGER,
+    icon: UsersRound,
+    group: ROLE_FILTER_GROUP_MANAGERS,
+  },
+  {
+    label: "Accountant",
+    value: USER_ROLES.ACCOUNTANT,
+    icon: BriefcaseBusiness,
+    group: ROLE_FILTER_GROUP_STAFF,
+  },
+  { label: "Tech", value: USER_ROLES.TECH, icon: Wrench, group: ROLE_FILTER_GROUP_STAFF },
+  { label: "Agent", value: USER_ROLES.AGENT, icon: UserIcon, group: ROLE_FILTER_GROUP_STAFF },
 ];
 
 // Status options for filter
@@ -100,11 +135,16 @@ export function getUserTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="Username" />
       ),
-      cell: ({ row }) => (
-        <span className="text-muted-foreground truncate">
-          {row.getValue("username") || "-"}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const username = (row.getValue("username") as string) || "-";
+        return (
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <span className="block truncate text-muted-foreground" title={username !== "-" ? username : undefined}>
+              {username}
+            </span>
+          </div>
+        );
+      },
       ...USER_COLUMN_WIDTHS.username,
       meta: {
         label: "Username",
@@ -116,13 +156,16 @@ export function getUserTableColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="Email" />
       ),
-      cell: ({ row }) => (
-        <div className="min-w-0 max-w-full">
-          <span className="block truncate text-muted-foreground">
-            {row.getValue("email")}
-          </span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string;
+        return (
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <span className="block truncate text-muted-foreground" title={email || undefined}>
+              {email}
+            </span>
+          </div>
+        );
+      },
       ...USER_COLUMN_WIDTHS.email,
       meta: {
         label: "Email",
@@ -249,25 +292,32 @@ export function getUserTableColumns({
                   <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                {showEdit && (
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                  {rowActionSectionHeading(user.role)}
+                </DropdownMenuLabel>
+                {showEdit ? (
                   <DropdownMenuItem
                     onClick={() => onRowAction({ row, variant: "update" })}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    <Typography variant="body-s" className="text-foreground">Edit</Typography>
+                    <Typography variant="body-s" className="text-foreground">
+                      Edit
+                    </Typography>
                   </DropdownMenuItem>
-                )}
-                {showEdit && showDelete && <DropdownMenuSeparator />}
-                {showDelete && (
+                ) : null}
+                {showEdit && showDelete ? <DropdownMenuSeparator /> : null}
+                {showDelete ? (
                   <DropdownMenuItem
                     onClick={() => onRowAction({ row, variant: "delete" })}
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    <Typography variant="body-s" className="text-destructive">Delete</Typography>
+                    <Typography variant="body-s" className="text-destructive">
+                      Delete
+                    </Typography>
                   </DropdownMenuItem>
-                )}
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

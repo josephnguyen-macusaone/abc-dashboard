@@ -195,9 +195,8 @@ else
   fi
 fi
 
-# License sync must run before seeds that attach agents (002–004): those seeds match
-# `licenses` / `external_licenses`, which are empty until sync. Otherwise agents exist
-# but have no license_assignments → empty dashboard and no SMS history scope.
+# Optional license sync before seed: populates `licenses` / `external_licenses` for dev.
+# Default seeds only create admin + strip legacy demo users (no per-salon agent seeds).
 if [[ "$DO_SYNC" == "1" ]]; then
   if [[ -n "$SYNC_LIMIT" ]]; then
     echo "Starting license sync (limit=$SYNC_LIMIT licenses)..."

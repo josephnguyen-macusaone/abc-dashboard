@@ -7,7 +7,11 @@ import {
   InsufficientPermissionsException,
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../shared/utils/logger.js';
-import { PERMISSIONS, ROLES, hasPermission } from '../../shared/constants/roles.js';
+import {
+  PERMISSIONS,
+  hasPermission,
+  MANAGER_ROLE_FOR_STAFF_ROLE,
+} from '../../shared/constants/roles.js';
 import { UserValidator } from '../../application/validators/index.js';
 import { CreateUserRequestDto } from '../../application/dto/user/index.js';
 import { getUserQueryFilters } from '../middleware/user-management.middleware.js';
@@ -265,9 +269,15 @@ export class UserController {
         return sendErrorResponse(res, 'USER_NOT_FOUND');
       }
 
-      if (newManager.role !== ROLES.MANAGER) {
+      const requiredManagerRole = MANAGER_ROLE_FOR_STAFF_ROLE[staffUser.role];
+      if (!requiredManagerRole) {
         return sendErrorResponse(res, 'VALIDATION_FAILED', {
-          details: 'Target user is not a manager',
+          details: 'This user role cannot be reassigned to a line manager',
+        });
+      }
+      if (newManager.role !== requiredManagerRole) {
+        return sendErrorResponse(res, 'VALIDATION_FAILED', {
+          details: 'New manager must match the staff type (account / tech / agent manager)',
         });
       }
 

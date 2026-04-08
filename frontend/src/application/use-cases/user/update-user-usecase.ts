@@ -4,6 +4,8 @@ import { UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserDomainService } from '@/domain/services/user-domain-service';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { PermissionUtils } from '@/shared/constants';
+import type { UserRoleType } from '@/shared/constants';
 
 /**
  * Application Use Case: Update User
@@ -95,24 +97,22 @@ export class UpdateUserUseCase {
       throw new Error('Your account is deactivated. Please contact administrator.');
     }
 
-    // Ownership/admin/manager gating
     if (currentUser.id !== userId) {
-      const canManage =
-        currentUser.role === UserRole.ADMIN ||
-        (currentUser.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN);
-
-      if (!canManage) {
+      const canEdit = PermissionUtils.canUpdateTargetUser(
+        currentUser.role,
+        currentUser.id,
+        targetUser.id,
+        targetUser.role,
+        targetUser.managedBy,
+      );
+      if (!canEdit) {
         throw new Error('Insufficient permissions to update this user');
       }
     }
 
-    // Role change validation (admin only)
-    // Note: Full validation is done on the backend - frontend only does basic admin check
     if (updates.role && updates.role !== targetUser.role) {
-      // Normalize the new role for comparison
-      const normalizedNewRole = AuthDomainService.getDefaultRole(updates.role);
+      const normalizedNewRole = AuthDomainService.getDefaultRole(updates.role) as UserRoleType;
 
-      // Check role hierarchy - allow if current user is admin (even if isActive is undefined)
       this.logger.info('Role change attempt', {
         correlationId,
         currentUserRole: currentUser.role,
@@ -122,16 +122,11 @@ export class UpdateUserUseCase {
         canPerformAdminActions: AuthDomainService.canPerformAdminActions(currentUser),
       });
 
-      // Only admins/accountants can change roles in client-side pre-check.
-      if (currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.ACCOUNTANT) {
-        throw new Error('Only admins or accountants can change user roles');
+      if (!PermissionUtils.canCreateRole(currentUser.role, normalizedNewRole)) {
+        throw new Error('You cannot assign this role');
       }
 
-      // Skip detailed role change validation - let backend handle it
-      // The backend has accurate data and will enforce proper permissions
-
-      // Update the role to the normalized version
-      updates.role = normalizedNewRole;
+      updates.role = normalizedNewRole as UserRole;
     }
 
     // Activation toggle validation

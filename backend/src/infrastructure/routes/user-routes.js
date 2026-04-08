@@ -285,8 +285,8 @@ export function createUserRoutes(userController) {
    */
   router.post(
     '/',
-    checkUserCreationPermission(),
     validateRequest(userSchemas.createUser),
+    checkUserCreationPermission(),
     userController.createUser.bind(userController)
   );
 

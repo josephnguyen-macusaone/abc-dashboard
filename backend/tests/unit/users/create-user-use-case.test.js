@@ -121,6 +121,7 @@ describe('CreateUserUseCase', () => {
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           hashedPassword: 'hashed-temp-password',
+          emailVerified: true,
           isFirstLogin: true,
         })
       );

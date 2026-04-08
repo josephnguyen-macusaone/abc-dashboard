@@ -5,7 +5,7 @@
 import { ValidationException } from '../../domain/exceptions/domain.exception.js';
 
 export class AuthValidator {
-  static SIGNUP_ROLES = ['agent', 'tech', 'accountant'];
+  static SIGNUP_ROLES = ['tech', 'accountant'];
 
   static pushRequiredStringError(errors, input, field, message) {
     if (!input[field] || typeof input[field] !== 'string' || input[field].trim().length < 1) {

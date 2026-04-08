@@ -4,16 +4,13 @@ import { User, UserRole } from '@/domain/entities/user-entity';
 import { userApi } from '@/infrastructure/api/users';
 import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import logger from '@/shared/helpers/logger';
+import {
+  normalizeUserStats,
+  type UserListStats,
+} from '@/shared/helpers/normalize-user-stats';
 import { SortBy, SortOrder } from '@/types';
 
-export interface UserStats {
-  total: number;
-  admin: number;
-  accountant: number;
-  manager: number;
-  tech: number;
-  agent: number;
-}
+export type UserStats = UserListStats;
 
 export interface UserFilters {
   // Search
@@ -190,6 +187,8 @@ export const useUserStore = create<UserStoreState>()(
 
               const users = response.users.map(userData => User.fromObject(userData as unknown as Record<string, unknown>));
 
+              const mergedStats = normalizeUserStats(response.stats);
+
               // Merge API pagination with our required total field
               const apiPagination = response.pagination || {
                 page: apiParams.page || 1,
@@ -204,10 +203,10 @@ export const useUserStore = create<UserStoreState>()(
                 pagination: {
                   page: apiPagination.page,
                   limit: apiPagination.limit,
-                  total: response.stats?.total || users.length,
+                  total: mergedStats.total > 0 ? mergedStats.total : users.length,
                   totalPages: apiPagination.totalPages
                 },
-                stats: response.stats || null,
+                stats: mergedStats,
                 listLoading: false
               });
             } catch (error) {
@@ -262,7 +261,7 @@ export const useUserStore = create<UserStoreState>()(
               }
 
               set({
-                stats: response.stats,
+                stats: normalizeUserStats(response.stats),
                 statsLoading: false
               });
             } catch (error) {
@@ -304,7 +303,11 @@ export const useUserStore = create<UserStoreState>()(
               set({ formLoading: true, formError: null });
 
               const response = await userApi.createUser(userData);
-              const user = User.fromObject(response as unknown as Record<string, unknown>);
+              const payload = response.user;
+              if (!payload?.id) {
+                throw new Error('Create user response missing user payload or id');
+              }
+              const user = User.fromObject(payload as unknown as Record<string, unknown>);
 
               set({ currentUser: user, formLoading: false });
 
@@ -325,7 +328,11 @@ export const useUserStore = create<UserStoreState>()(
               set({ formLoading: true, formError: null });
 
               const response = await userApi.updateUser(id, userData);
-              const user = User.fromObject(response as unknown as Record<string, unknown>);
+              const payload = response.user;
+              if (!payload?.id) {
+                throw new Error('Update user response missing user payload or id');
+              }
+              const user = User.fromObject(payload as unknown as Record<string, unknown>);
 
               set({ currentUser: user, formLoading: false });
 

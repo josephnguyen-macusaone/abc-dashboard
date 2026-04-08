@@ -18,6 +18,12 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        /** User form footer Save — brand primary (orange), 12px radius */
+        orderPrimary:
+          "rounded-xl border-2 border-primary bg-primary font-bold text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/80 focus-visible:ring-primary/40",
+        /** ABC Order PMS input field (Figma 4410:37031) — neutral border, filled surface, 12px type bold */
+        orderCancel:
+          "rounded-xl border border-border bg-card font-bold text-foreground shadow-none hover:bg-muted/60 active:bg-muted/80 dark:border-[#404040] dark:bg-[#1b1b1b] dark:text-[#f5f5f5] dark:hover:bg-[#262626] dark:active:bg-[#2e2e2e] focus-visible:ring-ring/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -28,6 +34,8 @@ const buttonVariants = cva(
         sm: "h-8 rounded-md gap-2 px-4 has-[>svg]:px-3 text-button-s",
         lg: "h-11 rounded-md px-9 has-[>svg]:px-7 text-button-l",
         xl: "h-12 rounded-md px-11 has-[>svg]:px-9 text-button-l",
+        /** User form footer row — 12px type with comfortable vertical padding */
+        order: "min-h-10 rounded-xl px-6 py-2 text-[12px] leading-3 has-[>svg]:px-4",
         icon: "size-9",
         "icon-sm": "size-8",
         "icon-md": "size-10",

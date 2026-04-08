@@ -7,7 +7,6 @@ import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
-import { UserFormTemplate } from '@/presentation/components/templates';
 import { cn } from '@/shared/helpers';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
@@ -125,27 +124,30 @@ export function UserManagement({
   // Check if current user can edit a target user
   // - Users can edit their own profile
   // - Admin can edit anyone EXCEPT other admins
-  // - Managers do not edit other users from this UI
+  // - Managers edit their direct reports (managed_by) of the staff role they own
   const canEditUser = (user: User) => {
     return PermissionUtils.canUpdateTargetUser(
       currentUser.role,
       currentUser.id,
       user.id,
-      user.role
+      user.role,
+      user.managedBy,
     );
   };
 
   // Check if current user can delete a target user
   // - Users CANNOT delete themselves
   // - Admin can delete anyone EXCEPT other admins
-  // - Managers do not delete other users from this UI
-  // - Staff cannot delete anyone
+  // - Managers may delete direct reports (managed_by) of their staff role only
+  // - Accountants: backend governs targets; UI uses same permission matrix as admin minus admins
+  // - Tech/agent cannot delete anyone
   const canDeleteUser = (user: User) => {
     return PermissionUtils.canDeleteTargetUser(
       currentUser.role,
       currentUser.id,
       user.id,
-      user.role
+      user.role,
+      user.managedBy,
     );
   };
 
@@ -155,25 +157,16 @@ export function UserManagement({
 
   // Render different views
   if (currentView === 'create') {
-    return (
-      <UserFormTemplate onBack={handleFormCancel}>
-        <UserCreateForm
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      </UserFormTemplate>
-    );
+    return <UserCreateForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />;
   }
 
   if (currentView === 'edit' && selectedUser) {
     return (
-      <UserFormTemplate onBack={handleFormCancel}>
-        <UserEditForm
-          user={selectedUser}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      </UserFormTemplate>
+      <UserEditForm
+        user={selectedUser}
+        onSuccess={handleFormSuccess}
+        onCancel={handleFormCancel}
+      />
     );
   }
 
@@ -222,7 +215,8 @@ export function UserManagement({
       {/* Statistics */}
       <div className="mb-4">
         <UserStatsCards
-          userStats={userStats || undefined}
+          userStats={userStats ?? undefined}
+          viewerRole={currentUser.role}
           isLoading={isLoading || isLoadingStats}
         />
       </div>

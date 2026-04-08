@@ -1,5 +1,15 @@
 import type { UserRoleType } from './auth';
+import { MANAGER_ROLES } from './auth';
 import { FEATURE_FLAGS } from './feature-flags';
+
+/** All roles that may use authenticated app routes (nav, profile, dashboard hub). */
+const APP_AUTHENTICATED_ROLES: UserRoleType[] = [
+  'admin',
+  'accountant',
+  ...MANAGER_ROLES,
+  'tech',
+  'agent',
+];
 
 /**
  * Route configuration with permissions and metadata
@@ -95,7 +105,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     requireAuth: true,
     // String literals used instead of USER_ROLES.* to prevent Turbopack (Next.js 16)
     // from tree-shaking infrequently-referenced role constants in the Edge middleware bundle.
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
+    allowedRoles: APP_AUTHENTICATED_ROLES,
     redirectTo: ROUTES.LOGIN,
     showInNav: false,
   },
@@ -105,7 +115,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Admin dashboard',
     description: 'System overview and licenses',
     requireAuth: true,
-    allowedRoles: ['admin', 'manager'] as UserRoleType[],
+    allowedRoles: ['admin', ...MANAGER_ROLES] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: false,
   },
@@ -145,7 +155,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Users',
     description: 'User management',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager'] as UserRoleType[],
+    allowedRoles: ['admin', 'accountant', ...MANAGER_ROLES] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -155,7 +165,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Licenses',
     description: 'License management',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech'] as UserRoleType[],
+    allowedRoles: ['admin', 'accountant', ...MANAGER_ROLES, 'tech'] as UserRoleType[],
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -165,7 +175,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Profile',
     description: 'Manage your profile',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
+    allowedRoles: APP_AUTHENTICATED_ROLES,
     redirectTo: ROUTES.LOGIN,
     showInNav: true,
   },
@@ -175,7 +185,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Edit Profile',
     description: 'Update your profile information',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
+    allowedRoles: APP_AUTHENTICATED_ROLES,
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -185,7 +195,7 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     title: 'Change Password',
     description: 'Update your password',
     requireAuth: true,
-    allowedRoles: ['admin', 'accountant', 'manager', 'tech', 'agent'] as UserRoleType[],
+    allowedRoles: APP_AUTHENTICATED_ROLES,
     redirectTo: ROUTES.LOGIN,
     parent: ROUTES.PROFILE,
   },
@@ -281,7 +291,9 @@ export function getRoleDashboardPath(userRole?: string): string {
 
   switch (userRole) {
     case 'admin':
-    case 'manager':
+    case 'account_manager':
+    case 'tech_manager':
+    case 'agent_manager':
       return ROUTES.DASHBOARD_ADMIN;
     case 'agent':
       return FEATURE_FLAGS.agentModule ? ROUTES.DASHBOARD_AGENT : ROUTES.PROFILE;

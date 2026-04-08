@@ -217,6 +217,7 @@ export const userSchemas = {
       }),
 
     role: Joi.string()
+      .trim()
       .valid(...VALID_ROLE_VALUES)
       .default(ROLES.AGENT)
       .messages({

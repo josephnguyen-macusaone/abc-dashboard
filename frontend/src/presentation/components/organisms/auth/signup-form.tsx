@@ -17,7 +17,7 @@ import { useAuthStore } from '@/infrastructure/stores/auth';
 import { ROLE_DEFINITIONS, USER_ROLES, type UserRoleType } from '@/shared/constants/auth';
 import { cn } from '@/shared/helpers';
 
-type SignupRole = 'agent' | 'tech' | 'accountant';
+type SignupRole = 'tech' | 'accountant';
 
 interface SignupFormProps {
   onSuccess?: () => void;
@@ -32,7 +32,7 @@ interface SignupFormState {
   role: SignupRole;
 }
 
-const SIGNUP_ROLE_OPTIONS: SignupRole[] = [USER_ROLES.AGENT, USER_ROLES.TECH, USER_ROLES.ACCOUNTANT];
+const SIGNUP_ROLE_OPTIONS: SignupRole[] = [USER_ROLES.TECH, USER_ROLES.ACCOUNTANT];
 
 export function SignupForm({ onSuccess, className }: SignupFormProps) {
   const router = useRouter();
@@ -48,7 +48,7 @@ export function SignupForm({ onSuccess, className }: SignupFormProps) {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: USER_ROLES.AGENT,
+    role: USER_ROLES.TECH,
   });
 
   function onFieldChange<K extends keyof SignupFormState>(field: K, value: SignupFormState[K]) {

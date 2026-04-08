@@ -8,7 +8,13 @@ import {
   USER_PERMISSIONS,
   type PermissionType,
 } from './permissions';
-import { USER_ROLES, isValidUserRole, type UserRoleType } from './roles';
+import {
+  USER_ROLES,
+  isValidUserRole,
+  isManagerRole,
+  MANAGED_ROLE_BY_MANAGER,
+  type UserRoleType,
+} from './roles';
 
 export const PermissionUtils = {
   hasPermission: (userRole: string | undefined, permission: PermissionType): boolean => {
@@ -44,8 +50,8 @@ export const PermissionUtils = {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
 
-    if (userRole === USER_ROLES.MANAGER) {
-      return false;
+    if (isManagerRole(userRole)) {
+      return true;
     }
 
     return false;
@@ -56,9 +62,21 @@ export const PermissionUtils = {
     userId: string | undefined,
     targetUserId: string | undefined,
     targetUserRole?: string,
+    targetManagedBy?: string | null,
   ): boolean => {
     if (userId && targetUserId && userId === targetUserId) {
       return true;
+    }
+
+    if (
+      isManagerRole(userRole) &&
+      targetUserRole &&
+      targetManagedBy &&
+      userId &&
+      targetManagedBy === userId
+    ) {
+      const expected = MANAGED_ROLE_BY_MANAGER[userRole];
+      return targetUserRole === expected;
     }
 
     return PermissionUtils.canUpdateUser(userRole, targetUserRole);
@@ -73,6 +91,7 @@ export const PermissionUtils = {
     userId: string | undefined,
     targetUserId: string | undefined,
     targetUserRole?: string,
+    targetManagedBy?: string | null,
   ): boolean => {
     if (userId && targetUserId && userId === targetUserId) {
       return false;
@@ -90,8 +109,16 @@ export const PermissionUtils = {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
 
-    if (userRole === USER_ROLES.MANAGER) {
-      return false;
+    if (userRole === USER_ROLES.ACCOUNTANT) {
+      return targetUserRole !== USER_ROLES.ADMIN;
+    }
+
+    if (isManagerRole(userRole)) {
+      if (!targetUserRole || !targetManagedBy || !userId) {
+        return false;
+      }
+      const expected = MANAGED_ROLE_BY_MANAGER[userRole];
+      return targetUserRole === expected && targetManagedBy === userId;
     }
 
     return false;
@@ -120,8 +147,9 @@ export const PermissionUtils = {
     return userRole === USER_ROLES.ADMIN;
   },
 
+  /** Any line-manager role (account / tech / agent manager). */
   isManager: (userRole: string | undefined): boolean => {
-    return userRole === USER_ROLES.MANAGER;
+    return isManagerRole(userRole);
   },
 
   isAccountant: (userRole: string | undefined): boolean => {

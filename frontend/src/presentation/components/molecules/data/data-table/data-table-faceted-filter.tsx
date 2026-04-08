@@ -34,6 +34,23 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   initialValues?: string[];
 }
 
+function buildOptionGroups(options: Option[]): { heading: string; options: Option[] }[] | null {
+  if (!options.some((o) => o.group)) {
+    return null;
+  }
+  const order: string[] = [];
+  const byHeading = new Map<string, Option[]>();
+  for (const opt of options) {
+    const heading = opt.group ?? "Other";
+    if (!byHeading.has(heading)) {
+      byHeading.set(heading, []);
+      order.push(heading);
+    }
+    byHeading.get(heading)!.push(opt);
+  }
+  return order.map((heading) => ({ heading, options: byHeading.get(heading)! }));
+}
+
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
@@ -44,6 +61,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   initialValues = [],
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const [open, setOpen] = React.useState(false);
+  const optionGroups = React.useMemo(() => buildOptionGroups(options), [options]);
 
   // For manual filtering, manage selected values completely locally
   // Initialize from initialValues, but sync when initialValues change
@@ -222,40 +240,80 @@ export function DataTableFacetedFilter<TData, TValue>({
           <CommandInput placeholder={title} />
           <CommandList className="max-h-full">
             <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup className="max-h-[300px] scroll-py-1 overflow-y-auto overflow-x-hidden">
-              {options.map((option) => {
-                const isSelected = selectedValues.has(option.value);
-
-                return (
-                  <CommandItem
-                    key={option.value}
-                    onSelect={() => {
-                      // Calculate isSelected from current state at click time, not render time
-                      const currentlySelected = selectedValues.has(option.value);
-                      onItemSelect(option, currentlySelected);
-                    }}
-                  >
-                    <div
-                      className={cn(
-                        "flex size-4 items-center justify-center rounded-sm border border-primary",
-                        isSelected
-                          ? "bg-primary"
-                          : "opacity-50 [&_svg]:invisible",
-                      )}
-                    >
-                      <Check />
-                    </div>
-                    {option.icon && <option.icon />}
-                    <span className="truncate">{option.label}</span>
-                    {option.count && (
-                      <span className="ml-auto font-mono text-xs">
-                        {option.count}
-                      </span>
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+            <div className="max-h-[300px] scroll-py-1 overflow-y-auto overflow-x-hidden">
+              {optionGroups
+                ? optionGroups.map((group, groupIndex) => (
+                    <React.Fragment key={group.heading}>
+                      {groupIndex > 0 ? <CommandSeparator /> : null}
+                      <CommandGroup heading={group.heading}>
+                        {group.options.map((option) => {
+                          const isSelected = selectedValues.has(option.value);
+                          return (
+                            <CommandItem
+                              key={option.value}
+                              onSelect={() => {
+                                const currentlySelected = selectedValues.has(option.value);
+                                onItemSelect(option, currentlySelected);
+                              }}
+                            >
+                              <div
+                                className={cn(
+                                  "flex size-4 items-center justify-center rounded-sm border border-primary",
+                                  isSelected
+                                    ? "bg-primary"
+                                    : "opacity-50 [&_svg]:invisible",
+                                )}
+                              >
+                                <Check />
+                              </div>
+                              {option.icon ? <option.icon /> : null}
+                              <span className="truncate">{option.label}</span>
+                              {option.count ? (
+                                <span className="ml-auto font-mono text-xs">
+                                  {option.count}
+                                </span>
+                              ) : null}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </React.Fragment>
+                  ))
+                : (
+                    <CommandGroup>
+                      {options.map((option) => {
+                        const isSelected = selectedValues.has(option.value);
+                        return (
+                          <CommandItem
+                            key={option.value}
+                            onSelect={() => {
+                              const currentlySelected = selectedValues.has(option.value);
+                              onItemSelect(option, currentlySelected);
+                            }}
+                          >
+                            <div
+                              className={cn(
+                                "flex size-4 items-center justify-center rounded-sm border border-primary",
+                                isSelected
+                                  ? "bg-primary"
+                                  : "opacity-50 [&_svg]:invisible",
+                              )}
+                            >
+                              <Check />
+                            </div>
+                            {option.icon ? <option.icon /> : null}
+                            <span className="truncate">{option.label}</span>
+                            {option.count ? (
+                              <span className="ml-auto font-mono text-xs">
+                                {option.count}
+                              </span>
+                            ) : null}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  )}
+            </div>
             {selectedValues.size > 0 && (
               <>
                 <CommandSeparator />

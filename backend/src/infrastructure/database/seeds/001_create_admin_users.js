@@ -1,5 +1,5 @@
-// Seed: Create admin user only
-// Note: Passwords need to be hashed before saving
+// Seed: Default dev administrator only (no demo staff/agents).
+// Note: Password is hashed below; do not use these credentials in production.
 
 import bcrypt from 'bcryptjs';
 import logger from '../../../shared/utils/logger.js';
@@ -9,9 +9,8 @@ import logger from '../../../shared/utils/logger.js';
  * @returns { Promise<void> }
  */
 export async function seed(knex) {
-  logger.info('Creating default users...');
+  logger.info('Creating default admin user...');
 
-  // Hash password helper
   const hashPassword = async (password) => {
     const salt = await bcrypt.genSalt(12);
     return bcrypt.hash(password, salt);
@@ -20,7 +19,6 @@ export async function seed(knex) {
   async function ensureUser(userData) {
     const existing = await knex('users').where({ username: userData.username }).first();
     if (existing) {
-      // Keep seeded dev accounts loggable without email verification (e.g. after schema changes).
       await knex('users').where({ username: userData.username }).update({
         email_verified: true,
         is_active: true,
@@ -62,41 +60,5 @@ export async function seed(knex) {
     displayName: 'System Administrator',
     role: 'admin',
     phone: '+1-555-0100',
-  });
-
-  await ensureUser({
-    username: 'manager',
-    email: 'manager@abcsalon.us',
-    password: 'Manager123!',
-    displayName: 'Manager',
-    role: 'admin',
-    phone: '+1-555-0101',
-  });
-
-  await ensureUser({
-    username: 'tech',
-    email: 'tech@abcsalon.us',
-    password: 'Tech123!',
-    displayName: 'Tech User',
-    role: 'tech',
-    phone: '+1-555-0102',
-  });
-
-  await ensureUser({
-    username: 'accountant',
-    email: 'accountant@abcsalon.us',
-    password: 'Accountant123!',
-    displayName: 'Accountant User',
-    role: 'accountant',
-    phone: '+1-555-0103',
-  });
-
-  await ensureUser({
-    username: 'agent',
-    email: 'agent@abcsalon.us',
-    password: 'Agent123!',
-    displayName: 'Agent User',
-    role: 'agent',
-    phone: '+1-555-0104',
   });
 }

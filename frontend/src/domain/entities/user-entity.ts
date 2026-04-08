@@ -50,7 +50,9 @@ export class User {
     return (
       this.role === UserRole.ADMIN ||
       this.role === UserRole.ACCOUNTANT ||
-      this.role === UserRole.MANAGER
+      this.role === UserRole.ACCOUNT_MANAGER ||
+      this.role === UserRole.TECH_MANAGER ||
+      this.role === UserRole.AGENT_MANAGER
     );
   }
 
@@ -219,7 +221,9 @@ export class User {
 export enum UserRole {
   ADMIN = 'admin',
   ACCOUNTANT = 'accountant',
-  MANAGER = 'manager',
+  ACCOUNT_MANAGER = 'account_manager',
+  TECH_MANAGER = 'tech_manager',
+  AGENT_MANAGER = 'agent_manager',
   TECH = 'tech',
   AGENT = 'agent',
 }

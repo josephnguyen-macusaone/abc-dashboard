@@ -1,5 +1,6 @@
 import { User, UserRole } from '@/domain/entities/user-entity';
 import { AuthDomainService } from './auth-domain-service';
+import { isManagerRole, MANAGED_ROLE_BY_MANAGER } from '@/shared/constants/auth/roles';
 
 /**
  * Domain Service: User Business Rules
@@ -59,19 +60,26 @@ export class UserDomainService {
    * Business rule: Admins and accountants may activate non-admin users
    */
   static canUserToggleActivation(toggler: User, targetUser: User, activate: boolean): boolean {
+    const lineManagerActsOnDirectReport =
+      isManagerRole(toggler.role) &&
+      Boolean(targetUser.managedBy) &&
+      targetUser.managedBy === toggler.id &&
+      MANAGED_ROLE_BY_MANAGER[toggler.role as keyof typeof MANAGED_ROLE_BY_MANAGER] === targetUser.role;
+
     if (activate) {
       return (
         AuthDomainService.canPerformAdminActions(toggler) ||
-        (toggler.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN)
-      );
-    } else {
-      // Deactivation permissions
-      return (
-        (AuthDomainService.canPerformAdminActions(toggler) ||
-          toggler.role === UserRole.ACCOUNTANT) &&
-        targetUser.role !== UserRole.ADMIN
+        (toggler.role === UserRole.ACCOUNTANT && targetUser.role !== UserRole.ADMIN) ||
+        lineManagerActsOnDirectReport
       );
     }
+
+    return (
+      (AuthDomainService.canPerformAdminActions(toggler) ||
+        toggler.role === UserRole.ACCOUNTANT ||
+        lineManagerActsOnDirectReport) &&
+      targetUser.role !== UserRole.ADMIN
+    );
   }
 
   /**

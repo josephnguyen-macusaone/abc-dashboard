@@ -66,7 +66,7 @@ export interface LoginRequestDto {
 export interface SignupRequestDto {
   email: string;
   password: string;
-  role: 'agent' | 'tech' | 'accountant';
+  role: 'tech' | 'accountant';
   phone?: string;
 }
 
@@ -145,7 +145,9 @@ export interface UsersListResponseDto {
     total: number;
     admin: number;
     accountant: number;
-    manager: number;
+    account_manager: number;
+    tech_manager: number;
+    agent_manager: number;
     tech: number;
     agent: number;
   };
@@ -172,7 +174,9 @@ export interface UserStatsResponseDto {
   totalUsers: number;
   admin: number;
   accountant: number;
-  manager: number;
+  account_manager: number;
+  tech_manager: number;
+  agent_manager: number;
   tech: number;
   agent: number;
 }

@@ -42,6 +42,8 @@ export interface Option {
   value: string;
   count?: number;
   icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+  /** Faceted filters render a section heading when any option sets this */
+  group?: string;
 }
 
 // Filter operator types (explicit definitions)

@@ -23,7 +23,9 @@ export const updateUserSchema = z
       .enum([
         USER_ROLES.ADMIN,
         USER_ROLES.ACCOUNTANT,
-        USER_ROLES.MANAGER,
+        USER_ROLES.ACCOUNT_MANAGER,
+        USER_ROLES.TECH_MANAGER,
+        USER_ROLES.AGENT_MANAGER,
         USER_ROLES.TECH,
         USER_ROLES.AGENT,
       ])

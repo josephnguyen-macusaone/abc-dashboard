@@ -3,7 +3,7 @@
 import { useUserStore } from '@/infrastructure/stores/user';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User } from '@/application/dto/user-dto';
-import { USER_ROLE_LABELS } from '@/shared/constants';
+import { USER_ROLE_LABELS, isManagerRole } from '@/shared/constants';
 
 import {
   Dialog,
@@ -139,7 +139,6 @@ export function UserDeleteForm({
             </div>
             <div>
               <DialogTitle className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
                 <Typography variant="body-m">Delete User Account</Typography>
               </DialogTitle>
               <DialogDescription>
@@ -172,7 +171,7 @@ export function UserDeleteForm({
                       <Badge
                         variant={
                           user.role === 'admin' ? 'destructive' :
-                            user.role === 'manager' ? 'secondary' : 'default'
+                            isManagerRole(user.role) ? 'secondary' : 'default'
                         }
                         className="px-2 py-1"
                       >

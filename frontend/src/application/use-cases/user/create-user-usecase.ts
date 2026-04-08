@@ -4,6 +4,8 @@ import { CreateUserDTO } from '@/application/dto/user-dto';
 import { AuthDomainService } from '@/domain/services/auth-domain-service';
 import { UserDomainService } from '@/domain/services/user-domain-service';
 import logger, { generateCorrelationId } from '@/shared/helpers/logger';
+import { PermissionUtils } from '@/shared/constants';
+import type { UserRoleType } from '@/shared/constants';
 
 /**
  * Application Use Case: Create User
@@ -44,20 +46,12 @@ export class CreateUserUseCase {
       // Validate input using domain service
       this.validateInput(userData, correlationId);
 
-        // Get the target role for permission checking
-        const targetRole = AuthDomainService.getDefaultRole(userData.role);
+        const targetRole = (userData.role
+          ? AuthDomainService.getDefaultRole(userData.role)
+          : UserRole.AGENT) as UserRoleType;
 
-        // Permission check mirrors backend role-creation policy
-        if (operator.role === UserRole.ADMIN) {
-          // Admin can create any role
-        } else if (operator.role === UserRole.ACCOUNTANT) {
-          if (targetRole !== UserRole.TECH && targetRole !== UserRole.AGENT) {
-            throw new Error('Accountants can only create tech or agent accounts');
-          }
-        } else if (operator.role === UserRole.MANAGER) {
-          throw new Error('Managers cannot create user accounts');
-        } else {
-          throw new Error('Insufficient permissions to create users');
+        if (!PermissionUtils.canCreateRole(operator.role, targetRole)) {
+          throw new Error('Insufficient permissions to create users with this role');
         }
       }
 

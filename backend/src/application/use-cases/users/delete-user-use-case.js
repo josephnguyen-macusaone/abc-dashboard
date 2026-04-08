@@ -3,7 +3,11 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../shared/utils/logger.js';
-import { ROLES } from '../../../shared/constants/roles.js';
+import {
+  ROLES,
+  isManagerRole,
+  MANAGED_ROLE_BY_MANAGER,
+} from '../../../shared/constants/roles.js';
 import {
   ValidationException,
   ResourceNotFoundException,
@@ -54,10 +58,18 @@ export class DeleteUserUseCase {
       return { allowed: true };
     }
 
-    if (deleter.role === ROLES.MANAGER) {
+    if (isManagerRole(deleter.role)) {
+      const expectedStaffRole = MANAGED_ROLE_BY_MANAGER[deleter.role];
+      if (
+        targetUser.role === expectedStaffRole &&
+        targetUser.managedBy &&
+        targetUser.managedBy === deleter.id
+      ) {
+        return { allowed: true };
+      }
       return {
         allowed: false,
-        reason: 'Managers cannot delete user accounts',
+        reason: 'You can only delete users on your team that you manage',
       };
     }
 

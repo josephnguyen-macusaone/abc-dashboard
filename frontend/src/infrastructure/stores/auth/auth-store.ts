@@ -29,7 +29,7 @@ interface AuthState {
   signup: (payload: {
     email: string;
     password: string;
-    role: 'agent' | 'tech' | 'accountant';
+    role: 'tech' | 'accountant';
     phone?: string;
   }) => Promise<{ message: string }>;
   verifyEmail: (token: string) => Promise<{ message: string }>;

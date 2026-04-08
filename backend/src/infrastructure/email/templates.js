@@ -38,17 +38,48 @@ function escapeEmailAttr(value) {
     .replace(/'/g, '&#39;');
 }
 
+/** Explicit labels for multi-word / product roles (avoid generic title-casing). */
+const EMAIL_ROLE_LABELS = {
+  admin: 'Administrator',
+  accountant: 'Accountant',
+  account_manager: 'Accountant manager',
+  tech_manager: 'Tech manager',
+  agent_manager: 'Agent manager',
+  tech: 'Tech',
+  agent: 'Agent',
+};
+
+/** Human-readable role for mail. */
+function formatRoleDisplay(role) {
+  const s = String(role ?? '').trim();
+  if (!s) {
+    return '';
+  }
+  if (EMAIL_ROLE_LABELS[s]) {
+    return EMAIL_ROLE_LABELS[s];
+  }
+  return s
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export const emailTemplates = {
-  welcomeWithPassword: (data) => ({
-    subject: 'Welcome to ABC Dashboard – Your Account Details',
-    html: `
+  welcomeWithPassword: (data) => {
+    const roleLabel = data.role ? formatRoleDisplay(data.role) : '';
+    const roleLabelHtml = roleLabel ? escapeEmailHtml(roleLabel) : '';
+
+    return {
+      subject: 'Welcome to ABC Dashboard – Your Account Details',
+      html: `
       <div style="${baseStyles}; padding: 24px;">
         <div style="${cardStyles}">
           <h2 style="margin: 0 0 8px 0; font-size: 22px;">Welcome, ${data.displayName}!</h2>
           <p style="margin: 0 0 16px 0; color: #475569;">Your account has been created. Use the details below to sign in and change your password on first login.</p>
           ${
-            data.role
-              ? `<p style="margin: 0 0 12px 0; color: #334155;">Assigned role: <strong>${data.role}</strong></p>`
+            roleLabelHtml
+              ? `<p style="margin: 0 0 12px 0; color: #334155;">Assigned role: <strong>${roleLabelHtml}</strong></p>`
               : ''
           }
 
@@ -80,12 +111,12 @@ export const emailTemplates = {
           }
         </div>
       </div>
-    `,
-    text: `
+      `,
+      text: `
 Welcome, ${data.displayName}!
 
 Your account has been created. Use the details below to sign in and change your password on first login.
-${data.role ? `Role: ${data.role}` : ''}
+${roleLabel ? `Assigned role: ${roleLabel}` : ''}
 
 Email: ${data.email}
 Username: ${data.username}
@@ -98,8 +129,9 @@ Steps:
 2) Sign in with the email/username and temporary password
 3) Change your password when prompted
 ${data.managerName ? `Manager: ${data.managerName}` : ''}
-    `,
-  }),
+      `,
+    };
+  },
 
   emailVerification: (data) => ({
     subject: 'Verify your email – ABC Dashboard',
