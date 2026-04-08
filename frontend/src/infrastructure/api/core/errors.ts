@@ -106,18 +106,20 @@ export function getLoginErrorMessage(error: unknown): string {
 }
 
 /**
- * Gets user-friendly error message
+ * Gets user-friendly error message.
+ * Prefer ApiExceptionDto (from HTTP client); otherwise parse Axios `response.data` canonical `{ error: { message } }`.
  */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof ApiExceptionDto) {
     return error.message;
   }
 
-  const err = error as { response?: { data?: { message?: string } }; message?: string };
-  if (err?.response?.data?.message && typeof err.response.data.message === 'string') {
-    return err.response.data.message;
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    return handleApiError(error).message;
   }
-  if (typeof err?.message === 'string') {
+
+  const err = error as { message?: string };
+  if (typeof err?.message === 'string' && err.message.length > 0) {
     return err.message;
   }
 

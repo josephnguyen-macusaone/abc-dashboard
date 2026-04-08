@@ -16,23 +16,22 @@ export class UserDomainService {
   }
 
   /**
-   * Validate user deletion permissions
-   * Business rule: Users cannot delete themselves, admins can delete anyone except other admins
+   * Validate user deletion permissions (UX hint; backend is authoritative).
+   * Admin: all roles except admin (not self). Manager: same except admin/manager targets.
    */
   static canUserDeleteUser(deleter: User, targetUser: User): boolean {
-    // Cannot delete yourself
     if (deleter.id === targetUser.id) {
       return false;
     }
 
-    // Admins can delete anyone except other admins
     if (AuthDomainService.canPerformAdminActions(deleter)) {
       return targetUser.role !== UserRole.ADMIN;
     }
 
-    // Accountants can delete anyone except admins
-    if (deleter.role === UserRole.ACCOUNTANT) {
-      return targetUser.role !== UserRole.ADMIN;
+    if (deleter.role === UserRole.MANAGER) {
+      return (
+        targetUser.role !== UserRole.ADMIN && targetUser.role !== UserRole.MANAGER
+      );
     }
 
     return false;
