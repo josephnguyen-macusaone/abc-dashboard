@@ -20,6 +20,7 @@ describe('CreateUserUseCase', () => {
   let createUserUseCase;
   let mockUserRepository;
   let mockAuthService;
+  let mockLicenseRepository;
 
   const creatorUser = { id: 'admin-id', role: 'admin' };
 
@@ -58,7 +59,17 @@ describe('CreateUserUseCase', () => {
       hashPassword: jest.fn().mockResolvedValue('hashed-password'),
     };
 
-    createUserUseCase = new CreateUserUseCase(mockUserRepository, mockAuthService);
+    mockLicenseRepository = {
+      findAllByEmailLicense: jest.fn().mockResolvedValue([]),
+      hasUserAssignment: jest.fn(),
+      assignLicense: jest.fn(),
+    };
+
+    createUserUseCase = new CreateUserUseCase(
+      mockUserRepository,
+      mockAuthService,
+      mockLicenseRepository
+    );
   });
 
   afterEach(() => {
@@ -74,6 +85,9 @@ describe('CreateUserUseCase', () => {
 
       const result = await createUserUseCase.execute(validInput, creatorUser);
 
+      expect(mockLicenseRepository.findAllByEmailLicense).toHaveBeenCalledWith(
+        mockCreatedUser.email
+      );
       expect(result.user.id).toBe(mockCreatedUser.id);
       expect(result.user.username).toBe(mockCreatedUser.username);
       expect(result.message).toContain('User created successfully');

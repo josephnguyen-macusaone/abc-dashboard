@@ -1440,6 +1440,7 @@ export class ExternalLicenseController {
     const canonicalEmail = await this.licenseRepository.findEmailLicenseForSmsProxy({
       appid: options.appid,
       countid: options.countid,
+      emailLicense: options.emailLicense,
     });
     if (!canonicalEmail) {
       return;

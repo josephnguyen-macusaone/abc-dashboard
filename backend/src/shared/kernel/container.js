@@ -319,7 +319,11 @@ class Container {
   }
 
   async getCreateUserUseCase() {
-    return new CreateUserUseCase(await this.getUserRepository(), this.getAuthService());
+    return new CreateUserUseCase(
+      await this.getUserRepository(),
+      this.getAuthService(),
+      await this.getLicenseRepository()
+    );
   }
 
   async getUpdateUserUseCase() {
