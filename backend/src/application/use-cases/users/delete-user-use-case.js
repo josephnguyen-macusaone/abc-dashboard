@@ -3,11 +3,7 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../shared/utils/logger.js';
-import {
-  ROLES,
-  isManagerRole,
-  MANAGED_ROLE_BY_MANAGER,
-} from '../../../shared/constants/roles.js';
+import { ROLES, isManagerRole, MANAGED_ROLE_BY_MANAGER } from '../../../shared/constants/roles.js';
 import {
   ValidationException,
   ResourceNotFoundException,

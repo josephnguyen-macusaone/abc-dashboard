@@ -71,23 +71,23 @@ async function hashPassword(password) {
 }
 
 async function ensureUser(knex, spec, hashedPassword, idByUsername) {
-  const managedById = spec.managedByUsername ? idByUsername.get(spec.managedByUsername) ?? null : null;
+  const managedById = spec.managedByUsername
+    ? (idByUsername.get(spec.managedByUsername) ?? null)
+    : null;
   const existing = await knex('users').where({ username: spec.username }).first();
 
   if (existing) {
-    await knex('users')
-      .where({ id: existing.id })
-      .update({
-        email: spec.email,
-        display_name: spec.displayName,
-        role: spec.role,
-        phone: spec.phone,
-        managed_by: managedById,
-        is_active: true,
-        email_verified: true,
-        requires_password_change: false,
-        updated_at: new Date(),
-      });
+    await knex('users').where({ id: existing.id }).update({
+      email: spec.email,
+      display_name: spec.displayName,
+      role: spec.role,
+      phone: spec.phone,
+      managed_by: managedById,
+      is_active: true,
+      email_verified: true,
+      requires_password_change: false,
+      updated_at: new Date(),
+    });
     idByUsername.set(spec.username, existing.id);
     logger.info('Seed user already exists; ensured role-management state', {
       username: spec.username,
@@ -127,10 +127,14 @@ async function assignMatchedLicenses(knex, user) {
     .select('appid', 'countid')
     .whereRaw('LOWER(email_license) = LOWER(?)', [user.email]);
 
-  if (!externalRows.length) return 0;
+  if (!externalRows.length) {
+    return 0;
+  }
 
   const appids = externalRows.map((row) => row.appid).filter(Boolean);
-  const countids = externalRows.map((row) => row.countid).filter((v) => v !== null && v !== undefined);
+  const countids = externalRows
+    .map((row) => row.countid)
+    .filter((v) => v !== null && v !== undefined);
 
   let licensesQuery = knex('licenses').select('id');
   if (appids.length > 0) {
@@ -143,7 +147,9 @@ async function assignMatchedLicenses(knex, user) {
   }
 
   const licenses = await licensesQuery;
-  if (!licenses.length) return 0;
+  if (!licenses.length) {
+    return 0;
+  }
 
   let assigned = 0;
   for (const license of licenses) {
@@ -153,7 +159,9 @@ async function assignMatchedLicenses(knex, user) {
         user_id: user.id,
       })
       .first();
-    if (existing) continue;
+    if (existing) {
+      continue;
+    }
 
     await knex('license_assignments').insert({
       id: knex.raw('gen_random_uuid()'),
@@ -218,4 +226,3 @@ export async function seed(knex) {
     autoAssignedLicenses: totalAssigned,
   });
 }
-
