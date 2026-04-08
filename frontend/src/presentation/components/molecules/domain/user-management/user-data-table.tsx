@@ -519,7 +519,7 @@ export function UsersDataTable({
         onManualFilterChange={handleManualFilterChange}
         initialFilterValues={manualFilterValues}
       >
-        {onCreateUser && currentUser.role === "admin" && (
+        {onCreateUser && (
           <Button
             onClick={onCreateUser}
             size="sm"

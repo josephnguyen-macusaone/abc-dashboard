@@ -141,17 +141,33 @@ export function DataTable<TData>({
                   )}
                 >
                   {header.isPlaceholder ? null : (
-                    <div
-                      className={cn(
-                        "flex w-full items-center align-middle",
-                        align === "end" && "justify-end",
-                        align === "center" && "justify-center",
-                        align === "start" && "justify-start",
-                      )}
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
+                    <div className="relative h-full">
+                      <div
+                        className={cn(
+                          "flex w-full items-center align-middle",
+                          align === "end" && "justify-end",
+                          align === "center" && "justify-center",
+                          align === "start" && "justify-start",
+                        )}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                      </div>
+                      {header.column.getCanResize() && (
+                        <div
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={`Resize ${String(header.column.id)} column`}
+                          className={cn(
+                            "after:-translate-x-1/2 absolute -end-px top-0 z-50 h-full w-0.5 cursor-ew-resize touch-none select-none bg-border transition-opacity after:absolute after:inset-y-0 after:start-1/2 after:h-full after:w-[18px] after:content-[''] hover:bg-primary focus:bg-primary focus:outline-none",
+                            header.column.getIsResizing() ? "bg-primary" : "opacity-0 hover:opacity-100",
+                          )}
+                          onDoubleClick={() => header.column.resetSize()}
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                        />
                       )}
                     </div>
                   )}
