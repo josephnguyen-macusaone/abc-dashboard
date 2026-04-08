@@ -130,15 +130,8 @@ export class LicenseRepository extends ILicenseRepository {
     }
 
     try {
-      const licenseRow = await this.db(this.licensesTable)
-        .whereIn('appid', (qb) => {
-          qb.select('appid')
-            .from('external_licenses')
-            .whereRaw('LOWER(email_license) = ?', [emailLicense.toLowerCase()])
-            .whereNotNull('appid');
-        })
-        .first();
-      return licenseRow ? this._toLicenseEntity(licenseRow) : null;
+      const matches = await this.findAllByEmailLicense(emailLicense);
+      return matches.length > 0 ? matches[0] : null;
     } catch (error) {
       logger.error('License findByEmailLicense error', {
         correlationId: this.correlationId,
@@ -150,22 +143,50 @@ export class LicenseRepository extends ILicenseRepository {
   }
 
   /**
-   * Find ALL licenses whose email_license matches via external_licenses join.
-   * Returns an array (empty if none found).
+   * Find ALL internal licenses linked to external_licenses rows with the same email_license.
+   * Matches by external appid → internal appid, or external countid → internal countid (union, deduped).
    */
   async findAllByEmailLicense(emailLicense) {
     if (!emailLicense) {
       return [];
     }
 
+    const emailLower = String(emailLicense).trim().toLowerCase();
+    if (!emailLower) {
+      return [];
+    }
+
     try {
-      const licenseRows = await this.db(this.licensesTable).whereIn('appid', (qb) => {
-        qb.select('appid')
+      const appidSubquery = (qb) =>
+        qb
+          .select('appid')
           .from('external_licenses')
-          .whereRaw('LOWER(email_license) = ?', [emailLicense.toLowerCase()])
-          .whereNotNull('appid');
-      });
-      return licenseRows.map((row) => this._toLicenseEntity(row));
+          .whereRaw('LOWER(TRIM(email_license)) = ?', [emailLower])
+          .whereNotNull('appid')
+          .whereRaw("TRIM(COALESCE(appid, '')) <> ''");
+
+      const countidSubquery = (qb) =>
+        qb
+          .select('countid')
+          .from('external_licenses')
+          .whereRaw('LOWER(TRIM(email_license)) = ?', [emailLower])
+          .whereNotNull('countid');
+
+      const licenseRows = await this.db(this.licensesTable)
+        .where((builder) => {
+          builder.whereIn('appid', appidSubquery).orWhereIn('countid', countidSubquery);
+        })
+        .orderBy('id', 'asc');
+
+      const seen = new Set();
+      const uniqueRows = [];
+      for (const row of licenseRows) {
+        if (!seen.has(row.id)) {
+          seen.add(row.id);
+          uniqueRows.push(row);
+        }
+      }
+      return uniqueRows.map((row) => this._toLicenseEntity(row));
     } catch (error) {
       logger.error('License findAllByEmailLicense error', {
         correlationId: this.correlationId,
@@ -181,8 +202,11 @@ export class LicenseRepository extends ILicenseRepository {
    * Mapi may require both appid and emailLicense; internal license rows often omit email.
    */
   async findEmailLicenseForSmsProxy(identifiers = {}) {
-    const { appid, countid } = identifiers;
-    if (!appid && (countid === undefined || countid === null)) {
+    const { appid, countid, emailLicense } = identifiers;
+    const emailTrimmed = typeof emailLicense === 'string' ? emailLicense.trim() : '';
+    const emailLower = emailTrimmed.toLowerCase();
+
+    if (!appid && (countid === undefined || countid === null) && !emailLower) {
       return null;
     }
 
@@ -197,12 +221,14 @@ export class LicenseRepository extends ILicenseRepository {
         const extMatch = raw.match(/^EXT-([^-]+)-/i);
         const short = extMatch ? extMatch[1].trim() : raw;
         q = q.whereRaw('LOWER(TRIM(appid)) = ?', [short.toLowerCase()]);
-      } else {
+      } else if (countid !== undefined && countid !== null) {
         q = q.where('countid', countid);
+      } else {
+        q = q.whereRaw('LOWER(TRIM(email_license)) = ?', [emailLower]);
       }
 
       const row = await q.first();
-      return row?.email_license ?? null;
+      return (row?.email_license ?? emailTrimmed) || null;
     } catch (error) {
       logger.error('findEmailLicenseForSmsProxy error', {
         correlationId: this.correlationId,
