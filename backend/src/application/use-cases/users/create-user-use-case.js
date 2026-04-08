@@ -32,7 +32,7 @@ export class CreateUserUseCase {
    */
   async execute(createUserRequest, creatorUser) {
     try {
-      const { username, email, displayName, role, password, managedBy } = createUserRequest;
+      const { username, email, displayName, role, password } = createUserRequest;
 
       this._validateRequiredFields(username, email, displayName, password);
       await this._checkUniqueness(email, username);
@@ -65,7 +65,12 @@ export class CreateUserUseCase {
 
   _validateRequiredFields(username, email, displayName, password) {
     if (!username || !email || !displayName || !password) {
-      logger.error('Missing required fields', { username, email, displayName, hasPassword: !!password });
+      logger.error('Missing required fields', {
+        username,
+        email,
+        displayName,
+        hasPassword: !!password,
+      });
       throw new ValidationException('Username, email, display name, and password are required');
     }
   }

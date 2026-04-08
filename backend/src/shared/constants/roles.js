@@ -70,13 +70,7 @@ const ROLE_PERMISSIONS = {
 };
 
 export const ROLE_CREATION_PERMISSIONS = {
-  [ROLES.ADMIN]: [
-    ROLES.ADMIN,
-    ROLES.ACCOUNTANT,
-    ROLES.MANAGER,
-    ROLES.TECH,
-    ROLES.AGENT,
-  ],
+  [ROLES.ADMIN]: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT],
   [ROLES.ACCOUNTANT]: [],
   /** Managers provision agents only; tech/accountant onboard via signup. */
   [ROLES.MANAGER]: [ROLES.AGENT],
