@@ -5,6 +5,7 @@
 import {
   ValidationException,
   InsufficientPermissionsException,
+  EmailAlreadyExistsException,
 } from '../../domain/exceptions/domain.exception.js';
 import logger from '../../shared/utils/logger.js';
 import {
@@ -141,7 +142,10 @@ export class UserController {
 
       return res.created(responseData, result.message);
     } catch (error) {
-      // Handle domain exceptions
+      // Handle domain exceptions (EmailAlreadyExistsException is not a ValidationException subclass)
+      if (error instanceof EmailAlreadyExistsException) {
+        return res.status(error.statusCode).json(error.toResponse());
+      }
       if (
         error instanceof ValidationException ||
         error instanceof InsufficientPermissionsException

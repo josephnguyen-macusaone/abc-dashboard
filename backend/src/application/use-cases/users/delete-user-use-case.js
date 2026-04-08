@@ -3,7 +3,7 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../shared/utils/logger.js';
-import { ROLES, isManagerRole, MANAGED_ROLE_BY_MANAGER } from '../../../shared/constants/roles.js';
+import { ROLES, isManagerRole } from '../../../shared/constants/roles.js';
 import {
   ValidationException,
   ResourceNotFoundException,
@@ -32,7 +32,7 @@ export class DeleteUserUseCase {
       };
     }
 
-    // Admins can delete anyone except other admins
+    // Admins: any role except another admin (self already rejected above)
     if (deleter.role === ROLES.ADMIN) {
       if (targetUser.role === ROLES.ADMIN) {
         return {
@@ -43,30 +43,21 @@ export class DeleteUserUseCase {
       return { allowed: true };
     }
 
-    // Accountants can delete non-admin users
-    if (deleter.role === ROLES.ACCOUNTANT) {
+    // Managers: like admins, but cannot delete admins or other managers
+    if (isManagerRole(deleter.role)) {
       if (targetUser.role === ROLES.ADMIN) {
         return {
           allowed: false,
-          reason: 'Accountants cannot delete admin accounts',
+          reason: 'Managers cannot delete administrator accounts',
+        };
+      }
+      if (targetUser.role === ROLES.MANAGER) {
+        return {
+          allowed: false,
+          reason: 'Managers cannot delete other manager accounts',
         };
       }
       return { allowed: true };
-    }
-
-    if (isManagerRole(deleter.role)) {
-      const expectedStaffRole = MANAGED_ROLE_BY_MANAGER[deleter.role];
-      if (
-        targetUser.role === expectedStaffRole &&
-        targetUser.managedBy &&
-        targetUser.managedBy === deleter.id
-      ) {
-        return { allowed: true };
-      }
-      return {
-        allowed: false,
-        reason: 'You can only delete users on your team that you manage',
-      };
     }
 
     // Other roles cannot delete users

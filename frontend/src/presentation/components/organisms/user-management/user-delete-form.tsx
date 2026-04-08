@@ -83,6 +83,9 @@ export function UserDeleteForm({
         errorMessage.includes('permission') || errorMessage.includes('Insufficient') ||
         errorMessage.includes('cannot delete') || errorMessage.includes('Users cannot delete their own account') ||
         errorMessage.includes('Admin accounts cannot be deleted') ||
+        errorMessage.includes('Agent accounts can only be deleted by an administrator or their assigned manager') ||
+        errorMessage.includes('Agent accounts can only be deleted by their assigned manager') ||
+        errorMessage.includes('You can only delete agents assigned to you') ||
         errorMessage.includes('Managers cannot delete other managers')) {
         // Permission-related errors
         let permissionMessage = 'You do not have permission to delete this user';
@@ -92,6 +95,16 @@ export function UserDeleteForm({
           permissionMessage = 'Administrator accounts cannot be deleted';
         } else if (errorMessage.includes('Managers cannot delete other managers')) {
           permissionMessage = 'Managers cannot delete other manager accounts';
+        } else if (
+          errorMessage.includes(
+            'Agent accounts can only be deleted by an administrator or their assigned manager',
+          )
+        ) {
+          permissionMessage = 'Only an administrator or the assigned manager can delete this agent account';
+        } else if (errorMessage.includes('Agent accounts can only be deleted by their assigned manager')) {
+          permissionMessage = 'Only the assigned manager can delete this agent account';
+        } else if (errorMessage.includes('You can only delete agents assigned to you')) {
+          permissionMessage = 'You can only delete agents assigned to you in User Management';
         } else if (errorMessage.includes('Managers cannot delete admin')) {
           permissionMessage = 'Managers cannot delete administrator accounts';
         }

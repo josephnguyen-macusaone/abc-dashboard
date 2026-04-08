@@ -136,11 +136,9 @@ export function UserManagement({
   };
 
   // Check if current user can delete a target user
-  // - Users CANNOT delete themselves
-  // - Admin can delete anyone EXCEPT other admins
-  // - Managers may delete direct reports (managed_by) of their staff role only
-  // - Accountants: backend governs targets; UI uses same permission matrix as admin minus admins
-  // - Tech/agent cannot delete anyone
+  // - Cannot delete yourself
+  // - Admin: any role except another admin
+  // - Manager: like admin but cannot delete admins or other managers
   const canDeleteUser = (user: User) => {
     return PermissionUtils.canDeleteTargetUser(
       currentUser.role,

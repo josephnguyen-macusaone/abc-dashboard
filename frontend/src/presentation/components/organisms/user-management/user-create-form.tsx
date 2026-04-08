@@ -17,6 +17,7 @@ import {
   generateStrongProvisionedPassword,
   getProvisionedPasswordError,
 } from '@/shared/helpers/provisioned-password';
+import { getErrorMessage } from '@/infrastructure/api/core/errors';
 import { Typography, Button } from '@/presentation/components/atoms';
 import {
   Card,
@@ -131,9 +132,7 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
       showSuccess?.('User created successfully!');
       onSuccess?.(user);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Could not create user. Please try again.';
-      showError?.(message);
+      showError?.(getErrorMessage(err) || 'Could not create user. Please try again.');
     }
   };
 
