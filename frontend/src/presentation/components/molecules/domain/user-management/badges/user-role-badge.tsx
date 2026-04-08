@@ -1,6 +1,14 @@
 import { Badge } from '@/presentation/components/atoms/primitives/badge';
 import { ROLE_DEFINITIONS, USER_ROLE_COLORS, type UserRoleType } from '@/shared/constants/auth';
-import { Shield, Users, User, Wrench, BriefcaseBusiness } from 'lucide-react';
+import {
+  Shield,
+  User,
+  Wrench,
+  BriefcaseBusiness,
+  UserCog,
+  Cpu,
+  UsersRound,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/helpers';
 
@@ -14,7 +22,9 @@ export interface UserRoleBadgeProps {
 const roleIcons: Record<UserRoleType, LucideIcon> = {
   admin: Shield,
   accountant: BriefcaseBusiness,
-  manager: Users,
+  account_manager: UserCog,
+  tech_manager: Cpu,
+  agent_manager: UsersRound,
   tech: Wrench,
   agent: User,
 };

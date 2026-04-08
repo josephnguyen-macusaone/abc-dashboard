@@ -10,15 +10,20 @@ export class AuthDomainService {
    * Business rule: Role hierarchy for management checks (admin broadest)
    */
   static canUserManageRole(managerRole: UserRole, targetRole: UserRole): boolean {
-    const roleHierarchy = {
+    const roleHierarchy: Partial<Record<UserRole, number>> = {
       [UserRole.ADMIN]: 6,
       [UserRole.ACCOUNTANT]: 5,
-      [UserRole.MANAGER]: 4,
+      [UserRole.ACCOUNT_MANAGER]: 4,
+      [UserRole.TECH_MANAGER]: 4,
+      [UserRole.AGENT_MANAGER]: 4,
       [UserRole.TECH]: 3,
       [UserRole.AGENT]: 2,
     };
 
-    return roleHierarchy[managerRole] > roleHierarchy[targetRole];
+    const a = roleHierarchy[managerRole];
+    const b = roleHierarchy[targetRole];
+    if (a === undefined || b === undefined) return false;
+    return a > b;
   }
 
   /**
@@ -96,7 +101,9 @@ export class AuthDomainService {
       user.isActive &&
       (user.role === UserRole.ADMIN ||
         user.role === UserRole.ACCOUNTANT ||
-        user.role === UserRole.MANAGER)
+        user.role === UserRole.ACCOUNT_MANAGER ||
+        user.role === UserRole.TECH_MANAGER ||
+        user.role === UserRole.AGENT_MANAGER)
     );
   }
 

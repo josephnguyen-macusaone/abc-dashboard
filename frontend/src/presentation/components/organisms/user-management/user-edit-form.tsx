@@ -3,28 +3,44 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useUserStore } from '@/infrastructure/stores/user';
+import { useAuthStore } from '@/infrastructure/stores/auth';
 import { updateUserSchema, type UpdateUserFormData } from '@/shared/schemas';
 import { useToast } from '@/presentation/contexts/toast-context';
 import { User, UpdateUserDTO } from '@/application/dto/user-dto';
 import { UserRole } from '@/domain/entities/user-entity';
 import { ROLE_DEFINITIONS, USER_ROLES, type UserRoleType } from '@/shared/constants';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/presentation/components/atoms/primitives/card';
+import { Button } from '@/presentation/components/atoms/primitives/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/atoms/forms/select';
+import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
+import { RoleBadge } from '@/presentation/components/molecules/domain/user-management';
+import { Loading } from '@/presentation/components/atoms/display/loading';
+import { Typography } from '@/presentation/components/atoms';
+import { UserFormTemplate } from '@/presentation/components/templates';
 
 const ROLE_SELECT_ORDER: UserRoleType[] = [
   USER_ROLES.ADMIN,
   USER_ROLES.ACCOUNTANT,
-  USER_ROLES.MANAGER,
+  USER_ROLES.ACCOUNT_MANAGER,
+  USER_ROLES.TECH_MANAGER,
+  USER_ROLES.AGENT_MANAGER,
   USER_ROLES.TECH,
   USER_ROLES.AGENT,
 ];
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/atoms/primitives/card';
-import { Button } from '@/presentation/components/atoms/primitives/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/atoms/forms/select';
-import { FormField, InputField, PhoneField } from '@/presentation/components/molecules';
-import { Loading } from '@/presentation/components/atoms/display/loading';
-import { Typography } from '@/presentation/components/atoms';
-
-import { Edit, X } from 'lucide-react';
+const EDIT_FORM_ID = 'user-edit-form';
 
 interface UserEditFormProps {
   user: User;
@@ -35,8 +51,10 @@ interface UserEditFormProps {
 export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
   const updateUser = useUserStore((s) => s.updateUser);
   const formLoading = useUserStore((s) => s.formLoading);
+  const viewer = useAuthStore((s) => s.user);
   const { success: showSuccess, error: showError } = useToast();
   const isUpdating = formLoading;
+  const isAccountantViewer = viewer?.role === USER_ROLES.ACCOUNTANT;
 
   const {
     handleSubmit,
@@ -50,17 +68,16 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
       phone: user.phone || '',
       role: user.role,
       isActive: user.isActive,
-    }
+    },
   });
 
   /* eslint-disable react-hooks/incompatible-library -- react-hook-form watch() for controlled Select fields */
-  const selectedRole = watch("role");
-  const isActive = watch("isActive");
+  const selectedRole = watch('role');
+  const isActive = watch('isActive');
   /* eslint-enable react-hooks/incompatible-library */
 
   const onSubmit = async (data: UpdateUserFormData) => {
     try {
-      // Only include fields that have changed
       const updates: UpdateUserDTO = {};
 
       if (data.displayName !== undefined && data.displayName !== user.displayName) {
@@ -71,7 +88,11 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         updates.phone = data.phone || undefined;
       }
 
-      if (data.role !== undefined && data.role !== user.role) {
+      if (
+        !isAccountantViewer &&
+        data.role !== undefined &&
+        data.role !== user.role
+      ) {
         updates.role = data.role as UserRole;
       }
 
@@ -79,9 +100,7 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         updates.isActive = data.isActive;
       }
 
-      // Only proceed if there are actual changes
       if (Object.keys(updates).length === 0) {
-        // No changes detected - this will be handled by the validation schema
         return;
       }
 
@@ -89,9 +108,7 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
 
       showSuccess?.('User updated successfully!');
       onSuccess?.(updatedUser);
-
     } catch (err) {
-      // Extract error details more thoroughly
       let errorMessage = 'Failed to update user';
       let errorCode = '';
       let errorCategory = '';
@@ -100,7 +117,11 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         errorMessage = err.message;
       } else if (typeof err === 'object' && err !== null) {
         const errorObj = err as {
-          message?: string; error?: string; code?: string; category?: string; details?: unknown;
+          message?: string;
+          error?: string;
+          code?: string;
+          category?: string;
+          details?: unknown;
           response?: { data?: { message?: string; error?: string; code?: string; category?: string } };
         };
         if (errorObj.message) errorMessage = errorObj.message;
@@ -113,15 +134,22 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
         if (errorObj.response?.data?.category) errorCategory = errorObj.response.data.category;
       }
 
-      // Handle specific error types with appropriate user messages
-      if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND') || errorCode === 'USER_NOT_FOUND') {
+      if (
+        errorMessage.includes('not found') ||
+        errorMessage.includes('NOT_FOUND') ||
+        errorCode === 'USER_NOT_FOUND'
+      ) {
         showError?.('User not found. The user may have been deleted.');
-      } else if (errorCode === 'INSUFFICIENT_PERMISSIONS' || errorCategory === 'authorization' ||
-        errorMessage.includes('permission') || errorMessage.includes('Insufficient') ||
-        errorMessage.includes('cannot update') || errorMessage.includes('Admins cannot update other admin') ||
+      } else if (
+        errorCode === 'INSUFFICIENT_PERMISSIONS' ||
+        errorCategory === 'authorization' ||
+        errorMessage.includes('permission') ||
+        errorMessage.includes('Insufficient') ||
+        errorMessage.includes('cannot update') ||
+        errorMessage.includes('Admins cannot update other admin') ||
         errorMessage.includes('Managers cannot update other managers') ||
-        errorMessage.includes('Managers cannot update admin accounts')) {
-        // Permission-related errors
+        errorMessage.includes('Managers cannot update admin accounts')
+      ) {
         let permissionMessage = 'You do not have permission to update this user';
         if (errorMessage.includes('Admins cannot update other admin')) {
           permissionMessage = 'Administrators cannot update other administrator accounts';
@@ -131,171 +159,151 @@ export function UserEditForm({ user, onSuccess, onCancel }: UserEditFormProps) {
           permissionMessage = 'Managers cannot update administrator accounts';
         }
         showError?.(permissionMessage);
-      } else if (errorCode === 'VALIDATION_FAILED' || errorCategory === 'validation' ||
-        errorMessage.includes('Username already taken')) {
-        // Validation errors
+      } else if (
+        errorCode === 'VALIDATION_FAILED' ||
+        errorCategory === 'validation' ||
+        errorMessage.includes('Username already taken')
+      ) {
         if (errorMessage.includes('Username already taken')) {
           showError?.('Username is already taken. Please choose a different username.');
         } else {
           showError?.('Unable to update user due to validation error. Please check your input.');
         }
       } else {
-        // Unknown errors
         showError?.(`Failed to update user: ${errorMessage}`);
       }
     }
   };
 
   return (
-    <Card className="max-w-3xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Edit className="h-5 w-5" />
-          <Typography variant="title-s" className="pb-0.5">Edit User</Typography>
-        </CardTitle>
-        <CardDescription>
-          Update user information and permissions.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* User Info Display */}
-        <div className="bg-muted p-4 rounded-lg mb-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Typography variant="label-s" className="font-medium" as="span">Username:</Typography>
-              <Typography variant="body-s" color="muted" as="p">{user.username}</Typography>
-            </div>
-            <div>
-              <Typography variant="label-s" className="font-medium" as="span">Email:</Typography>
-              <Typography variant="body-s" color="muted" as="p">{user.email}</Typography>
-            </div>
-            <div>
-              <Typography variant="label-s" className="font-medium" as="span">Created:</Typography>
-              <Typography variant="body-s" color="muted" as="p">
-                {user.createdAt ? (() => {
-                  const d = new Date(user.createdAt);
-                  return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
-                })() : 'N/A'}
-              </Typography>
-            </div>
-            <div>
-              <Typography variant="label-s" className="font-medium" as="span">Last Updated:</Typography>
-              <Typography variant="body-s" color="muted" as="p">
-                {user.updatedAt ? (() => {
-                  const d = new Date(user.updatedAt);
-                  return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
-                })() : 'N/A'}
-              </Typography>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Display Name */}
-          <InputField
-            label="Display Name"
-            type="text"
-            placeholder="Enter display name"
-            value={watch('displayName') || ''}
-            onChange={(e) => setValue('displayName', e.target.value)}
-            error={errors.displayName?.message}
+    <UserFormTemplate
+      title="Edit user"
+      description="Update user information and permissions."
+      footer={
+        <div className="ml-auto flex items-center gap-3">
+          <Button
+            type="button"
+            variant="orderCancel"
+            size="order"
+            onClick={() => onCancel?.()}
             disabled={isUpdating}
-            inputClassName="h-11"
-            className="space-y-3"
-          />
-
-          {/* Phone */}
-          <PhoneField
-            label="Phone Number"
-            value={watch('phone') || ''}
-            onChange={(value) => setValue('phone', value || '')}
-            error={errors.phone?.message}
-            disabled={isUpdating}
-            inputClassName="h-11"
-            className="space-y-3"
-          />
-
-          {/* Role — disabled and shown as "Admin" when editing a system administrator */}
-          <FormField
-            label="Role"
-            error={errors.role?.message}
-            className="space-y-3"
+            className="shrink-0 min-w-28"
           >
-            <Select
-              value={selectedRole}
-              onValueChange={(value: UserRoleType) => setValue('role', value)}
-              disabled={isUpdating || user.role === USER_ROLES.ADMIN}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLE_SELECT_ORDER.map((role) => {
-                  const def = ROLE_DEFINITIONS[role];
-                  return (
-                    <SelectItem key={role} value={role}>
-                      <div className="flex items-center gap-2">
-                        <span>{def.displayName}</span>
-                        <Typography variant="body-xs" color="muted" as="span">
-                          {def.description}
-                        </Typography>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </FormField>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form={EDIT_FORM_ID}
+            variant="orderPrimary"
+            size="order"
+            disabled={isUpdating}
+            className="shrink-0 min-w-44"
+          >
+            {isUpdating ? (
+              <>
+                <Loading className="h-4 w-4" />
+                Saving…
+              </>
+            ) : (
+              'Save'
+            )}
+          </Button>
+        </div>
+      }
+    >
+      <form id={EDIT_FORM_ID} onSubmit={handleSubmit(onSubmit)} className="contents">
+        <div className="min-w-0 w-full">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="space-y-1 pb-4">
+              <CardTitle>
+                <Typography variant="title-s" className="text-foreground">
+                  User details
+                </Typography>
+              </CardTitle>
+              <CardDescription>
+                {isAccountantViewer
+                  ? 'Display name, phone, and account status. Role changes require an administrator.'
+                  : 'Display name, phone, role, and account status.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <InputField
+                label="Display Name"
+                type="text"
+                placeholder="Enter display name"
+                value={watch('displayName') || ''}
+                onChange={(e) => setValue('displayName', e.target.value)}
+                error={errors.displayName?.message}
+                disabled={isUpdating}
+                inputClassName="h-11"
+                className="space-y-3"
+              />
 
-          {/* Status */}
-          <FormField label="Status" className="space-y-3">
-            <Select
-              value={isActive ? 'active' : 'inactive'}
-              onValueChange={(value: string) => setValue('isActive', value === 'active')}
-              disabled={isUpdating}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormField>
+              <PhoneField
+                label="Phone Number"
+                value={watch('phone') || ''}
+                onChange={(value) => setValue('phone', value || '')}
+                error={errors.phone?.message}
+                disabled={isUpdating}
+                inputClassName="h-11"
+                className="space-y-3"
+              />
 
-          {/* Form Actions */}
-          <div className="flex flex-col sm:flex-row justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={isUpdating}
-              className="w-full sm:w-auto"
-            >
-              <X className="w-4 h-4" />
-              <span className='text-button-s'>Cancel</span>
-            </Button>
-            <Button
-              type="submit"
-              disabled={isUpdating}
-              className="w-full sm:w-auto"
-            >
-              {isUpdating ? (
-                <>
-                  <Loading className="w-4 h-4" />
-                  <span className='text-button-s'>Updating...</span>
-                </>
-              ) : (
-                <>
-                  <Edit className="w-4 h-4" />
-                  <span className='text-button-s'>Update User</span>
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              <FormField label="Role" error={errors.role?.message} className="space-y-3">
+                {isAccountantViewer ? (
+                  <div className="flex min-h-11 flex-col justify-center gap-1 rounded-md border border-input bg-muted/30 px-3 py-2">
+                    <RoleBadge role={user.role as UserRoleType} variant="minimal" showIcon />
+                    <Typography variant="caption" color="muted" className="text-muted-foreground">
+                      Accountants cannot assign or change roles.
+                    </Typography>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedRole}
+                    onValueChange={(value: UserRoleType) => setValue('role', value)}
+                    disabled={isUpdating || user.role === USER_ROLES.ADMIN}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLE_SELECT_ORDER.map((role) => {
+                        const def = ROLE_DEFINITIONS[role];
+                        return (
+                          <SelectItem key={role} value={role}>
+                            <div className="flex items-center gap-2">
+                              <span>{def.displayName}</span>
+                              <Typography variant="body-xs" color="muted" as="span">
+                                {def.description}
+                              </Typography>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
+              </FormField>
+
+              <FormField label="Status" className="space-y-3">
+                <Select
+                  value={isActive ? 'active' : 'inactive'}
+                  onValueChange={(value: string) => setValue('isActive', value === 'active')}
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </CardContent>
+          </Card>
+        </div>
+      </form>
+    </UserFormTemplate>
   );
 }

@@ -9,7 +9,7 @@ import { ROLES } from '../../../shared/constants/roles.js';
 /** @typedef {import('../../interfaces/i-token-service.js').ITokenService} ITokenService */
 /** @typedef {import('../../../shared/services/email-service.js').EmailService} IEmailService */
 
-const SIGNUP_ROLES = [ROLES.AGENT, ROLES.TECH, ROLES.ACCOUNTANT];
+const SIGNUP_ROLES = [ROLES.TECH, ROLES.ACCOUNTANT];
 
 function buildDisplayName(firstName, lastName) {
   return [firstName, lastName].filter(Boolean).join(' ').trim();
@@ -47,7 +47,7 @@ export class SignupUseCase {
 
     const finalEmail = email.trim().toLowerCase();
     const displayName = buildDisplayName(firstName, lastName) || finalEmail.split('@')[0];
-    const selectedRole = role || ROLES.AGENT;
+    const selectedRole = role || ROLES.TECH;
 
     const existingByEmail = await this.userRepository.findByEmail(finalEmail);
     if (existingByEmail) {

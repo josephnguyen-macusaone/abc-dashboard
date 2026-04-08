@@ -3,32 +3,55 @@
  * Defines available user roles and their permissions
  */
 
-// Role definitions
 export const ROLES = {
   ADMIN: 'admin',
   ACCOUNTANT: 'accountant',
-  MANAGER: 'manager',
+  ACCOUNT_MANAGER: 'account_manager',
+  TECH_MANAGER: 'tech_manager',
+  AGENT_MANAGER: 'agent_manager',
   TECH: 'tech',
   AGENT: 'agent',
 };
 
-// Permission definitions
+/** Manager roles that oversee a specific staff role via managed_by */
+export const MANAGER_ROLES = [ROLES.ACCOUNT_MANAGER, ROLES.TECH_MANAGER, ROLES.AGENT_MANAGER];
+
+/** Staff role each manager type is responsible for */
+export const MANAGED_ROLE_BY_MANAGER = {
+  [ROLES.ACCOUNT_MANAGER]: ROLES.ACCOUNTANT,
+  [ROLES.TECH_MANAGER]: ROLES.TECH,
+  [ROLES.AGENT_MANAGER]: ROLES.AGENT,
+};
+
+/** When reassigning staff, the new manager must have this role for the given staff role */
+export const MANAGER_ROLE_FOR_STAFF_ROLE = {
+  [ROLES.ACCOUNTANT]: ROLES.ACCOUNT_MANAGER,
+  [ROLES.TECH]: ROLES.TECH_MANAGER,
+  [ROLES.AGENT]: ROLES.AGENT_MANAGER,
+};
+
+export function isManagerRole(role) {
+  return MANAGER_ROLES.includes(role);
+}
+
 export const PERMISSIONS = {
-  // User management
   CREATE_USER: 'create_user',
   READ_USER: 'read_user',
   UPDATE_USER: 'update_user',
   DELETE_USER: 'delete_user',
-
-  // System management
   MANAGE_SYSTEM: 'manage_system',
   VIEW_DASHBOARD: 'view_dashboard',
-
-  // Profile management (basic permission for all users)
   MANAGE_OWN_PROFILE: 'manage_own_profile',
 };
 
-// Role-based permissions mapping (used internally by hasPermission helpers)
+const MANAGER_USER_PERMISSIONS = [
+  PERMISSIONS.READ_USER,
+  PERMISSIONS.UPDATE_USER,
+  PERMISSIONS.CREATE_USER,
+  PERMISSIONS.VIEW_DASHBOARD,
+  PERMISSIONS.MANAGE_OWN_PROFILE,
+];
+
 const ROLE_PERMISSIONS = {
   [ROLES.ADMIN]: [
     PERMISSIONS.CREATE_USER,
@@ -47,37 +70,42 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_DASHBOARD,
     PERMISSIONS.MANAGE_OWN_PROFILE,
   ],
-  [ROLES.MANAGER]: [
-    PERMISSIONS.READ_USER,
-    PERMISSIONS.UPDATE_USER,
-    PERMISSIONS.VIEW_DASHBOARD,
-    PERMISSIONS.MANAGE_OWN_PROFILE,
-  ],
+  [ROLES.ACCOUNT_MANAGER]: MANAGER_USER_PERMISSIONS,
+  [ROLES.TECH_MANAGER]: MANAGER_USER_PERMISSIONS,
+  [ROLES.AGENT_MANAGER]: MANAGER_USER_PERMISSIONS,
   [ROLES.TECH]: [PERMISSIONS.VIEW_DASHBOARD, PERMISSIONS.MANAGE_OWN_PROFILE],
   [ROLES.AGENT]: [PERMISSIONS.VIEW_DASHBOARD, PERMISSIONS.MANAGE_OWN_PROFILE],
 };
 
-// Role creation permissions - which roles can create which other roles
 export const ROLE_CREATION_PERMISSIONS = {
-  [ROLES.ADMIN]: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT],
-  [ROLES.ACCOUNTANT]: [ROLES.TECH, ROLES.AGENT],
-  [ROLES.MANAGER]: [],
+  [ROLES.ADMIN]: [
+    ROLES.ADMIN,
+    ROLES.ACCOUNTANT,
+    ROLES.ACCOUNT_MANAGER,
+    ROLES.TECH_MANAGER,
+    ROLES.AGENT_MANAGER,
+    ROLES.TECH,
+    ROLES.AGENT,
+  ],
+  /** Agents are created by agent_manager (or admin); accountants only provision tech. */
+  [ROLES.ACCOUNTANT]: [ROLES.TECH],
+  [ROLES.ACCOUNT_MANAGER]: [ROLES.ACCOUNTANT],
+  [ROLES.TECH_MANAGER]: [ROLES.TECH],
+  [ROLES.AGENT_MANAGER]: [ROLES.AGENT],
   [ROLES.TECH]: [],
   [ROLES.AGENT]: [],
 };
 
-/**
- * Check if a role has a specific permission
- * @param {string} role - The user role
- * @param {string} permission - The permission to check
- * @returns {boolean} True if role has permission
- */
 export function hasPermission(role, permission) {
   return ROLE_PERMISSIONS[role]?.includes(permission) || false;
 }
 
 export default {
   ROLES,
+  MANAGER_ROLES,
+  MANAGED_ROLE_BY_MANAGER,
+  MANAGER_ROLE_FOR_STAFF_ROLE,
+  isManagerRole,
   PERMISSIONS,
   ROLE_CREATION_PERMISSIONS,
   hasPermission,

@@ -2,7 +2,7 @@
 
 ## Setup
 
-- Seed users: `admin`, `accountant`, `tech`, `agent`
+- Seed users: `admin`, `manager` (admin role), `accountant`, `tech`, `agent_manager`, `agent`
 - Dedicated smoke users:
   - `agent_smoke` / `agent.smoke@abcsalon.us` / `AgentSmoke123!`
   - `tech_smoke` / `tech.smoke@abcsalon.us` / `TechSmoke123!`

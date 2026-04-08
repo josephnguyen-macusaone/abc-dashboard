@@ -7,7 +7,6 @@ import { DateRangeFilterCard } from '@/presentation/components/molecules/domain/
 import { UserCreateForm } from './user-create-form';
 import { UserEditForm } from './user-edit-form';
 import { UserDeleteForm } from './user-delete-form';
-import { UserFormTemplate } from '@/presentation/components/templates';
 import { cn } from '@/shared/helpers';
 import type { User } from '@/domain/entities/user-entity';
 import { PermissionUtils } from '@/shared/constants';
@@ -131,7 +130,8 @@ export function UserManagement({
       currentUser.role,
       currentUser.id,
       user.id,
-      user.role
+      user.role,
+      user.managedBy,
     );
   };
 
@@ -155,25 +155,16 @@ export function UserManagement({
 
   // Render different views
   if (currentView === 'create') {
-    return (
-      <UserFormTemplate onBack={handleFormCancel}>
-        <UserCreateForm
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      </UserFormTemplate>
-    );
+    return <UserCreateForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />;
   }
 
   if (currentView === 'edit' && selectedUser) {
     return (
-      <UserFormTemplate onBack={handleFormCancel}>
-        <UserEditForm
-          user={selectedUser}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      </UserFormTemplate>
+      <UserEditForm
+        user={selectedUser}
+        onSuccess={handleFormSuccess}
+        onCancel={handleFormCancel}
+      />
     );
   }
 
@@ -222,7 +213,8 @@ export function UserManagement({
       {/* Statistics */}
       <div className="mb-4">
         <UserStatsCards
-          userStats={userStats || undefined}
+          userStats={userStats ?? undefined}
+          viewerRole={currentUser.role}
           isLoading={isLoading || isLoadingStats}
         />
       </div>

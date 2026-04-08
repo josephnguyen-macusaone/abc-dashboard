@@ -23,6 +23,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserStore } from "@/infrastructure/stores/user";
 import { useDataTableStore } from "@/infrastructure/stores/user";
 
+/** Must match keys used with `useDataTableStore` (e.g. metric cards apply role filters here). */
+export const USERS_DATA_TABLE_ID = "users-data-table";
+
 interface UsersDataTableProps {
   data: User[];
   pageCount?: number;
@@ -69,8 +72,7 @@ export function UsersDataTable({
   // Get filters from store to sync search value
   const userStore = useUserStore();
 
-  // Use Zustand store for table state management
-  const tableId = 'users-data-table';
+  const tableId = USERS_DATA_TABLE_ID;
   const {
     search: searchValue,
     manualFilters: manualFilterValues,

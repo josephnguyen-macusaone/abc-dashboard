@@ -1,19 +1,31 @@
 'use client';
 
+import type { ComponentType } from 'react';
 import { Typography } from '@/presentation/components/atoms';
 import {
-  Crown,
-  Shield,
+  Target,
   Users,
   BriefcaseBusiness,
   Wrench,
   User,
+  Cpu,
+  UsersRound,
   TrendingUp,
   TrendingDown,
   Minus,
 } from 'lucide-react';
-import { USER_ROLES } from '@/shared/constants';
+import {
+  USER_ROLES,
+  isManagerRole,
+  MANAGED_ROLE_BY_MANAGER,
+  USER_ROLE_LABELS,
+  type ManagerRoleType,
+} from '@/shared/constants';
 import { cn } from '@/shared/helpers';
+import {
+  normalizeUserStats,
+  type UserListStats,
+} from '@/shared/helpers/normalize-user-stats';
 
 export interface StatsCardConfig {
   id: string;
@@ -26,9 +38,7 @@ export interface StatsCardConfig {
   trend?: {
     value: number;
     direction: 'up' | 'down' | 'neutral';
-    /** Shown on the left of the footer row (Figma: “vs. … vs yesterday”). */
     label?: string;
-    /** `inverted`: up = bad (destructive), down = good — e.g. high-risk counts. */
     polarity?: 'default' | 'inverted';
   };
 }
@@ -41,16 +51,157 @@ export interface StatsCardsProps {
 }
 
 export interface UserStatsCardsProps {
-  userStats?: {
-    total: number;
-    admin: number;
-    accountant: number;
-    manager: number;
-    tech: number;
-    agent: number;
-  };
+  /** Partial stats are merged with defaults (handles older APIs and missing keys). */
+  userStats?: Partial<UserListStats> | null;
+  /** When set, line managers see only team-wide metrics relevant to their role. */
+  viewerRole?: string;
   isLoading?: boolean;
   className?: string;
+}
+
+/** Figma ABC-Order “Card Simple” (nodes 4335:4656–4661): icon+label, large value, footer row. */
+export interface UserManagementMetricCardProps {
+  icon?: ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  /** Left footer caption (e.g. “vs. N accountants”). */
+  footerCaption: string;
+  trend?: StatsCardConfig['trend'];
+  onClick?: () => void;
+  isLoading?: boolean;
+  /** Tailwind text color classes for the header icon (e.g. `text-sky-600 dark:text-sky-400`). */
+  iconClassName?: string;
+}
+
+function formatTrendValue(value: number): string {
+  return parseFloat(value.toFixed(2)).toString();
+}
+
+function trendSign(direction: 'up' | 'down' | 'neutral'): string {
+  if (direction === 'down') return '-';
+  if (direction === 'up') return '+';
+  return '';
+}
+
+function trendAccentClass(
+  direction: 'up' | 'down' | 'neutral',
+  polarity: 'default' | 'inverted' | undefined,
+): string {
+  if (direction === 'neutral') return 'text-muted-foreground';
+  const inverted = polarity === 'inverted';
+  if (direction === 'up')
+    return inverted ? 'text-destructive' : 'text-green-600 dark:text-green-400';
+  return inverted ? 'text-green-600 dark:text-green-400' : 'text-destructive';
+}
+
+export function UserManagementMetricCard({
+  icon: Icon = Target,
+  label,
+  value,
+  footerCaption,
+  trend,
+  onClick,
+  isLoading = false,
+  iconClassName,
+}: UserManagementMetricCardProps) {
+  const numericValue = Number.isFinite(value) ? value : 0;
+  const valueText = isLoading ? '...' : String(numericValue);
+
+  const trendPct = trend
+    ? `${trendSign(trend.direction)}${formatTrendValue(Math.abs(trend.value))}%`
+    : '';
+  const trendClass = trend ? trendAccentClass(trend.direction, trend.polarity) : '';
+
+  return (
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        'group flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden rounded-xl border bg-card p-5 transition-[border-color,box-shadow] duration-200 ease-out',
+        'border-border outline-none focus-visible:outline-none focus-visible:ring-0',
+        onClick &&
+          'cursor-pointer hover:border-primary/35 hover:shadow-sm hover:ring-1 hover:ring-primary/15',
+        !onClick && 'hover:border-muted-foreground/20',
+      )}
+    >
+      <div className="flex w-full min-w-0 flex-col gap-4">
+        <div className="flex w-full min-w-0 items-center gap-2">
+          <Icon
+            className={cn(
+              'h-6 w-6 shrink-0',
+              iconClassName ?? 'text-muted-foreground',
+              onClick && 'transition-[color] duration-200 group-hover:text-primary',
+            )}
+            aria-hidden
+          />
+          <Typography
+            variant="body-s"
+            color="muted"
+            weight="bold"
+            lineClamp={2}
+            title={label}
+            className="min-w-0 flex-1"
+          >
+            {label}
+          </Typography>
+        </div>
+        <Typography
+          variant="title-l"
+          weight="bold"
+          lineHeight="tight"
+          truncate
+          title={isLoading ? undefined : valueText}
+          className={cn(
+            'min-w-0 max-w-full font-bold tabular-nums text-foreground',
+            onClick && 'transition-colors duration-200 group-hover:text-primary',
+          )}
+        >
+          {valueText}
+        </Typography>
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <Typography
+            variant="caption"
+            weight="semibold"
+            color="muted"
+            className="min-w-0 max-w-[70%] text-muted-foreground/90"
+            lineClamp={2}
+            title={footerCaption}
+          >
+            {footerCaption}
+          </Typography>
+          {trend ? (
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {trend.direction === 'up' ? (
+                <TrendingUp className={cn('h-6 w-6 shrink-0', trendClass)} aria-hidden />
+              ) : null}
+              {trend.direction === 'down' ? (
+                <TrendingDown className={cn('h-6 w-6 shrink-0', trendClass)} aria-hidden />
+              ) : null}
+              {trend.direction === 'neutral' ? (
+                <Minus className="h-6 w-6 shrink-0 text-muted-foreground" aria-hidden />
+              ) : null}
+              <Typography variant="body-s" weight="bold" className={cn('shrink-0 tabular-nums', trendClass)}>
+                {trendPct}
+              </Typography>
+            </div>
+          ) : (
+            <span className="h-6 w-6 shrink-0" aria-hidden />
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function StatsCards({
@@ -67,33 +218,15 @@ export function StatsCards({
     6: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6',
   };
 
-  const formatTrendValue = (value: number): string => {
-    const rounded = parseFloat(value.toFixed(2));
-    return rounded.toString();
-  };
-
-  const trendSign = (direction: 'up' | 'down' | 'neutral'): string => {
-    if (direction === 'down') return '-';
-    if (direction === 'up') return '+';
-    return '';
-  };
-
-  const trendAccentClass = (
-    direction: 'up' | 'down' | 'neutral',
-    polarity: 'default' | 'inverted' | undefined,
-  ): string => {
-    if (direction === 'neutral') return 'text-muted-foreground';
-    const inverted = polarity === 'inverted';
-    if (direction === 'up')
-      return inverted ? 'text-destructive' : 'text-green-600 dark:text-green-400';
-    return inverted ? 'text-green-600 dark:text-green-400' : 'text-destructive';
-  };
-
   return (
     <div className={cn('grid items-stretch gap-4', gridCols[columns], className)}>
       {stats.map((stat) => {
         const IconComponent = stat.icon;
-        const valueText = isLoading ? '...' : String(stat.value);
+        const numericValue =
+          typeof stat.value === 'number' && Number.isFinite(stat.value)
+            ? stat.value
+            : Number(stat.value) || 0;
+        const valueText = isLoading ? '...' : String(numericValue);
         const trendPct = stat.trend
           ? `${trendSign(stat.trend.direction)}${formatTrendValue(Math.abs(stat.trend.value))}%`
           : '';
@@ -104,7 +237,6 @@ export function StatsCards({
           <div
             key={stat.id}
             className={cn(
-              /* ABC Order — Card Simple (Figma 4568:47787): surface, subtle border, 20px pad, 12px radius */
               'group flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden rounded-xl border border-border bg-card p-5',
               'transition-[border-color,box-shadow] duration-200 ease-out',
               stat.onClick &&
@@ -191,81 +323,139 @@ export function StatsCards({
   );
 }
 
+type StaffOversightRole = 'accountant' | 'tech' | 'agent';
+
+function directReportCardLabel(staffRole: StaffOversightRole): string {
+  if (staffRole === 'accountant') return 'Accountants you oversee';
+  if (staffRole === 'tech') return 'Techs you oversee';
+  return 'Agents you oversee';
+}
+
+const STAFF_ROLE_ICON: Record<StaffOversightRole, ComponentType<{ className?: string }>> = {
+  accountant: BriefcaseBusiness,
+  tech: Wrench,
+  agent: User,
+};
+
+/** Distinct header icon accents for quick visual scanning (light + dark). */
+const METRIC_ICON_TEAM = 'text-sky-600 dark:text-sky-400';
+const METRIC_ICON_ACCOUNT_MANAGER = 'text-violet-600 dark:text-violet-400';
+const METRIC_ICON_ACCOUNTANT = 'text-emerald-600 dark:text-emerald-400';
+const METRIC_ICON_TECH = 'text-amber-600 dark:text-amber-400';
+const METRIC_ICON_AGENT = 'text-rose-600 dark:text-rose-400';
+
+const STAFF_ROLE_ICON_CLASS: Record<StaffOversightRole, string> = {
+  accountant: METRIC_ICON_ACCOUNTANT,
+  tech: METRIC_ICON_TECH,
+  agent: METRIC_ICON_AGENT,
+};
+
 export function UserStatsCards({
   userStats,
+  viewerRole,
   isLoading = false,
   className,
   onRoleFilter,
-  activeRoleFilter,
 }: UserStatsCardsProps & {
   onRoleFilter?: (role: string | null) => void;
-  activeRoleFilter?: string | null;
 }) {
-  const stats = userStats ?? {
-    total: 0,
-    admin: 0,
-    accountant: 0,
-    manager: 0,
-    tech: 0,
-    agent: 0,
-  };
+  const stats = normalizeUserStats(userStats);
 
-  const statsCards: StatsCardConfig[] = [
-    {
-      id: 'total-users',
-      label: 'Total Users',
-      value: stats.total,
-      icon: Users,
-      color: activeRoleFilter === null ? 'text-primary' : 'text-blue-600',
-      hoverColor: 'text-blue-700',
-      onClick: onRoleFilter ? () => onRoleFilter(null) : undefined,
-    },
-    {
-      id: 'admins',
-      label: 'Admins',
-      value: stats.admin,
-      icon: Crown,
-      color: activeRoleFilter === USER_ROLES.ADMIN ? 'text-primary' : 'text-purple-600',
-      hoverColor: 'text-purple-700',
-      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.ADMIN) : undefined,
-    },
-    {
-      id: 'accountants',
-      label: 'Accountants',
-      value: stats.accountant,
-      icon: BriefcaseBusiness,
-      color: activeRoleFilter === USER_ROLES.ACCOUNTANT ? 'text-primary' : 'text-amber-600',
-      hoverColor: 'text-amber-700',
-      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.ACCOUNTANT) : undefined,
-    },
-    {
-      id: 'managers',
-      label: 'Managers',
-      value: stats.manager,
-      icon: Shield,
-      color: activeRoleFilter === USER_ROLES.MANAGER ? 'text-primary' : 'text-orange-600',
-      hoverColor: 'text-orange-700',
-      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.MANAGER) : undefined,
-    },
-    {
-      id: 'tech',
-      label: 'Tech',
-      value: stats.tech,
-      icon: Wrench,
-      color: activeRoleFilter === USER_ROLES.TECH ? 'text-primary' : 'text-cyan-600',
-      hoverColor: 'text-cyan-700',
-      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.TECH) : undefined,
-    },
-    {
-      id: 'agents',
-      label: 'Agents',
-      value: stats.agent,
-      icon: User,
-      color: activeRoleFilter === USER_ROLES.AGENT ? 'text-primary' : 'text-indigo-600',
-      hoverColor: 'text-indigo-700',
-      onClick: onRoleFilter ? () => onRoleFilter(USER_ROLES.AGENT) : undefined,
-    },
-  ];
+  if (viewerRole && isManagerRole(viewerRole)) {
+    const staffRole = MANAGED_ROLE_BY_MANAGER[viewerRole as ManagerRoleType] as StaffOversightRole;
+    const staffCount =
+      staffRole === 'accountant'
+        ? stats.accountant
+        : staffRole === 'tech'
+          ? stats.tech
+          : stats.agent;
+    const StaffIcon = STAFF_ROLE_ICON[staffRole];
 
-  return <StatsCards stats={statsCards} isLoading={isLoading} className={className} columns={6} />;
+    return (
+      <div className={cn('flex flex-col gap-4', className)}>
+        <Typography variant="body-s" color="muted" className="font-medium">
+          Metrics for your direct reports (
+          {USER_ROLE_LABELS[viewerRole as keyof typeof USER_ROLE_LABELS]})
+        </Typography>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <UserManagementMetricCard
+            icon={Users}
+            label="Your team (total)"
+            value={stats.total}
+            footerCaption="Users assigned to you in this directory"
+            iconClassName={METRIC_ICON_TEAM}
+            isLoading={isLoading}
+            onClick={onRoleFilter ? () => onRoleFilter(null) : undefined}
+          />
+          <UserManagementMetricCard
+            icon={StaffIcon}
+            label={directReportCardLabel(staffRole)}
+            value={staffCount}
+            footerCaption={`Role: ${USER_ROLE_LABELS[staffRole as keyof typeof USER_ROLE_LABELS] ?? staffRole}`}
+            iconClassName={STAFF_ROLE_ICON_CLASS[staffRole]}
+            isLoading={isLoading}
+            onClick={onRoleFilter ? () => onRoleFilter(staffRole) : undefined}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  /** Five Figma “Card Simple” slots: totals + finance pair + tech + agents (admin / accountant full directory view). */
+  const nonAdmin = Math.max(0, stats.total - stats.admin);
+
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5',
+        className,
+      )}
+    >
+      <UserManagementMetricCard
+        icon={Users}
+        label="Total users"
+        value={stats.total}
+        footerCaption={`Admins: ${stats.admin} · Non-admin: ${nonAdmin}`}
+        iconClassName={METRIC_ICON_TEAM}
+        isLoading={isLoading}
+        onClick={onRoleFilter ? () => onRoleFilter(null) : undefined}
+      />
+      <UserManagementMetricCard
+        icon={BriefcaseBusiness}
+        label="Accountant managers"
+        value={stats.account_manager}
+        footerCaption={`vs. ${stats.accountant} accountant${stats.accountant === 1 ? '' : 's'}`}
+        iconClassName={METRIC_ICON_ACCOUNT_MANAGER}
+        isLoading={isLoading}
+        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.ACCOUNT_MANAGER) : undefined}
+      />
+      <UserManagementMetricCard
+        icon={BriefcaseBusiness}
+        label="Accountants"
+        value={stats.accountant}
+        footerCaption={`vs. ${stats.account_manager} accountant manager${stats.account_manager === 1 ? '' : 's'}`}
+        iconClassName={METRIC_ICON_ACCOUNTANT}
+        isLoading={isLoading}
+        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.ACCOUNTANT) : undefined}
+      />
+      <UserManagementMetricCard
+        icon={Cpu}
+        label="Tech managers"
+        value={stats.tech_manager}
+        footerCaption={`vs. ${stats.tech} tech${stats.tech === 1 ? '' : 's'}`}
+        iconClassName={METRIC_ICON_TECH}
+        isLoading={isLoading}
+        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.TECH_MANAGER) : undefined}
+      />
+      <UserManagementMetricCard
+        icon={UsersRound}
+        label="Agent managers"
+        value={stats.agent_manager}
+        footerCaption={`vs. ${stats.agent} agent${stats.agent === 1 ? '' : 's'}`}
+        iconClassName={METRIC_ICON_AGENT}
+        isLoading={isLoading}
+        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.AGENT_MANAGER) : undefined}
+      />
+    </div>
+  );
 }

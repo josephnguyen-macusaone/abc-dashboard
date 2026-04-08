@@ -53,8 +53,8 @@ export const authSchemas = {
         'any.required': 'Password is required',
         'string.empty': 'Password cannot be empty',
       }),
-    role: Joi.string().valid('agent', 'tech', 'accountant').default('agent').messages({
-      'any.only': 'Role must be one of: agent, tech, accountant',
+    role: Joi.string().valid('tech', 'accountant').default('tech').messages({
+      'any.only': 'Role must be one of: tech, accountant',
       'string.base': 'Role must be a string',
     }),
     phone: Joi.string()

@@ -81,7 +81,9 @@ export interface UserStats {
   totalUsers: number;
   admin: number;
   accountant: number;
-  manager: number;
+  account_manager: number;
+  tech_manager: number;
+  agent_manager: number;
   tech: number;
   agent: number;
 }
@@ -103,7 +105,9 @@ export interface PaginatedUserList {
     total: number;
     admin: number;
     accountant: number;
-    manager: number;
+    account_manager: number;
+    tech_manager: number;
+    agent_manager: number;
     tech: number;
     agent: number;
   };

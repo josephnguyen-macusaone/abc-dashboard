@@ -128,6 +128,8 @@ export class CreateUserUseCase {
       avatarUrl,
       phone,
       isActive: true,
+      /** Admin-provisioned accounts skip self-service signup; allow immediate login. */
+      emailVerified: true,
       isFirstLogin: true,
       requiresPasswordChange: true,
       langKey: 'en',

@@ -3,7 +3,7 @@
  * Handles user profile updates
  */
 import logger from '../../../shared/utils/logger.js';
-import { ROLES } from '../../../shared/constants/roles.js';
+import { ROLES, isManagerRole, MANAGED_ROLE_BY_MANAGER } from '../../../shared/constants/roles.js';
 import { UserResponseDto } from '../../dto/user/index.js';
 import {
   ValidationException,
@@ -52,10 +52,17 @@ export class UpdateUserUseCase {
       return { allowed: true };
     }
 
-    if (updater.role === ROLES.MANAGER) {
+    if (isManagerRole(updater.role)) {
+      if (updater.id === targetUser.id) {
+        return { allowed: true };
+      }
+      const expected = MANAGED_ROLE_BY_MANAGER[updater.role];
+      if (targetUser.managedBy === updater.id && targetUser.role === expected) {
+        return { allowed: true };
+      }
       return {
         allowed: false,
-        reason: 'Managers cannot update other user accounts',
+        reason: 'You can only update users assigned to your team',
       };
     }
 
@@ -105,10 +112,14 @@ export class UpdateUserUseCase {
       return { allowed: true };
     }
 
-    if (updater.role === ROLES.MANAGER) {
+    if (isManagerRole(updater.role)) {
+      const expected = MANAGED_ROLE_BY_MANAGER[updater.role];
+      if (targetUser.managedBy === updater.id && targetUser.role === expected) {
+        return { allowed: true };
+      }
       return {
         allowed: false,
-        reason: 'Managers cannot change status of other user accounts',
+        reason: 'You can only change status for users in your team',
       };
     }
 
@@ -132,6 +143,7 @@ export class UpdateUserUseCase {
       const user = await this._getUser(userId);
       this._assertCanUpdate(currentUser, user);
       this._assertCanUpdateStatusIfRequested(updates, currentUser, user);
+      this._assertCanUpdateRoleIfRequested(updates, currentUser, user);
       await this._assertUsernameUniqueIfChanged(updates, user);
 
       const updatedUser = await this.userRepository.update(userId, updates);
@@ -205,6 +217,15 @@ export class UpdateUserUseCase {
       previousStatus: user.isActive,
       newStatus: updates.isActive,
     });
+  }
+
+  _assertCanUpdateRoleIfRequested(updates, currentUser, user) {
+    if (updates.role === undefined || updates.role === user.role) {
+      return;
+    }
+    if (currentUser.role === ROLES.ACCOUNTANT) {
+      throw new InsufficientPermissionsException('Accountants cannot change user roles');
+    }
   }
 
   async _assertUsernameUniqueIfChanged(updates, user) {

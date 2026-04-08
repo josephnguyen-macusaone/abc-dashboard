@@ -1449,32 +1449,38 @@ export class ExternalLicenseController {
     }
   }
 
+  /** @param {import('express').Request} req */
+  _buildSmsPaymentsQueryOptions(req) {
+    const rawEmailLicense =
+      req.query.emailLicense ?? req.query.email ?? req.query.email_license ?? undefined;
+    const options = {
+      appid: req.query.appid,
+      emailLicense:
+        typeof rawEmailLicense === 'string' ? rawEmailLicense.trim() || undefined : undefined,
+      countid: req.query.countid ? parseInt(req.query.countid) : undefined,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+      sortBy: req.query.sortBy,
+      sortOrder: req.query.sortOrder,
+    };
+
+    if (options.appid) {
+      const normalizedAppid = this.normalizeSmsQueryAppid(options.appid);
+      if (normalizedAppid) {
+        options.appid = normalizedAppid;
+      }
+    }
+    return options;
+  }
+
   /**
    * Get SMS payments (GET /api/v1/sms-payments)
    */
   getSmsPayments = async (req, res) => {
     try {
-      const rawEmailLicense =
-        req.query.emailLicense ?? req.query.email ?? req.query.email_license ?? undefined;
-      const options = {
-        appid: req.query.appid,
-        emailLicense:
-          typeof rawEmailLicense === 'string' ? rawEmailLicense.trim() || undefined : undefined,
-        countid: req.query.countid ? parseInt(req.query.countid) : undefined,
-        startDate: req.query.startDate,
-        endDate: req.query.endDate,
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 10,
-        sortBy: req.query.sortBy,
-        sortOrder: req.query.sortOrder,
-      };
-
-      if (options.appid) {
-        const normalizedAppid = this.normalizeSmsQueryAppid(options.appid);
-        if (normalizedAppid) {
-          options.appid = normalizedAppid;
-        }
-      }
+      const options = this._buildSmsPaymentsQueryOptions(req);
 
       await this.ensureSmsScopeAccess(req, {
         appid: options.appid,

@@ -3,7 +3,7 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../shared/utils/logger.js';
-import { ROLES } from '../../../shared/constants/roles.js';
+import { ROLES, isManagerRole } from '../../../shared/constants/roles.js';
 import {
   ValidationException,
   ResourceNotFoundException,
@@ -54,7 +54,7 @@ export class DeleteUserUseCase {
       return { allowed: true };
     }
 
-    if (deleter.role === ROLES.MANAGER) {
+    if (isManagerRole(deleter.role)) {
       return {
         allowed: false,
         reason: 'Managers cannot delete user accounts',

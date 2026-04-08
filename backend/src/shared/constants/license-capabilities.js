@@ -11,7 +11,27 @@ export const LICENSE_ROLE_CAPABILITIES = {
     canAddSmsPayment: true,
     canViewSmsPayments: true,
   },
-  [ROLES.MANAGER]: {
+  [ROLES.ACCOUNT_MANAGER]: {
+    canViewLicenses: true,
+    canCreateLicense: true,
+    canUpdateLicense: true,
+    canDeleteLicense: false,
+    canBulkOperate: false,
+    canResetLicenseId: true,
+    canAddSmsPayment: true,
+    canViewSmsPayments: true,
+  },
+  [ROLES.TECH_MANAGER]: {
+    canViewLicenses: true,
+    canCreateLicense: true,
+    canUpdateLicense: true,
+    canDeleteLicense: false,
+    canBulkOperate: false,
+    canResetLicenseId: true,
+    canAddSmsPayment: true,
+    canViewSmsPayments: true,
+  },
+  [ROLES.AGENT_MANAGER]: {
     canViewLicenses: true,
     canCreateLicense: true,
     canUpdateLicense: true,

@@ -4,91 +4,71 @@
  */
 
 import logger from '../../shared/utils/logger.js';
-import { ROLES, ROLE_CREATION_PERMISSIONS } from '../../shared/constants/roles.js';
+import {
+  ROLES,
+  ROLE_CREATION_PERMISSIONS,
+  isManagerRole,
+  MANAGED_ROLE_BY_MANAGER,
+  MANAGER_ROLE_FOR_STAFF_ROLE,
+} from '../../shared/constants/roles.js';
 
-/**
- * Check if user can create accounts of specified role
- * @param {Object} creatorUser - The user attempting to create an account
- * @param {string} targetRole - The role being created
- * @returns {boolean} - Whether creation is allowed
- */
-export function canCreateUser(creatorUser, targetRole) {
-  const creatorRole = creatorUser.role;
-
-  // Use centralized role creation permissions
-  return ROLE_CREATION_PERMISSIONS[creatorRole]?.includes(targetRole) || false;
+function normalizeRoleString(role) {
+  return typeof role === 'string' ? role.trim() : role;
 }
 
-/**
- * Check if user can view/manage specific user
- *
- * @param {Object} currentUser - The authenticated user
- * @param {Object} targetUser - The user being accessed
- * @return {boolean} - Whether access is allowed
- */
+export function canCreateUser(creatorUser, targetRole) {
+  const creatorRole = normalizeRoleString(creatorUser?.role);
+  const normalizedTarget = normalizeRoleString(targetRole);
+  return ROLE_CREATION_PERMISSIONS[creatorRole]?.includes(normalizedTarget) || false;
+}
+
 export function canAccessUser(currentUser, targetUser) {
-  // Admin can access all users
   if (currentUser.role === ROLES.ADMIN) {
     return true;
   }
 
-  // Accountant can access all users
   if (currentUser.role === ROLES.ACCOUNTANT) {
     return true;
   }
 
-  // Manager can only access their assigned staff
-  if (currentUser.role === ROLES.MANAGER) {
-    return targetUser.managedBy === currentUser.id;
+  if (isManagerRole(currentUser.role)) {
+    const expectedRole = MANAGED_ROLE_BY_MANAGER[currentUser.role];
+    return targetUser.managedBy === currentUser.id && targetUser.role === expectedRole;
   }
 
   return false;
 }
 
-/**
- * Check if user can reassign staff to different manager
- * @param {Object} currentUser - The authenticated user
- * @param {Object} staffUser - The staff user being reassigned
- * @param {string} newManagerId - The new manager ID
- * @return {boolean} - Whether reassignment is allowed
- */
-export function canReassignStaff(currentUser, staffUser, _newManagerId) {
-  // Only admin can reassign staff
+export function canReassignStaff(currentUser, staffUser, newManagerId) {
   if (currentUser.role !== ROLES.ADMIN) {
     return false;
   }
 
-  // Subordinate reassignment: agents (e.g. under a manager)
-  if (staffUser.role !== ROLES.AGENT) {
+  const requiredManagerRole = MANAGER_ROLE_FOR_STAFF_ROLE[staffUser.role];
+  if (!requiredManagerRole) {
     return false;
   }
 
-  // New manager must exist and be a manager (basic validation)
-  return true;
+  return Boolean(newManagerId);
 }
 
-/**
- * Middleware to check user creation permissions
- *
- * @param {string[]} allowedRoles - The roles that are allowed to create users
- * @return {Function} - The middleware function
- */
 export function checkUserCreationPermission(allowedRoles = null) {
   return (req, res, next) => {
     try {
       const currentUser = req.user;
-      const targetRole = req.body.role;
+      const targetRole = normalizeRoleString(req.body?.role);
+      if (targetRole !== undefined && req.body) {
+        req.body.role = targetRole;
+      }
 
       if (!currentUser) {
         return res.error('Authentication required', 401);
       }
 
-      // If specific roles are allowed, check against them
       if (allowedRoles && !allowedRoles.includes(targetRole)) {
         return res.error(`Cannot create users with role: ${targetRole}`, 403);
       }
 
-      // Check general permission
       if (!canCreateUser(currentUser, targetRole)) {
         logger.warn('User creation permission denied', {
           userId: currentUser.id,
@@ -102,7 +82,10 @@ export function checkUserCreationPermission(allowedRoles = null) {
         );
       }
 
-      // Set createdBy field
+      if (isManagerRole(currentUser.role)) {
+        req.body.managedBy = currentUser.id;
+      }
+
       req.body.createdBy = currentUser.id;
 
       next();
@@ -116,12 +99,6 @@ export function checkUserCreationPermission(allowedRoles = null) {
   };
 }
 
-/**
- * Middleware to check user access permissions
- *
- * @param {string} operation - The operation to check permissions for
- * @return {Function} - The middleware function
- */
 export function checkUserAccessPermission(operation = 'read') {
   return (req, res, next) => {
     try {
@@ -132,24 +109,19 @@ export function checkUserAccessPermission(operation = 'read') {
         return res.error('Authentication required', 401);
       }
 
-      // Admin/accountant can access all operations
       if (currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.ACCOUNTANT) {
         return next();
       }
 
-      // For user listing operations, check if filtering is applied correctly
       if (!targetUserId && operation === 'list') {
-        // Apply managedBy filter for managers
-        if (currentUser.role === ROLES.MANAGER) {
+        if (isManagerRole(currentUser.role)) {
           req.query.managedBy = currentUser.id;
+          req.query.role = MANAGED_ROLE_BY_MANAGER[currentUser.role];
         }
         return next();
       }
 
-      // For specific user operations, we need to check the target user
       if (targetUserId) {
-        // This middleware assumes the target user is already loaded
-        // by a previous middleware or will be checked in the use case
         req.targetUserId = targetUserId;
       }
 
@@ -165,11 +137,6 @@ export function checkUserAccessPermission(operation = 'read') {
   };
 }
 
-/**
- * Middleware to check staff reassignment permissions
- *
- * @return {Function} - The middleware function
- */
 export function checkStaffReassignmentPermission(req, res, next) {
   try {
     const currentUser = req.user;
@@ -209,38 +176,23 @@ export function checkStaffReassignmentPermission(req, res, next) {
   }
 }
 
-/**
- * Get available roles for user creation based on current user role
- *
- * @param {string} userRole - Current user's role
- * @return {string[]} - Array of roles the user can create
- */
 export function getAvailableRolesForCreation(userRole) {
   return ROLE_CREATION_PERMISSIONS[userRole] || [];
 }
 
-/**
- * Get user query filters based on current user permissions
- *
- * @param {Object} currentUser - The authenticated user
- * @param {Object} queryParams - Original query parameters
- * @return {Object} - Filtered query parameters
- */
 export function getUserQueryFilters(currentUser, _queryParams = {}) {
   const filters = {};
 
-  // Admin/accountant see all users - no additional permission filters needed
   if (currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.ACCOUNTANT) {
     return filters;
   }
 
-  // Manager sees only their staff
-  if (currentUser.role === ROLES.MANAGER) {
+  if (isManagerRole(currentUser.role)) {
     filters.managedBy = currentUser.id;
+    filters.role = MANAGED_ROLE_BY_MANAGER[currentUser.role];
     return filters;
   }
 
-  // Tech/agent/staff see nothing (should not reach user management)
   if ([ROLES.TECH, ROLES.AGENT].includes(currentUser.role)) {
     filters.__emptyUserList = true;
     return filters;

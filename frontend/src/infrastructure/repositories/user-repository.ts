@@ -163,10 +163,19 @@ export class UserRepository implements IUserRepository {
       throw new Error(`${operation}: Invalid limit (must be 1-100)`);
     }
 
-    // Validate role parameter
     if (params.role && typeof params.role === 'string') {
-      const validRoles = ['admin', 'accountant', 'manager', 'tech', 'agent'];
-      if (!validRoles.includes(params.role)) {
+      const validRoles = [
+        'admin',
+        'accountant',
+        'account_manager',
+        'tech_manager',
+        'agent_manager',
+        'tech',
+        'agent',
+      ];
+      const roles = params.role.split(',').map((r) => r.trim());
+      const invalid = roles.filter((r) => !validRoles.includes(r));
+      if (invalid.length > 0) {
         throw new Error(`${operation}: Invalid role`);
       }
     }

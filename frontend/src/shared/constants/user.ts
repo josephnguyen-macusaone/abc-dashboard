@@ -9,8 +9,8 @@
  */
 export const USER_COLUMN_WIDTHS = {
   displayName: { size: 280 },
-  username: { size: 150 },
-  email: { size: 160 },
+  username: { size: 220 },
+  email: { size: 120 },
   phone: { size: 140 },
   role: { size: 140 },
   isActive: { size: 140 },

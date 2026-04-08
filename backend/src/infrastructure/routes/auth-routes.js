@@ -45,7 +45,7 @@ export function createAuthRoutes(authController) {
    * @swagger
    * /auth/signup:
    *   post:
-   *     summary: Signup user (agent/tech/accountant)
+   *     summary: Signup user (tech/accountant; agents are provisioned by agent managers or admins)
    *     tags: [Authentication]
    *     requestBody:
    *       required: true
@@ -72,7 +72,7 @@ export function createAuthRoutes(authController) {
    *                 type: string
    *               role:
    *                 type: string
-   *                 enum: [agent, tech, accountant]
+   *                 enum: [tech, accountant]
    *               phone:
    *                 type: string
    *     responses:
