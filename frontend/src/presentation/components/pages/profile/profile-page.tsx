@@ -52,6 +52,7 @@ export function ProfilePage() {
   }
 
   const userRole = user.role || 'user';
+  const userRoleLabel = userRole.replace(/[_-]+/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
   const displayName = user.displayName ||
     (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}`.trim() : null) ||
     user.name ||
@@ -115,7 +116,7 @@ export function ProfilePage() {
                     {displayName}
                   </Typography>
                   <Badge variant="secondary" className="text-xs w-fit mt-1">
-                    {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                    {userRoleLabel}
                   </Badge>
                 </div>
                 {user.bio && (

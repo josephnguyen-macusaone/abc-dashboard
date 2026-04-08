@@ -15,8 +15,10 @@ export interface SidebarFooterTriggerProps extends React.ButtonHTMLAttributes<HT
 
 export const SidebarFooterTrigger = React.forwardRef<HTMLButtonElement, SidebarFooterTriggerProps>(
   ({ initials, displayName, role, avatarUrl, isCollapsed = false, className, ...props }, ref) => {
-    // Capitalize the role for display
-    const displayRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User';
+    // Normalize separators and capitalize only the first word for display.
+    const displayRole = role
+      ? role.replace(/[_-]+/g, ' ').replace(/^\w/, (char) => char.toUpperCase())
+      : 'User';
 
     if (isCollapsed) {
       return (

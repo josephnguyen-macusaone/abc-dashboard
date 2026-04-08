@@ -29,6 +29,14 @@ const roleIcons: Record<UserRoleType, LucideIcon> = {
   agent: User,
 };
 
+function toTitleCaseWords(value: string): string {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function UserRoleBadge({
   role,
   variant = 'default',
@@ -38,6 +46,7 @@ export function UserRoleBadge({
   const roleDef = ROLE_DEFINITIONS[role];
   const colors = USER_ROLE_COLORS[role];
   const IconComponent = roleIcons[role];
+  const displayName = toTitleCaseWords(roleDef.displayName);
 
   if (variant === 'minimal') {
     return (
@@ -48,7 +57,7 @@ export function UserRoleBadge({
         {showIcon && IconComponent && (
           <IconComponent className="w-3 h-3 mr-1" />
         )}
-        {roleDef.displayName}
+        {displayName}
       </Badge>
     );
   }
@@ -62,7 +71,7 @@ export function UserRoleBadge({
         {showIcon && IconComponent && (
           <IconComponent className="w-3.5 h-3.5 mr-1.5" />
         )}
-        {roleDef.displayName}
+        {displayName}
       </Badge>
     );
   }
@@ -74,9 +83,9 @@ export function UserRoleBadge({
       variant="outline"
     >
       {showIcon && IconComponent && (
-        <IconComponent className="w-3.5 h-3.5 mr-1.5" />
+        <IconComponent className="w-3.5 h-3.5 mr-3" />
       )}
-      {roleDef.displayName}
+      {displayName}
     </Badge>
   );
 }
