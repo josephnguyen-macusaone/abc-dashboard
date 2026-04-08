@@ -124,7 +124,7 @@ export function UserManagement({
   // Check if current user can edit a target user
   // - Users can edit their own profile
   // - Admin can edit anyone EXCEPT other admins
-  // - Managers do not edit other users from this UI
+  // - Managers edit their direct reports (managed_by) of the staff role they own
   const canEditUser = (user: User) => {
     return PermissionUtils.canUpdateTargetUser(
       currentUser.role,
@@ -138,14 +138,16 @@ export function UserManagement({
   // Check if current user can delete a target user
   // - Users CANNOT delete themselves
   // - Admin can delete anyone EXCEPT other admins
-  // - Managers do not delete other users from this UI
-  // - Staff cannot delete anyone
+  // - Managers may delete direct reports (managed_by) of their staff role only
+  // - Accountants: backend governs targets; UI uses same permission matrix as admin minus admins
+  // - Tech/agent cannot delete anyone
   const canDeleteUser = (user: User) => {
     return PermissionUtils.canDeleteTargetUser(
       currentUser.role,
       currentUser.id,
       user.id,
-      user.role
+      user.role,
+      user.managedBy,
     );
   };
 

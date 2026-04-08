@@ -38,20 +38,20 @@ const NO_CAPABILITIES: LicenseCapabilities = {
   canEditLicenseCoreGridFields: false,
 };
 
-/** Same license grid powers as legacy single “manager” (line managers by domain). */
-const LINE_MANAGER_LICENSE_CAPABILITIES: LicenseCapabilities = {
+/** Line managers: full catalog read-only (dashboard + license pages); no writes. */
+const MANAGER_LICENSE_READ_ONLY: LicenseCapabilities = {
   canViewLicenses: true,
   canViewOwnLicensesOnly: false,
-  canCreateLicense: true,
-  canUpdateLicense: true,
+  canCreateLicense: false,
+  canUpdateLicense: false,
   canDeleteLicense: false,
-  canResetLicenseId: true,
-  canAdjustComingExpired: true,
-  canAdjustActivateDate: true,
-  canToggleLicenseStatus: true,
-  canAdjustPackage: true,
-  canAddSmsBalance: true,
-  canEditLicenseCoreGridFields: true,
+  canResetLicenseId: false,
+  canAdjustComingExpired: false,
+  canAdjustActivateDate: false,
+  canToggleLicenseStatus: false,
+  canAdjustPackage: false,
+  canAddSmsBalance: false,
+  canEditLicenseCoreGridFields: false,
 };
 
 export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities> = {
@@ -69,9 +69,9 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAddSmsBalance: true,
     canEditLicenseCoreGridFields: true,
   },
-  [USER_ROLES.ACCOUNT_MANAGER]: LINE_MANAGER_LICENSE_CAPABILITIES,
-  [USER_ROLES.TECH_MANAGER]: LINE_MANAGER_LICENSE_CAPABILITIES,
-  [USER_ROLES.AGENT_MANAGER]: LINE_MANAGER_LICENSE_CAPABILITIES,
+  [USER_ROLES.ACCOUNT_MANAGER]: MANAGER_LICENSE_READ_ONLY,
+  [USER_ROLES.TECH_MANAGER]: MANAGER_LICENSE_READ_ONLY,
+  [USER_ROLES.AGENT_MANAGER]: MANAGER_LICENSE_READ_ONLY,
   [USER_ROLES.AGENT]: {
     canViewLicenses: true,
     canViewOwnLicensesOnly: true,

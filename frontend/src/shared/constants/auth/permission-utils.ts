@@ -91,6 +91,7 @@ export const PermissionUtils = {
     userId: string | undefined,
     targetUserId: string | undefined,
     targetUserRole?: string,
+    targetManagedBy?: string | null,
   ): boolean => {
     if (userId && targetUserId && userId === targetUserId) {
       return false;
@@ -108,8 +109,16 @@ export const PermissionUtils = {
       return targetUserRole !== USER_ROLES.ADMIN;
     }
 
+    if (userRole === USER_ROLES.ACCOUNTANT) {
+      return targetUserRole !== USER_ROLES.ADMIN;
+    }
+
     if (isManagerRole(userRole)) {
-      return false;
+      if (!targetUserRole || !targetManagedBy || !userId) {
+        return false;
+      }
+      const expected = MANAGED_ROLE_BY_MANAGER[userRole];
+      return targetUserRole === expected && targetManagedBy === userId;
     }
 
     return false;
