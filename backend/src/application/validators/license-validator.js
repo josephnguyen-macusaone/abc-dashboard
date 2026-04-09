@@ -283,6 +283,7 @@ export class LicenseValidator {
     ensureString(input.zip, 'zip', 10);
     ensureString(input.agentsName, 'agentsName', 500);
     ensureString(input.notes, 'notes');
+    LicenseValidator._validateAgentsEmailOptional(input);
   }
 
   static _validateCreateOptionalEnums(input) {
@@ -324,8 +325,17 @@ export class LicenseValidator {
     ensureNumber(input.lastPayment, 'lastPayment');
     ensureNumber(input.smsPurchased, 'smsPurchased');
     ensureNumber(input.smsSent, 'smsSent');
-    ensureNumber(input.agents, 'agents');
     ensureNumber(input.agentsCost, 'agentsCost');
+  }
+
+  /** Agent login email (or legacy numeric string from sync); max 320 chars. */
+  static _validateAgentsEmailOptional(input) {
+    if (input.agents === undefined || input.agents === null) {
+      return;
+    }
+    const raw = typeof input.agents === 'number' ? String(input.agents) : input.agents;
+    ensureString(raw, 'agents', 320);
+    input.agents = raw.trim();
   }
 
   static validateUpdateInput(input) {
@@ -358,6 +368,7 @@ export class LicenseValidator {
     ensureString(input.zip, 'zip', 10);
     ensureString(input.notes, 'notes');
     ensureString(input.agentsName, 'agentsName', 500);
+    LicenseValidator._validateAgentsEmailOptional(input);
   }
 
   static _validateUpdateEnums(input) {
@@ -402,7 +413,6 @@ export class LicenseValidator {
     ensureNumber(input.lastPayment, 'lastPayment');
     ensureNumber(input.smsPurchased, 'smsPurchased');
     ensureNumber(input.smsSent, 'smsSent');
-    ensureNumber(input.agents, 'agents');
     ensureNumber(input.agentsCost, 'agentsCost');
   }
 

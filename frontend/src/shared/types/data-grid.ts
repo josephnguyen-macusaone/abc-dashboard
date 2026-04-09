@@ -16,6 +16,8 @@ export type CellAlign = "start" | "center" | "end";
 export type CellOpts =
   | {
       variant: "short-text";
+      /** Shown when the cell value is empty (and legacy "0" when placeholder is set). */
+      placeholder?: string;
     }
   | {
       variant: "long-text";

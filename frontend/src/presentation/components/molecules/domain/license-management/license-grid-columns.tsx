@@ -6,7 +6,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LicenseRecord } from "@/types";
-import { LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
+import { LICENSE_AGENT_EMAIL_PLACEHOLDER, LICENSE_COLUMN_WIDTHS } from "@/shared/constants/license";
 import type { LicenseCapabilities } from "@/shared/constants/license";
 import { STATUS_OPTIONS, TERM_OPTIONS } from "@/presentation/components/molecules/domain/license-management/license-table-columns";
 
@@ -64,9 +64,12 @@ function applyLicenseGridRbacToColumns(
     if (!prevCell) return col;
     const prevReadOnly = prevCell.readOnly ?? false;
 
+    const agentAssignmentEditable =
+      caps.canEditLicenseAgentAssignmentFields && (id === "agents" || id === "agentsName");
     const coreReadOnly =
       !caps.canEditLicenseCoreGridFields &&
-      LICENSE_GRID_CORE_FIELD_IDS.has(id);
+      LICENSE_GRID_CORE_FIELD_IDS.has(id) &&
+      !agentAssignmentEditable;
 
     if (!rbacReadOnly && !prevReadOnly && !coreReadOnly) return col;
 
@@ -257,7 +260,11 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       meta: {
         label: "Agents",
         headerAlign: "start" as const,
-        cell: { variant: "number" as const, min: 0 },
+        cell: {
+          variant: "short-text" as const,
+          align: "start" as const,
+          placeholder: LICENSE_AGENT_EMAIL_PLACEHOLDER,
+        },
       },
     },
     {

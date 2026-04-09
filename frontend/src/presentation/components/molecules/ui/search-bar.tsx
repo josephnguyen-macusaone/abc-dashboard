@@ -132,6 +132,7 @@ export function SearchBar({
         disabled={disabled}
         className={cn(
           'pl-10',
+          '[&::-webkit-search-cancel-button]:[-webkit-appearance:none] [&::-webkit-search-decoration]:[-webkit-appearance:none]',
           onSearch && searchButtonPosition === 'inline' ? 'pr-24' : 'pr-8',
           showPrefix &&
             'h-full min-h-0 rounded-none border-0 border-l-0 border-input py-0 pl-3 leading-normal',

@@ -21,6 +21,8 @@ export interface LicenseCapabilities {
    * When false (e.g. Tech), persisted rows are limited to date fields; draft (`temp-*`) rows stay editable for new requests.
    */
   canEditLicenseCoreGridFields: boolean;
+  /** Managers: edit Agents (agent email) and Agents Name only on the license grid. */
+  canEditLicenseAgentAssignmentFields: boolean;
 }
 
 const NO_CAPABILITIES: LicenseCapabilities = {
@@ -36,14 +38,15 @@ const NO_CAPABILITIES: LicenseCapabilities = {
   canAdjustPackage: false,
   canAddSmsBalance: false,
   canEditLicenseCoreGridFields: false,
+  canEditLicenseAgentAssignmentFields: false,
 };
 
-/** Line managers: full catalog read-only (dashboard + license pages); no writes. */
-const MANAGER_LICENSE_READ_ONLY: LicenseCapabilities = {
+/** Line managers: assign agents on licenses (Agents / Agents Name); no other license writes. */
+const MANAGER_LICENSE_AGENT_ASSIGNMENT: LicenseCapabilities = {
   canViewLicenses: true,
   canViewOwnLicensesOnly: false,
   canCreateLicense: false,
-  canUpdateLicense: false,
+  canUpdateLicense: true,
   canDeleteLicense: false,
   canResetLicenseId: false,
   canAdjustComingExpired: false,
@@ -52,6 +55,7 @@ const MANAGER_LICENSE_READ_ONLY: LicenseCapabilities = {
   canAdjustPackage: false,
   canAddSmsBalance: false,
   canEditLicenseCoreGridFields: false,
+  canEditLicenseAgentAssignmentFields: true,
 };
 
 export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities> = {
@@ -68,8 +72,9 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: true,
     canAddSmsBalance: true,
     canEditLicenseCoreGridFields: true,
+    canEditLicenseAgentAssignmentFields: false,
   },
-  [USER_ROLES.MANAGER]: MANAGER_LICENSE_READ_ONLY,
+  [USER_ROLES.MANAGER]: MANAGER_LICENSE_AGENT_ASSIGNMENT,
   [USER_ROLES.AGENT]: {
     canViewLicenses: true,
     canViewOwnLicensesOnly: true,
@@ -83,6 +88,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: false,
     canAddSmsBalance: true,
     canEditLicenseCoreGridFields: false,
+    canEditLicenseAgentAssignmentFields: false,
   },
   [USER_ROLES.TECH]: {
     canViewLicenses: true,
@@ -97,6 +103,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: false,
     canAddSmsBalance: false,
     canEditLicenseCoreGridFields: false,
+    canEditLicenseAgentAssignmentFields: false,
   },
   [USER_ROLES.ACCOUNTANT]: {
     canViewLicenses: true,
@@ -111,6 +118,7 @@ export const LICENSE_ROLE_CAPABILITIES: Record<UserRoleType, LicenseCapabilities
     canAdjustPackage: true,
     canAddSmsBalance: true,
     canEditLicenseCoreGridFields: true,
+    canEditLicenseAgentAssignmentFields: false,
   },
 };
 

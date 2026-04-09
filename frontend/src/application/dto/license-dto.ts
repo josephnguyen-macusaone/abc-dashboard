@@ -19,7 +19,7 @@ export interface CreateLicenseDTO {
   seatsTotal?: number;
   lastPayment?: number;
   smsPurchased?: number;
-  agents?: number;
+  agents?: string;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
@@ -41,7 +41,7 @@ export interface UpdateLicenseDTO {
   lastPayment?: number;
   smsPurchased?: number;
   smsSent?: number;
-  agents?: number;
+  agents?: string;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
@@ -132,7 +132,7 @@ export interface LicenseResponseDTO {
   smsPurchased: number;
   smsSent: number;
   smsBalance: number;
-  agents: number;
+  agents: string;
   agentsName: string;
   agentsCost: number;
   notes: string;

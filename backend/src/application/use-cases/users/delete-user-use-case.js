@@ -3,7 +3,11 @@
  * Handles user deletion (soft delete by deactivating)
  */
 import logger from '../../../shared/utils/logger.js';
-import { ROLES, isManagerRole } from '../../../shared/constants/roles.js';
+import {
+  ROLES,
+  isManagerRole,
+  isDirectReportOfLineManager,
+} from '../../../shared/constants/roles.js';
 import {
   ValidationException,
   ResourceNotFoundException,
@@ -43,7 +47,7 @@ export class DeleteUserUseCase {
       return { allowed: true };
     }
 
-    // Managers: like admins, but cannot delete admins or other managers
+    // Managers: only direct reports (agent, tech, accountant); never admin/manager
     if (isManagerRole(deleter.role)) {
       if (targetUser.role === ROLES.ADMIN) {
         return {
@@ -57,7 +61,13 @@ export class DeleteUserUseCase {
           reason: 'Managers cannot delete other manager accounts',
         };
       }
-      return { allowed: true };
+      if (isDirectReportOfLineManager(deleter, targetUser)) {
+        return { allowed: true };
+      }
+      return {
+        allowed: false,
+        reason: 'You can only delete users assigned to your team',
+      };
     }
 
     // Other roles cannot delete users

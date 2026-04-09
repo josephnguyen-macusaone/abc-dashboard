@@ -79,6 +79,8 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
   const defaultRole =
     availableRoles.length > 0 ? availableRoles[availableRoles.length - 1].value : UserRole.AGENT;
 
+  const showRoleField = availableRoles.length > 1;
+
   const [formData, setFormData] = useState<{
     username: string;
     email: string;
@@ -303,26 +305,28 @@ export function UserCreateForm({ onSuccess, onCancel }: UserCreateFormProps) {
                 </Typography>
               </div>
 
-              <FormField label="Role" className="space-y-3">
-                {isAdminCreator ? (
-                  <UserRoleSelect
-                    variant="create-admin-sectioned"
-                    value={formData.role}
-                    onValueChange={(role) => setFormData({ ...formData, role })}
-                    disabled={isCreating}
-                    adminAndManagerRoles={adminAndManagerRoles}
-                    staffRoles={staffRoles}
-                  />
-                ) : (
-                  <UserRoleSelect
-                    variant="create-flat"
-                    value={formData.role}
-                    onValueChange={(role) => setFormData({ ...formData, role })}
-                    disabled={isCreating}
-                    options={availableRoles}
-                  />
-                )}
-              </FormField>
+              {showRoleField ? (
+                <FormField label="Role" className="space-y-3">
+                  {isAdminCreator ? (
+                    <UserRoleSelect
+                      variant="create-admin-sectioned"
+                      value={formData.role}
+                      onValueChange={(role) => setFormData({ ...formData, role })}
+                      disabled={isCreating}
+                      adminAndManagerRoles={adminAndManagerRoles}
+                      staffRoles={staffRoles}
+                    />
+                  ) : (
+                    <UserRoleSelect
+                      variant="create-flat"
+                      value={formData.role}
+                      onValueChange={(role) => setFormData({ ...formData, role })}
+                      disabled={isCreating}
+                      options={availableRoles}
+                    />
+                  )}
+                </FormField>
+              ) : null}
             </CardContent>
           </Card>
         </div>

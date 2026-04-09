@@ -3,7 +3,11 @@
  * Handles user profile updates
  */
 import logger from '../../../shared/utils/logger.js';
-import { ROLES, isManagerRole, MANAGED_ROLE_BY_MANAGER } from '../../../shared/constants/roles.js';
+import {
+  ROLES,
+  isManagerRole,
+  isDirectReportOfLineManager,
+} from '../../../shared/constants/roles.js';
 import { UserResponseDto } from '../../dto/user/index.js';
 import {
   ValidationException,
@@ -56,8 +60,7 @@ export class UpdateUserUseCase {
       if (updater.id === targetUser.id) {
         return { allowed: true };
       }
-      const expected = MANAGED_ROLE_BY_MANAGER[updater.role];
-      if (targetUser.managedBy === updater.id && targetUser.role === expected) {
+      if (isDirectReportOfLineManager(updater, targetUser)) {
         return { allowed: true };
       }
       return {
@@ -77,7 +80,7 @@ export class UpdateUserUseCase {
    * Check if a user can update the status (isActive) of another user
    * Status can only be edited by higher-level users:
    * - Admin can edit status of manager and staff
-   * - Manager can edit status of staff only
+   * - Manager can edit status of direct reports (agent, tech, accountant) only
    * - Staff cannot edit status of anyone (including themselves)
    * - No one can edit their own status
    */
@@ -113,8 +116,7 @@ export class UpdateUserUseCase {
     }
 
     if (isManagerRole(updater.role)) {
-      const expected = MANAGED_ROLE_BY_MANAGER[updater.role];
-      if (targetUser.managedBy === updater.id && targetUser.role === expected) {
+      if (isDirectReportOfLineManager(updater, targetUser)) {
         return { allowed: true };
       }
       return {

@@ -142,7 +142,7 @@ export class License {
     private _lastActive: Date,
     private _smsPurchased: number,
     private _smsSent: number,
-    private _agents: number,
+    private _agents: string,
     private _agentsName: string,
     private _agentsCost: Money,
     private _notes: string,
@@ -185,7 +185,7 @@ export class License {
     }
     return this._smsPurchased - this._smsSent;
   }
-  public get agents(): number { return this._agents; }
+  public get agents(): string { return this._agents; }
   public get agentsName(): string { return this._agentsName; }
   public get agentsCost(): Money { return this._agentsCost; }
   public get notes(): string { return this._notes; }
@@ -420,10 +420,6 @@ export class License {
       }
     }
 
-    if (this._agents < 0) {
-      throw new Error('Agents count cannot be negative');
-    }
-
     if (this._status === 'cancel' && !this._cancelDate) {
       throw new Error('Cancel date is required when status is cancel');
     }
@@ -452,7 +448,7 @@ export class License {
       now, // lastActive defaults to now; only external sync may update it later
       props.smsPurchased || 0,
       0, // smsSent starts at 0
-      props.agents || 0,
+      typeof props.agents === 'number' ? String(props.agents) : (props.agents ?? ''),
       props.agentsName || '',
       new Money(props.agentsCost || 0),
       props.notes || '',
@@ -496,7 +492,7 @@ export class License {
       new Date(props.lastActive),
       props.smsPurchased || 0,
       props.smsSent || 0,
-      props.agents || 0,
+      typeof props.agents === 'number' ? String(props.agents) : (props.agents ?? ''),
       props.agentsName || '',
       new Money(props.agentsCost || 0),
       props.notes || '',
@@ -556,7 +552,7 @@ export interface CreateLicenseProps {
   seatsTotal?: number;
   lastPayment?: number;
   smsPurchased?: number;
-  agents?: number;
+  agents?: string;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
@@ -584,7 +580,7 @@ export interface PersistenceLicenseProps {
   smsPurchased?: number;
   smsSent?: number;
   smsBalance?: number;
-  agents?: number;
+  agents?: string;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;

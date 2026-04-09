@@ -37,7 +37,8 @@ export interface LicenseRecord {
   smsPurchased: number;
   smsSent: number;
   smsBalance: number;
-  agents: number;
+  /** Assigned agent login email (set by manager on License Management). */
+  agents: string;
   agentsName: string;
   agentsCost: number;
   notes: string;

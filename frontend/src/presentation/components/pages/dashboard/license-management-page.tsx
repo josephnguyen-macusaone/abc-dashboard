@@ -126,6 +126,13 @@ export function LicenseManagementPage() {
         // agentsName is now a string, no transformation needed
         const transformedData = data.map(license => ({
           ...license,
+          agents: (() => {
+            if (license.agents === undefined || license.agents === null) {
+              return '';
+            }
+            const s = String(license.agents).trim();
+            return s === '' || s === '0' ? '' : s;
+          })(),
           agentsName: typeof license.agentsName === 'string' ? license.agentsName : '',
         }));
 
@@ -212,7 +219,7 @@ export function LicenseManagementPage() {
       smsPurchased: 0,
       smsSent: 0,
       smsBalance: 0,
-      agents: 0,
+      agents: '',
       agentsName: '',
       agentsCost: 0,
       notes: "",

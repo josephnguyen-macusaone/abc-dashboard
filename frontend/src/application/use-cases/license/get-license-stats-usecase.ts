@@ -69,6 +69,16 @@ function isDashboardMetrics(value: unknown): value is DashboardMetrics {
 }
 
 /**
+ * Aligns with backend dashboard SQL: `agents ~ '^[0-9]+$' AND agents::int > 3`.
+ * Legacy rows stored a headcount in `agents`; email values are not counted as "agent heavy" here.
+ */
+function isLegacyNumericAgentHeavy(agents: string): boolean {
+  const s = String(agents ?? '').trim();
+  if (!/^\d+$/.test(s)) return false;
+  return parseInt(s, 10) > 3;
+}
+
+/**
  * Default zeroed metrics when API fails and licenses are not yet loaded (avoids UI error, updates when licenses load).
  */
 const DEFAULT_LICENSE_DASHBOARD_METRICS: LicenseDashboardMetric[] = [
@@ -491,11 +501,15 @@ export class GetLicenseStatsUseCase implements GetLicenseStatsUseCaseContract {
     const smsIncomeThisMonth = smsSentThisPeriod * this.smsRevenuePerMessage;
 
     // Use target period for value so trend is like-to-like.
-    const agentHeavyLicenses = targetPeriodLicenses.filter((license) => license.agents > 3).length;
+    const agentHeavyLicenses = targetPeriodLicenses.filter((license) =>
+      isLegacyNumericAgentHeavy(license.agents),
+    ).length;
     const inHouseLicenses = targetPeriodLicenses.length - agentHeavyLicenses;
 
     // Comparison period for trend
-    const comparisonAgentHeavyLicenses = comparisonPeriodLicenses.filter((license) => license.agents > 3).length;
+    const comparisonAgentHeavyLicenses = comparisonPeriodLicenses.filter((license) =>
+      isLegacyNumericAgentHeavy(license.agents),
+    ).length;
     const comparisonInHouseLicenses = comparisonPeriodLicenses.length - comparisonAgentHeavyLicenses;
 
     // High risk: of the filtered (in-view) set

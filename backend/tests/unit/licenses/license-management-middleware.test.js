@@ -2,6 +2,7 @@ import {
   checkLicenseCreationPermission,
   checkLicenseAccessPermission,
   checkLicenseBulkOperationPermission,
+  checkLicenseBulkPatchPermission,
 } from '../../../src/infrastructure/middleware/license-management.middleware.js';
 import { ROLES } from '../../../src/shared/constants/roles.js';
 import { jest } from '@jest/globals';
@@ -40,7 +41,7 @@ describe('license-management permissions', () => {
     expect(resAgent.statusCode).toBe(403);
   });
 
-  it('allows update for accountant/tech, denies agent', () => {
+  it('allows update for accountant/tech/manager, denies agent', () => {
     const middleware = checkLicenseAccessPermission('update');
 
     const nextAccountant = jest.fn();
@@ -50,6 +51,10 @@ describe('license-management permissions', () => {
     const nextTech = jest.fn();
     middleware({ user: { role: ROLES.TECH } }, buildRes(), nextTech);
     expect(nextTech).toHaveBeenCalled();
+
+    const nextManager = jest.fn();
+    middleware({ user: { role: ROLES.MANAGER } }, buildRes(), nextManager);
+    expect(nextManager).toHaveBeenCalled();
 
     const resAgent = buildRes();
     middleware({ user: { role: ROLES.AGENT } }, resAgent, jest.fn());
@@ -91,5 +96,21 @@ describe('license-management permissions', () => {
     const resTech = buildRes();
     middleware({ user: { role: ROLES.TECH } }, resTech, jest.fn());
     expect(resTech.statusCode).toBe(403);
+  });
+
+  it('allows bulk patch for admin and manager', () => {
+    const middleware = checkLicenseBulkPatchPermission();
+
+    const nextAdmin = jest.fn();
+    middleware({ user: { role: ROLES.ADMIN } }, buildRes(), nextAdmin);
+    expect(nextAdmin).toHaveBeenCalled();
+
+    const nextManager = jest.fn();
+    middleware({ user: { role: ROLES.MANAGER } }, buildRes(), nextManager);
+    expect(nextManager).toHaveBeenCalled();
+
+    const resAccountant = buildRes();
+    middleware({ user: { role: ROLES.ACCOUNTANT } }, resAccountant, jest.fn());
+    expect(resAccountant.statusCode).toBe(403);
   });
 });

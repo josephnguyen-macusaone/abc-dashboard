@@ -1189,9 +1189,22 @@ export class SyncExternalLicensesUseCase {
       smsBalance: n(baseData.smsBalance, 0),
       seatsTotal: n(baseData.seatsTotal, 1),
       seatsUsed: n(baseData.seatsUsed, 0),
-      agents: n(baseData.agents, 0),
       agentsCost: n(baseData.agentsCost, 0),
     };
+  }
+
+  _sanitizeAgentsEmailField(baseData) {
+    const a = baseData.agents;
+    if (a === undefined || a === null) {
+      return '';
+    }
+    if (typeof a === 'number' && !Number.isNaN(a)) {
+      return String(a);
+    }
+    if (typeof a === 'string') {
+      return a.trim().slice(0, 320);
+    }
+    return String(a).trim().slice(0, 320);
   }
 
   /**
@@ -1211,6 +1224,7 @@ export class SyncExternalLicensesUseCase {
       startsAt: this._sanitizeDate(baseData.startsAt) || today,
       lastActive: this._sanitizeDate(baseData.lastActive) || now,
       cancelDate: baseData.cancelDate ? this._sanitizeDate(baseData.cancelDate) : null,
+      agents: this._sanitizeAgentsEmailField(baseData),
       agentsName: this._sanitizeAgentsName(baseData.agentsName),
       notes: this._sanitizeString(baseData.notes) || '',
     };
@@ -1255,7 +1269,7 @@ export class SyncExternalLicensesUseCase {
       smsBalance: 0,
       seatsTotal: 1,
       seatsUsed: 0,
-      agents: 0,
+      agents: '',
       agentsName: '',
       agentsCost: 0,
       startsAt: new Date().toISOString().split('T')[0],

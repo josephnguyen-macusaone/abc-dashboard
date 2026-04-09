@@ -80,10 +80,7 @@ export class LicenseDomainService {
       }
     }
 
-    // Agents validations
-    if (props.agents !== undefined && props.agents < 0) {
-      errors.push('Agents count cannot be negative');
-    }
+    // Agents: agent login email or legacy numeric string — no numeric `< 0` check on arbitrary strings
 
     if (props.agentsCost !== undefined && props.agentsCost < 0) {
       errors.push('Agents cost cannot be negative');

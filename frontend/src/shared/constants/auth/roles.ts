@@ -16,10 +16,25 @@ export const MANAGER_ROLES = [USER_ROLES.MANAGER] as const;
 
 export type ManagerRoleType = (typeof MANAGER_ROLES)[number];
 
-/** Staff role overseen by a manager for direct-report mutations (matches backend). */
-export const MANAGED_ROLE_BY_MANAGER: Record<ManagerRoleType, UserRoleType> = {
-  [USER_ROLES.MANAGER]: USER_ROLES.AGENT,
-};
+/** Staff roles overseen by a line manager when `managed_by` matches (matches backend). */
+export const MANAGER_MANAGED_STAFF_ROLES = [
+  USER_ROLES.AGENT,
+  USER_ROLES.TECH,
+  USER_ROLES.ACCOUNTANT,
+] as const satisfies readonly UserRoleType[];
+
+export function isDirectReportOfLineManager(
+  managerUser: { id: string; role: string },
+  targetUser: { managedBy?: string | null; role: string },
+): boolean {
+  if (!isManagerRole(managerUser.role)) {
+    return false;
+  }
+  if (!targetUser.managedBy || targetUser.managedBy !== managerUser.id) {
+    return false;
+  }
+  return (MANAGER_MANAGED_STAFF_ROLES as readonly string[]).includes(targetUser.role);
+}
 
 export const USER_ROLE_LABELS = {
   [USER_ROLES.ADMIN]: 'Administrator',

@@ -172,6 +172,13 @@ export class ILicenseRepository {
     throw new Error('hasUserAssignment not implemented');
   }
 
+  /**
+   * Assignment row or licenses.agents email match (for agent portal scope).
+   */
+  async hasAgentAccessToLicense(licenseId, userId, userEmail) {
+    throw new Error('hasAgentAccessToLicense not implemented');
+  }
+
   // ========================================================================
   // Audit Event Operations
   // ========================================================================

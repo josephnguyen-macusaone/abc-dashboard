@@ -11,17 +11,35 @@ export const ROLES = {
   AGENT: 'agent',
 };
 
-/** Roles that oversee staff via managed_by (single manager provisions agents). */
+/** Roles that oversee staff via managed_by (line managers). */
 export const MANAGER_ROLES = [ROLES.MANAGER];
 
-/** Staff role each manager is responsible for (mutations: update/delete/status for direct reports). */
-export const MANAGED_ROLE_BY_MANAGER = {
-  [ROLES.MANAGER]: ROLES.AGENT,
-};
+/**
+ * Staff roles a line manager may create and manage when `managed_by` is that manager.
+ * Mutations (update, status, delete) apply only to matching direct reports.
+ */
+export const MANAGER_MANAGED_STAFF_ROLES = [ROLES.AGENT, ROLES.TECH, ROLES.ACCOUNTANT];
 
-/** When reassigning an agent, the new line manager must have this role */
+/**
+ * @param {{ id: string, role: string }} managerUser
+ * @param {{ managedBy?: string|null, role: string }} targetUser
+ * @returns {boolean}
+ */
+export function isDirectReportOfLineManager(managerUser, targetUser) {
+  if (!managerUser?.id || !targetUser || !isManagerRole(managerUser.role)) {
+    return false;
+  }
+  if (!targetUser.managedBy || targetUser.managedBy !== managerUser.id) {
+    return false;
+  }
+  return MANAGER_MANAGED_STAFF_ROLES.includes(targetUser.role);
+}
+
+/** When reassigning staff to a line manager, the staff role must map here. */
 export const MANAGER_ROLE_FOR_STAFF_ROLE = {
   [ROLES.AGENT]: ROLES.MANAGER,
+  [ROLES.TECH]: ROLES.MANAGER,
+  [ROLES.ACCOUNTANT]: ROLES.MANAGER,
 };
 
 export function isManagerRole(role) {
@@ -71,7 +89,7 @@ const ROLE_PERMISSIONS = {
 export const ROLE_CREATION_PERMISSIONS = {
   [ROLES.ADMIN]: [ROLES.ADMIN, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.TECH, ROLES.AGENT],
   [ROLES.ACCOUNTANT]: [],
-  /** Managers provision agents only; tech/accountant onboard via signup. */
+  /** Line managers may only provision agent accounts (`managed_by` set in middleware). */
   [ROLES.MANAGER]: [ROLES.AGENT],
   [ROLES.TECH]: [],
   [ROLES.AGENT]: [],
@@ -84,7 +102,8 @@ export function hasPermission(role, permission) {
 export default {
   ROLES,
   MANAGER_ROLES,
-  MANAGED_ROLE_BY_MANAGER,
+  MANAGER_MANAGED_STAFF_ROLES,
+  isDirectReportOfLineManager,
   MANAGER_ROLE_FOR_STAFF_ROLE,
   isManagerRole,
   PERMISSIONS,

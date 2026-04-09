@@ -10,7 +10,11 @@ import { Checkbox } from "@/presentation/components/atoms/forms/checkbox";
 import { Button } from "@/presentation/components/atoms/primitives/button";
 import { DataTableColumnHeader } from "@/presentation/components/molecules/data/data-table";
 import { LicenseStatusBadge, LICENSE_PLAN_OPTIONS_WITH_ICONS } from "@/presentation/components/molecules/domain/license-management/badges";
-import { LICENSE_COLUMN_WIDTHS, PLAN_MODULE_OPTIONS as PLAN_MODULE_OPTIONS_FROM_CONSTANTS } from "@/shared/constants/license";
+import {
+  LICENSE_AGENT_EMAIL_PLACEHOLDER,
+  LICENSE_COLUMN_WIDTHS,
+  PLAN_MODULE_OPTIONS as PLAN_MODULE_OPTIONS_FROM_CONSTANTS,
+} from "@/shared/constants/license";
 import { cn } from "@/shared/helpers";
 import type { LicenseRecord, LicenseStatus, LicenseTerm } from "@/types";
 import { LICENSE_STATUS_OPTIONS_WITH_ICONS } from "@/presentation/components/molecules/domain/license-management/badges";
@@ -381,11 +385,23 @@ export function getLicenseTableColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} label="Agents" />
       ),
-      cell: ({ row }) => (
-        <div className="w-full text-right">
-          <span className="text-sm">{row.getValue("agents")}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const raw = row.getValue("agents");
+        const s = raw != null && raw !== "" ? String(raw).trim() : "";
+        const display = s === "" || s === "0" ? "" : s;
+        const placeholder = LICENSE_AGENT_EMAIL_PLACEHOLDER;
+        return (
+          <div className="w-full text-start">
+            <span
+              className={
+                display ? "text-sm" : "text-sm text-muted-foreground"
+              }
+            >
+              {display || placeholder}
+            </span>
+          </div>
+        );
+      },
       ...LICENSE_COLUMN_WIDTHS.agents,
       meta: {
         label: "Agents",

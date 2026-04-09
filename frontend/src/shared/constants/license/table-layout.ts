@@ -115,7 +115,7 @@ export const LICENSE_COLUMN_WIDTHS = {
   smsPurchased: { size: 170, minSize: 130 },
   smsSent: { size: 150, minSize: 100 },
   smsBalance: { size: 160, minSize: 120 },
-  agents: { size: 120, minSize: 80 },
+  agents: { size: 280, minSize: 130 },
   agentsName: { size: 280, minSize: 130 },
   agentsCost: { size: 160, minSize: 120 },
   notes: { size: 300, minSize: 100 },

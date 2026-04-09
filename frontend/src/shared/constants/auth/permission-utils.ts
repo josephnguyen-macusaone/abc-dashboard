@@ -12,7 +12,7 @@ import {
   USER_ROLES,
   isValidUserRole,
   isManagerRole,
-  MANAGED_ROLE_BY_MANAGER,
+  MANAGER_MANAGED_STAFF_ROLES,
   type UserRoleType,
 } from './roles';
 
@@ -75,8 +75,7 @@ export const PermissionUtils = {
       userId &&
       targetManagedBy === userId
     ) {
-      const expected = MANAGED_ROLE_BY_MANAGER[userRole];
-      return targetUserRole === expected;
+      return (MANAGER_MANAGED_STAFF_ROLES as readonly string[]).includes(targetUserRole);
     }
 
     return PermissionUtils.canUpdateUser(userRole, targetUserRole);
@@ -91,7 +90,7 @@ export const PermissionUtils = {
     userId: string | undefined,
     targetUserId: string | undefined,
     targetUserRole?: string,
-    _targetManagedBy?: string | null,
+    targetManagedBy?: string | null,
   ): boolean => {
     if (userId && targetUserId && userId === targetUserId) {
       return false;
@@ -110,8 +109,13 @@ export const PermissionUtils = {
     }
 
     if (isManagerRole(userRole)) {
-      return (
-        targetUserRole !== USER_ROLES.ADMIN && targetUserRole !== USER_ROLES.MANAGER
+      if (targetUserRole === USER_ROLES.ADMIN || targetUserRole === USER_ROLES.MANAGER) {
+        return false;
+      }
+      return Boolean(
+        userId &&
+          targetManagedBy === userId &&
+          (MANAGER_MANAGED_STAFF_ROLES as readonly string[]).includes(targetUserRole),
       );
     }
 
