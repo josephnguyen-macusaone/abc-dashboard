@@ -212,7 +212,7 @@ export function ShortTextCell<TData>({
           : undefined
       }
     >
-      {(!isEditing || readOnly) ? (value ?? "") : ""}
+      {(!isEditing || readOnly) ? (value ?? "") : null}
     </div>
   );
 
@@ -1175,13 +1175,6 @@ export function AgentsNameCell<TData>({
     setEditValue(nextText);
   }, [agentsName]);
 
-  React.useEffect(() => {
-    if (!isEditing && cellRef.current) {
-      const nextText = typeof agentsName === 'string' ? agentsName : '';
-      cellRef.current.textContent = nextText;
-    }
-  }, [agentsName, isEditing]);
-
   const commitEdit = React.useCallback(
     (raw: string) => {
       const trimmed = raw.trim();
@@ -1274,7 +1267,8 @@ export function AgentsNameCell<TData>({
     }
   }, [isEditing, initialText]);
 
-  const displayText = !isEditing ? (editValue ?? initialText) : "";
+  /** When editing, do not pass "" as React children — it clears contentEditable on every re-render. */
+  const viewText = !isEditing ? initialText : null;
   const fullText = initialText || "";
   const contentHeight = Math.max(
     getRowHeightValue(tableMeta?.rowHeight ?? "medium") - 24,
@@ -1306,7 +1300,7 @@ export function AgentsNameCell<TData>({
           : undefined
       }
     >
-      {displayText}
+      {viewText}
     </div>
   );
 

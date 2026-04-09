@@ -23,6 +23,30 @@ export function extractNotes(value: unknown): string {
 }
 
 /**
+ * Normalize agentsName from API (string, JSON string, jsonb array, etc.) to a display/save string.
+ * Mirrors backend _normalizeAgentsName so list/refetch shows saved names reliably.
+ */
+export function normalizeAgentsNameFromApi(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean).map(String).join(', ');
+      }
+      if (typeof parsed === 'string') return parsed;
+    } catch {
+      return value.trim();
+    }
+    return value.trim();
+  }
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).map(String).join(', ');
+  }
+  return String(value).trim();
+}
+
+/**
  * Transform backend license data to frontend LicenseRecord.
  * Handles both external (ActivateDate, monthlyFee, license_type, status as number)
  * and internal (startDay, lastPayment, plan, status as string) API shapes.
@@ -153,7 +177,10 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
       }
       return s;
     })(),
-    agentsName: typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '',
+    agentsName: normalizeAgentsNameFromApi(
+      apiLicense.agentsName ??
+        (apiLicense as Record<string, unknown>).agents_name,
+    ),
     agentsCost: Number(apiLicense.agentsCost ?? 0),
     notes: extractNotes(apiLicense.notes ?? apiLicense.Note),
     createdAt: (() => {

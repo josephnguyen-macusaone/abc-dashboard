@@ -19,7 +19,7 @@ import {
 } from '@/domain/repositories/i-license-repository';
 import type { ILicenseApiClient } from '@/infrastructure/api/interfaces/i-license-api-client';
 import { createLicenseApiClient } from '@/infrastructure/api/licenses/api-client';
-import { extractNotes } from '@/infrastructure/api/licenses/transforms';
+import { extractNotes, normalizeAgentsNameFromApi } from '@/infrastructure/api/licenses/transforms';
 import type { InternalLicenseRow } from '@/infrastructure/api/licenses/types';
 import type { LicenseRecord } from '@/types';
 import logger from '@/shared/helpers/logger';
@@ -208,7 +208,9 @@ export class LicenseRepository implements ILicenseRepository {
           if (s === '' || s === '0') return '';
           return s;
         })(),
-        agentsName: (typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '') as string,
+        agentsName: normalizeAgentsNameFromApi(
+          apiLicense.agentsName ?? (apiLicense as Record<string, unknown>).agents_name,
+        ) as string,
         agentsCost: (apiLicense.agentsCost as number) || 0,
         notes: extractNotes(apiLicense.notes ?? (apiLicense as Record<string, unknown>).Note),
         createdAt,
