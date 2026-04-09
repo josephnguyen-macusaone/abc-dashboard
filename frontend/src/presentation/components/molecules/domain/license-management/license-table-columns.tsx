@@ -96,6 +96,62 @@ export function getLicenseTableColumns(
       },
     },
     {
+      id: "agents",
+      accessorKey: "agents",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label="Agents" />
+      ),
+      cell: ({ row }) => {
+        const raw = row.getValue("agents");
+        const s = raw != null && raw !== "" ? String(raw).trim() : "";
+        const display = s === "" || s === "0" ? "" : s;
+        const placeholder = LICENSE_AGENT_EMAIL_PLACEHOLDER;
+        return (
+          <div className="w-full text-start">
+            <span
+              className={
+                display ? "text-sm" : "text-sm text-muted-foreground"
+              }
+            >
+              {display || placeholder}
+            </span>
+          </div>
+        );
+      },
+      ...LICENSE_COLUMN_WIDTHS.agents,
+      meta: {
+        label: "Agents",
+        headerAlign: "start" as const,
+      },
+    },
+    {
+      id: "agentsName",
+      accessorKey: "agentsName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label="Agents Name" />
+      ),
+      cell: ({ row }) => {
+        const raw = row.getValue("agentsName");
+        const agentsName = typeof raw === 'string' ? raw : '';
+        const hasNames = agentsName.trim().length > 0;
+        const display = hasNames ? agentsName : "No Agent";
+        return (
+          <span
+            className={hasNames ? "" : "text-muted-foreground"}
+            title={hasNames ? display : undefined}
+          >
+            {display}
+          </span>
+        );
+      },
+      ...LICENSE_COLUMN_WIDTHS.agentsName,
+      enableColumnFilter: false,
+      enableSorting: false,
+      meta: {
+        label: "Agents Name",
+      },
+    },
+    {
       id: "zip",
       accessorKey: "zip",
       header: ({ column }) => (
@@ -377,62 +433,6 @@ export function getLicenseTableColumns(
       meta: {
         label: "SMS Balance",
         headerAlign: "start" as const,
-      },
-    },
-    {
-      id: "agents",
-      accessorKey: "agents",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Agents" />
-      ),
-      cell: ({ row }) => {
-        const raw = row.getValue("agents");
-        const s = raw != null && raw !== "" ? String(raw).trim() : "";
-        const display = s === "" || s === "0" ? "" : s;
-        const placeholder = LICENSE_AGENT_EMAIL_PLACEHOLDER;
-        return (
-          <div className="w-full text-start">
-            <span
-              className={
-                display ? "text-sm" : "text-sm text-muted-foreground"
-              }
-            >
-              {display || placeholder}
-            </span>
-          </div>
-        );
-      },
-      ...LICENSE_COLUMN_WIDTHS.agents,
-      meta: {
-        label: "Agents",
-        headerAlign: "start" as const,
-      },
-    },
-    {
-      id: "agentsName",
-      accessorKey: "agentsName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Agents Name" />
-      ),
-      cell: ({ row }) => {
-        const raw = row.getValue("agentsName");
-        const agentsName = typeof raw === 'string' ? raw : '';
-        const hasNames = agentsName.trim().length > 0;
-        const display = hasNames ? agentsName : "No Agent";
-        return (
-          <span
-            className={hasNames ? "" : "text-muted-foreground"}
-            title={hasNames ? display : undefined}
-          >
-            {display}
-          </span>
-        );
-      },
-      ...LICENSE_COLUMN_WIDTHS.agentsName,
-      enableColumnFilter: false,
-      enableSorting: false,
-      meta: {
-        label: "Agents Name",
       },
     },
     {

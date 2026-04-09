@@ -26,6 +26,8 @@ function defaultSkeletonGridHeight(rowCount: number, showAddRow: boolean): numbe
 /** Grid columns: same as license grid, no select */
 const GRID_COLUMN_IDS: LicenseColumnId[] = [
   "dba",
+  "agents",
+  "agentsName",
   "zip",
   "startsAt",
   "status",
@@ -37,8 +39,6 @@ const GRID_COLUMN_IDS: LicenseColumnId[] = [
   "smsPurchased",
   "smsSent",
   "smsBalance",
-  "agents",
-  "agentsName",
   "agentsCost",
   "notes",
 ];
