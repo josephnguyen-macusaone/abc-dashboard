@@ -67,7 +67,7 @@ export interface InternalLicenseRow {
   smsPurchased?: number;
   smsSent?: number;
   smsBalance?: number;
-  agents?: number;
+  agents?: string;
   agentsCost?: number;
   agentsName?: string;
   createdAt?: string;
@@ -220,7 +220,7 @@ export interface InternalLicenseUpdatePayload {
   smsPurchased?: number;
   smsSent?: number;
   smsBalance?: number;
-  agents?: number;
+  agents?: string;
   agentsCost?: number;
   agentsName?: string;
   expectedUpdatedAt?: string;

@@ -65,7 +65,7 @@ export interface CreateLicenseRequest {
   lastPayment?: number;
   smsPurchased?: number;
   smsSent?: number;
-  agents?: number;
+  agents?: string;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
@@ -82,7 +82,7 @@ export interface UpdateLicenseRequest {
   lastPayment?: number;
   smsPurchased?: number;
   smsSent?: number;
-  agents?: number;
+  agents?: string;
   agentsName?: string;
   agentsCost?: number;
   notes?: string;
@@ -433,7 +433,17 @@ export const useLicenseStore = create<LicenseState>()(
 
             // When caller explicitly passes undefined/null/'' for filter keys, clear them (e.g. on reset).
             // Only clear when key is in params; if omitted, preserve current filter (avoids clearing search on loadLicenses() etc).
-            const filterKeysToClear: (keyof LicenseFilters)[] = ['search', 'searchField', 'status', 'plan', 'term', 'dba', 'zip'];
+            const filterKeysToClear: (keyof LicenseFilters)[] = [
+              'search',
+              'searchField',
+              'status',
+              'plan',
+              'term',
+              'dba',
+              'zip',
+              'startsAtFrom',
+              'startsAtTo',
+            ];
             const paramsRecord = params as Record<string, unknown>;
             filterKeysToClear.forEach((key) => {
               if (!(key in paramsRecord)) return;
@@ -680,10 +690,17 @@ export const useLicenseStore = create<LicenseState>()(
               }
             });
 
+            const uniqueUpdates = new Map<string, Partial<LicenseRecord> & { id: number | string }>();
+            for (const lic of licensesToUpdate) {
+              uniqueUpdates.set(String(lic.id), lic);
+            }
+            const licensesToUpdateDeduped = [...uniqueUpdates.values()];
+
             storeLogger.debug('Bulk upsert operation', {
               total: licenses.length,
               toCreate: licensesToCreate.length,
-              toUpdate: licensesToUpdate.length
+              toUpdate: licensesToUpdateDeduped.length,
+              toUpdateBeforeDedupe: licensesToUpdate.length,
             });
 
             const results: LicenseRecord[] = [];
@@ -704,11 +721,24 @@ export const useLicenseStore = create<LicenseState>()(
 
             let updateIdMapping: Record<string, string> = {};
             // Handle updates (pass current store licenses so key-style ids resolve against the same list the user is editing)
-            if (licensesToUpdate.length > 0) {
+            if (licensesToUpdateDeduped.length > 0) {
               try {
-                const storeLicenses = get().licenses;
-                const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdate, {
+                let storeLicenses = get().licenses;
+                const updateResult = await container.licenseManagementService.bulkUpdateLicenses(licensesToUpdateDeduped, {
                   currentLicenses: Array.isArray(storeLicenses) ? storeLicenses : []
+                }).catch(async (err: unknown) => {
+                  // On 409 (optimistic lock conflict), the sync job likely bumped updated_at between
+                  // our fetch and this save. Refetch to get fresh updatedAt tokens and retry once.
+                  const apiErr = err instanceof ApiExceptionDto ? err : handleApiError(err);
+                  if (apiErr.status !== 409) throw err;
+                  storeLogger.warn('Bulk update got 409 — refetching licenses and retrying once', {
+                    count: licensesToUpdateDeduped.length,
+                  });
+                  await get().fetchLicenses();
+                  storeLicenses = get().licenses;
+                  return container.licenseManagementService.bulkUpdateLicenses(licensesToUpdateDeduped, {
+                    currentLicenses: Array.isArray(storeLicenses) ? storeLicenses : [],
+                  });
                 });
 
                 let updatedLicenses: LicenseRecord[];

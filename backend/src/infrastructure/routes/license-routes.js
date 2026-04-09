@@ -11,6 +11,7 @@ import {
   checkLicenseCreationPermission,
   checkLicenseAccessPermission,
   checkLicenseBulkOperationPermission,
+  checkLicenseBulkPatchPermission,
 } from '../middleware/license-management.middleware.js';
 
 /**
@@ -790,7 +791,7 @@ function registerLicenseRoutes(router, controller, lifecycleController) {
    */
   router.patch(
     '/bulk',
-    checkLicenseBulkOperationPermission(),
+    checkLicenseBulkPatchPermission(),
     validateRequest(licenseSchemas.bulkUpdateLicenses),
     controller.bulkUpdate
   );

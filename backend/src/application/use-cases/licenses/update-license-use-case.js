@@ -7,6 +7,7 @@ import {
   ValidationException,
   ConcurrentModificationException,
 } from '../../../domain/exceptions/domain.exception.js';
+import { filterLicenseBodyForRole } from '../../../infrastructure/utils/filter-license-updates-for-role.js';
 
 /** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
 
@@ -112,8 +113,12 @@ export class UpdateLicenseUseCase {
    */
   async execute(licenseId, updates, context = {}) {
     const { userId, userRole, ipAddress, userAgent, expectedUpdatedAt } = context;
-    const existingLicense = await this.ensureLicenseCanBeUpdated(licenseId, updates);
-    const { safeUpdates, concurrencyToken } = this.sanitizeUpdates(updates, expectedUpdatedAt);
+    const scopedUpdates = filterLicenseBodyForRole(userRole, updates);
+    const existingLicense = await this.ensureLicenseCanBeUpdated(licenseId, scopedUpdates);
+    const { safeUpdates, concurrencyToken } = this.sanitizeUpdates(
+      scopedUpdates,
+      expectedUpdatedAt
+    );
     const dataWithAudit =
       userId && typeof userId === 'string' && userId.trim() !== ''
         ? { ...safeUpdates, updatedBy: userId }
@@ -126,7 +131,7 @@ export class UpdateLicenseUseCase {
       userAgent,
       licenseId,
       updatedLicense,
-      updates,
+      updates: safeUpdates,
       existingLicense,
     });
     return LicenseResponseDto.fromEntity(updatedLicense);

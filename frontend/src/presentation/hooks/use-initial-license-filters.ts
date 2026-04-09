@@ -6,7 +6,7 @@ import { toLocalDateString } from '@/shared/helpers/date-utils';
 
 /**
  * Returns the default date range for the current month (first and last day) in local calendar date.
- * Used when License Management or Dashboard mounts to set initial filters.
+ * Used by the admin dashboard and tests; License Management does not apply this on mount.
  */
 export function getDefaultLicenseDateRange(): { startsAtFrom: string; startsAtTo: string } {
   const now = new Date();
@@ -37,9 +37,10 @@ interface UseInitialLicenseFiltersOptions {
 }
 
 /**
- * One-time initialization: resets date range to current month (first to last day)
- * when License Management mounts, then fetches licenses. When date range is cleared,
- * fetch uses no date filter (all data).
+ * One-time initialization when License Management mounts: clears any `starts_at` window
+ * and loads page 1. A default "current month" filter was hiding long-running licenses
+ * (e.g. a line manager's own account) when `starts_at` fell outside that month; users
+ * can narrow by date with the toolbar filter when needed.
  */
 export function useInitialLicenseFilters({
   filters,
@@ -55,9 +56,13 @@ export function useInitialLicenseFilters({
     hasInitializedRef.current = true;
 
     setLoading(true);
-    const { startsAtFrom, startsAtTo } = getDefaultLicenseDateRange();
-    setFilters({ ...filters, startsAtFrom, startsAtTo });
-    fetchLicenses({ page: 1, limit: 20, startsAtFrom, startsAtTo });
+    setFilters({ ...filters, startsAtFrom: undefined, startsAtTo: undefined });
+    fetchLicenses({
+      page: 1,
+      limit: 20,
+      startsAtFrom: undefined,
+      startsAtTo: undefined,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-time mount effect
   }, []);
 }

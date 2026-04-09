@@ -4,6 +4,9 @@
 
 import type { LicenseStatus } from '../../types/license';
 
+/** Empty Agents column hint (stores agent login email). */
+export const LICENSE_AGENT_EMAIL_PLACEHOLDER = 'Assign agent email';
+
 export type LicensePlan = 'Basic' | 'Premium';
 
 export const LICENSE_STATUS_OPTIONS: Array<{

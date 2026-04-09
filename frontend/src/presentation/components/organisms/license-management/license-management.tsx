@@ -116,7 +116,7 @@ export function LicenseManagement({
       smsPurchased: 0,
       smsSent: 0,
       smsBalance: 0,
-      agents: 0,
+      agents: '',
       agentsName: '',
       agentsCost: 0,
       notes: '',
@@ -177,8 +177,8 @@ export function LicenseManagement({
         readOnly={isReadOnly}
         licenseCapabilities={licenseCapabilities}
         onSave={handleSave}
-        onAddRow={handleAddRow}
-        onDeleteRows={handleDeleteRows}
+        onAddRow={licenseCapabilities?.canCreateLicense ? handleAddRow : undefined}
+        onDeleteRows={licenseCapabilities?.canDeleteLicense ? handleDeleteRows : undefined}
         pageCount={pageCount}
         totalCount={totalCount}
         onQueryChange={onQueryChange}

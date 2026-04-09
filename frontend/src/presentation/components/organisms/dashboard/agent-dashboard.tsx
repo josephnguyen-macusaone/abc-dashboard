@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { Package, Wallet } from 'lucide-react';
 import {
@@ -8,9 +8,6 @@ import {
   selectLicenses,
   selectLicenseLoading,
   selectLicensePagination,
-  selectSmsPayments,
-  selectSmsPagination,
-  selectSmsTotalAmount,
   selectSmsPaymentsLoading,
   selectSmsPaymentsError,
 } from '@/infrastructure/stores/license';
@@ -18,10 +15,12 @@ import { StatsCards } from '@/presentation/components/molecules/domain/user-mana
 import { LicenseMetricsSkeleton, LicenseDataTableSkeleton } from '@/presentation/components/organisms';
 import { SmsPaymentHistorySection } from '@/presentation/components/molecules/domain/dashboard/sms-payment-history-section';
 import type { SmsPaymentHistoryQueryParams } from '@/presentation/components/molecules/domain/dashboard/sms-payment-history-section';
-import type { SmsPaymentsQueryParams } from '@/infrastructure/api/licenses/types';
+import type { SmsPaymentsQueryParams, SmsPaymentRecord } from '@/infrastructure/api/licenses/types';
+import type { SmsPaymentsMeta } from '@/domain/repositories/i-license-repository';
 import { parseLocalDateString, toLocalDateString } from '@/shared/helpers/date-utils';
 import type { DateRange } from '@/presentation/components/atoms/forms/date-range-picker';
 import type { LicenseRecord } from '@/types';
+import { container } from '@/shared/di/container';
 
 const LicenseTableSection = dynamic(
   () =>
@@ -87,43 +86,86 @@ function smsScopeHasIdentifier(params: SmsPaymentsQueryParams): boolean {
   );
 }
 
+/** Fetch all SMS payments for a single license identifier (all pages, up to 500 rows). */
+async function fetchAllSmsPaymentsForLicense(
+  params: SmsPaymentsQueryParams,
+  dateParams: { startDate?: string; endDate?: string },
+): Promise<SmsPaymentRecord[]> {
+  const PAGE_SIZE = 100;
+  const first = await container.licenseManagementService.getSmsPayments({
+    ...params,
+    ...dateParams,
+    page: 1,
+    limit: PAGE_SIZE,
+  });
+  const results: SmsPaymentRecord[] = [...(first.data ?? [])];
+  const totalPages = first.meta?.totalPages ?? 1;
+  if (totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        container.licenseManagementService.getSmsPayments({
+          ...params,
+          ...dateParams,
+          page: i + 2,
+          limit: PAGE_SIZE,
+        }),
+      ),
+    );
+    for (const r of rest) results.push(...(r.data ?? []));
+  }
+  return results;
+}
+
+/** Parse a payment date string to a timestamp for sorting. */
+function paymentDateMs(dateStr: string): number {
+  if (!dateStr) return 0;
+  if (dateStr.includes('/')) {
+    const [datePart, timePart] = dateStr.split(' ');
+    const [m, d, y] = datePart.split('/');
+    const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}${timePart ? `T${timePart}:00` : ''}`;
+    return new Date(iso).getTime() || 0;
+  }
+  return new Date(dateStr).getTime() || 0;
+}
+
 export function AgentDashboard() {
   const licenses = useLicenseStore(selectLicenses);
   const licensesLoading = useLicenseStore(selectLicenseLoading);
   const licensesPagination = useLicenseStore(selectLicensePagination);
-  const smsPayments = useLicenseStore(selectSmsPayments);
-  const smsPagination = useLicenseStore(selectSmsPagination);
-  const smsTotalAmount = useLicenseStore(selectSmsTotalAmount);
   const smsPaymentsLoading = useLicenseStore(selectSmsPaymentsLoading);
   const smsPaymentsError = useLicenseStore(selectSmsPaymentsError);
-  // Subscribe to individual date-filter strings so the component only re-renders when
-  // these values actually change, not on every fetchLicenses call (which always creates
-  // a new filters object reference).
   const filtersStartsAtFrom = useLicenseStore((s) => s.filters.startsAtFrom);
   const filtersStartsAtTo = useLicenseStore((s) => s.filters.startsAtTo);
 
   const fetchLicenses = useLicenseStore((s) => s.fetchLicenses);
-  const fetchSmsPayments = useLicenseStore((s) => s.fetchSmsPayments);
   const setFilters = useLicenseStore((s) => s.setFilters);
 
-  const primaryLicense = licenses[0] ?? null;
-  const smsBalance = primaryLicense?.smsBalance ?? 0;
+  // Merged SMS state — fetched in parallel for all licenses
+  const [mergedPayments, setMergedPayments] = useState<SmsPaymentRecord[]>([]);
+  const [mergedTotalAmount, setMergedTotalAmount] = useState(0);
+  const [mergedLoading, setMergedLoading] = useState(false);
+  const [mergedError, setMergedError] = useState<string | null>(null);
+  // Client-side pagination over the merged list
+  const [smsPage, setSmsPage] = useState(1);
+  const [smsLimit, setSmsLimit] = useState(20);
+  // Date filter for SMS history (separate from license table date range)
+  const [smsDateParams, setSmsDateParams] = useState<{ startDate?: string; endDate?: string }>({});
 
-  const primarySmsScopeKey = useMemo(
-    () =>
-      primaryLicense
-        ? [
-            primaryLicense.id ?? '',
-            primaryLicense.appid ?? '',
-            primaryLicense.key ?? '',
-            primaryLicense.countid ?? '',
-            primaryLicense.emailLicense ?? '',
-          ].join('|')
-        : '',
-    [primaryLicense],
+  // Sum smsBalance across ALL loaded licenses
+  const smsBalance = useMemo(
+    () => licenses.reduce((sum, l) => sum + (l.smsBalance ?? 0), 0),
+    [licenses],
   );
 
-  // Derive date range from store filters (same pattern as AdminDashboard)
+  // Stable key that changes only when the set of license identifiers changes
+  const licensesScopeKey = useMemo(
+    () =>
+      licenses
+        .map((l) => [l.id ?? '', l.appid ?? '', l.key ?? '', l.countid ?? '', l.emailLicense ?? ''].join(':'))
+        .join('|'),
+    [licenses],
+  );
+
   const dateRange = useMemo<{ from?: Date; to?: Date }>(() => {
     const from = filtersStartsAtFrom ? parseLocalDateString(filtersStartsAtFrom) : undefined;
     const to = filtersStartsAtTo ? parseLocalDateString(filtersStartsAtTo) : undefined;
@@ -134,48 +176,96 @@ export function AgentDashboard() {
     };
   }, [filtersStartsAtFrom, filtersStartsAtTo]);
 
-  // Keep stable identifier across renders; re-resolve only when primary license changes
-  const identifierRef = useRef<SmsPaymentsQueryParams>({});
   const hasInitialized = useRef(false);
 
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-
-    // No default date range — agents see all assigned licenses until they pick a range.
     const currentFilters = useLicenseStore.getState().filters;
-    setFilters({
-      ...currentFilters,
-      startsAtFrom: undefined,
-      startsAtTo: undefined,
-    });
-
+    setFilters({ ...currentFilters, startsAtFrom: undefined, startsAtTo: undefined });
     void fetchLicenses({ page: 1, limit: 20 }).catch(() => {});
   }, [fetchLicenses, setFilters]);
 
-  useEffect(() => {
-    // Read first row from store so we do not depend on `licenses` array identity (avoids redundant SMS refetches).
-    const first = useLicenseStore.getState().licenses[0] ?? null;
-    if (!first) {
-      identifierRef.current = {};
-      return;
-    }
-    const next = resolveIdentifier(first);
-    identifierRef.current = next;
-    if (!smsScopeHasIdentifier(next)) return;
-    void fetchSmsPayments({ ...next, page: 1, limit: 20 }).catch(() => {});
-  }, [primarySmsScopeKey, fetchSmsPayments]);
+  /** Fetch SMS payments for all licenses in parallel, merge and sort newest-first. */
+  const fetchMergedSmsPayments = useCallback(
+    async (dateParams: { startDate?: string; endDate?: string }) => {
+      const currentLicenses = useLicenseStore.getState().licenses;
+      const identifiers = currentLicenses
+        .map((l) => resolveIdentifier(l))
+        .filter(smsScopeHasIdentifier);
 
-  /** Real failures only — "no license / no rows" is handled in the store as empty data (like My Licenses). */
-  const smsFetchError = smsPaymentsError?.trim() || null;
+      if (identifiers.length === 0) {
+        setMergedPayments([]);
+        setMergedTotalAmount(0);
+        return;
+      }
+
+      setMergedLoading(true);
+      setMergedError(null);
+      try {
+        const perLicense = await Promise.all(
+          identifiers.map((id) => fetchAllSmsPaymentsForLicense(id, dateParams).catch(() => [] as SmsPaymentRecord[])),
+        );
+        // Merge, deduplicate by id, sort newest-first
+        const seen = new Set<number>();
+        const all: SmsPaymentRecord[] = [];
+        for (const rows of perLicense) {
+          for (const row of rows) {
+            if (!seen.has(row.id)) {
+              seen.add(row.id);
+              all.push(row);
+            }
+          }
+        }
+        all.sort((a, b) => paymentDateMs(b.date) - paymentDateMs(a.date));
+        setMergedPayments(all);
+        setMergedTotalAmount(all.reduce((s, p) => s + (p.amount ?? 0), 0));
+        setSmsPage(1);
+      } catch (err) {
+        setMergedError(err instanceof Error ? err.message : 'Failed to load SMS payment history');
+      } finally {
+        setMergedLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Re-fetch when licenses change
+  useEffect(() => {
+    if (!licensesScopeKey) return;
+    void fetchMergedSmsPayments(smsDateParams);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licensesScopeKey]);
+
+  // Client-side paginated slice of merged payments
+  const pagedPayments = useMemo(() => {
+    const start = (smsPage - 1) * smsLimit;
+    return mergedPayments.slice(start, start + smsLimit);
+  }, [mergedPayments, smsPage, smsLimit]);
+
+  const smsPagination = useMemo((): SmsPaymentsMeta => {
+    const total = mergedPayments.length;
+    const totalPages = Math.max(1, Math.ceil(total / smsLimit));
+    return {
+      page: smsPage,
+      limit: smsLimit,
+      total,
+      totalPages,
+      hasNext: smsPage < totalPages,
+      hasPrev: smsPage > 1,
+    };
+  }, [mergedPayments.length, smsPage, smsLimit]);
+
+  const smsFetchError = mergedError ?? (smsPaymentsError?.trim() || null);
 
   const smsEmptyStateDetail = useMemo(() => {
     if (smsFetchError) return null;
-    if (primaryLicense && !smsScopeHasIdentifier(resolveIdentifier(primaryLicense))) {
+    const allLicenses = useLicenseStore.getState().licenses;
+    if (allLicenses.length > 0 && allLicenses.every((l) => !smsScopeHasIdentifier(resolveIdentifier(l)))) {
       return 'SMS payment history needs an App ID, Count ID, or email on your license. If this message persists, contact support.';
     }
     return null;
-  }, [smsFetchError, primaryLicense]);
+  }, [smsFetchError]);
 
   const handleDateRangeChange = useCallback(
     (values: { range?: { from?: Date; to?: Date }; rangeCompare?: DateRange } | null) => {
@@ -183,15 +273,12 @@ export function AgentDashboard() {
       const hasRange = nextRange?.from || nextRange?.to;
       const startsAtFrom = nextRange?.from ? toLocalDateString(nextRange.from) : undefined;
       const startsAtTo = nextRange?.to ? toLocalDateString(nextRange.to) : undefined;
-
-      // Read current filters from store at call-time to avoid stale-closure re-renders.
       const currentFilters = useLicenseStore.getState().filters;
       setFilters({
         ...currentFilters,
         startsAtFrom: hasRange ? startsAtFrom : undefined,
         startsAtTo: hasRange ? startsAtTo : undefined,
       });
-
       fetchLicenses({
         page: 1,
         limit: 20,
@@ -202,22 +289,28 @@ export function AgentDashboard() {
     [setFilters, fetchLicenses],
   );
 
-  const handleQueryChange = useCallback(
+  const handleSmsQueryChange = useCallback(
     (params: SmsPaymentHistoryQueryParams) => {
-      if (!smsScopeHasIdentifier(identifierRef.current)) return;
-      fetchSmsPayments({
-        ...identifierRef.current,
-        page: params.page ?? 1,
-        limit: 20,
-        sortBy: params.sortBy,
-        sortOrder: params.sortOrder,
+      const newPage = params.page ?? 1;
+      const newLimit = params.limit ?? smsLimit;
+      const newDateParams = {
         startDate: params.startDate,
         endDate: params.endDate,
-      }).catch(() => {
-        // Error state is already set in the store; suppress unhandled rejection
-      });
+      };
+      // If date changed, re-fetch from API; otherwise just update pagination
+      const dateChanged =
+        newDateParams.startDate !== smsDateParams.startDate ||
+        newDateParams.endDate !== smsDateParams.endDate;
+      if (dateChanged) {
+        setSmsDateParams(newDateParams);
+        setSmsLimit(newLimit);
+        void fetchMergedSmsPayments(newDateParams);
+      } else {
+        setSmsPage(newPage);
+        setSmsLimit(newLimit);
+      }
     },
-    [fetchSmsPayments]
+    [smsLimit, smsDateParams, fetchMergedSmsPayments],
   );
 
   const handleLicenseTableQueryChange = useCallback(
@@ -230,11 +323,9 @@ export function AgentDashboard() {
         sortOrder: params.sortOrder,
         startsAtFrom: storeFilters.startsAtFrom,
         startsAtTo: storeFilters.startsAtTo,
-      }).catch(() => {
-        // Error state is already set in the store; suppress unhandled rejection
-      });
+      }).catch(() => {});
     },
-    [fetchLicenses]
+    [fetchLicenses],
   );
 
   const metricsLoading = licensesLoading && licenses.length === 0;
@@ -242,6 +333,8 @@ export function AgentDashboard() {
   if (metricsLoading) {
     return <LicenseMetricsSkeleton columns={2} cardCount={2} />;
   }
+
+  const isLoadingPayments = mergedLoading || smsPaymentsLoading;
 
   return (
     <div className="space-y-6">
@@ -251,7 +344,7 @@ export function AgentDashboard() {
           {
             id: 'sms-purchased',
             label: 'SMS Purchased',
-            value: currencyFmt.format(smsTotalAmount),
+            value: currencyFmt.format(mergedTotalAmount),
             icon: Package,
           },
           {
@@ -261,7 +354,7 @@ export function AgentDashboard() {
             icon: Wallet,
           },
         ]}
-        isLoading={smsPaymentsLoading && smsPayments.length === 0}
+        isLoading={isLoadingPayments && mergedPayments.length === 0}
       />
 
       <Suspense fallback={<LicenseDataTableSkeleton />}>
@@ -280,12 +373,12 @@ export function AgentDashboard() {
       </Suspense>
 
       <SmsPaymentHistorySection
-        payments={smsPayments}
+        payments={pagedPayments}
         pagination={smsPagination}
-        isLoading={smsPaymentsLoading}
+        isLoading={isLoadingPayments}
         fetchError={smsFetchError}
         emptyStateDetail={smsEmptyStateDetail}
-        onQueryChange={handleQueryChange}
+        onQueryChange={handleSmsQueryChange}
       />
     </div>
   );

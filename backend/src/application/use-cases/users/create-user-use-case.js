@@ -10,8 +10,6 @@ import {
   EmailAlreadyExistsException,
   ResourceNotFoundException,
 } from '../../../domain/exceptions/domain.exception.js';
-import { autoAssignLicensesForUser } from '../licenses/auto-assign-licenses-for-user.js';
-
 /** @typedef {import('../../../domain/repositories/interfaces/i-user-repository.js').IUserRepository} IUserRepository */
 /** @typedef {import('../../interfaces/i-auth-service.js').IAuthService} IAuthService */
 /** @typedef {import('../../../domain/repositories/interfaces/i-license-repository.js').ILicenseRepository} ILicenseRepository */
@@ -48,8 +46,6 @@ export class CreateUserUseCase {
       const user = await this._saveUser(createUserRequest, hashedPassword, userRole, creatorUser);
 
       this._logCreation(creatorUser, user);
-
-      await autoAssignLicensesForUser(this.licenseRepository, user, 'create_user');
 
       return this._buildResponse(user);
     } catch (error) {

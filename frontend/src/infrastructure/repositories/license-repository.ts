@@ -201,7 +201,13 @@ export class LicenseRepository implements ILicenseRepository {
         smsPurchased: (apiLicense.smsPurchased as number) || 0,
         smsSent: (apiLicense.smsSent as number) || 0,
         smsBalance: (apiLicense.smsBalance as number) ?? undefined,
-        agents: (apiLicense.agents as number) || 0,
+        agents: (() => {
+          const a = apiLicense.agents;
+          if (a === undefined || a === null) return '';
+          const s = String(a).trim();
+          if (s === '' || s === '0') return '';
+          return s;
+        })(),
         agentsName: (typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '') as string,
         agentsCost: (apiLicense.agentsCost as number) || 0,
         notes: extractNotes(apiLicense.notes ?? (apiLicense as Record<string, unknown>).Note),

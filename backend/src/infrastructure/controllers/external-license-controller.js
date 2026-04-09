@@ -212,11 +212,12 @@ export class ExternalLicenseController {
       throw new ValidationException('License not found for provided identifier');
     }
 
-    const hasAssignment = await this.licenseRepository.hasUserAssignment(
+    const allowed = await this.licenseRepository.hasAgentAccessToLicense(
       internalLicense.id,
-      req.user.id
+      req.user.id,
+      req.user.email
     );
-    if (!hasAssignment) {
+    if (!allowed) {
       throw new ValidationException('You can only access SMS operations for assigned licenses');
     }
   }
@@ -228,7 +229,7 @@ export class ExternalLicenseController {
     const assigned = await this.licenseRepository.findLicenses({
       page: 1,
       limit: 10000,
-      filters: { assignedUserId: req.user.id },
+      filters: { agentLicenseScope: { userId: req.user.id, email: req.user.email } },
     });
     return new Set(
       (assigned?.licenses || [])
@@ -381,7 +382,7 @@ export class ExternalLicenseController {
     const assigned = await this.licenseRepository.findLicenses({
       page: 1,
       limit: 10000,
-      filters: { assignedUserId: req.user.id },
+      filters: { agentLicenseScope: { userId: req.user.id, email: req.user.email } },
     });
     const appids = (assigned?.licenses || []).map((item) => item.appid || item.key).filter(Boolean);
     const byAppid = await repo.findByAppIds(appids);

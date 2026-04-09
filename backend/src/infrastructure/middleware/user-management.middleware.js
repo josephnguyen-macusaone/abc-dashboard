@@ -8,12 +8,12 @@ import {
   ROLES,
   ROLE_CREATION_PERMISSIONS,
   isManagerRole,
-  MANAGED_ROLE_BY_MANAGER,
+  isDirectReportOfLineManager,
   MANAGER_ROLE_FOR_STAFF_ROLE,
 } from '../../shared/constants/roles.js';
 
 function normalizeRoleString(role) {
-  return typeof role === 'string' ? role.trim() : role;
+  return typeof role === 'string' ? role.trim().toLowerCase() : role;
 }
 
 export function canCreateUser(creatorUser, targetRole) {
@@ -32,8 +32,7 @@ export function canAccessUser(currentUser, targetUser) {
   }
 
   if (isManagerRole(currentUser.role)) {
-    const expectedRole = MANAGED_ROLE_BY_MANAGER[currentUser.role];
-    return targetUser.managedBy === currentUser.id && targetUser.role === expectedRole;
+    return isDirectReportOfLineManager(currentUser, targetUser);
   }
 
   return false;
@@ -114,7 +113,7 @@ export function checkUserAccessPermission(operation = 'read') {
       }
 
       if (!targetUserId && operation === 'list') {
-        // Managers see the full directory (read-only on non-agent rows; mutations scoped in use cases).
+        // Managers see a scoped directory (no admin accounts); mutations scoped in use cases.
         return next();
       }
 
@@ -185,7 +184,7 @@ export function getUserQueryFilters(currentUser, _queryParams = {}) {
   }
 
   if (isManagerRole(currentUser.role)) {
-    return filters;
+    return { excludeRoles: [ROLES.ADMIN] };
   }
 
   if ([ROLES.TECH, ROLES.AGENT].includes(currentUser.role)) {

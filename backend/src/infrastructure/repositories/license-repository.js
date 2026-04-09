@@ -462,9 +462,17 @@ export class LicenseRepository extends ILicenseRepository {
         const dbUpdates = this._toLicenseDbFormat(updates);
         dbUpdates.updated_at = new Date();
 
+        // Truncate both sides to milliseconds so JS Date precision (ms) matches
+        // Postgres timestamptz precision (µs). Without this, a sync job that bumps
+        // updated_at to e.g. 10:30:06.123456 will never match the frontend token
+        // "10:30:06.123Z" (truncated to ms by JSON serialization), causing spurious 409s.
         const [updatedRow] = await this.db(this.licensesTable)
           .where('id', id)
-          .andWhere('updated_at', '=', new Date(expectedUpdatedAt))
+          .andWhere(
+            this.db.raw("date_trunc('milliseconds', updated_at)"),
+            '=',
+            this.db.raw("date_trunc('milliseconds', ?::timestamptz)", [new Date(expectedUpdatedAt)])
+          )
           .update(dbUpdates)
           .returning('*');
 
@@ -593,8 +601,25 @@ export class LicenseRepository extends ILicenseRepository {
     return query;
   }
 
-  _applyLicenseAdvancedFilters(query, filters) {
-    if (filters.assignedUserId) {
+  _applyLicenseScopeAndExternalFilters(query, filters) {
+    if (filters.agentLicenseScope?.userId) {
+      const userId = filters.agentLicenseScope.userId;
+      const emailRaw = filters.agentLicenseScope.email;
+      const emailNorm =
+        emailRaw && String(emailRaw).trim() ? String(emailRaw).trim().toLowerCase() : '';
+      query = query.where((qb) => {
+        qb.whereIn(
+          'id',
+          this.db(this.assignmentsTable)
+            .select('license_id')
+            .where('user_id', userId)
+            .where('status', 'assigned')
+        );
+        if (emailNorm) {
+          qb.orWhereRaw("LOWER(TRIM(COALESCE(agents::text, ''))) = ?", [emailNorm]);
+        }
+      });
+    } else if (filters.assignedUserId) {
       query = query.whereIn(
         'id',
         this.db(this.assignmentsTable)
@@ -608,6 +633,10 @@ export class LicenseRepository extends ILicenseRepository {
         qb.whereNotNull('appid').orWhereNotNull('countid');
       });
     }
+    return query;
+  }
+
+  _applyLicenseAttributeAndCapacityFilters(query, filters) {
     if (filters.status) {
       if (Array.isArray(filters.status)) {
         query = query.whereIn('status', filters.status);
@@ -644,6 +673,12 @@ export class LicenseRepository extends ILicenseRepository {
         query = query.whereRaw('seats_used >= seats_total');
       }
     }
+    return query;
+  }
+
+  _applyLicenseAdvancedFilters(query, filters) {
+    query = this._applyLicenseScopeAndExternalFilters(query, filters);
+    query = this._applyLicenseAttributeAndCapacityFilters(query, filters);
     return query;
   }
 
@@ -696,7 +731,9 @@ export class LicenseRepository extends ILicenseRepository {
       .select(
         this.db.raw('COUNT(*)::int                                         AS total'),
         this.db.raw("COUNT(*) FILTER (WHERE status = 'active')::int       AS active"),
-        this.db.raw('COUNT(*) FILTER (WHERE (agents)::int > 3)::int       AS agent_heavy'),
+        this.db.raw(
+          "COUNT(*) FILTER (WHERE agents ~ '^[0-9]+$' AND agents::int > 3)::int AS agent_heavy"
+        ),
         this.db.raw(
           'COUNT(*) FILTER (WHERE last_active IS NOT NULL AND last_active < ?)::int AS high_risk',
           [sevenDaysAgo]
@@ -867,6 +904,32 @@ export class LicenseRepository extends ILicenseRepository {
       .first();
 
     return !!assignment;
+  }
+
+  /**
+   * Agent sees a license if it is assigned in license_assignments OR licenses.agents matches their email.
+   * @param {string} licenseId
+   * @param {string} userId
+   * @param {string|null|undefined} userEmail
+   */
+  async hasAgentAccessToLicense(licenseId, userId, userEmail) {
+    if (await this.hasUserAssignment(licenseId, userId)) {
+      return true;
+    }
+    const emailNorm =
+      userEmail && String(userEmail).trim() ? String(userEmail).trim().toLowerCase() : '';
+    if (!emailNorm) {
+      return false;
+    }
+    const row = await this.db(this.licensesTable).select('agents').where('id', licenseId).first();
+    if (!row) {
+      return false;
+    }
+    const agentsVal =
+      row.agents !== null && row.agents !== undefined
+        ? String(row.agents).trim().toLowerCase()
+        : '';
+    return agentsVal.length > 0 && agentsVal === emailNorm;
   }
 
   async createAuditEvent(eventData) {
@@ -1257,7 +1320,10 @@ export class LicenseRepository extends ILicenseRepository {
       smsSent: licenseRow.sms_sent,
       smsBalance:
         licenseRow.sms_balance !== null ? parseFloat(licenseRow.sms_balance) || 0 : undefined,
-      agents: licenseRow.agents,
+      agents:
+        licenseRow.agents !== null && licenseRow.agents !== undefined
+          ? String(licenseRow.agents)
+          : '',
       agentsName: this._normalizeAgentsName(licenseRow.agents_name),
       agentsCost: parseFloat(licenseRow.agents_cost) || 0,
       notes: licenseRow.notes,

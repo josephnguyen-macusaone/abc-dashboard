@@ -228,6 +228,12 @@ export class UserRepository extends IUserRepository {
     if (filters.managedBy) {
       query = query.where('managed_by', filters.managedBy);
     }
+    if (filters.excludeRoles?.length) {
+      query = query.whereNotIn('role', filters.excludeRoles);
+    }
+    if (filters.excludeUserIds?.length) {
+      query = query.whereNotIn('id', filters.excludeUserIds);
+    }
     return query;
   }
 

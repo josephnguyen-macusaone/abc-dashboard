@@ -143,7 +143,16 @@ export function transformApiLicenseToRecord(apiLicense: LicenseApiRow): LicenseR
     smsBalance: Number(apiLicense.smsBalance ?? 0),
     seatsTotal: Number(apiLicense.seatsTotal ?? 1),
     seatsUsed: Number(apiLicense.seatsUsed ?? 0),
-    agents: Number(apiLicense.agents ?? 0),
+    agents: (() => {
+      if (apiLicense.agents === undefined || apiLicense.agents === null) {
+        return '';
+      }
+      const s = String(apiLicense.agents).trim();
+      if (s === '' || s === '0') {
+        return '';
+      }
+      return s;
+    })(),
     agentsName: typeof apiLicense.agentsName === 'string' ? apiLicense.agentsName : '',
     agentsCost: Number(apiLicense.agentsCost ?? 0),
     notes: extractNotes(apiLicense.notes ?? apiLicense.Note),

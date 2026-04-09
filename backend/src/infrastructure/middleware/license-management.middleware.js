@@ -232,3 +232,52 @@ export function checkLicenseBulkOperationPermission() {
     }
   };
 }
+
+/**
+ * PATCH /licenses/bulk — full bulk for admin, or manager-only agent-assignment patches.
+ */
+export function checkLicenseBulkPatchPermission() {
+  return (req, res, next) => {
+    try {
+      const currentUser = req.user;
+
+      if (!currentUser) {
+        logger.warn('License bulk patch attempted without authentication', {
+          correlationId: req.correlationId,
+          ip: req.ip,
+        });
+        throw new InsufficientPermissionsException('Authentication required');
+      }
+
+      const caps = getLicenseCapabilitiesForRole(currentUser.role);
+      if (!caps.canBulkOperate && !caps.canBulkPatchLicenses) {
+        logger.warn('Unauthorized license bulk patch attempt', {
+          correlationId: req.correlationId,
+          userId: currentUser.id,
+          userRole: currentUser.role,
+        });
+        throw new InsufficientPermissionsException(
+          'You do not have permission to perform bulk license updates'
+        );
+      }
+
+      if (!isRoleModuleEnabled(currentUser.role)) {
+        throw new InsufficientPermissionsException(
+          `The ${currentUser.role} module is temporarily disabled`
+        );
+      }
+
+      next();
+    } catch (error) {
+      if (error instanceof InsufficientPermissionsException) {
+        return sendErrorResponse(
+          res,
+          'INSUFFICIENT_PERMISSIONS',
+          {},
+          { customMessage: error.message }
+        );
+      }
+      return sendErrorResponse(res, 'INTERNAL_SERVER_ERROR');
+    }
+  };
+}

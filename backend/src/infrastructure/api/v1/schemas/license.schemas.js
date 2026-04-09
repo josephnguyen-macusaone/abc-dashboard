@@ -199,10 +199,8 @@ export const licenseSchemas = {
       'number.integer': 'SMS sent must be an integer',
     }),
 
-    agents: Joi.number().min(0).integer().messages({
-      'number.min': 'Agents must be greater than or equal to 0',
-      'number.base': 'Agents must be a number',
-      'number.integer': 'Agents must be an integer',
+    agents: Joi.string().trim().allow('').max(320).messages({
+      'string.max': 'Agents field cannot exceed 320 characters',
     }),
 
     agentsCost: Joi.number().min(0).messages({
@@ -271,10 +269,8 @@ export const licenseSchemas = {
       'number.integer': 'SMS sent must be an integer',
     }),
 
-    agents: Joi.number().min(0).integer().messages({
-      'number.min': 'Agents must be greater than or equal to 0',
-      'number.base': 'Agents must be a number',
-      'number.integer': 'Agents must be an integer',
+    agents: Joi.string().trim().allow('').max(320).messages({
+      'string.max': 'Agents field cannot exceed 320 characters',
     }),
 
     agentsCost: Joi.number().min(0).messages({
@@ -377,7 +373,7 @@ export const licenseSchemas = {
               lastPayment: Joi.number().min(0),
               smsPurchased: Joi.number().min(0).integer(),
               smsSent: Joi.number().min(0).integer(),
-              agents: Joi.number().min(0).integer(),
+              agents: Joi.string().trim().allow('').max(320),
               agentsCost: Joi.number().min(0),
               agentsName: Joi.string().trim().allow('').max(500),
             })
@@ -422,7 +418,7 @@ export const licenseSchemas = {
             smsPurchased: Joi.number().min(0).integer().optional(),
             smsSent: Joi.number().min(0).integer().optional(),
             lastActive: Joi.string().optional(),
-            agents: Joi.number().min(0).integer().optional(),
+            agents: Joi.string().trim().allow('').max(320).optional(),
             agentsCost: Joi.number().min(0).optional(),
             agentsName: Joi.string().trim().allow('').max(500).optional(),
             notes: Joi.string().allow('').optional(),

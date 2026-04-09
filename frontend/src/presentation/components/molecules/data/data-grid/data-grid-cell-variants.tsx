@@ -31,6 +31,17 @@ import type { LicenseRecord } from "@/types";
 const LICENSE_ROW_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function normalizeShortTextForPlaceholder(raw: unknown): string {
+  if (raw == null) {
+    return "";
+  }
+  const s = String(raw).trim();
+  if (s === "" || s === "0") {
+    return "";
+  }
+  return s;
+}
+
 export function ShortTextCell<TData>({
   cell,
   tableMeta,
@@ -41,7 +52,13 @@ export function ShortTextCell<TData>({
   isSelected,
   readOnly,
 }: CellVariantProps<TData>) {
-  const initialValue = cell.getValue() as string;
+  const cellOpts = cell.column.columnDef.meta?.cell;
+  const placeholder =
+    cellOpts?.variant === "short-text" ? cellOpts.placeholder : undefined;
+  const rawCellValue = cell.getValue();
+  const initialValue = placeholder
+    ? normalizeShortTextForPlaceholder(rawCellValue)
+    : String(rawCellValue ?? "");
   const [value, setValue] = React.useState(initialValue);
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -50,19 +67,34 @@ export function ShortTextCell<TData>({
     setValue(initialValue);
   }, [initialValue]);
 
-  React.useEffect(() => {
-    if (!isEditing && cellRef.current) {
-      cellRef.current.textContent = initialValue;
+  const applyNormalizedCommit = React.useCallback(() => {
+    if (readOnly) {
+      return;
     }
-  }, [initialValue, isEditing]);
+    const raw = cellRef.current?.textContent ?? "";
+    const committed = placeholder
+      ? normalizeShortTextForPlaceholder(raw)
+      : String(raw).trim();
+    const baseline = placeholder
+      ? initialValue
+      : String(initialValue ?? "").trim();
+    setValue(committed);
+    if (committed !== baseline) {
+      tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: committed });
+    }
+  }, [
+    placeholder,
+    initialValue,
+    readOnly,
+    tableMeta,
+    rowIndex,
+    columnId,
+  ]);
 
   const onBlur = React.useCallback(() => {
-    const currentValue = cellRef.current?.textContent ?? "";
-    if (!readOnly && currentValue !== initialValue) {
-      tableMeta?.onDataUpdate?.({ rowIndex, columnId, value: currentValue });
-    }
+    applyNormalizedCommit();
     tableMeta?.onCellEditingStop?.();
-  }, [tableMeta, rowIndex, columnId, initialValue, readOnly]);
+  }, [applyNormalizedCommit, tableMeta]);
 
   const onInput = React.useCallback(
     (event: React.FormEvent<HTMLDivElement>) => {
@@ -77,25 +109,11 @@ export function ShortTextCell<TData>({
       if (isEditing && !readOnly) {
         if (event.key === "Enter") {
           event.preventDefault();
-          const currentValue = cellRef.current?.textContent ?? "";
-          if (currentValue !== initialValue) {
-            tableMeta?.onDataUpdate?.({
-              rowIndex,
-              columnId,
-              value: currentValue,
-            });
-          }
+          applyNormalizedCommit();
           tableMeta?.onCellEditingStop?.({ moveToNextRow: true });
         } else if (event.key === "Tab") {
           event.preventDefault();
-          const currentValue = cellRef.current?.textContent ?? "";
-          if (currentValue !== initialValue) {
-            tableMeta?.onDataUpdate?.({
-              rowIndex,
-              columnId,
-              value: currentValue,
-            });
-          }
+          applyNormalizedCommit();
           tableMeta?.onCellEditingStop?.({
             direction: event.shiftKey ? "left" : "right",
           });
@@ -131,7 +149,7 @@ export function ShortTextCell<TData>({
         });
       }
     },
-    [isEditing, isFocused, initialValue, readOnly, tableMeta, rowIndex, columnId],
+    [isEditing, isFocused, initialValue, readOnly, tableMeta, applyNormalizedCommit],
   );
 
   React.useEffect(() => {
@@ -162,7 +180,6 @@ export function ShortTextCell<TData>({
         ? "justify-center text-center"
         : undefined;
 
-  const displayValue = !isEditing || readOnly ? (value ?? "") : "";
   const fullValue = String(initialValue ?? "");
   const contentHeight = Math.max(
     getRowHeightValue(tableMeta?.rowHeight ?? "medium") - 24,
@@ -195,7 +212,7 @@ export function ShortTextCell<TData>({
           : undefined
       }
     >
-      {displayValue}
+      {(!isEditing || readOnly) ? (value ?? "") : ""}
     </div>
   );
 
@@ -212,7 +229,21 @@ export function ShortTextCell<TData>({
       onKeyDown={onWrapperKeyDown}
       className={wrapperAlignClass}
     >
-      {!isEditing && fullValue ? (
+      {!isEditing && placeholder && !fullValue ? (
+        <span
+          data-slot="grid-cell-content"
+          className={cn(
+            "block min-w-0 w-full select-none truncate text-muted-foreground",
+            align === "end"
+              ? "text-right"
+              : align === "center"
+                ? "text-center"
+                : "text-left",
+          )}
+        >
+          {placeholder}
+        </span>
+      ) : !isEditing && fullValue ? (
         <TooltipWrapper
           content={fullValue}
           side="top"

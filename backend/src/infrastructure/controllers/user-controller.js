@@ -50,6 +50,8 @@ export class UserController {
           ...sanitizedQuery.filters,
           // Add permission-based filters (managedBy, etc.)
           ...permissionFilters,
+          // Directory UX: never list the signed-in user (profile is elsewhere)
+          ...(currentUser?.id ? { excludeUserIds: [currentUser.id] } : {}),
           // Add remaining search filters that weren't handled by sanitizer
           search: req.query.search,
           email: req.query.email,
@@ -95,16 +97,20 @@ export class UserController {
       const { id } = req.params;
       const currentUser = req.user;
 
-      // Permission check: Users can view their own profile, admins/managers can view any profile
+      // Permission check: self, or READ_USER (managers still cannot load admin profiles — filtered below)
       if (currentUser.id !== id && !hasPermission(currentUser.role, PERMISSIONS.READ_USER)) {
         return sendErrorResponse(res, 'INSUFFICIENT_PERMISSIONS');
       }
 
-      // For now, reuse getUsers logic but filter for single user
+      const permissionFilters = getUserQueryFilters(currentUser, req.query);
+
       const options = {
         page: 1,
         limit: 1,
-        filters: { id },
+        filters: {
+          id,
+          ...permissionFilters,
+        },
       };
 
       const result = await this.getUsersUseCase.execute(options);

@@ -8,6 +8,7 @@ import { sendErrorResponse, formatCanonicalError } from '../../shared/http/error
 import logger from '../../shared/utils/logger.js';
 import { cache, cacheKeys, cacheTTL } from '../config/redis.js';
 import { ROLES } from '../../shared/constants/roles.js';
+import { filterLicenseBodyForRole } from '../utils/filter-license-updates-for-role.js';
 
 /** Fields allowed in PATCH /licenses/bulk array body (`lastActive` is sync-only). */
 const BULK_UPDATE_UPDATABLE_FIELDS = [
@@ -95,7 +96,7 @@ export class LicenseController {
       if (req.user?.role === ROLES.AGENT && req.user?.id) {
         query.filters = {
           ...(query.filters || {}),
-          assignedUserId: req.user.id,
+          agentLicenseScope: { userId: req.user.id, email: req.user.email },
         };
       }
 
@@ -234,11 +235,12 @@ export class LicenseController {
   getLicenseById = async (req, res) => {
     try {
       if (req.user?.role === ROLES.AGENT) {
-        const hasAssignment = await this.licenseService.licenseRepository.hasUserAssignment(
+        const allowed = await this.licenseService.licenseRepository.hasAgentAccessToLicense(
           req.params.id,
-          req.user.id
+          req.user.id,
+          req.user.email
         );
-        if (!hasAssignment) {
+        if (!allowed) {
           return res.forbidden('You can only access licenses assigned to you');
         }
       }
@@ -259,11 +261,12 @@ export class LicenseController {
       const licenseId = req.params.id;
 
       if (req.user?.role === ROLES.AGENT) {
-        const hasAssignment = await this.licenseService.licenseRepository.hasUserAssignment(
+        const allowed = await this.licenseService.licenseRepository.hasAgentAccessToLicense(
           licenseId,
-          req.user.id
+          req.user.id,
+          req.user.email
         );
-        if (!hasAssignment) {
+        if (!allowed) {
           return res.forbidden('You can only access licenses assigned to you');
         }
       }
@@ -315,17 +318,18 @@ export class LicenseController {
 
   updateLicense = async (req, res) => {
     try {
-      LicenseValidator.validateUpdateInput(req.body);
+      const body = filterLicenseBodyForRole(req.user?.role, req.body);
+      LicenseValidator.validateUpdateInput(body);
 
       const context = {
         userId: req.user?.id,
         userRole: req.user?.role,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
-        expectedUpdatedAt: req.body?.expectedUpdatedAt || req.body?.updatedAt,
+        expectedUpdatedAt: body?.expectedUpdatedAt || body?.updatedAt,
       };
 
-      const updated = await this.licenseService.updateLicense(req.params.id, req.body, context);
+      const updated = await this.licenseService.updateLicense(req.params.id, body, context);
       if (!updated) {
         return sendErrorResponse(res, 'RESOURCE_NOT_FOUND');
       }
@@ -352,7 +356,10 @@ export class LicenseController {
   bulkUpdate = async (req, res) => {
     let licensesToUpdate = [];
     try {
-      licensesToUpdate = parseBulkUpdatePayload(req.body);
+      licensesToUpdate = parseBulkUpdatePayload(req.body).map(({ id, updates }) => ({
+        id,
+        updates: filterLicenseBodyForRole(req.user?.role, updates),
+      }));
 
       const bulkContext = {
         userId: req.user?.id,
@@ -566,7 +573,7 @@ export class LicenseController {
       if (req.user?.role === ROLES.AGENT && req.user?.id) {
         query.filters = {
           ...(query.filters || {}),
-          assignedUserId: req.user.id,
+          agentLicenseScope: { userId: req.user.id, email: req.user.email },
         };
       }
       const dateRange = {};

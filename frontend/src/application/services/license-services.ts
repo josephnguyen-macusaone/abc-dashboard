@@ -554,7 +554,12 @@ export class LicenseManagementService {
         smsPurchased: license.smsPurchased || 0,
         smsSent: license.smsSent || 0,
         smsBalance: license.smsBalance || 0,
-        agents: license.agents || 0,
+        agents: (() => {
+          if (license.agents === undefined || license.agents === null) return '';
+          const s = String(license.agents).trim();
+          if (s === '' || s === '0') return '';
+          return s;
+        })(),
         agentsName: license.agentsName || '',
         agentsCost: license.agentsCost || 0,
         notes: license.notes || '',
@@ -852,13 +857,14 @@ export class LicenseManagementService {
 
         const baseline = currentLicenses.find((l) => String(l.id) === String(actualLicenseId));
         const row = normalizedUpdate as Record<string, unknown>;
-        if (
-          row.expectedUpdatedAt === undefined &&
-          row.updatedAt === undefined &&
-          baseline?.updatedAt
-        ) {
+        // Prefer store baseline for optimistic locking — grid rows often carry stale `updatedAt`
+        // after refetch/HMR while the Zustand list is newer.
+        if (baseline?.updatedAt) {
           row.expectedUpdatedAt = baseline.updatedAt;
+        } else if (row.expectedUpdatedAt === undefined && row.updatedAt !== undefined) {
+          row.expectedUpdatedAt = row.updatedAt;
         }
+        delete row.updatedAt;
 
         // Normalize agentsName to string (backend expects string)
         const rawAgentsName = (normalizedUpdate as Record<string, unknown>).agentsName;
