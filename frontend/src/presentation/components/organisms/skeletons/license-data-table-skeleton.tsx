@@ -20,6 +20,8 @@ const TABLE_ROW_HEIGHT = getRowHeightValue("medium");
 const LICENSE_TABLE_COLUMN_IDS: LicenseColumnId[] = [
   "select",
   "dba",
+  "agents",
+  "agentsName",
   "zip",
   "startsAt",
   "status",
@@ -31,8 +33,6 @@ const LICENSE_TABLE_COLUMN_IDS: LicenseColumnId[] = [
   "smsPurchased",
   "smsSent",
   "smsBalance",
-  "agents",
-  "agentsName",
   "agentsCost",
   "notes",
 ];

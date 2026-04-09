@@ -102,6 +102,34 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       },
     },
     {
+      id: "agents",
+      accessorKey: "agents",
+      header: "Agents",
+      ...LICENSE_COLUMN_WIDTHS.agents,
+      meta: {
+        label: "Agents",
+        headerAlign: "start" as const,
+        cell: {
+          variant: "short-text" as const,
+          align: "start" as const,
+          placeholder: LICENSE_AGENT_EMAIL_PLACEHOLDER,
+        },
+      },
+    },
+    {
+      id: "agentsName",
+      accessorKey: "agentsName",
+      header: "Agents Name",
+      ...LICENSE_COLUMN_WIDTHS.agentsName,
+      enableColumnFilter: false,
+      enableSorting: false,
+      meta: {
+        label: "Agents Name",
+        headerAlign: "start" as const,
+        cell: { variant: "agents-name" as const },
+      },
+    },
+    {
       id: "zip",
       accessorKey: "zip",
       header: "Zip Code",
@@ -250,34 +278,6 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
         label: "SMS Balance",
         headerAlign: "start" as const,
         cell: { variant: "number" as const },
-      },
-    },
-    {
-      id: "agents",
-      accessorKey: "agents",
-      header: "Agents",
-      ...LICENSE_COLUMN_WIDTHS.agents,
-      meta: {
-        label: "Agents",
-        headerAlign: "start" as const,
-        cell: {
-          variant: "short-text" as const,
-          align: "start" as const,
-          placeholder: LICENSE_AGENT_EMAIL_PLACEHOLDER,
-        },
-      },
-    },
-    {
-      id: "agentsName",
-      accessorKey: "agentsName",
-      header: "Agents Name",
-      ...LICENSE_COLUMN_WIDTHS.agentsName,
-      enableColumnFilter: false,
-      enableSorting: false,
-      meta: {
-        label: "Agents Name",
-        headerAlign: "start" as const,
-        cell: { variant: "agents-name" as const },
       },
     },
     {
