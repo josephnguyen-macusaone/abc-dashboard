@@ -60,7 +60,8 @@ export function DataTableToolbar<TData>({
       aria-orientation="horizontal"
       className={cn(
         "flex w-full flex-col gap-2 py-2 min-w-0 min-h-8",
-        "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1 lg:min-h-8",
+        "sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 sm:py-1 sm:min-h-8",
+        "lg:flex-nowrap lg:items-center lg:overflow-x-auto",
         className,
       )}
       {...props}
@@ -88,7 +89,7 @@ export function DataTableToolbar<TData>({
             )}
           </div>
           {/* Tablet+: date + search + Reset in one row (same row height as filter buttons) */}
-          <div className="hidden w-full sm:flex lg:w-auto lg:min-w-0 items-center min-h-8 flex-nowrap gap-2 overflow-x-auto min-w-0">
+          <div className="hidden sm:flex sm:w-auto sm:min-w-0 sm:shrink items-center min-h-8 flex-nowrap gap-2 overflow-x-auto">
             {dateRangeFilter}
             {searchBar}
             {hasActiveFilters && (
@@ -109,7 +110,7 @@ export function DataTableToolbar<TData>({
 
       {/* When no dateRangeFilter: original layout (searchBar may include date) */}
       {!dateRangeFilter && (searchBar || hasActiveFilters) && (
-        <div className="flex w-full lg:w-auto lg:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
+        <div className="flex w-full min-w-0 items-center flex-nowrap gap-2 overflow-x-auto sm:w-auto sm:max-w-md sm:shrink-0 md:max-w-lg lg:max-w-none lg:min-w-0 lg:shrink">
           {searchBar}
           {hasActiveFilters && (
             <Button
@@ -127,7 +128,7 @@ export function DataTableToolbar<TData>({
       )}
 
       {/* Right: Status, Plan, Term filters + children + View options (align with left row) */}
-      <div className="flex flex-1 flex-wrap items-center min-h-8 gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
+      <div className="flex flex-1 flex-wrap items-center min-h-8 gap-2 min-w-0 justify-start sm:justify-end overflow-x-auto sm:overflow-visible lg:flex-nowrap lg:justify-end">
         {columns.map((column) => (
           <DataTableToolbarFilter
             key={column.id}
@@ -175,7 +176,7 @@ function DataTableToolbarFilter<TData>({
   );
 
   // For manual filtering with text variant, still set column filter so parent can read it
-  // and send as search param (e.g. Agents Name filter → backend search).
+  // and send as search param (e.g. Agent Name filter → backend search).
   const handleSearchChange = React.useCallback(
     (value: string) => {
       setSearchValue(value);

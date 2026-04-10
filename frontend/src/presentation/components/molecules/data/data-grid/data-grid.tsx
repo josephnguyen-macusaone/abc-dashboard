@@ -25,6 +25,11 @@ interface DataGridProps<TData>
   stretchColumns?: boolean;
   /** Only these column ids grow to fill horizontal slack; takes precedence over `stretchColumns`. */
   stretchColumnIds?: readonly string[];
+  /**
+   * Placement of the "Add row" control when `onRowAdd` is set.
+   * Default `bottom` preserves legacy behavior for any future grid consumers; license grid passes `top`.
+   */
+  addRowPosition?: "top" | "bottom";
 }
 
 export function DataGrid<TData>({
@@ -32,6 +37,7 @@ export function DataGrid<TData>({
   headerRef,
   rowMapRef,
   footerRef,
+  addRowTopStripRef,
   dir = "ltr",
   table,
   tableMeta,
@@ -46,6 +52,7 @@ export function DataGrid<TData>({
   height: heightFromProps,
   stretchColumns = false,
   stretchColumnIds,
+  addRowPosition = "bottom",
   className,
   // Destructured so they are not spread onto the div (not valid DOM attributes)
   contextMenu: _contextMenu,
@@ -79,6 +86,59 @@ export function DataGrid<TData>({
       }
     },
     [onRowAdd],
+  );
+
+  const headerGroups = table.getHeaderGroups();
+  const headerDepth = headerGroups.length;
+  const addRowOnTop = Boolean(onRowAdd && addRowPosition === "top");
+  const dataRowAriaIndexBase = headerDepth + 1 + (addRowOnTop ? 1 : 0);
+  const addRowAriaRowIndexTop = headerDepth + 1;
+  const addRowAriaRowIndexBottom = headerDepth + rows.length + 1;
+
+  const [stickyHeaderHeightPx, setStickyHeaderHeightPx] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) {
+      setStickyHeaderHeightPx(0);
+      return;
+    }
+    const measure = () => {
+      setStickyHeaderHeightPx(el.getBoundingClientRect().height);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [headerRef, columnVisibility, headerGroups.length]);
+
+  const addRowStrip = (
+    <div
+      role="row"
+      aria-rowindex={
+        addRowOnTop ? addRowAriaRowIndexTop : addRowAriaRowIndexBottom
+      }
+      data-slot="grid-add-row"
+      tabIndex={-1}
+      className="flex w-full"
+    >
+      <div
+        role="gridcell"
+        tabIndex={0}
+        className="relative flex h-8 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+        style={{
+          width: table.getTotalSize(),
+          minWidth: table.getTotalSize(),
+        }}
+        onClick={onRowAdd}
+        onKeyDown={onAddRowKeyDown}
+      >
+        <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
+          <Plus className="size-3.5" />
+          <span className="text-sm">Add row</span>
+        </div>
+      </div>
+    </div>
   );
 
   return (
@@ -124,7 +184,7 @@ export function DataGrid<TData>({
             ref={headerRef}
             className="sticky top-0 z-10 grid border-b bg-muted [&_[role=row]]:border-b"
           >
-            {table.getHeaderGroups().map((headerGroup, rowIndex) => (
+            {headerGroups.map((headerGroup, rowIndex) => (
               <div
                 key={headerGroup.id}
                 role="row"
@@ -194,6 +254,18 @@ export function DataGrid<TData>({
             ))}
           </div>
 
+          {addRowOnTop && (
+            <div
+              role="rowgroup"
+              data-slot="grid-add-row-group"
+              ref={addRowTopStripRef}
+              className="sticky z-10 grid border-b bg-muted"
+              style={{ top: stickyHeaderHeightPx }}
+            >
+              {addRowStrip}
+            </div>
+          )}
+
           <div
             role="rowgroup"
             data-slot="grid-body"
@@ -227,42 +299,20 @@ export function DataGrid<TData>({
                   readOnly={readOnly}
                   stretchColumns={stretchColumns}
                   stretchColumnIds={stretchColumnIds}
+                  dataRowAriaIndexBase={dataRowAriaIndexBase}
                 />
               );
             })}
           </div>
 
-          {onRowAdd && (
+          {onRowAdd && addRowPosition === "bottom" && (
             <div
               role="rowgroup"
               data-slot="grid-footer"
               ref={footerRef}
               className={cn("sticky bottom-0 z-10 grid bg-muted", tableFooterClass)}
             >
-              <div
-                role="row"
-                aria-rowindex={rows.length + 2}
-                data-slot="grid-add-row"
-                tabIndex={-1}
-                className="flex w-full"
-              >
-                <div
-                  role="gridcell"
-                  tabIndex={0}
-                  className="relative flex h-8 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
-                  style={{
-                    width: table.getTotalSize(),
-                    minWidth: table.getTotalSize(),
-                  }}
-                  onClick={onRowAdd}
-                  onKeyDown={onAddRowKeyDown}
-                >
-                  <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
-                    <Plus className="size-3.5" />
-                    <span className="text-sm">Add row</span>
-                  </div>
-                </div>
-              </div>
+              {addRowStrip}
             </div>
           )}
         </div>

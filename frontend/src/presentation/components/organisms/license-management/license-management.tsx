@@ -57,7 +57,6 @@ interface LicenseManagementProps {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     search?: string;
-    /** When set, search is limited to this field only (DBA or Agents Name) */
     searchField?: 'dba' | 'agentsName' | 'zip';
     status?: string | string[];
     plan?: string | string[];
@@ -156,7 +155,7 @@ export function LicenseManagement({
 
   // Licenses are already filtered by start date on the server when dateRange is set (GET /licenses?startDate=...&endDate=...)
   return (
-    <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-5 px-6 pb-6', className)}>
+    <div className={cn('bg-card border border-border rounded-xl shadow-sm space-y-4 px-6 pb-4', className)}>
       {/* Header */}
       <div className="flex items-center justify-between pt-4">
         <div className="">

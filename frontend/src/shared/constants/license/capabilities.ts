@@ -21,7 +21,7 @@ export interface LicenseCapabilities {
    * When false (e.g. Tech), persisted rows are limited to date fields; draft (`temp-*`) rows stay editable for new requests.
    */
   canEditLicenseCoreGridFields: boolean;
-  /** Managers: edit Agents (agent email) and Agents Name only on the license grid. */
+  /** Managers: edit Agent (email) and Agent Name only on the license grid. */
   canEditLicenseAgentAssignmentFields: boolean;
 }
 
@@ -41,7 +41,7 @@ const NO_CAPABILITIES: LicenseCapabilities = {
   canEditLicenseAgentAssignmentFields: false,
 };
 
-/** Line managers: assign agents on licenses (Agents / Agents Name); no other license writes. */
+/** Line managers: assign agent on licenses (Agent / Agent Name); no other license writes. */
 const MANAGER_LICENSE_AGENT_ASSIGNMENT: LicenseCapabilities = {
   canViewLicenses: true,
   canViewOwnLicensesOnly: false,

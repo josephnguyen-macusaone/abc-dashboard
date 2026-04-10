@@ -199,6 +199,8 @@ function useDataGrid<TData>({
   const rowMapRef = React.useRef<Map<number, HTMLDivElement>>(new Map());
   const cellMapRef = React.useRef<Map<string, HTMLDivElement>>(new Map());
   const footerRef = React.useRef<HTMLDivElement>(null);
+  /** When the add-row strip is rendered below the header, navigation uses its height as extra top inset. */
+  const addRowTopStripRef = React.useRef<HTMLDivElement>(null);
 
   const propsRef = useAsRef({
     ...props,
@@ -1042,10 +1044,15 @@ function useDataGrid<TData>({
             const containerRect = container.getBoundingClientRect();
             const headerHeight =
               headerRef.current?.getBoundingClientRect().height ?? 0;
+            const topStripHeight =
+              addRowTopStripRef.current?.getBoundingClientRect().height ?? 0;
             const footerHeight =
               footerRef.current?.getBoundingClientRect().height ?? 0;
             const viewportTop =
-              containerRect.top + headerHeight + VIEWPORT_OFFSET;
+              containerRect.top +
+              headerHeight +
+              topStripHeight +
+              VIEWPORT_OFFSET;
             const viewportBottom =
               containerRect.bottom - footerHeight - VIEWPORT_OFFSET;
 
@@ -2190,6 +2197,7 @@ function useDataGrid<TData>({
       headerRef,
       rowMapRef,
       footerRef,
+      addRowTopStripRef,
       dir,
       table,
       tableMeta,

@@ -342,50 +342,60 @@ export function UserStatsCards({
   return (
     <div
       className={cn(
-        'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5',
+        'grid grid-cols-2 gap-4 lg:grid-cols-5 lg:items-stretch',
         className,
       )}
     >
-      <UserManagementMetricCard
-        icon={Users}
-        label="Total users"
-        value={stats.total}
-        iconClassName={METRIC_ICON_TEAM}
-        isLoading={isLoading}
-        onClick={onRoleFilter ? () => onRoleFilter(null) : undefined}
-      />
-      <UserManagementMetricCard
-        icon={UserCog}
-        label="Managers"
-        value={stats.manager}
-        iconClassName={METRIC_ICON_MANAGER}
-        isLoading={isLoading}
-        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.MANAGER) : undefined}
-      />
-      <UserManagementMetricCard
-        icon={BriefcaseBusiness}
-        label="Accountants"
-        value={stats.accountant}
-        iconClassName={METRIC_ICON_ACCOUNTANT}
-        isLoading={isLoading}
-        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.ACCOUNTANT) : undefined}
-      />
-      <UserManagementMetricCard
-        icon={Wrench}
-        label="Tech"
-        value={stats.tech}
-        iconClassName={METRIC_ICON_TECH}
-        isLoading={isLoading}
-        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.TECH) : undefined}
-      />
-      <UserManagementMetricCard
-        icon={User}
-        label="Agents"
-        value={stats.agent}
-        iconClassName={METRIC_ICON_AGENT}
-        isLoading={isLoading}
-        onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.AGENT) : undefined}
-      />
+      <div className="col-span-2 min-w-0 lg:col-span-1">
+        <UserManagementMetricCard
+          icon={Users}
+          label="Total users"
+          value={stats.total}
+          iconClassName={METRIC_ICON_TEAM}
+          isLoading={isLoading}
+          onClick={onRoleFilter ? () => onRoleFilter(null) : undefined}
+        />
+      </div>
+      <div className="min-w-0">
+        <UserManagementMetricCard
+          icon={UserCog}
+          label="Managers"
+          value={stats.manager}
+          iconClassName={METRIC_ICON_MANAGER}
+          isLoading={isLoading}
+          onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.MANAGER) : undefined}
+        />
+      </div>
+      <div className="min-w-0">
+        <UserManagementMetricCard
+          icon={BriefcaseBusiness}
+          label="Accountants"
+          value={stats.accountant}
+          iconClassName={METRIC_ICON_ACCOUNTANT}
+          isLoading={isLoading}
+          onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.ACCOUNTANT) : undefined}
+        />
+      </div>
+      <div className="min-w-0">
+        <UserManagementMetricCard
+          icon={Wrench}
+          label="Tech"
+          value={stats.tech}
+          iconClassName={METRIC_ICON_TECH}
+          isLoading={isLoading}
+          onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.TECH) : undefined}
+        />
+      </div>
+      <div className="min-w-0">
+        <UserManagementMetricCard
+          icon={User}
+          label="Agents"
+          value={stats.agent}
+          iconClassName={METRIC_ICON_AGENT}
+          isLoading={isLoading}
+          onClick={onRoleFilter ? () => onRoleFilter(USER_ROLES.AGENT) : undefined}
+        />
+      </div>
     </div>
   );
 }

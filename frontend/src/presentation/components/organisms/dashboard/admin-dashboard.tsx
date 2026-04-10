@@ -188,7 +188,7 @@ export function AdminDashboard({
 
       // Agents: table is never filtered by date (date range only drives metric cards).
       const tableStartsAtFrom = metricsAudience === 'agent' ? undefined : storeFilters.startsAtFrom;
-      const tableStartsAtTo   = metricsAudience === 'agent' ? undefined : storeFilters.startsAtTo;
+      const tableStartsAtTo = metricsAudience === 'agent' ? undefined : storeFilters.startsAtTo;
 
       const metricsParams = {
         search: params.search,
@@ -334,7 +334,7 @@ export function AdminDashboard({
     const REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
     // Agents: never filter the table by date on refresh.
     const refreshStartsAtFrom = metricsAudience === 'agent' ? undefined : filters.startsAtFrom;
-    const refreshStartsAtTo   = metricsAudience === 'agent' ? undefined : filters.startsAtTo;
+    const refreshStartsAtTo = metricsAudience === 'agent' ? undefined : filters.startsAtTo;
 
     const runWhenVisible = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {

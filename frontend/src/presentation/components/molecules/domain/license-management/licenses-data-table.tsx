@@ -360,7 +360,7 @@ export function LicensesDataTable({
       sortOrder: (activeSort ? (activeSort.desc ? "desc" : "asc") : (DEFAULT_LICENSE_SORT[0].desc ? "desc" : "asc")) as "asc" | "desc",
     };
 
-    // Search: single search bar; searchField limits to DBA or Agents Name when set
+    // Search: single search bar; searchField limits to DBA or Agent Name when set
     queryParams.search = searchValue.trim() || undefined;
     if (searchField) queryParams.searchField = searchField;
 
