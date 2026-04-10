@@ -76,8 +76,9 @@ export function AppHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {showSyncButton && <LicenseSyncButton />}
+        {showSyncButton && <div className="h-6 w-px bg-border ml-3" />}
         <ThemeSwitcher />
       </div>
     </header>

@@ -89,82 +89,95 @@ export function TablePagination<TData>({
   const finalPageStart = pageStart;
   const finalPageEnd = pageEnd;
 
+  const pageLabel = `Page ${pageIndex + 1} of ${pageCount}`;
+
+  const navButtons = (
+    <>
+      <Button
+        aria-label="Go to first page"
+        variant="outline"
+        size="icon"
+        className="hidden size-8 lg:flex"
+        onClick={() => table.setPageIndex(0)}
+        disabled={!table.getCanPreviousPage()}
+      >
+        <ChevronsLeft />
+      </Button>
+      <Button
+        aria-label="Go to previous page"
+        variant="outline"
+        size="icon"
+        className="size-8"
+        onClick={() => table.previousPage()}
+        disabled={!table.getCanPreviousPage()}
+      >
+        <ChevronLeft />
+      </Button>
+      <Button
+        aria-label="Go to next page"
+        variant="outline"
+        size="icon"
+        className="size-8"
+        onClick={() => table.nextPage()}
+        disabled={!table.getCanNextPage()}
+      >
+        <ChevronRight />
+      </Button>
+      <Button
+        aria-label="Go to last page"
+        variant="outline"
+        size="icon"
+        className="hidden size-8 lg:flex"
+        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+        disabled={!table.getCanNextPage()}
+      >
+        <ChevronsRight />
+      </Button>
+    </>
+  );
+
   return (
     <div
       className={cn(
-        "flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8",
+        "flex w-full flex-col gap-4 overflow-auto p-1 sm:flex-row sm:items-center sm:justify-between sm:gap-8",
         className,
       )}
       {...props}
     >
-      <div className="flex-1 whitespace-nowrap text-muted-foreground text-sm">
-        Showing {finalPageStart} to {finalPageEnd} of {totalRows} entries
+      <div className="flex w-full items-center justify-between gap-2 sm:hidden">
+        <p className="whitespace-nowrap font-medium text-sm">{pageLabel}</p>
+        <div className="flex shrink-0 items-center gap-2">{navButtons}</div>
       </div>
-      <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
-        <div className="flex items-center space-x-2">
-          <p className="whitespace-nowrap font-medium text-sm">Rows per page</p>
-          <Select
-            value={`${pageSize}`}
-            onValueChange={(value) => {
-              table.setPageSize(Number(value));
-            }}
-          >
-            <SelectTrigger className="h-8 w-16">
-              <SelectValue placeholder={pageSize} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {pageSizeOptions.map((option) => (
-                <SelectItem key={option} value={`${option}`}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+      <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:flex-1 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+        <div className="order-1 flex flex-col items-center gap-3 sm:order-2 sm:flex-row sm:items-center sm:gap-6 lg:gap-8">
+          <div className="flex items-center gap-2">
+            <p className="whitespace-nowrap font-medium text-sm">Rows per page</p>
+            <Select
+              value={`${pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value));
+              }}
+            >
+              <SelectTrigger className="h-8 w-16">
+                <SelectValue placeholder={pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {pageSizeOptions.map((option) => (
+                  <SelectItem key={option} value={`${option}`}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="hidden whitespace-nowrap font-medium text-sm sm:block">
+            {pageLabel}
+          </p>
+          <div className="hidden items-center gap-2 sm:flex">{navButtons}</div>
         </div>
-        <div className="flex items-center justify-center font-medium text-sm">
-          Page {pageIndex + 1} of {table.getPageCount()}
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            aria-label="Go to first page"
-            variant="outline"
-            size="icon"
-            className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronsLeft />
-          </Button>
-          <Button
-            aria-label="Go to previous page"
-            variant="outline"
-            size="icon"
-            className="size-8"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            <ChevronLeft />
-          </Button>
-          <Button
-            aria-label="Go to next page"
-            variant="outline"
-            size="icon"
-            className="size-8"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronRight />
-          </Button>
-          <Button
-            aria-label="Go to last page"
-            variant="outline"
-            size="icon"
-            className="hidden size-8 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            <ChevronsRight />
-          </Button>
+        <div className="order-2 w-full whitespace-nowrap text-center text-muted-foreground text-sm sm:order-1 sm:flex-1 sm:text-start">
+          Showing {finalPageStart} to {finalPageEnd} of {totalRows} entries
         </div>
       </div>
     </div>

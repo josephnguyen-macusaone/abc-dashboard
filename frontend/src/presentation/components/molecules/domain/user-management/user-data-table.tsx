@@ -466,7 +466,7 @@ export function UsersDataTable({
             value={searchValue}
             onValueChange={handleSearchChange}
             allowClear={false}
-            className="w-64"
+            className="w-full min-w-0 max-w-full sm:w-64 sm:max-w-none sm:shrink-0"
             inputClassName="h-8 py-0"
           />
         }

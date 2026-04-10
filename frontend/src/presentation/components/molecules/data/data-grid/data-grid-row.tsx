@@ -43,6 +43,8 @@ interface DataGridRowProps<TData> extends React.ComponentProps<"div"> {
   readOnly: boolean;
   stretchColumns?: boolean;
   stretchColumnIds?: readonly string[];
+  /** 1-based aria-rowindex for the first data row = `virtualRowIndex + dataRowAriaIndexBase` (accounts for header + optional top add-row). */
+  dataRowAriaIndexBase?: number;
 }
 
 export const DataGridRow = React.memo(DataGridRowImpl, (prev, next) => {
@@ -115,6 +117,10 @@ export const DataGridRow = React.memo(DataGridRowImpl, (prev, next) => {
     return false;
   }
 
+  if (prev.dataRowAriaIndexBase !== next.dataRowAriaIndexBase) {
+    return false;
+  }
+
   return true;
 }) as typeof DataGridRowImpl;
 
@@ -133,6 +139,7 @@ function DataGridRowImpl<TData>({
   readOnly,
   stretchColumns,
   stretchColumnIds,
+  dataRowAriaIndexBase = 2,
   className,
   style,
   ref,
@@ -166,7 +173,7 @@ function DataGridRowImpl<TData>({
     <div
       key={row.id}
       role="row"
-      aria-rowindex={virtualRowIndex + 2}
+      aria-rowindex={virtualRowIndex + dataRowAriaIndexBase}
       aria-selected={isRowSelected}
       data-index={virtualRowIndex}
       data-slot="grid-row"

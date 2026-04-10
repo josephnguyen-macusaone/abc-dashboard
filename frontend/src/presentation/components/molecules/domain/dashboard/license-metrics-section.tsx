@@ -211,7 +211,7 @@ export function LicenseMetricsSection({
           { id: 'agent-sms-purchased', label: 'SMS Purchased', value: numberFormatter.format(apiStats.smsPurchased) },
           { id: 'agent-sms-sent',      label: 'SMS Sent',      value: numberFormatter.format(apiStats.smsSent) },
           { id: 'agent-sms-balance',   label: 'SMS Balance',   value: numberFormatter.format(apiStats.smsBalance) },
-          { id: 'agent-agents-cost',   label: 'Agents Cost',   value: currencyFormatter.format(apiStats.agentsCost) },
+          { id: 'agent-agents-cost',   label: 'Agent Cost',   value: currencyFormatter.format(apiStats.agentsCost) },
         ];
         const planMix = baseMetrics.filter(m => !overrideIds.has(m.id));
         return transformMetricsToStatsCards([...apiOverrides, ...planMix]);

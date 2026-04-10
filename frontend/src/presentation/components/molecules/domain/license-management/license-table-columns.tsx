@@ -99,7 +99,7 @@ export function getLicenseTableColumns(
       id: "agents",
       accessorKey: "agents",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Agents" />
+        <DataTableColumnHeader column={column} label="Agent" />
       ),
       cell: ({ row }) => {
         const raw = row.getValue("agents");
@@ -120,7 +120,7 @@ export function getLicenseTableColumns(
       },
       ...LICENSE_COLUMN_WIDTHS.agents,
       meta: {
-        label: "Agents",
+        label: "Agent",
         headerAlign: "start" as const,
       },
     },
@@ -128,7 +128,7 @@ export function getLicenseTableColumns(
       id: "agentsName",
       accessorKey: "agentsName",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Agents Name" />
+        <DataTableColumnHeader column={column} label="Agent Name" />
       ),
       cell: ({ row }) => {
         const raw = row.getValue("agentsName");
@@ -148,7 +148,7 @@ export function getLicenseTableColumns(
       enableColumnFilter: false,
       enableSorting: false,
       meta: {
-        label: "Agents Name",
+        label: "Agent Name",
       },
     },
     {
@@ -439,7 +439,7 @@ export function getLicenseTableColumns(
       id: "agentsCost",
       accessorKey: "agentsCost",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} label="Agents Cost" />
+        <DataTableColumnHeader column={column} label="Agent Cost" />
       ),
       cell: ({ row }) => (
         <div className="w-full text-right">
@@ -449,7 +449,7 @@ export function getLicenseTableColumns(
       ...LICENSE_COLUMN_WIDTHS.agentsCost,
       enableSorting: false,
       meta: {
-        label: "Agents Cost",
+        label: "Agent Cost",
         headerAlign: "start" as const,
       },
     },

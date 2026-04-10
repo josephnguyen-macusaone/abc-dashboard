@@ -104,10 +104,10 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
     {
       id: "agents",
       accessorKey: "agents",
-      header: "Agents",
+      header: "Agent",
       ...LICENSE_COLUMN_WIDTHS.agents,
       meta: {
-        label: "Agents",
+        label: "Agent",
         headerAlign: "start" as const,
         cell: {
           variant: "short-text" as const,
@@ -119,12 +119,12 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
     {
       id: "agentsName",
       accessorKey: "agentsName",
-      header: "Agents Name",
+      header: "Agent Name",
       ...LICENSE_COLUMN_WIDTHS.agentsName,
       enableColumnFilter: false,
       enableSorting: false,
       meta: {
-        label: "Agents Name",
+        label: "Agent Name",
         headerAlign: "start" as const,
         cell: { variant: "agents-name" as const },
       },
@@ -283,11 +283,11 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
     {
       id: "agentsCost",
       accessorKey: "agentsCost",
-      header: "Agents Cost",
+      header: "Agent Cost",
       ...LICENSE_COLUMN_WIDTHS.agentsCost,
       enableSorting: false,
       meta: {
-        label: "Agents Cost",
+        label: "Agent Cost",
         headerAlign: "start" as const,
         cell: { variant: "number" as const, min: 0 },
       },

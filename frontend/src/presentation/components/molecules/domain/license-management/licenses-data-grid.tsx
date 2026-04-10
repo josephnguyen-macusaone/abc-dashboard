@@ -92,7 +92,7 @@ export function LicensesDataGrid({
   const [hasChanges, setHasChanges] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  /** Search scope: dba = DBA only, agentsName = Agents Name only. Default DBA. */
+  /** Search scope: dba = DBA only, agentsName = Agent Name only. Default DBA. */
   const [searchField, setSearchField] = React.useState<'dba' | 'agentsName' | 'zip'>('dba');
   /** Search value that was applied (after clicking Search). Reset shows only when this is set. */
   const [appliedSearchValue, setAppliedSearchValue] = React.useState('');
@@ -695,6 +695,34 @@ export function LicensesDataGrid({
                     <span className="hidden sm:inline">Reset</span>
                   </Button>
                 )}
+                {/* Tablet (sm–lg): right-aligned on this row; mobile + desktop use filters row */}
+                {hasChanges && !readOnly && (
+                  <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex lg:hidden">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReset}
+                      disabled={isSaving}
+                      className="h-8 gap-1.5 sm:gap-2"
+                      aria-label="Discard changes"
+                    >
+                      <RotateCcw className="h-4 w-4 shrink-0" />
+                      <span className="hidden md:inline">Discard</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={!onSave || isSaving}
+                      className="h-8 gap-1.5 sm:gap-2"
+                      aria-label={isSaving ? "Saving changes" : "Save changes"}
+                    >
+                      <Save className="h-4 w-4 shrink-0" />
+                      <span className="hidden md:inline">
+                        {isSaving ? "Saving..." : "Save Changes"}
+                      </span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -765,7 +793,7 @@ export function LicensesDataGrid({
               />
             )}
             {hasChanges && !readOnly && (
-              <>
+              <div className="flex shrink-0 items-center gap-2 sm:hidden lg:flex">
                 <Button
                   variant="outline"
                   size="sm"
@@ -789,7 +817,7 @@ export function LicensesDataGrid({
                     {isSaving ? "Saving..." : "Save Changes"}
                   </span>
                 </Button>
-              </>
+              </div>
             )}
             <DataGridViewMenu table={table} />
           </div>
@@ -813,6 +841,7 @@ export function LicensesDataGrid({
             {...gridState}
             height={heightFromProps}
             stretchColumnIds={LICENSE_GRID_STRETCH_COLUMN_IDS}
+            addRowPosition="top"
           />
         )}
       </div>

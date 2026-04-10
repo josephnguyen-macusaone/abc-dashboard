@@ -42,19 +42,19 @@ export function UserDataTableSkeleton({
         role="toolbar"
         aria-orientation="horizontal"
         className={cn(
-          "flex w-full flex-col gap-2 py-2 min-w-0",
-          "lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:py-1"
+          "flex w-full flex-col gap-2 py-2 min-w-0 min-h-8",
+          "sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 sm:py-1 sm:min-h-8"
         )}
       >
-        <div className="flex w-full lg:w-auto lg:min-w-0 items-center flex-nowrap gap-2 overflow-x-auto min-w-0">
-          <Skeleton className="h-8 w-64 shrink-0 rounded-md" />
+        <div className="flex w-full min-w-0 items-center flex-nowrap gap-2 overflow-x-auto sm:w-auto sm:max-w-md sm:shrink-0 md:max-w-lg">
+          <Skeleton className="h-8 w-full max-w-full rounded-md sm:h-8 sm:w-64 sm:max-w-none sm:shrink-0" />
         </div>
-        <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 justify-start lg:justify-end overflow-x-auto lg:overflow-visible">
+        <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0 justify-start sm:justify-end overflow-x-auto sm:overflow-visible">
           <Skeleton className="h-8 w-20 rounded-md border border-dashed" />
           <Skeleton className="h-8 w-20 rounded-md border border-dashed" />
           <div className="flex items-center gap-2 shrink-0">
             <Skeleton className="h-8 w-24 rounded-md" />
-            <Skeleton className="hidden h-8 w-20 rounded-md lg:block" />
+            <Skeleton className="h-8 w-20 rounded-md" />
           </div>
         </div>
       </div>

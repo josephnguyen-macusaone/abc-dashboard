@@ -141,7 +141,7 @@ function toSafeNumber(value: unknown): number {
 }
 
 /**
- * Agent dashboard: aggregate SMS / agents cost / plan mix from the current license rows (same scope as the table).
+ * Agent dashboard: aggregate SMS / agent cost / plan mix from the current license rows (same scope as the table).
  */
 export function buildAgentPortfolioMetricsFromLicenses(licenses: LicenseRecord[]): LicenseDashboardMetric[] {
   const numberFormatter = new Intl.NumberFormat('en-US');
@@ -194,7 +194,7 @@ export function buildAgentPortfolioMetricsFromLicenses(licenses: LicenseRecord[]
     },
     {
       id: 'agent-agents-cost',
-      label: 'Agents Cost',
+      label: 'Agent Cost',
       value: currencyFormatter.format(agentsCost),
     },
     {

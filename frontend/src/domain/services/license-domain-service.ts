@@ -83,7 +83,7 @@ export class LicenseDomainService {
     // Agents: agent login email or legacy numeric string — no numeric `< 0` check on arbitrary strings
 
     if (props.agentsCost !== undefined && props.agentsCost < 0) {
-      errors.push('Agents cost cannot be negative');
+      errors.push('Agent cost cannot be negative');
     }
 
     // Yearly term requires a due date
