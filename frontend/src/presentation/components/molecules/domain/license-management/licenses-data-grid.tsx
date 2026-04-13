@@ -62,6 +62,8 @@ interface LicensesDataGridProps {
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
+    startsAtFrom?: string;
+    startsAtTo?: string;
   }) => void;
   /** Date range filter (like Status, Plan, Term); null = filter off */
   dateRange?: { from?: Date; to?: Date } | null;
@@ -94,7 +96,7 @@ export function LicensesDataGrid({
 
   /** Search scope: dba = DBA only, agentsName = Agent Name only. Default DBA. */
   const [searchField, setSearchField] = React.useState<'dba' | 'agentsName' | 'zip'>('dba');
-  /** Search value that was applied (after clicking Search). Reset shows only when this is set. */
+  /** Set when user clicks Search (keeps Reset visible immediately before debounced `searchQuery` catches up). */
   const [appliedSearchValue, setAppliedSearchValue] = React.useState('');
 
   // When using the license store (onQueryChange provided), sync search state from store on mount so grid matches table/store behavior
@@ -542,7 +544,11 @@ export function LicensesDataGrid({
       }),
     [columnFilters],
   );
-  const hasSearch = appliedSearchValue.trim() !== "";
+  /** Match API-driving state: debounced `searchQuery`, in-flight `searchInput`, or explicit Search submit. */
+  const hasSearch =
+    appliedSearchValue.trim() !== "" ||
+    searchQuery.trim() !== "" ||
+    searchInput.trim() !== "";
   const hasDateRange = !!(dateRange?.from || dateRange?.to);
   const hasActiveFilters = hasColumnFilters || hasSearch || hasDateRange;
 
@@ -554,8 +560,8 @@ export function LicensesDataGrid({
     table.setColumnFilters((prev) =>
       prev.filter((f) => !FILTER_COLUMN_IDS.includes(f.id as (typeof FILTER_COLUMN_IDS)[number])),
     );
-    onDateRangeChange?.(null);
-    // Notify parent so store clears filters and refetches with no search/filters
+    // One fetch with explicit date clears — avoids race where handleQueryChange read stale
+    // store dates before onDateRangeChange(null)'s setFilters flushed.
     const activeSort = table.getState().sorting?.[0];
     onQueryChange?.({
       page: 1,
@@ -567,8 +573,10 @@ export function LicensesDataGrid({
       status: undefined,
       plan: undefined,
       term: undefined,
+      startsAtFrom: undefined,
+      startsAtTo: undefined,
     });
-  }, [table, onQueryChange, onDateRangeChange]);
+  }, [table, onQueryChange]);
 
   const statusColumn = table.getColumn("status");
   const planColumn = table.getColumn("plan");

@@ -61,6 +61,8 @@ interface LicenseManagementProps {
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
+    startsAtFrom?: string;
+    startsAtTo?: string;
   }) => void;
   /** Optional key to force grid remount when filters change (e.g. date range) so TanStack table shows fresh data */
   dataSourceKey?: string;

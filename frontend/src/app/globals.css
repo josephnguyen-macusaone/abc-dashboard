@@ -1723,3 +1723,43 @@ input:autofill {
   background-color: var(--muted);
   border-radius: 9999px;
 }
+
+/* Right-edge sheet: slide in from off-screen right (Tailwind arbitrary `animate-[name_…]` breaks on underscores in `name`). */
+@keyframes sheet-panel-in {
+  from {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-panel-out {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+}
+
+@layer components {
+  [data-slot="sheet-panel"][data-state="open"] {
+    animation: sheet-panel-in 0.18s ease-out both;
+  }
+
+  [data-slot="sheet-panel"][data-state="closed"] {
+    animation: sheet-panel-out 0.18s ease-in forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="sheet-panel"][data-state="open"],
+    [data-slot="sheet-panel"][data-state="closed"] {
+      animation: none;
+    }
+  }
+}

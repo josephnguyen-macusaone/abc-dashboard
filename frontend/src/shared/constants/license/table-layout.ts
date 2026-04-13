@@ -104,11 +104,12 @@ export const LICENSE_COLUMN_WIDTHS = {
   /** Primary column: widest default + stretch in grid / absorb slack in table when fillContainer. */
   dba: { size: 360, minSize: 220 },
   /** Zip + dates: end-aligned; widths fit MM/DD/YYYY comfortably. */
-  zip: { size: 120, minSize: 88 },
+  zip: { size: 132, minSize: 96 },
   startsAt: { size: 168, minSize: 128 },
-  status: { size: 124, minSize: 80 },
-  plan: { size: 120, minSize: 80 },
-  term: { size: 120, minSize: 80 },
+  /** Status / plan / term: wider for filter chips and multi-module plan text (plan wider than zip). */
+  status: { size: 156, minSize: 100 },
+  plan: { size: 220, minSize: 140 },
+  term: { size: 148, minSize: 100 },
   dueDate: { size: 168, minSize: 128 },
   lastPayment: { size: 144, minSize: 100 },
   lastActive: { size: 168, minSize: 128 },

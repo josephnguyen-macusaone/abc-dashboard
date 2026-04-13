@@ -15,6 +15,11 @@ interface DataGridCellWrapperProps<TData> extends React.ComponentProps<"div"> {
   isEditing: boolean;
   isFocused: boolean;
   isSelected: boolean;
+  /**
+   * Non-editable cell: no focus ring, no roving tabindex, wrapper does not open edit (F2/Enter/double-click).
+   * Inner controls (e.g. audit button) can set false while column meta stays read-only for the data grid.
+   */
+  interactionDisabled?: boolean;
 }
 
 export function DataGridCellWrapper<TData>({
@@ -24,6 +29,7 @@ export function DataGridCellWrapper<TData>({
   isEditing,
   isFocused,
   isSelected,
+  interactionDisabled = false,
   className,
   onClick: onClickProp,
   onKeyDown: onKeyDownProp,
@@ -65,13 +71,15 @@ export function DataGridCellWrapper<TData>({
         event.preventDefault();
         onClickProp?.(event);
         if (isFocused) {
-          tableMeta?.onCellEditingStart?.(rowIndex, columnId);
+          if (!interactionDisabled) {
+            tableMeta?.onCellEditingStart?.(rowIndex, columnId);
+          }
         } else {
           tableMeta?.onCellClick?.(rowIndex, columnId, event);
         }
       }
     },
-    [tableMeta, rowIndex, columnId, isEditing, isFocused, onClickProp],
+    [tableMeta, rowIndex, columnId, isEditing, isFocused, interactionDisabled, onClickProp],
   );
 
   const onContextMenu = React.useCallback(
@@ -111,10 +119,11 @@ export function DataGridCellWrapper<TData>({
     (event: React.MouseEvent) => {
       if (!isEditing) {
         event.preventDefault();
+        if (interactionDisabled) return;
         tableMeta?.onCellDoubleClick?.(rowIndex, columnId);
       }
     },
-    [tableMeta, rowIndex, columnId, isEditing],
+    [tableMeta, rowIndex, columnId, isEditing, interactionDisabled],
   );
 
   const onKeyDown = React.useCallback(
@@ -134,6 +143,10 @@ export function DataGridCellWrapper<TData>({
         event.key === "PageDown" ||
         event.key === "Tab"
       ) {
+        return;
+      }
+
+      if (interactionDisabled && !isEditing) {
         return;
       }
 
@@ -159,7 +172,7 @@ export function DataGridCellWrapper<TData>({
         }
       }
     },
-    [onKeyDownProp, isFocused, isEditing, tableMeta, rowIndex, columnId],
+    [onKeyDownProp, isFocused, isEditing, interactionDisabled, tableMeta, rowIndex, columnId],
   );
 
   const rowHeight = tableMeta?.rowHeight ?? "medium";
@@ -172,19 +185,24 @@ export function DataGridCellWrapper<TData>({
       data-editing={isEditing ? "" : undefined}
       data-focused={isFocused ? "" : undefined}
       data-selected={isSelected ? "" : undefined}
-      tabIndex={isFocused && !isEditing ? 0 : -1}
+      aria-disabled={interactionDisabled && !isEditing ? true : undefined}
+      tabIndex={
+        isFocused && !isEditing && !interactionDisabled ? 0 : -1
+      }
       className={cn(
         "flex size-full min-w-0 items-center justify-start text-start text-sm outline-none",
         tableCellClass,
         "!px-4 !py-4 whitespace-normal has-data-[slot=checkbox]:pt-2.5",
         "[&_[data-slot=grid-cell-content]]:min-w-0 [&_[data-slot=grid-cell-content]]:break-words",
         {
-          "ring-1 ring-ring ring-inset": isFocused,
+          "ring-1 ring-ring ring-inset": isFocused && !interactionDisabled,
           "bg-yellow-100 dark:bg-yellow-900/30":
             isSearchMatch && !isActiveSearchMatch,
           "bg-orange-200 dark:bg-orange-900/50": isActiveSearchMatch,
           "bg-primary/10": isSelected && !isEditing,
-          "cursor-default": !isEditing,
+          "bg-muted/25 cursor-not-allowed select-none":
+            interactionDisabled && !isEditing,
+          "cursor-default": !isEditing && !interactionDisabled,
           "**:data-[slot=grid-cell-content]:truncate":
             !isEditing && rowHeight === "short",
           "**:data-[slot=grid-cell-content]:line-clamp-3":

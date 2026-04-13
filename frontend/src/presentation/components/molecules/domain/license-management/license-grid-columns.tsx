@@ -137,7 +137,11 @@ function buildBaseLicenseGridColumns(): ColumnDef<LicenseRecord>[] {
       meta: {
         label: "Zip Code",
         headerAlign: "start" as const,
-        cell: { variant: "short-text" as const, align: "end" as const },
+        cell: {
+          variant: "short-text" as const,
+          align: "end" as const,
+          digitsOnly: true,
+        },
       },
     },
     {
