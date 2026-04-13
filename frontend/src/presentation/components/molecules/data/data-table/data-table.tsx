@@ -136,7 +136,7 @@ export function DataTable<TData>({
                     stickyEnd &&
                       cn(
                         "sticky end-0 z-30 bg-muted",
-                        "shadow-[inset_1px_0_0_0_var(--border),-14px_0_20px_-8px_var(--background)]",
+                        "shadow-[inset_1px_0_0_0_var(--border)]",
                       ),
                   )}
                 >

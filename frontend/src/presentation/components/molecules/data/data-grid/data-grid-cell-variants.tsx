@@ -42,6 +42,24 @@ function normalizeShortTextForPlaceholder(raw: unknown): string {
   return s;
 }
 
+function stripToDigitsOnly(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
+const DIGITS_ONLY_EDIT_ALLOW_KEYS = new Set([
+  "Enter",
+  "Tab",
+  "Escape",
+  "Backspace",
+  "Delete",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+]);
+
 export function ShortTextCell<TData>({
   cell,
   tableMeta,
@@ -55,10 +73,13 @@ export function ShortTextCell<TData>({
   const cellOpts = cell.column.columnDef.meta?.cell;
   const placeholder =
     cellOpts?.variant === "short-text" ? cellOpts.placeholder : undefined;
+  const digitsOnly =
+    cellOpts?.variant === "short-text" && Boolean(cellOpts.digitsOnly);
   const rawCellValue = cell.getValue();
-  const initialValue = placeholder
+  const rawInitial = placeholder
     ? normalizeShortTextForPlaceholder(rawCellValue)
     : String(rawCellValue ?? "");
+  const initialValue = digitsOnly ? stripToDigitsOnly(rawInitial) : rawInitial;
   const [value, setValue] = React.useState(initialValue);
   const cellRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -72,9 +93,15 @@ export function ShortTextCell<TData>({
       return;
     }
     const raw = cellRef.current?.textContent ?? "";
-    const committed = placeholder
+    let committed = placeholder
       ? normalizeShortTextForPlaceholder(raw)
       : String(raw).trim();
+    if (digitsOnly) {
+      committed = stripToDigitsOnly(committed);
+      if (cellRef.current && cellRef.current.textContent !== committed) {
+        cellRef.current.textContent = committed;
+      }
+    }
     const baseline = placeholder
       ? initialValue
       : String(initialValue ?? "").trim();
@@ -84,6 +111,7 @@ export function ShortTextCell<TData>({
     }
   }, [
     placeholder,
+    digitsOnly,
     initialValue,
     readOnly,
     tableMeta,
@@ -98,10 +126,48 @@ export function ShortTextCell<TData>({
 
   const onInput = React.useCallback(
     (event: React.FormEvent<HTMLDivElement>) => {
-      const currentValue = event.currentTarget.textContent ?? "";
+      let currentValue = event.currentTarget.textContent ?? "";
+      if (digitsOnly && isEditing && !readOnly) {
+        const stripped = stripToDigitsOnly(currentValue);
+        if (stripped !== currentValue) {
+          event.currentTarget.textContent = stripped;
+        }
+        currentValue = stripped;
+      }
       setValue(currentValue);
     },
-    [],
+    [digitsOnly, isEditing, readOnly],
+  );
+
+  const onPasteDigitsOnly = React.useCallback(
+    (event: React.ClipboardEvent<HTMLDivElement>) => {
+      if (!digitsOnly || readOnly || !isEditing) return;
+      event.preventDefault();
+      const pasted = stripToDigitsOnly(event.clipboardData.getData("text/plain"));
+      const el = event.currentTarget;
+      const sel = window.getSelection();
+      if (!sel?.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(pasted));
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      setValue(el.textContent ?? "");
+    },
+    [digitsOnly, readOnly, isEditing],
+  );
+
+  const onContentKeyDownDigitsOnly = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!digitsOnly || readOnly || !isEditing) return;
+      if (DIGITS_ONLY_EDIT_ALLOW_KEYS.has(event.key)) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key.length === 1 && !/^\d$/.test(event.key)) {
+        event.preventDefault();
+      }
+    },
+    [digitsOnly, readOnly, isEditing],
   );
 
   const onWrapperKeyDown = React.useCallback(
@@ -134,6 +200,10 @@ export function ShortTextCell<TData>({
         !event.ctrlKey &&
         !event.metaKey
       ) {
+        if (digitsOnly && !/^\d$/.test(event.key)) {
+          event.preventDefault();
+          return;
+        }
         setValue(event.key);
 
         queueMicrotask(() => {
@@ -149,7 +219,7 @@ export function ShortTextCell<TData>({
         });
       }
     },
-    [isEditing, isFocused, initialValue, readOnly, tableMeta, applyNormalizedCommit],
+    [isEditing, isFocused, digitsOnly, initialValue, readOnly, tableMeta, applyNormalizedCommit],
   );
 
   React.useEffect(() => {
@@ -195,6 +265,8 @@ export function ShortTextCell<TData>({
       ref={cellRef}
       onBlur={onBlur}
       onInput={onInput}
+      onKeyDown={digitsOnly ? onContentKeyDownDigitsOnly : undefined}
+      onPaste={digitsOnly ? onPasteDigitsOnly : undefined}
       suppressContentEditableWarning
       className={cn(
         "block min-w-0 w-full overflow-hidden outline-none",
@@ -211,6 +283,7 @@ export function ShortTextCell<TData>({
           ? { height: contentHeight, lineHeight: `${contentHeight}px` }
           : undefined
       }
+      inputMode={digitsOnly ? "numeric" : undefined}
     >
       {(!isEditing || readOnly) ? (value ?? "") : null}
     </div>
@@ -226,6 +299,7 @@ export function ShortTextCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       onKeyDown={onWrapperKeyDown}
       className={wrapperAlignClass}
     >
@@ -356,6 +430,7 @@ export function NumberCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       onKeyDown={onWrapperKeyDown}
       className="justify-end text-end"
     >
@@ -445,6 +520,7 @@ export function CheckboxCell<TData>({
       isEditing={false}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       className="flex size-full justify-center"
       onClick={onWrapperClick}
       onKeyDown={onWrapperKeyDown}
@@ -540,6 +616,7 @@ export function SelectCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       onKeyDown={onWrapperKeyDown}
       className={alignClass}
     >
@@ -646,6 +723,7 @@ export function LicenseStatusCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       onKeyDown={onWrapperKeyDown}
       className={alignClass}
     >
@@ -829,6 +907,7 @@ export function DateCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       onKeyDown={onWrapperKeyDown}
       className={wrapperAlignClass}
     >
@@ -952,6 +1031,7 @@ export function MultiSelectCell<TData>({
   isFocused,
   isEditing,
   isSelected,
+  readOnly,
 }: CellVariantProps<TData>) {
   const cellValue = React.useMemo(() => {
     const value = cell.getValue() as string[];
@@ -978,6 +1058,7 @@ export function MultiSelectCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       className="justify-center text-center"
     >
       {displayLabels.length > 0 ? (
@@ -1101,6 +1182,7 @@ export function PlanModulesCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       className={alignClass}
     >
       <div className={cn("flex size-full min-w-0 items-center overflow-hidden", align === "end" ? "justify-end" : align === "center" ? "justify-center" : "justify-start")}>
@@ -1228,6 +1310,7 @@ export function AgentsNameCell<TData>({
         }
       } else if (
         isFocused &&
+        !readOnly &&
         event.key.length === 1 &&
         !event.ctrlKey &&
         !event.metaKey
@@ -1246,11 +1329,11 @@ export function AgentsNameCell<TData>({
         });
       }
     },
-    [isEditing, isFocused, initialText, editValue, tableMeta, commitEdit],
+    [isEditing, isFocused, readOnly, initialText, editValue, tableMeta, commitEdit],
   );
 
   React.useEffect(() => {
-    if (isEditing && cellRef.current) {
+    if (isEditing && !readOnly && cellRef.current) {
       cellRef.current.focus();
       const text = initialText ?? "";
       if (!cellRef.current.textContent && text) {
@@ -1265,7 +1348,7 @@ export function AgentsNameCell<TData>({
         selection?.addRange(range);
       }
     }
-  }, [isEditing, initialText]);
+  }, [isEditing, readOnly, initialText]);
 
   /** When editing, do not pass "" as React children — it clears contentEditable on every re-render. */
   const viewText = !isEditing ? initialText : null;
@@ -1314,6 +1397,7 @@ export function AgentsNameCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={readOnly}
       onKeyDown={onWrapperKeyDown}
     >
       {!isEditing && !fullText ? (
@@ -1360,6 +1444,7 @@ export function AuditHistoryCell<TData>({
       isEditing={isEditing}
       isFocused={isFocused}
       isSelected={isSelected}
+      interactionDisabled={false}
     >
       <div className="flex h-full w-full items-center justify-center px-0.5">
         <Button

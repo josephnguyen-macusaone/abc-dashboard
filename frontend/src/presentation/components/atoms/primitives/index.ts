@@ -6,6 +6,7 @@ export * from './calendar';
 export * from './card';
 export * from './command';
 export * from './dialog';
+export * from './sheet';
 export * from './dropdown-menu';
 export * from './faceted';
 export * from './popover';

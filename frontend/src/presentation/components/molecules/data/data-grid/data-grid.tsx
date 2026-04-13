@@ -125,7 +125,7 @@ export function DataGrid<TData>({
       <div
         role="gridcell"
         tabIndex={0}
-        className="relative flex h-8 grow items-center bg-muted/30 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+        className="group relative flex h-8 grow items-center bg-muted/30 transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-muted/50 focus:outline-none"
         style={{
           width: table.getTotalSize(),
           minWidth: table.getTotalSize(),
@@ -133,8 +133,8 @@ export function DataGrid<TData>({
         onClick={onRowAdd}
         onKeyDown={onAddRowKeyDown}
       >
-        <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground">
-          <Plus className="size-3.5" />
+        <div className="sticky start-0 flex items-center gap-2 px-3 text-muted-foreground transition-colors group-hover:text-accent-foreground">
+          <Plus className="size-3.5 transition-colors group-hover:text-accent-foreground" />
           <span className="text-sm">Add row</span>
         </div>
       </div>
@@ -222,7 +222,7 @@ export function DataGrid<TData>({
                         stickyEnd &&
                           cn(
                             "sticky end-0 isolate z-30 bg-muted",
-                            "shadow-[inset_1px_0_0_0_var(--border),-14px_0_20px_-8px_var(--background)]",
+                            "shadow-[inset_1px_0_0_0_var(--border)]",
                           ),
                         {
                           grow: dataGridColumnShouldGrow(

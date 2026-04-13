@@ -272,6 +272,9 @@ export function LicenseManagementPage() {
     status?: string | string[];
     plan?: string | string[];
     term?: string | string[];
+    /** When present (including `undefined`), overrides store dates so reset/filter sync is not racey with setFilters. */
+    startsAtFrom?: string;
+    startsAtTo?: string;
   }) => {
     try {
       const storeFilters = useLicenseStore.getState().filters;
@@ -286,7 +289,11 @@ export function LicenseManagementPage() {
         ? params.term.join(',')
         : params.term;
 
-      // Always use date range from store; only cleared when user clicks X on date filter
+      const startsAtFrom =
+        "startsAtFrom" in params ? params.startsAtFrom : storeFilters.startsAtFrom;
+      const startsAtTo =
+        "startsAtTo" in params ? params.startsAtTo : storeFilters.startsAtTo;
+
       await fetchLicenses({
         page: params.page,
         limit: params.limit,
@@ -297,8 +304,8 @@ export function LicenseManagementPage() {
         status: statusParam as import('@/types').LicenseStatus | import('@/types').LicenseStatus[] | undefined,
         plan: planParam,
         term: termParam as import('@/types').LicenseTerm | import('@/types').LicenseTerm[] | undefined,
-        startsAtFrom: storeFilters.startsAtFrom,
-        startsAtTo: storeFilters.startsAtTo,
+        startsAtFrom,
+        startsAtTo,
       });
     } catch (error) {
       if (shouldShowError(error)) {

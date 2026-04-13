@@ -18,6 +18,8 @@ export type CellOpts =
       variant: "short-text";
       /** Shown when the cell value is empty (and legacy "0" when placeholder is set). */
       placeholder?: string;
+      /** When true, only ASCII digits 0-9 are accepted (input, paste, commit). */
+      digitsOnly?: boolean;
     }
   | {
       variant: "long-text";

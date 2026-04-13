@@ -39,6 +39,8 @@ export class LicenseDomainService {
 
     if (!props.zip || props.zip.trim().length === 0) {
       errors.push('ZIP code is required');
+    } else if (!/^\d+$/.test(props.zip.trim())) {
+      errors.push('ZIP code must contain only digits');
     }
 
     if (!props.plan || props.plan.trim().length === 0) {
